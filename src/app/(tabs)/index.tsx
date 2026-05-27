@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -10,9 +10,11 @@ export default function HomeScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.heroSection}>
-          <View style={styles.logoCircle}>
-            <ThemedText style={styles.logoLetter}>Y</ThemedText>
-          </View>
+          <Image
+            source={require('@/../assets/images/icon.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <ThemedText type="title" style={styles.title}>
             Yaqin Market
           </ThemedText>
@@ -50,21 +52,10 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.four,
   },
-  logoCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: Radius.full,
-    backgroundColor: Brand.blue,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 4,
-    borderColor: Brand.red,
-  },
-  logoLetter: {
-    color: Brand.white,
-    fontSize: 56,
-    fontWeight: '800',
-    lineHeight: 64,
+  logo: {
+    width: 128,
+    height: 128,
+    borderRadius: Radius.xl,
   },
   title: {
     textAlign: 'center',
