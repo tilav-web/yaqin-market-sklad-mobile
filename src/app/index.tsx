@@ -1,61 +1,32 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+import { Brand, Radius, Spacing } from '@/constants/theme';
 
 export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
+        <View style={styles.heroSection}>
+          <View style={styles.logoCircle}>
+            <ThemedText style={styles.logoLetter}>Y</ThemedText>
+          </View>
           <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
+            Yaqin Market
+          </ThemedText>
+          <ThemedText type="default" style={styles.subtitle}>
+            Mahalla do'konlaridan tezkor yetkazib berish
+          </ThemedText>
+        </View>
+
+        <ThemedView type="backgroundElement" style={styles.devCard}>
+          <ThemedText type="defaultSemiBold">Dev Client ishlamoqda</ThemedText>
+          <ThemedText type="small" style={styles.devCardHint}>
+            Loyiha v0.1.0 — Sklad va marketpleys MVP
           </ThemedText>
         </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
       </SafeAreaView>
     </ThemedView>
   );
@@ -64,35 +35,54 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
   },
   safeArea: {
     flex: 1,
     paddingHorizontal: Spacing.four,
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    justifyContent: 'space-between',
+    paddingBottom: Spacing.six,
+    paddingTop: Spacing.six,
   },
   heroSection: {
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
-    paddingHorizontal: Spacing.four,
     gap: Spacing.four,
+  },
+  logoCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: Radius.full,
+    backgroundColor: Brand.blue,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 4,
+    borderColor: Brand.red,
+  },
+  logoLetter: {
+    color: Brand.white,
+    fontSize: 56,
+    fontWeight: '800',
+    lineHeight: 64,
   },
   title: {
     textAlign: 'center',
+    color: Brand.blue,
   },
-  code: {
-    textTransform: 'uppercase',
+  subtitle: {
+    textAlign: 'center',
+    paddingHorizontal: Spacing.four,
+    opacity: 0.7,
   },
-  stepContainer: {
-    gap: Spacing.three,
+  devCard: {
     alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+    padding: Spacing.four,
+    borderRadius: Radius.lg,
+    gap: Spacing.two,
+    alignItems: 'center',
+  },
+  devCardHint: {
+    opacity: 0.6,
   },
 });

@@ -1,23 +1,47 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
-    "version": "1.0.0",
+    "name": "Yaqin Market",
+    "slug": "yaqin-market",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "yaqinmarket",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "uz.yaqin.market",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Yaqin do'konlarni topish uchun joylashuvingiz kerak",
+        "NSLocationAlwaysUsageDescription": "Yetkazib berish jarayonida joylashuvingizni kuzatish uchun",
+        "NSCameraUsageDescription": "Shtrix-kod skanerlash va mahsulot rasmlari uchun kamera kerak"
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyDyBFO5ucrm_p0mXcur2254b_jG0LJ88Zg"
+      }
     },
     "android": {
+      "package": "uz.yaqin.market",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0046AD",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "FOREGROUND_SERVICE",
+        "VIBRATE",
+        "CAMERA"
+      ],
+      "predictiveBackGestureEnabled": false,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDyBFO5ucrm_p0mXcur2254b_jG0LJ88Zg"
+        }
+      }
     },
     "web": {
       "output": "static",
@@ -25,10 +49,27 @@
     },
     "plugins": [
       "expo-router",
+      "expo-dev-client",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Yaqin do'konlarni topish uchun joylashuvingiz kerak",
+          "locationAlwaysAndWhenInUsePermission": "Yetkazib berish uchun joylashuv kerak"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#0046AD",
+          "androidMode": "default"
+        }
+      ],
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#0046AD",
           "android": {
             "image": "./assets/images/splash-icon.png",
             "imageWidth": 76
@@ -39,6 +80,7 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "owner": "tilav"
   }
 }

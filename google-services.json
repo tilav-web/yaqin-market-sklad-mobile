@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "189166034144",
+    "project_id": "yaqin-market",
+    "storage_bucket": "yaqin-market.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:189166034144:android:693d5959dd0971a72e0485",
+        "android_client_info": {
+          "package_name": "uz.yaqin.market"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDY1bvNZ8pbhY8ghaP95mPUOo-Y30BVMxo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
