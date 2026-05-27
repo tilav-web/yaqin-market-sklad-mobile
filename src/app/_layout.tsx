@@ -1,17 +1,14 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import {
-  DarkTheme,
-  DefaultTheme,
-  Stack,
-  ThemeProvider,
-  useRouter,
-  useSegments,
-} from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View, useColorScheme } from 'react-native';
+import { ActivityIndicator, StatusBar, StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { Brand } from '@/constants/theme';
+import { ToastProvider } from '@/components/ui/Toast';
+import { useTranslation } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
+import { colors } from '@/theme';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,6 +25,7 @@ function RootNavigator() {
   const hydrate = useAuthStore((s) => s.hydrate);
   const segments = useSegments();
   const router = useRouter();
+  const { tr } = useTranslation();
 
   useEffect(() => {
     void hydrate();
@@ -46,34 +44,46 @@ function RootNavigator() {
   if (status === 'loading') {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color={Brand.blue} />
+        <ActivityIndicator size="large" color={colors.brand.primary} />
       </View>
     );
   }
 
   return (
-    <Stack screenOptions={{ headerShown: true, headerTintColor: Brand.blue, headerTitleStyle: { fontWeight: '700' } }}>
+    <Stack
+      screenOptions={{
+        headerShown: true,
+        headerStyle: { backgroundColor: colors.bg.surface },
+        headerTintColor: colors.text.primary,
+        headerTitleStyle: { fontWeight: '700' },
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: colors.bg.canvas },
+      }}>
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="shop/[id]/index" options={{ title: 'Do\'kon', headerTransparent: false }} />
-      <Stack.Screen name="shop/[id]/checkout" options={{ title: 'Buyurtma' }} />
-      <Stack.Screen name="orders/index" options={{ title: 'Buyurtmalarim' }} />
+      <Stack.Screen name="shop/[id]/index" options={{ title: 'Do\'kon' }} />
+      <Stack.Screen name="shop/[id]/checkout" options={{ title: tr('cart.proceed') }} />
+      <Stack.Screen name="orders/index" options={{ title: tr('orders.title') }} />
       <Stack.Screen name="orders/[id]" options={{ title: 'Buyurtma' }} />
-      <Stack.Screen name="addresses" options={{ title: 'Manzillarim' }} />
-      <Stack.Screen name="seller-application" options={{ title: 'Sotuvchi bo\'lish' }} />
+      <Stack.Screen name="addresses" options={{ title: tr('addr.title') }} />
+      <Stack.Screen name="seller-application" options={{ title: tr('sellerApp.title') }} />
       <Stack.Screen name="seller/[shopId]" options={{ headerShown: false }} />
     </Stack>
   );
 }
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <RootNavigator />
-      </ThemeProvider>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <QueryClientProvider client={queryClient}>
+          <ToastProvider>
+            <StatusBar barStyle="dark-content" backgroundColor={colors.bg.surface} />
+            <RootNavigator />
+          </ToastProvider>
+        </QueryClientProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -82,6 +92,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Brand.white,
+    backgroundColor: colors.bg.surface,
   },
 });

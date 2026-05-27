@@ -1,67 +1,24 @@
 import { Tabs } from 'expo-router';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs/types';
 
-import { Brand } from '@/constants/theme';
+import { CustomTabBar } from '@/components/CustomTabBar';
+import { colors } from '@/theme';
 
-function TabIcon({ label, focused }: { label: string; focused: boolean }) {
-  return (
-    <View style={styles.iconWrap}>
-      <Text style={[styles.iconText, focused && { color: Brand.blue }]}>{label}</Text>
-    </View>
-  );
-}
+const renderTabBar = (props: BottomTabBarProps) => <CustomTabBar {...props} />;
 
 export default function TabsLayout() {
   return (
     <Tabs
+      tabBar={renderTabBar}
       screenOptions={{
-        tabBarActiveTintColor: Brand.blue,
-        tabBarInactiveTintColor: Brand.gray600,
-        tabBarStyle: { borderTopColor: Brand.gray100, paddingTop: 4 },
-        headerStyle: { backgroundColor: Brand.white },
-        headerTintColor: Brand.blue,
-        headerTitleStyle: { fontWeight: '700' },
+        headerShown: false,
+        sceneStyle: { backgroundColor: colors.bg.canvas },
       }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Bosh sahifa',
-          tabBarIcon: ({ focused }) => <TabIcon label="🏠" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="map"
-        options={{
-          title: 'Xarita',
-          tabBarIcon: ({ focused }) => <TabIcon label="🗺️" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="search"
-        options={{
-          title: 'Qidiruv',
-          tabBarIcon: ({ focused }) => <TabIcon label="🔍" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="carts"
-        options={{
-          title: 'Savatlar',
-          tabBarIcon: ({ focused }) => <TabIcon label="🛒" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profil',
-          tabBarIcon: ({ focused }) => <TabIcon label="👤" focused={focused} />,
-        }}
-      />
+      <Tabs.Screen name="index" />
+      <Tabs.Screen name="map" />
+      <Tabs.Screen name="search" />
+      <Tabs.Screen name="carts" />
+      <Tabs.Screen name="profile" />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  iconWrap: { alignItems: 'center', justifyContent: 'center' },
-  iconText: { fontSize: 22, color: Brand.gray600 },
-});

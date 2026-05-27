@@ -1,15 +1,32 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { Alert, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ChevronRight,
+  ClipboardList,
+  Globe,
+  LogOut,
+  MapPin,
+  Store,
+  Sun,
+} from 'lucide-react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { Badge } from '@/components/ui/Badge';
+import { Card } from '@/components/ui/Card';
+import { useLangStore, useTranslation, type Lang } from '@/i18n';
 import { api } from '@/lib/api';
 import { MeUser, MyShop } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
+import { colors, hitSlop, layout, radius, spacing, typography } from '@/theme';
+import { haptics } from '@/utils/haptics';
 
 export default function ProfileTab() {
+  const { tr } = useTranslation();
+  const lang = useLangStore((s) => s.lang);
+  const setLang = useLangStore((s) => s.setLang);
   const signOut = useAuthStore((s) => s.signOut);
+
   const meQuery = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
@@ -29,154 +46,253 @@ export default function ProfileTab() {
 
   const me = meQuery.data;
 
+  function handleLangChange(next: Lang) {
+    haptics.selection();
+    setLang(next);
+  }
+
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <FlatList
-        ListHeaderComponent={
-          <View>
-            <View style={styles.header}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {(me?.name?.[0] ?? me?.phone?.slice(-2) ?? 'Y').toUpperCase()}
-                </Text>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <View style={styles.header}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {(me?.name?.[0] ?? me?.phone?.slice(-2) ?? 'Y').toUpperCase()}
+            </Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.name}>{me?.name ?? 'Foydalanuvchi'}</Text>
+            <Text style={styles.phone}>{me?.phone}</Text>
+          </View>
+          {me?.isAdmin && <Badge label="ADMIN" tone="info" />}
+        </View>
+
+        <Section title={tr('profile.section.myShops')}>
+          {me?.isSellerApproved ? (
+            myShopsQuery.data && myShopsQuery.data.length > 0 ? (
+              myShopsQuery.data.map((shop) => (
+                <Row
+                  key={shop.id}
+                  icon={Store}
+                  iconBg={colors.brand.accentSurface}
+                  iconColor={colors.brand.accent}
+                  title={shop.name}
+                  subtitle={`${shop.isOpenManual ? tr('profile.openShop') : tr('profile.closedShop')} · ${shop.address}`}
+                  onPress={() => router.push(`/seller/${shop.id}`)}
+                />
+              ))
+            ) : (
+              <Text style={styles.dim}>{tr('profile.noShops')}</Text>
+            )
+          ) : (
+            <Pressable
+              onPress={() => {
+                haptics.medium();
+                router.push('/seller-application');
+              }}
+              style={styles.applyCta}>
+              <View style={styles.applyIcon}>
+                <Sun size={22} color={colors.brand.accent} strokeWidth={2.4} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.name}>{me?.name ?? 'Foydalanuvchi'}</Text>
-                <Text style={styles.phone}>{me?.phone}</Text>
+                <Text style={styles.applyTitle}>{tr('profile.becomeSeller')}</Text>
+                <Text style={styles.applySub}>{tr('profile.becomeSellerDesc')}</Text>
               </View>
-            </View>
+              <ChevronRight size={18} color={colors.brand.accent} strokeWidth={2.4} />
+            </Pressable>
+          )}
+        </Section>
 
-            <Section title="Mening do'konlarim">
-              {me?.isSellerApproved ? (
-                myShopsQuery.data && myShopsQuery.data.length > 0 ? (
-                  myShopsQuery.data.map((shop) => (
-                    <Pressable
-                      key={shop.id}
-                      style={styles.row}
-                      onPress={() => router.push(`/seller/${shop.id}`)}>
-                      <Text style={styles.rowIcon}>🏪</Text>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.rowText}>{shop.name}</Text>
-                        <Text style={styles.rowSub}>
-                          {shop.isOpenManual ? 'Ochiq' : 'Yopiq'} · {shop.address}
-                        </Text>
-                      </View>
-                      <Text style={styles.rowArrow}>›</Text>
-                    </Pressable>
-                  ))
-                ) : (
-                  <Text style={styles.dim}>Hozircha do&apos;konlaringiz yo&apos;q</Text>
-                )
-              ) : (
-                <Pressable
-                  style={[styles.row, styles.applyRow]}
-                  onPress={() => router.push('/seller-application')}>
-                  <Text style={styles.rowIcon}>🪪</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.rowText, { color: Brand.red }]}>
-                      Sotuvchi bo&apos;lish
-                    </Text>
-                    <Text style={styles.rowSub}>O&apos;z do&apos;koningizni boshqaring</Text>
-                  </View>
-                  <Text style={[styles.rowArrow, { color: Brand.red }]}>›</Text>
-                </Pressable>
-              )}
-            </Section>
+        <Section title={tr('profile.section.account')}>
+          <Row
+            icon={MapPin}
+            iconBg={colors.brand.primarySurface}
+            iconColor={colors.brand.primary}
+            title={tr('profile.addresses')}
+            onPress={() => router.push('/addresses')}
+          />
+          <Row
+            icon={ClipboardList}
+            iconBg={colors.feedback.infoSurface}
+            iconColor={colors.feedback.info}
+            title={tr('profile.orders')}
+            onPress={() => router.push('/orders')}
+          />
+        </Section>
 
-            <Section title="Hisob">
-              <Pressable style={styles.row} onPress={() => router.push('/addresses')}>
-                <Text style={styles.rowIcon}>📍</Text>
-                <Text style={styles.rowText}>Manzillarim</Text>
-                <Text style={styles.rowArrow}>›</Text>
-              </Pressable>
-              <Pressable style={styles.row} onPress={() => router.push('/orders')}>
-                <Text style={styles.rowIcon}>📦</Text>
-                <Text style={styles.rowText}>Buyurtmalarim</Text>
-                <Text style={styles.rowArrow}>›</Text>
-              </Pressable>
-            </Section>
-
-            <Section title="Boshqa">
+        <Section title={tr('profile.language')}>
+          <View style={styles.langBox}>
+            {(['uz', 'ru'] as Lang[]).map((l) => (
               <Pressable
-                style={styles.row}
-                onPress={() =>
-                  Alert.alert('Chiqish', 'Akkauntdan chiqishni xohlaysizmi?', [
-                    { text: 'Bekor', style: 'cancel' },
-                    {
-                      text: 'Chiqish',
-                      style: 'destructive',
-                      onPress: () => signOut(),
-                    },
-                  ])
-                }>
-                <Text style={styles.rowIcon}>🚪</Text>
-                <Text style={[styles.rowText, { color: Brand.red }]}>Chiqish</Text>
+                key={l}
+                onPress={() => handleLangChange(l)}
+                style={[styles.langItem, lang === l && styles.langItemActive]}>
+                <Globe
+                  size={16}
+                  color={lang === l ? colors.brand.primary : colors.text.tertiary}
+                  strokeWidth={2.2}
+                />
+                <Text style={[styles.langText, lang === l && styles.langTextActive]}>
+                  {l === 'uz' ? "O'zbekcha" : 'Русский'}
+                </Text>
               </Pressable>
-            </Section>
+            ))}
           </View>
-        }
-        data={[]}
-        renderItem={null}
-      />
+        </Section>
+
+        <Section title={tr('profile.section.other')}>
+          <Row
+            icon={LogOut}
+            iconBg={colors.feedback.dangerSurface}
+            iconColor={colors.brand.accent}
+            title={tr('auth.signOut')}
+            titleColor={colors.brand.accent}
+            onPress={() => {
+              haptics.warning();
+              Alert.alert(tr('auth.signOut'), tr('auth.signOutConfirm'), [
+                { text: tr('common.cancel'), style: 'cancel' },
+                {
+                  text: tr('auth.signOut'),
+                  style: 'destructive',
+                  onPress: () => {
+                    haptics.heavy();
+                    signOut();
+                  },
+                },
+              ]);
+            }}
+          />
+        </Section>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+interface SectionProps {
+  title: string;
+  children: React.ReactNode;
+}
+function Section({ title, children }: SectionProps) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.sectionBody}>{children}</View>
+      <Card padding="none" elevation="xs">
+        {children}
+      </Card>
     </View>
   );
 }
 
+interface RowProps {
+  icon: typeof MapPin;
+  iconBg: string;
+  iconColor: string;
+  title: string;
+  subtitle?: string;
+  titleColor?: string;
+  onPress: () => void;
+}
+function Row({ icon: Icon, iconBg, iconColor, title, subtitle, titleColor, onPress }: RowProps) {
+  return (
+    <Pressable
+      onPress={() => {
+        haptics.selection();
+        onPress();
+      }}
+      hitSlop={hitSlop}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.bg.surfaceMuted }]}>
+      <View style={[styles.rowIcon, { backgroundColor: iconBg }]}>
+        <Icon size={18} color={iconColor} strokeWidth={2.2} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.rowTitle, titleColor && { color: titleColor }]}>{title}</Text>
+        {subtitle && (
+          <Text style={styles.rowSub} numberOfLines={1}>
+            {subtitle}
+          </Text>
+        )}
+      </View>
+      <ChevronRight size={18} color={colors.text.tertiary} strokeWidth={2.2} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Brand.gray50 },
+  safe: { flex: 1, backgroundColor: colors.bg.canvas },
+  scroll: { padding: layout.screenPadding, paddingBottom: spacing['4xl'], gap: spacing.lg },
   header: {
-    padding: Spacing.four,
-    backgroundColor: Brand.white,
     flexDirection: 'row',
-    gap: Spacing.four,
     alignItems: 'center',
+    gap: spacing.lg,
+    backgroundColor: colors.bg.surface,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
   },
   avatar: {
     width: 64,
     height: 64,
-    borderRadius: Radius.full,
-    backgroundColor: Brand.blue,
+    borderRadius: radius.full,
+    backgroundColor: colors.brand.primary,
+    borderWidth: 3,
+    borderColor: colors.brand.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: Brand.red,
   },
-  avatarText: { color: Brand.white, fontSize: 24, fontWeight: '800' },
-  name: { fontSize: 18, fontWeight: '700', color: Brand.black },
-  phone: { fontSize: 14, color: Brand.gray600, marginTop: 2 },
-  section: { marginTop: Spacing.four },
+  avatarText: { color: colors.text.onPrimary, fontSize: 24, fontWeight: '800' },
+  name: { ...typography.h3 },
+  phone: { ...typography.bodySmall, color: colors.text.secondary, marginTop: 2 },
+  section: { gap: spacing.sm },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Brand.gray600,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    paddingHorizontal: Spacing.four,
-    paddingBottom: Spacing.two,
+    ...typography.overline,
+    paddingHorizontal: spacing.md,
   },
-  sectionBody: { backgroundColor: Brand.white, borderTopWidth: 1, borderBottomWidth: 1, borderColor: Brand.gray100 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.four,
-    gap: Spacing.three,
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: Brand.gray50,
+    borderBottomColor: colors.border.subtle,
   },
-  applyRow: { backgroundColor: '#FFF5F5' },
-  rowIcon: { fontSize: 22 },
-  rowText: { flex: 1, fontSize: 15, fontWeight: '600', color: Brand.black },
-  rowSub: { fontSize: 12, color: Brand.gray600, marginTop: 2 },
-  rowArrow: { fontSize: 22, color: Brand.gray400 },
-  dim: { fontSize: 14, color: Brand.gray600, padding: Spacing.four },
+  rowIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowTitle: { ...typography.bodyStrong },
+  rowSub: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
+  applyCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.brand.accentSurface,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+  },
+  applyIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    backgroundColor: colors.bg.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  applyTitle: { ...typography.h4, color: colors.brand.accent },
+  applySub: { ...typography.bodySmall, color: colors.text.secondary, marginTop: 2 },
+  dim: { ...typography.bodySmall, padding: spacing.lg, color: colors.text.secondary },
+  langBox: { padding: spacing.sm, gap: 4 },
+  langItem: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    alignItems: 'center',
+  },
+  langItemActive: { backgroundColor: colors.brand.primarySurface },
+  langText: { ...typography.bodyStrong, color: colors.text.secondary },
+  langTextActive: { color: colors.brand.primary },
 });

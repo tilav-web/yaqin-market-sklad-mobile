@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { ArrowLeft, ShieldCheck } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,15 +12,20 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrandButton } from '@/components/ui/brand-button';
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { Button } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
+import { useTranslation } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
+import { colors, hitSlop, layout, radius, spacing, typography } from '@/theme';
+import { haptics } from '@/utils/haptics';
 
 const CODE_LENGTH = 6;
 
 export default function OtpScreen() {
-  const params = useLocalSearchParams<{ phone: string }>();
-  const phone = params.phone ?? '';
+  const { phone = '' } = useLocalSearchParams<{ phone: string }>();
+  const { tr } = useTranslation();
+  const toast = useToast();
+
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [resendIn, setResendIn] = useState(60);
@@ -36,18 +41,20 @@ export default function OtpScreen() {
   }, [resendIn]);
 
   useEffect(() => {
-    const timer = setTimeout(() => inputRef.current?.focus(), 100);
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => inputRef.current?.focus(), 100);
+    return () => clearTimeout(t);
   }, []);
 
-  async function handleVerify() {
-    if (code.length !== CODE_LENGTH) return;
+  async function handleVerify(c: string = code) {
+    if (c.length !== CODE_LENGTH) return;
     setLoading(true);
     try {
-      await verifyOtp(phone, code);
+      await verifyOtp(phone, c);
+      haptics.success();
       router.replace('/(tabs)');
     } catch (err) {
-      Alert.alert("Xatolik", (err as Error).message);
+      haptics.error();
+      toast.error((err as Error).message);
       setCode('');
     } finally {
       setLoading(false);
@@ -59,9 +66,11 @@ export default function OtpScreen() {
     try {
       await requestOtp(phone);
       setResendIn(60);
-      Alert.alert('Yuborildi', 'Yangi kod yuborildi');
+      haptics.success();
+      toast.success(tr('auth.otpResent'));
     } catch (err) {
-      Alert.alert('Xatolik', (err as Error).message);
+      haptics.error();
+      toast.error((err as Error).message);
     }
   }
 
@@ -70,14 +79,21 @@ export default function OtpScreen() {
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={hitSlop}
+          style={styles.backBtn}>
+          <ArrowLeft size={24} color={colors.text.primary} strokeWidth={2.2} />
+        </Pressable>
+
         <View style={styles.header}>
-          <Text style={styles.title}>Tasdiq kodi</Text>
+          <Text style={styles.title}>{tr('auth.otpTitle')}</Text>
           <Text style={styles.subtitle}>
-            {phone} raqamiga 6 xonali kod yuborildi
+            {tr('auth.otpHelper', { phone })}
           </Text>
         </View>
 
-        <View style={styles.codeContainer}>
+        <View style={styles.codeBlock}>
           <Pressable style={styles.boxes} onPress={() => inputRef.current?.focus()}>
             {Array.from({ length: CODE_LENGTH }).map((_, i) => {
               const ch = code[i];
@@ -87,8 +103,8 @@ export default function OtpScreen() {
                   key={i}
                   style={[
                     styles.box,
-                    isActive && styles.boxActive,
                     ch ? styles.boxFilled : null,
+                    isActive && styles.boxActive,
                   ]}>
                   <Text style={styles.boxChar}>{ch ?? ''}</Text>
                 </View>
@@ -104,10 +120,10 @@ export default function OtpScreen() {
               const digits = t.replace(/\D/g, '').slice(0, CODE_LENGTH);
               setCode(digits);
               if (digits.length === CODE_LENGTH) {
-                // auto-submit when 6 digits entered
-                setTimeout(() => {
-                  void handleVerifyWithCode(digits);
-                }, 100);
+                haptics.light();
+                setTimeout(() => void handleVerify(digits), 80);
+              } else if (digits.length > code.length) {
+                haptics.selection();
               }
             }}
             keyboardType="number-pad"
@@ -115,116 +131,88 @@ export default function OtpScreen() {
             caretHidden
           />
 
-          <Pressable onPress={handleResend} disabled={resendIn > 0} style={styles.resend}>
+          <Pressable
+            onPress={handleResend}
+            disabled={resendIn > 0}
+            style={styles.resend}>
             <Text style={[styles.resendText, resendIn > 0 && styles.resendDisabled]}>
-              {resendIn > 0 ? `Yangi kod ${resendIn}s dan keyin` : 'Yangi kod yuborish'}
+              {resendIn > 0
+                ? tr('auth.otpResendIn', { sec: resendIn })
+                : tr('auth.otpResend')}
             </Text>
           </Pressable>
+
+          <View style={styles.securityRow}>
+            <ShieldCheck size={14} color={colors.feedback.success} strokeWidth={2.4} />
+            <Text style={styles.securityText}>
+              {phone}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.footer}>
-          <BrandButton
-            label="Tasdiqlash"
-            onPress={handleVerify}
+          <Button
+            label={tr('common.confirm')}
+            onPress={() => handleVerify()}
             loading={loading}
             disabled={code.length !== CODE_LENGTH}
+            variant="primary"
+            size="lg"
+            fullWidth
+            haptic="medium"
           />
-          <Pressable onPress={() => router.back()} style={styles.backLink}>
-            <Text style={styles.backText}>Telefon raqamni o&apos;zgartirish</Text>
-          </Pressable>
+          <Button
+            label={tr('auth.changeNumber')}
+            onPress={() => router.back()}
+            variant="ghost"
+            haptic="none"
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-
-  async function handleVerifyWithCode(c: string) {
-    setLoading(true);
-    try {
-      await verifyOtp(phone, c);
-      router.replace('/(tabs)');
-    } catch (err) {
-      Alert.alert("Xatolik", (err as Error).message);
-      setCode('');
-    } finally {
-      setLoading(false);
-    }
-  }
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Brand.white },
-  container: { flex: 1, padding: Spacing.four, justifyContent: 'space-between' },
-  header: {
-    paddingTop: Spacing.seven,
-    gap: Spacing.three,
-    alignItems: 'center',
+  safe: { flex: 1, backgroundColor: colors.bg.surface },
+  container: {
+    flex: 1,
+    paddingHorizontal: layout.screenPadding,
+    paddingTop: spacing.sm,
+    justifyContent: 'space-between',
+    paddingBottom: spacing.lg,
   },
-  title: { fontSize: 28, fontWeight: '800', color: Brand.blue },
-  subtitle: {
-    fontSize: 15,
-    color: Brand.gray600,
-    textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: Spacing.three,
-  },
-  codeContainer: {
-    gap: Spacing.four,
-    alignItems: 'center',
-  },
-  boxes: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
+  backBtn: { padding: spacing.xs, alignSelf: 'flex-start' },
+  header: { gap: spacing.sm, marginTop: spacing.lg },
+  title: { ...typography.h1 },
+  subtitle: { ...typography.body, color: colors.text.secondary },
+  codeBlock: { gap: spacing.xl, alignItems: 'center', marginTop: spacing.xl },
+  boxes: { flexDirection: 'row', gap: spacing.sm },
   box: {
     width: 48,
-    height: 56,
-    borderRadius: Radius.md,
+    height: 60,
+    borderRadius: radius.md,
     borderWidth: 1.5,
-    borderColor: Brand.gray200,
-    backgroundColor: Brand.gray50,
+    borderColor: colors.border.default,
+    backgroundColor: colors.bg.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
   boxActive: {
-    borderColor: Brand.blue,
+    borderColor: colors.brand.primary,
     borderWidth: 2,
+    backgroundColor: colors.brand.primarySurface,
   },
   boxFilled: {
-    backgroundColor: Brand.white,
-    borderColor: Brand.blue,
+    backgroundColor: colors.bg.surface,
+    borderColor: colors.brand.primary,
   },
-  boxChar: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Brand.black,
-  },
-  hiddenInput: {
-    position: 'absolute',
-    opacity: 0,
-    height: 1,
-    width: 1,
-  },
-  resend: {
-    paddingVertical: Spacing.three,
-  },
-  resendText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Brand.blue,
-  },
-  resendDisabled: {
-    color: Brand.gray400,
-  },
-  footer: {
-    paddingBottom: Spacing.three,
-    gap: Spacing.three,
-  },
-  backLink: {
-    alignItems: 'center',
-    paddingVertical: Spacing.three,
-  },
-  backText: {
-    fontSize: 14,
-    color: Brand.gray600,
-  },
+  boxChar: { ...typography.h2, color: colors.text.primary },
+  hiddenInput: { position: 'absolute', opacity: 0, height: 1, width: 1 },
+  resend: { paddingVertical: spacing.xs },
+  resendText: { ...typography.bodySmall, color: colors.brand.primary, fontWeight: '700' },
+  resendDisabled: { color: colors.text.hint },
+  securityRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  securityText: { ...typography.caption, color: colors.text.secondary },
+  footer: { gap: spacing.sm, paddingBottom: spacing.md },
 });
