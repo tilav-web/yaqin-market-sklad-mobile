@@ -52,9 +52,16 @@ function RootNavigator() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(tabs)" />
+    <Stack screenOptions={{ headerShown: true, headerTintColor: Brand.blue, headerTitleStyle: { fontWeight: '700' } }}>
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="shop/[id]/index" options={{ title: 'Do\'kon', headerTransparent: false }} />
+      <Stack.Screen name="shop/[id]/checkout" options={{ title: 'Buyurtma' }} />
+      <Stack.Screen name="orders/index" options={{ title: 'Buyurtmalarim' }} />
+      <Stack.Screen name="orders/[id]" options={{ title: 'Buyurtma' }} />
+      <Stack.Screen name="addresses" options={{ title: 'Manzillarim' }} />
+      <Stack.Screen name="seller-application" options={{ title: 'Sotuvchi bo\'lish' }} />
+      <Stack.Screen name="seller/[shopId]" options={{ headerShown: false }} />
     </Stack>
   );
 }
