@@ -27,6 +27,20 @@ export interface PublicShop {
   isWithinZone?: boolean;
 }
 
+export interface Category {
+  id: string;
+  slug: string;
+  nameUzLatn: string;
+  nameUzCyrl: string;
+  nameRu: string;
+  iconUrl: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  children?: Category[];
+}
+
+export type FeedSort = 'relevance' | 'price_asc' | 'price_desc' | 'rating';
+
 export interface PublicProductVariant {
   id: string;
   shopId: string;
