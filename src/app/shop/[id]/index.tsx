@@ -111,7 +111,9 @@ export default function ShopDetailScreen() {
         renderItem={({ item }) => {
           const inCart = cartLines.find((l) => l.variantId === item.id);
           return (
-            <View style={styles.productCard}>
+            <Pressable
+              style={styles.productCard}
+              onPress={() => router.push(`/product/${item.id}`)}>
               <View style={styles.productImageWrap}>
                 {item.photos[0] ? (
                   <Image source={{ uri: item.photos[0] }} style={styles.productImage} />
@@ -156,7 +158,7 @@ export default function ShopDetailScreen() {
                   {inCart ? `Savatga · ${inCart.quantity}` : '+ Savatga'}
                 </Text>
               </Pressable>
-            </View>
+            </Pressable>
           );
         }}
         ListEmptyComponent={

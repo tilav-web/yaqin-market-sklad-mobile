@@ -1,55 +1,95 @@
 import { router } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ChevronRight, ShoppingCart, Store, Trash2 } from 'lucide-react-native';
+import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { EmptyState } from '@/components/ui';
 import { useCartStore } from '@/stores/cart';
+import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { haptics } from '@/utils/haptics';
 
 export default function CartsTab() {
   const carts = useCartStore((s) => s.carts);
-  const entries = Object.entries(carts);
+  const clearShop = useCartStore((s) => s.clearShop);
+  const entries = Object.entries(carts).filter(([, lines]) => lines.length > 0);
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Savatlar</Text>
+        {entries.length > 0 && (
+          <Text style={styles.subtitle}>{entries.length} ta do‘kon</Text>
+        )}
+      </View>
+
       {entries.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>🛒</Text>
-          <Text style={styles.emptyTitle}>Savatlaringiz bo&apos;sh</Text>
-          <Text style={styles.dim}>
-            Har bir do&apos;kondan tanlagan mahsulotlaringiz alohida savatga yig&apos;iladi
-          </Text>
-        </View>
+        <EmptyState
+          icon={ShoppingCart}
+          title="Savatlaringiz bo‘sh"
+          description="Har bir do‘kondan tanlagan mahsulotlaringiz alohida savatga yig‘iladi"
+        />
       ) : (
         <FlatList
           data={entries}
           keyExtractor={([shopId]) => shopId}
           contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
           renderItem={({ item: [shopId, lines] }) => {
             const total = lines.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
-            const shopName = lines[0]?.shopName ?? 'Do\'kon';
+            const count = lines.reduce((sum, l) => sum + l.quantity, 0);
+            const shopName = lines[0]?.shopName ?? 'Do‘kon';
             return (
-              <Pressable
-                style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
-                onPress={() => router.push(`/shop/${shopId}/checkout`)}>
+              <View style={styles.card}>
                 <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle}>🏪 {shopName}</Text>
-                  <Text style={styles.cardMeta}>{lines.length} ta mahsulot</Text>
-                </View>
-                <View style={styles.cardItems}>
-                  {lines.slice(0, 3).map((line) => (
-                    <Text key={line.variantId} style={styles.itemText} numberOfLines={1}>
-                      • {line.quantity} × {line.productName}
+                  <View style={styles.shopChip}>
+                    <Store size={15} color={colors.brand.primary} strokeWidth={2.4} />
+                    <Text style={styles.shopName} numberOfLines={1}>
+                      {shopName}
                     </Text>
+                  </View>
+                  <Pressable
+                    hitSlop={8}
+                    onPress={() => {
+                      haptics.warning();
+                      clearShop(shopId);
+                    }}>
+                    <Trash2 size={18} color={colors.text.hint} strokeWidth={2.2} />
+                  </Pressable>
+                </View>
+
+                <View style={styles.thumbs}>
+                  {lines.slice(0, 5).map((line) => (
+                    <View key={line.variantId} style={styles.thumb}>
+                      {line.photoUrl ? (
+                        <Image source={{ uri: line.photoUrl }} style={styles.thumbImg} />
+                      ) : (
+                        <View style={[styles.thumbImg, styles.thumbPlaceholder]} />
+                      )}
+                    </View>
                   ))}
-                  {lines.length > 3 && (
-                    <Text style={styles.dim}>va yana {lines.length - 3} ta...</Text>
+                  {lines.length > 5 && (
+                    <View style={[styles.thumb, styles.thumbMore]}>
+                      <Text style={styles.thumbMoreText}>+{lines.length - 5}</Text>
+                    </View>
                   )}
                 </View>
+
                 <View style={styles.cardFooter}>
-                  <Text style={styles.total}>{total.toLocaleString()} so&apos;m</Text>
-                  <Text style={styles.proceed}>Buyurtma berish →</Text>
+                  <View>
+                    <Text style={styles.metaText}>{count} ta mahsulot</Text>
+                    <Text style={styles.total}>{total.toLocaleString()} so‘m</Text>
+                  </View>
+                  <Pressable
+                    style={styles.proceedBtn}
+                    onPress={() => {
+                      haptics.selection();
+                      router.push(`/shop/${shopId}/checkout`);
+                    }}>
+                    <Text style={styles.proceedText}>Buyurtma berish</Text>
+                    <ChevronRight size={16} color={colors.text.onPrimary} strokeWidth={2.6} />
+                  </Pressable>
                 </View>
-              </Pressable>
+              </View>
             );
           }}
         />
@@ -59,35 +99,51 @@ export default function CartsTab() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Brand.white },
-  list: { padding: Spacing.four },
-  card: {
-    backgroundColor: Brand.white,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Brand.gray100,
-    padding: Spacing.four,
-    marginBottom: Spacing.three,
-    gap: Spacing.two,
+  safe: { flex: 1, backgroundColor: colors.bg.canvas },
+  header: {
+    paddingHorizontal: layout.screenPadding,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardTitle: { fontSize: 17, fontWeight: '700', color: Brand.black },
-  cardMeta: { fontSize: 13, color: Brand.gray600 },
-  cardItems: { gap: 2 },
-  itemText: { fontSize: 14, color: Brand.gray800 },
+  title: { ...typography.h2 },
+  subtitle: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
+  list: { paddingHorizontal: layout.screenPadding, paddingBottom: spacing['3xl'], gap: spacing.md },
+  card: {
+    backgroundColor: colors.bg.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+    padding: spacing.lg,
+    gap: spacing.md,
+    ...shadow.xs,
+  },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  shopChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flex: 1 },
+  shopName: { ...typography.h4, flex: 1 },
+  thumbs: { flexDirection: 'row', gap: spacing.sm },
+  thumb: { width: 52, height: 52, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.bg.surfaceMuted },
+  thumbImg: { width: '100%', height: '100%' },
+  thumbPlaceholder: { backgroundColor: colors.brand.primarySurface },
+  thumbMore: { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg.surfaceMuted },
+  thumbMoreText: { ...typography.bodyStrong, color: colors.text.secondary },
   cardFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: Spacing.three,
-    paddingTop: Spacing.three,
+    justifyContent: 'space-between',
+    paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: Brand.gray100,
+    borderTopColor: colors.border.subtle,
   },
-  total: { fontSize: 18, fontWeight: '800', color: Brand.blue },
-  proceed: { color: Brand.red, fontWeight: '700' },
-  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.three, paddingHorizontal: Spacing.six },
-  emptyEmoji: { fontSize: 56 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: Brand.black, textAlign: 'center' },
-  dim: { fontSize: 14, color: Brand.gray600, textAlign: 'center' },
+  metaText: { ...typography.caption, color: colors.text.secondary },
+  total: { ...typography.h3, color: colors.brand.primary, marginTop: 2 },
+  proceedBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.brand.primary,
+    paddingHorizontal: spacing.lg,
+    height: layout.buttonHeight.md,
+    borderRadius: radius.lg,
+  },
+  proceedText: { ...typography.buttonSmall, color: colors.text.onPrimary },
 });
