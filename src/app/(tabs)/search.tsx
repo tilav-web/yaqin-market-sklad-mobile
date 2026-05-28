@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { Search as SearchIcon, SlidersHorizontal, Tag, X } from 'lucide-react-native';
+import { Map as MapIcon, Search as SearchIcon, SlidersHorizontal, Tag, X } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -115,6 +115,13 @@ export default function SearchTab() {
             </Pressable>
           )}
         </View>
+        <Pressable
+          style={styles.mapBtn}
+          onPress={() =>
+            router.push({ pathname: '/(tabs)/map', params: q ? { q } : {} })
+          }>
+          <MapIcon size={20} color={colors.brand.primary} strokeWidth={2.4} />
+        </Pressable>
       </View>
 
       <View style={styles.filters}>
@@ -237,12 +244,16 @@ function Chip({ label, active, onPress, small, icon }: ChipProps) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg.canvas },
   searchHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     paddingHorizontal: layout.screenPadding,
     paddingTop: spacing.xs,
     paddingBottom: spacing.sm,
     backgroundColor: colors.bg.surface,
   },
   searchBox: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -252,6 +263,14 @@ const styles = StyleSheet.create({
     height: layout.inputHeight,
     borderWidth: 1,
     borderColor: colors.border.subtle,
+  },
+  mapBtn: {
+    width: layout.inputHeight,
+    height: layout.inputHeight,
+    borderRadius: radius.lg,
+    backgroundColor: colors.brand.primarySurface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   input: { flex: 1, ...typography.body, paddingVertical: 0 },
   filters: {
