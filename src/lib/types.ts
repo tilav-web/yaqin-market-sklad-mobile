@@ -48,6 +48,27 @@ export interface PublicProductVariant {
   };
 }
 
+/**
+ * Item returned by `/catalog/products?lat=&lng=` — the global Home feed.
+ * Extends a regular variant with a `shop` summary so the client doesn't need a
+ * second fetch to render shop name + distance on each card.
+ */
+export interface FeedProduct extends PublicProductVariant {
+  shop: {
+    id: string;
+    name: string;
+    distanceKm: number;
+    deliveryFeeAtUser: number;
+    isOpen: boolean;
+    photos: string[];
+  };
+}
+
+export interface FeedResponse {
+  items: FeedProduct[];
+  nextPage: number | null;
+}
+
 export interface UserAddress {
   id: string;
   label: string;

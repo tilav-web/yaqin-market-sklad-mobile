@@ -9,24 +9,27 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
+// Legacy palette — kept for older screens still importing `Brand`.
+// `blue` is intentionally mapped to the red identity so the whole app reads as
+// single-accent red. New screens should import from `@/theme` instead.
 export const Brand = {
-  blue: '#0046AD',
-  blueDark: '#003687',
-  blueLight: '#2E6BC9',
-  red: '#E1251B',
-  redDark: '#B81B14',
-  redLight: '#EF4D44',
+  blue: '#E8392E',
+  blueDark: '#C42B22',
+  blueLight: '#F36458',
+  red: '#E8392E',
+  redDark: '#C42B22',
+  redLight: '#F36458',
   white: '#FFFFFF',
-  black: '#1A1A1A',
-  gray50: '#F5F5F5',
-  gray100: '#E8E8EA',
-  gray200: '#D0D1D5',
-  gray400: '#9CA0A8',
-  gray600: '#60646C',
-  gray800: '#2E3135',
-  success: '#10B981',
-  warning: '#FBBF24',
-  danger: '#E1251B',
+  black: '#191715',
+  gray50: '#F6F4F2',
+  gray100: '#ECE9E6',
+  gray200: '#DEDAD6',
+  gray400: '#A39D96',
+  gray600: '#605B56',
+  gray800: '#2C2A27',
+  success: '#1F9D63',
+  warning: '#E8951F',
+  danger: '#E8392E',
 } as const;
 
 export const Colors = {

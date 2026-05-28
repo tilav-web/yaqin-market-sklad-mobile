@@ -1,71 +1,76 @@
 /**
  * Yaqin Market color system.
  *
- * Built around a boxing-inspired identity: blue (trust), red (energy), white.
- * Tokens are semantic — components reference `colors.bg.surface` not `#fff`,
- * so future theming/dark-mode work changes only this file.
+ * Single-accent identity: a confident, warm RED carries the brand. Everything
+ * else is a calm neutral ramp + warm off-white surfaces, so the red always
+ * reads as the action color. No competing blue.
+ *
+ * Tokens are semantic — components reference `colors.brand.primary`, never a
+ * raw hex — so re-theming touches only this file.
  */
 
 const palette = {
-  // Brand
-  blue: '#0046AD',
-  blueDark: '#003687',
-  blueLight: '#3F73D4',
-  blueSurface: '#EAF1FC',
-  blueBorder: '#C9DBF5',
+  // Brand red (warm, premium — close to a ripe tomato, not fire-engine)
+  red: '#E8392E',
+  redDark: '#C42B22',
+  redDarker: '#A11F18',
+  red600: '#D62F26',
+  redLight: '#F36458',
+  redTint: '#FDECEA', // surfaces
+  redTintStrong: '#FBD9D5', // borders
+  redGlow: 'rgba(232, 57, 46, 0.16)',
 
-  red: '#E1251B',
-  redDark: '#B81B14',
-  redLight: '#EF4D44',
-  redSurface: '#FFEAE9',
-  redBorder: '#F8C6C2',
-
-  // Neutrals (10-step gray ramp)
+  // Warm neutrals — slightly warm gray ramp so it sits well next to red
   white: '#FFFFFF',
-  gray50: '#F7F8FA',
-  gray100: '#EDEFF3',
-  gray200: '#DDE1E8',
-  gray300: '#C2C7D0',
-  gray400: '#A0A6B1',
-  gray500: '#7C8390',
-  gray600: '#5F6671',
-  gray700: '#444A55',
-  gray800: '#2B2F37',
-  gray900: '#15171C',
-  black: '#0A0B0E',
+  cream: '#FCFAF8', // app canvas (warm off-white)
+  gray50: '#F6F4F2',
+  gray100: '#ECE9E6',
+  gray200: '#DEDAD6',
+  gray300: '#C5BFB9',
+  gray400: '#A39D96',
+  gray500: '#7E7872',
+  gray600: '#605B56',
+  gray700: '#46423E',
+  gray800: '#2C2A27',
+  gray900: '#191715',
+  black: '#0D0C0B',
 
-  // Semantic
-  success: '#19A974',
-  successSurface: '#E4F6EE',
-  warning: '#F4B400',
-  warningSurface: '#FEF5DA',
-  danger: '#E1251B',
-  dangerSurface: '#FFEAE9',
-  info: '#2E7CF0',
-  infoSurface: '#E6F0FE',
-};
+  // Semantic (kept distinct from brand red)
+  success: '#1F9D63',
+  successSurface: '#E3F5EC',
+  warning: '#E8951F',
+  warningSurface: '#FCEFD8',
+  danger: '#E8392E',
+  dangerSurface: '#FDECEA',
+  info: '#3D6B8E', // muted slate-blue for neutral info only (rarely used)
+  infoSurface: '#E9EFF4',
+} as const;
 
 export const colors = {
   palette,
   brand: {
-    primary: palette.blue,
-    primaryDark: palette.blueDark,
-    primaryLight: palette.blueLight,
-    primarySurface: palette.blueSurface,
-    primaryBorder: palette.blueBorder,
+    primary: palette.red,
+    primaryDark: palette.redDark,
+    primaryDarker: palette.redDarker,
+    primaryLight: palette.redLight,
+    primarySurface: palette.redTint,
+    primaryBorder: palette.redTintStrong,
+    primaryGlow: palette.redGlow,
+    // accent kept identical-family for a single-color identity; use the deep
+    // red for secondary emphasis (e.g. "danger"/destructive reads the same).
     accent: palette.red,
     accentDark: palette.redDark,
     accentLight: palette.redLight,
-    accentSurface: palette.redSurface,
-    accentBorder: palette.redBorder,
+    accentSurface: palette.redTint,
+    accentBorder: palette.redTintStrong,
   },
   bg: {
-    canvas: palette.gray50,
+    canvas: palette.cream,
     surface: palette.white,
-    surfaceMuted: palette.gray100,
+    surfaceMuted: palette.gray50,
     surfaceElevated: palette.white,
-    inversePrimary: palette.blue,
-    inverseAccent: palette.red,
+    inversePrimary: palette.red,
+    inverseAccent: palette.redDark,
   },
   text: {
     primary: palette.gray900,
@@ -75,7 +80,7 @@ export const colors = {
     onPrimary: palette.white,
     onAccent: palette.white,
     onDark: palette.white,
-    link: palette.blue,
+    link: palette.red,
     danger: palette.red,
     success: palette.success,
   },
@@ -83,15 +88,14 @@ export const colors = {
     subtle: palette.gray100,
     default: palette.gray200,
     strong: palette.gray300,
-    focus: palette.blue,
+    focus: palette.red,
     danger: palette.red,
   },
   status: {
-    // Order status colors
     new: palette.warning,
     accepted: palette.info,
-    preparing: '#8B5CF6',
-    delivering: palette.blue,
+    preparing: palette.redLight,
+    delivering: palette.red,
     delivered: palette.success,
     cancelled: palette.gray500,
   },
@@ -106,8 +110,8 @@ export const colors = {
     infoSurface: palette.infoSurface,
   },
   overlay: {
-    scrim: 'rgba(10, 11, 14, 0.55)',
-    light: 'rgba(255, 255, 255, 0.88)',
+    scrim: 'rgba(13, 12, 11, 0.55)',
+    light: 'rgba(255, 255, 255, 0.9)',
   },
 } as const;
 
