@@ -10,7 +10,7 @@ function inferDevApiUrl(): string {
   // Prefer explicit env var
   if (ENV_API_URL) return ENV_API_URL;
   // In dev client, infer host from Metro
-  const hostUri = Constants.expoConfig?.hostUri ?? Constants.expoGoConfig?.hostUri;
+  const hostUri = Constants.expoConfig?.hostUri ?? Constants.expoGoConfig?.debuggerHost;
   if (hostUri) {
     const host = hostUri.split(':')[0];
     return `http://${host}:3000`;

@@ -78,7 +78,7 @@ export default function ProfileTab() {
                   iconColor={colors.brand.accent}
                   title={shop.name}
                   subtitle={`${shop.isOpenManual ? tr('profile.openShop') : tr('profile.closedShop')} · ${shop.address}`}
-                  onPress={() => router.push(`/seller/${shop.id}`)}
+                  onPress={() => router.push(`/seller/${shop.id}/orders`)}
                 />
               ))
             ) : (
