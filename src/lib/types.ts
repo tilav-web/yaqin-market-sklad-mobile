@@ -39,8 +39,10 @@ export interface PublicProductVariant {
   price: number;
   discountPrice: number | null;
   stock: number;
+  lowStockThreshold: number;
   barcode: string | null;
   ratingAverage: number;
+  ratingCount: number;
   productFamily?: {
     id: string;
     name: string;
@@ -67,6 +69,30 @@ export interface FeedProduct extends PublicProductVariant {
 export interface FeedResponse {
   items: FeedProduct[];
   nextPage: number | null;
+}
+
+/**
+ * Single-variant detail returned by `/catalog/products/:variantId`.
+ * Includes a shop summary (for add-to-cart + open state) and sibling variants
+ * in the same product family (e.g. 0.5L / 1L / 1.5L).
+ */
+export interface VariantDetail extends PublicProductVariant {
+  shop: {
+    id: string;
+    name: string;
+    isOpenManual: boolean;
+    minOrderPrice: number;
+    photos: string[];
+  } | null;
+  siblings: PublicProductVariant[];
+}
+
+export interface ProductReview {
+  id: string;
+  stars: number;
+  text: string | null;
+  createdAt: string;
+  userName: string;
 }
 
 export interface UserAddress {

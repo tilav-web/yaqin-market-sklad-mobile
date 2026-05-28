@@ -62,6 +62,7 @@ function RootNavigator() {
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="shops" options={{ title: tr('home.nearbyShops') }} />
+      <Stack.Screen name="product/[id]" options={{ title: 'Mahsulot' }} />
       <Stack.Screen name="shop/[id]/index" options={{ title: 'Do\'kon' }} />
       <Stack.Screen name="shop/[id]/checkout" options={{ title: tr('cart.proceed') }} />
       <Stack.Screen name="orders/index" options={{ title: tr('orders.title') }} />

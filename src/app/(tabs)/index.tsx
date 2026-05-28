@@ -145,7 +145,7 @@ export default function HomeScreen() {
           <ProductCard
             product={item}
             cardWidth={CARD_WIDTH}
-            onPress={() => router.push(`/shop/${item.shopId}`)}
+            onPress={() => router.push(`/product/${item.id}`)}
           />
         )}
       />
