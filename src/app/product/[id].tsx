@@ -22,7 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Skeleton } from '@/components/ui';
 import { api } from '@/lib/api';
 import { ProductReview, PublicProductVariant, VariantDetail } from '@/lib/types';
-import { useCartStore } from '@/stores/cart';
+import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -59,7 +59,7 @@ export default function ProductDetailScreen() {
 
   const product = detailQuery.data;
   const shopId = product?.shopId ?? '';
-  const lines = useCartStore((s) => s.carts[shopId] ?? []);
+  const lines = useCartStore((s) => s.carts[shopId] ?? EMPTY_CART);
   const addItem = useCartStore((s) => s.addItem);
   const updateQty = useCartStore((s) => s.updateQty);
   const inCart = lines.find((l) => l.variantId === id);

@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useToast } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
 import { Order, PublicShop, UserAddress } from '@/lib/types';
-import { useCartStore } from '@/stores/cart';
+import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 
@@ -25,7 +25,7 @@ export default function CheckoutScreen() {
   const qc = useQueryClient();
   const toast = useToast();
   const coords = useEffectiveCoords();
-  const cartLines = useCartStore((s) => s.carts[shopId ?? ''] ?? []);
+  const cartLines = useCartStore((s) => s.carts[shopId ?? ''] ?? EMPTY_CART);
   const clearShop = useCartStore((s) => s.clearShop);
   const updateQty = useCartStore((s) => s.updateQty);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);

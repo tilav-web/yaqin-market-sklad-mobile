@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import { api } from '@/lib/api';
 import { PublicProductVariant, PublicShop } from '@/lib/types';
-import { useCartStore } from '@/stores/cart';
+import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
 
 export default function ShopDetailScreen() {
@@ -41,7 +41,7 @@ export default function ShopDetailScreen() {
     enabled: !!id,
   });
 
-  const cartLines = useCartStore((s) => s.carts[id ?? ''] ?? []);
+  const cartLines = useCartStore((s) => s.carts[id ?? ''] ?? EMPTY_CART);
   const cartTotal = cartLines.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
   const addItem = useCartStore((s) => s.addItem);
 

@@ -4,6 +4,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { CartLine } from '@/lib/types';
 
+/**
+ * Stable reference for "no lines yet". Selectors must never return a freshly
+ * created `[]` or `useSyncExternalStore` sees a new snapshot every render and
+ * throws "Maximum update depth exceeded".
+ */
+export const EMPTY_CART: readonly CartLine[] = [];
+
 interface CartState {
   // Map of shopId -> CartLine[]
   carts: Record<string, CartLine[]>;

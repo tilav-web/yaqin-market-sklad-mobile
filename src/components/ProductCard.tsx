@@ -3,7 +3,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { FeedProduct } from '@/lib/types';
-import { useCartStore } from '@/stores/cart';
+import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { colors, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -22,7 +22,7 @@ interface Props {
 export function ProductCard({ product, onPress, cardWidth }: Props) {
   const { tr } = useTranslation();
   const addItem = useCartStore((s) => s.addItem);
-  const lines = useCartStore((s) => s.carts[product.shopId] ?? []);
+  const lines = useCartStore((s) => s.carts[product.shopId] ?? EMPTY_CART);
   const updateQty = useCartStore((s) => s.updateQty);
   const inCart = lines.find((l) => l.variantId === product.id);
 
