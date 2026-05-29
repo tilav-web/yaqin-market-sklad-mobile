@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
-import { Check, Minus, Plus, RotateCcw, Star, X } from 'lucide-react-native';
+import { router } from 'expo-router';
+import { Check, MessageCircle, Minus, Plus, RotateCcw, Star, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -131,6 +132,13 @@ export default function OrderDetailScreen() {
             <Text style={styles.statusText}>{STATUS_LABEL_UZ[order.status]}</Text>
           </View>
         </View>
+
+        {order.status !== 'cancelled' && (
+          <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${order.id}`)}>
+            <MessageCircle size={18} color={colors.brand.primary} strokeWidth={2.4} />
+            <Text style={styles.chatBtnText}>Sotuvchi bilan bog‘lanish</Text>
+          </Pressable>
+        )}
 
         {/* Timeline */}
         {order.status !== 'cancelled' && (
@@ -363,6 +371,18 @@ const styles = StyleSheet.create({
   orderNum: { ...typography.h3 },
   statusBadge: { paddingHorizontal: spacing.lg, paddingVertical: 6, borderRadius: radius.full },
   statusText: { ...typography.caption, color: colors.text.onPrimary, fontWeight: '800' },
+  chatBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    height: layout.buttonHeight.md,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.brand.primary,
+    backgroundColor: colors.brand.primarySurface,
+  },
+  chatBtnText: { ...typography.buttonSmall, color: colors.brand.primary },
   section: {
     backgroundColor: colors.bg.surface,
     borderRadius: radius.lg,

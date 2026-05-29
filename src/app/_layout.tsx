@@ -70,6 +70,7 @@ function RootNavigator() {
       <Stack.Screen name="shop/[id]/checkout" options={{ title: tr('cart.proceed') }} />
       <Stack.Screen name="orders/index" options={{ title: tr('orders.title') }} />
       <Stack.Screen name="orders/[id]" options={{ title: 'Buyurtma' }} />
+      <Stack.Screen name="chat/[orderId]" options={{ title: 'Chat' }} />
       <Stack.Screen name="addresses" options={{ title: tr('addr.title') }} />
       <Stack.Screen name="seller-application" options={{ title: tr('sellerApp.title') }} />
       <Stack.Screen name="seller/[shopId]" options={{ headerShown: false }} />

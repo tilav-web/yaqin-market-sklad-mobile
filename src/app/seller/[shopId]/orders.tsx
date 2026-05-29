@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Package } from 'lucide-react-native';
+import { ArrowLeft, MessageCircle, Package } from 'lucide-react-native';
 import { useCallback } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -90,6 +90,10 @@ export default function SellerOrdersScreen() {
                 ))}
               </View>
               <Text style={styles.total}>{item.total.toLocaleString()} so‘m</Text>
+              <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${item.id}`)}>
+                <MessageCircle size={16} color={colors.brand.primary} strokeWidth={2.4} />
+                <Text style={styles.chatBtnText}>Mijoz bilan chat</Text>
+              </Pressable>
               {next && (
                 <Pressable
                   style={styles.actionBtn}
@@ -154,6 +158,17 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   actionBtnText: { ...typography.buttonSmall, color: colors.text.onPrimary },
+  chatBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    height: layout.buttonHeight.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.brand.primarySurface,
+    marginTop: spacing.sm,
+  },
+  chatBtnText: { ...typography.caption, color: colors.brand.primary, fontWeight: '700' },
   cancelBtn: { paddingVertical: spacing.sm, alignItems: 'center' },
   cancelBtnText: { ...typography.buttonSmall, color: colors.feedback.danger },
   footer: {

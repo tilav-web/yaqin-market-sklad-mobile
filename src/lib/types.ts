@@ -101,6 +101,15 @@ export interface VariantDetail extends PublicProductVariant {
   siblings: PublicProductVariant[];
 }
 
+export interface ChatMessage {
+  id: string;
+  orderId: string;
+  senderUserId: string;
+  fromShop: boolean;
+  text: string;
+  createdAt: string;
+}
+
 export interface ProductReview {
   id: string;
   stars: number;
