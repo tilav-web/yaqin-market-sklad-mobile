@@ -119,18 +119,27 @@ export default function ProductDetailScreen() {
             </View>
           )}
           {/* Small info chips over the image */}
-          {hasDiscount && (
-            <View style={styles.discountBadge}>
-              <Text style={styles.discountText}>−{discountPct}%</Text>
-            </View>
-          )}
+          <View style={styles.topLeft}>
+            {product.productFamily?.brand ? (
+              <View style={styles.brandChip}>
+                <Text style={styles.brandChipText}>{product.productFamily.brand}</Text>
+              </View>
+            ) : null}
+            {hasDiscount && (
+              <View style={styles.discountBadge}>
+                <Text style={styles.discountText}>−{discountPct}%</Text>
+              </View>
+            )}
+          </View>
           <View style={styles.unitBadge}>
             <Text style={styles.unitBadgeText}>{unitLabel(product)}</Text>
           </View>
           {product.ratingCount > 0 && (
             <View style={styles.ratingChip}>
               <Star size={12} color={colors.feedback.warning} fill={colors.feedback.warning} strokeWidth={2} />
-              <Text style={styles.ratingChipText}>{product.ratingAverage.toFixed(1)}</Text>
+              <Text style={styles.ratingChipText}>
+                {product.ratingAverage.toFixed(1)} · {product.ratingCount} sharh
+              </Text>
             </View>
           )}
           {outOfStock && (
@@ -143,26 +152,16 @@ export default function ProductDetailScreen() {
         </View>
 
         <View style={styles.body}>
-          {product.productFamily?.brand ? (
-            <Text style={styles.brand}>{product.productFamily.brand}</Text>
-          ) : null}
           <Text style={styles.name}>{product.name}</Text>
-
-          <View style={styles.metaRow}>
-            <Stars value={product.ratingAverage} />
-            <Text style={styles.ratingText}>
-              {product.ratingAverage > 0
-                ? `${product.ratingAverage.toFixed(1)} · ${product.ratingCount} sharh`
-                : 'Hali sharh yo‘q'}
-            </Text>
-          </View>
 
           <View style={styles.priceRow}>
             {hasDiscount && (
               <Text style={styles.oldPrice}>{product.price.toLocaleString()}</Text>
             )}
-            <Text style={styles.price}>{finalPrice.toLocaleString()} so‘m</Text>
-            <Text style={styles.unit}>/ {unitLabel(product)}</Text>
+            <Text style={styles.price} numberOfLines={1}>
+              {finalPrice.toLocaleString()}
+            </Text>
+            <Text style={styles.currency}>so‘m</Text>
           </View>
 
           {!outOfStock && product.stock <= product.lowStockThreshold && (
@@ -346,14 +345,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.brand.primarySurface,
   },
-  discountBadge: {
+  topLeft: {
     position: 'absolute',
     top: spacing.lg,
     left: spacing.lg,
+    gap: spacing.xs,
+    alignItems: 'flex-start',
+  },
+  brandChip: {
+    backgroundColor: colors.bg.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+  },
+  brandChipText: { ...typography.overline, color: colors.brand.primary },
+  discountBadge: {
     backgroundColor: colors.brand.accent,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: radius.full,
+    alignSelf: 'flex-start',
   },
   discountText: { ...typography.bodyStrong, color: colors.text.onAccent, fontWeight: '800' },
   unitBadge: {
@@ -405,10 +416,7 @@ const styles = StyleSheet.create({
     marginTop: -spacing.xl,
     paddingTop: spacing.xl,
   },
-  brand: { ...typography.overline, color: colors.brand.primary },
   name: { ...typography.h2 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  ratingText: { ...typography.caption, color: colors.text.secondary },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm, marginTop: spacing.xs },
   oldPrice: {
     ...typography.body,
@@ -416,7 +424,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   price: { ...typography.h2, color: colors.brand.primary },
-  unit: { ...typography.caption, color: colors.text.tertiary },
+  currency: { ...typography.subtitle, color: colors.text.secondary, fontWeight: '700' },
   stockRow: { flexDirection: 'row', marginTop: spacing.xs },
   stockBadge: {
     ...typography.caption,
