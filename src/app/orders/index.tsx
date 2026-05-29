@@ -1,27 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ChevronRight, Package, Store } from 'lucide-react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { EmptyState } from '@/components/ui';
 import { api } from '@/lib/api';
-import { Order, OrderStatus, STATUS_LABEL_UZ } from '@/lib/types';
-
-const STATUS_COLOR: Record<OrderStatus, string> = {
-  new: '#FBBF24',
-  accepted: '#3B82F6',
-  preparing: '#8B5CF6',
-  delivering: '#0046AD',
-  delivered: '#10B981',
-  cancelled: '#E1251B',
-};
+import { Order, STATUS_LABEL_UZ } from '@/lib/types';
+import { colors, layout, radius, spacing, typography } from '@/theme';
 
 export default function OrdersScreen() {
   const ordersQuery = useQuery({
@@ -39,34 +25,45 @@ export default function OrdersScreen() {
         data={ordersQuery.data ?? []}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           ordersQuery.isLoading ? (
-            <ActivityIndicator color={Brand.blue} style={{ marginTop: 40 }} />
+            <ActivityIndicator color={colors.brand.primary} style={{ marginTop: spacing['4xl'] }} />
           ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyEmoji}>📦</Text>
-              <Text style={styles.emptyTitle}>Hozircha buyurtmalar yo&apos;q</Text>
-            </View>
+            <EmptyState
+              icon={Package}
+              title="Hozircha buyurtmalar yo‘q"
+              description="Buyurtma berganingizdan keyin shu yerda ko‘rinadi"
+            />
           )
         }
         renderItem={({ item }) => (
           <Pressable
-            style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
+            style={({ pressed }) => [styles.card, pressed && { opacity: 0.9 }]}
             onPress={() => router.push(`/orders/${item.id}`)}>
             <View style={styles.cardHeader}>
               <Text style={styles.orderNumber}>#{item.orderNumber}</Text>
-              <View
-                style={[styles.statusBadge, { backgroundColor: STATUS_COLOR[item.status] }]}>
+              <View style={[styles.statusBadge, { backgroundColor: colors.status[item.status] }]}>
                 <Text style={styles.statusText}>{STATUS_LABEL_UZ[item.status]}</Text>
               </View>
             </View>
-            <Text style={styles.shopName}>🏪 {item.shop?.name ?? '...'}</Text>
-            <Text style={styles.itemCount}>{item.items.length} ta mahsulot</Text>
-            <View style={styles.cardFooter}>
-              <Text style={styles.total}>{item.total.toLocaleString()} so&apos;m</Text>
-              <Text style={styles.date}>
-                {new Date(item.createdAt).toLocaleDateString('uz-UZ')}
+            <View style={styles.shopRow}>
+              <Store size={14} color={colors.text.tertiary} strokeWidth={2.4} />
+              <Text style={styles.shopName} numberOfLines={1}>
+                {item.shop?.name ?? '…'}
               </Text>
+            </View>
+            <View style={styles.cardFooter}>
+              <View>
+                <Text style={styles.itemCount}>{item.items.length} ta mahsulot</Text>
+                <Text style={styles.total}>{item.total.toLocaleString()} so‘m</Text>
+              </View>
+              <View style={styles.dateCol}>
+                <Text style={styles.date}>
+                  {new Date(item.createdAt).toLocaleDateString('uz-UZ')}
+                </Text>
+                <ChevronRight size={18} color={colors.text.hint} />
+              </View>
             </View>
           </Pressable>
         )}
@@ -76,35 +73,33 @@ export default function OrdersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Brand.gray50 },
-  list: { padding: Spacing.four },
+  container: { flex: 1, backgroundColor: colors.bg.canvas },
+  list: { padding: layout.screenPadding, gap: spacing.md },
   card: {
-    backgroundColor: Brand.white,
-    borderRadius: Radius.lg,
-    padding: Spacing.four,
-    marginBottom: Spacing.three,
-    gap: Spacing.two,
+    backgroundColor: colors.bg.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    gap: spacing.xs,
     borderWidth: 1,
-    borderColor: Brand.gray100,
+    borderColor: colors.border.subtle,
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  orderNumber: { fontSize: 14, fontWeight: '700', color: Brand.blue },
-  statusBadge: { paddingHorizontal: Spacing.three, paddingVertical: 4, borderRadius: Radius.full },
-  statusText: { color: Brand.white, fontSize: 11, fontWeight: '700' },
-  shopName: { fontSize: 16, fontWeight: '700', color: Brand.black, marginTop: 4 },
-  itemCount: { fontSize: 13, color: Brand.gray600 },
+  orderNumber: { ...typography.bodyStrong, color: colors.text.secondary },
+  statusBadge: { paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: radius.full },
+  statusText: { ...typography.caption, fontSize: 11, color: colors.text.onPrimary, fontWeight: '800' },
+  shopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs },
+  shopName: { ...typography.h4, flex: 1 },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: Spacing.two,
-    paddingTop: Spacing.two,
+    alignItems: 'flex-end',
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: Brand.gray100,
+    borderTopColor: colors.border.subtle,
   },
-  total: { fontSize: 17, fontWeight: '800', color: Brand.blue },
-  date: { fontSize: 12, color: Brand.gray600 },
-  emptyState: { padding: Spacing.seven, alignItems: 'center', gap: Spacing.three },
-  emptyEmoji: { fontSize: 56 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: Brand.black },
+  itemCount: { ...typography.caption, color: colors.text.secondary },
+  total: { ...typography.h3, color: colors.brand.primary, marginTop: 2 },
+  dateCol: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  date: { ...typography.caption, color: colors.text.secondary },
 });

@@ -152,6 +152,8 @@ export interface Order {
   paymentMethod: 'cash' | 'click_online';
   timeline: Array<{ status: OrderStatus; at: string; note?: string }>;
   createdAt: string;
+  /** Variant IDs the current user has already reviewed for this order (from GET /orders/:id). */
+  reviewedVariantIds?: string[];
 }
 
 export interface MyShop {
