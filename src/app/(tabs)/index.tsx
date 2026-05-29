@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ChevronRight, MapPin, ShoppingBag } from 'lucide-react-native';
+import { ChevronDown, Map as MapIcon, MapPin, Search as SearchIcon, ShoppingBag } from 'lucide-react-native';
 import { useEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -8,31 +8,38 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { LocationHeader } from '@/components/LocationHeader';
 import { ProductCard } from '@/components/ProductCard';
 import { ProductCardSkeleton } from '@/components/ProductCardSkeleton';
+import { StoreFeedCard } from '@/components/StoreFeedCard';
 import { EmptyState } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { FeedProduct, FeedResponse, PublicShop } from '@/lib/types';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 
 const SCREEN_W = Dimensions.get('window').width;
-const COLUMNS = 2;
-const GUTTER = spacing.md;
-const CARD_WIDTH = (SCREEN_W - layout.screenPadding * 2 - GUTTER) / COLUMNS;
+const GUTTER = spacing.sm;
+const SIDE = layout.screenPadding;
+const CARD_WIDTH = (SCREEN_W - SIDE * 2 - GUTTER) / 2;
+
+// Insert a shop card after every N product rows (each row = 2 products).
+const STORE_EVERY_ROWS = 4;
+
+type Row =
+  | { readonly kind: 'products'; readonly items: FeedProduct[] }
+  | { readonly kind: 'store'; readonly shop: PublicShop };
 
 export default function HomeScreen() {
   const { tr } = useTranslation();
   const coords = useEffectiveCoords();
+  const selectedAddress = useLocationStore((s) => s.selectedAddress);
   const requestPermission = useLocationStore((s) => s.requestPermission);
   const refresh = useLocationStore((s) => s.refresh);
   const permissionStatus = useLocationStore((s) => s.permissionStatus);
@@ -77,22 +84,66 @@ export default function HomeScreen() {
     [feedQuery.data],
   );
 
-  const isInitialLoading = (feedQuery.isLoading && items.length === 0) || (!coords && !!permissionStatus);
+  // Build interleaved rows: 2 products per row, a shop card every few rows.
+  const rows = useMemo<Row[]>(() => {
+    const shops = shopsQuery.data ?? [];
+    const out: Row[] = [];
+    let shopIdx = 0;
+    for (let i = 0; i < items.length; i += 2) {
+      out.push({ kind: 'products', items: items.slice(i, i + 2) });
+      if (out.length % STORE_EVERY_ROWS === 0 && shopIdx < shops.length) {
+        out.push({ kind: 'store', shop: shops[shopIdx++] });
+      }
+    }
+    // Surface any remaining shops at the end so all nearby shops are reachable.
+    while (shopIdx < shops.length) {
+      out.push({ kind: 'store', shop: shops[shopIdx++] });
+    }
+    return out;
+  }, [items, shopsQuery.data]);
+
+  const isInitialLoading =
+    (feedQuery.isLoading && items.length === 0) || (!coords && !!permissionStatus);
+
+  const locationLabel = selectedAddress
+    ? selectedAddress.label
+    : coords
+      ? tr('home.currentLocation')
+      : tr('home.locationLoading');
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* Red header */}
       <View style={styles.header}>
-        <Text style={styles.brand}>Yaqin Market</Text>
-        <LocationHeader onPress={() => router.push('/addresses')} />
+        <View style={styles.headerTop}>
+          <Text style={styles.brand}>Yaqin Market</Text>
+          <Pressable
+            style={styles.locationPill}
+            onPress={() => router.push('/addresses')}>
+            <MapPin size={13} color={colors.text.onPrimary} strokeWidth={2.4} />
+            <Text style={styles.locationText} numberOfLines={1}>
+              {locationLabel}
+            </Text>
+            <ChevronDown size={13} color="rgba(255,255,255,0.85)" strokeWidth={2.4} />
+          </Pressable>
+        </View>
+
+        <Pressable style={styles.searchBar} onPress={() => router.push('/search')}>
+          <SearchIcon size={18} color={colors.text.tertiary} strokeWidth={2.4} />
+          <Text style={styles.searchPlaceholder}>{tr('search.placeholder')}</Text>
+          <Pressable style={styles.mapBtn} onPress={() => router.push('/map')}>
+            <MapIcon size={16} color={colors.brand.primary} strokeWidth={2.4} />
+          </Pressable>
+        </Pressable>
       </View>
 
       <FlatList
-        data={items}
-        keyExtractor={(item) => item.id}
-        numColumns={COLUMNS}
-        columnWrapperStyle={styles.row}
+        data={rows}
+        keyExtractor={(row, idx) => (row.kind === 'store' ? `s-${row.shop.id}` : `p-${idx}`)}
+        style={styles.scroll}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        ItemSeparatorComponent={() => <View style={{ height: GUTTER }} />}
         refreshControl={
           <RefreshControl
             refreshing={feedQuery.isFetching && !feedQuery.isFetchingNextPage && !isInitialLoading}
@@ -111,20 +162,15 @@ export default function HomeScreen() {
             void feedQuery.fetchNextPage();
           }
         }}
-        ListHeaderComponent={
-          <ShopsRail shops={shopsQuery.data ?? []} loading={shopsQuery.isLoading && !!coords} />
-        }
         ListEmptyComponent={
           isInitialLoading ? (
-            <View>
-              <View style={styles.row}>
-                <ProductCardSkeleton cardWidth={CARD_WIDTH} />
-                <ProductCardSkeleton cardWidth={CARD_WIDTH} />
-              </View>
-              <View style={styles.row}>
-                <ProductCardSkeleton cardWidth={CARD_WIDTH} />
-                <ProductCardSkeleton cardWidth={CARD_WIDTH} />
-              </View>
+            <View style={{ gap: GUTTER }}>
+              {[0, 1, 2].map((r) => (
+                <View key={r} style={styles.skeletonRow}>
+                  <ProductCardSkeleton cardWidth={CARD_WIDTH} />
+                  <ProductCardSkeleton cardWidth={CARD_WIDTH} />
+                </View>
+              ))}
             </View>
           ) : (
             <EmptyState
@@ -141,133 +187,86 @@ export default function HomeScreen() {
             <ActivityIndicator color={colors.brand.primary} style={{ paddingVertical: spacing.lg }} />
           ) : null
         }
-        renderItem={({ item }) => (
-          <ProductCard
-            product={item}
-            cardWidth={CARD_WIDTH}
-            onPress={() => router.push(`/product/${item.id}`)}
-          />
-        )}
+        renderItem={({ item: row }) => {
+          if (row.kind === 'store') {
+            return (
+              <StoreFeedCard
+                shop={row.shop}
+                onPress={() => router.push(`/shop/${row.shop.id}`)}
+              />
+            );
+          }
+          return (
+            <View style={styles.productRow}>
+              {row.items.map((product) => (
+                <View key={product.id} style={styles.cell}>
+                  <ProductCard
+                    product={product}
+                    cardWidth={CARD_WIDTH}
+                    onPress={() => router.push(`/product/${product.id}`)}
+                  />
+                </View>
+              ))}
+              {row.items.length === 1 && <View style={styles.cell} />}
+            </View>
+          );
+        }}
       />
     </SafeAreaView>
   );
 }
 
-interface ShopsRailProps {
-  readonly shops: PublicShop[];
-  readonly loading: boolean;
-}
-function ShopsRail({ shops, loading }: ShopsRailProps) {
-  const { tr } = useTranslation();
-
-  if (!loading && shops.length === 0) {
-    return <Text style={styles.feedHeading}>{tr('shop.products')}</Text>;
-  }
-
-  return (
-    <View style={styles.rail}>
-      <View style={styles.railHeader}>
-        <Text style={styles.railTitle}>{tr('home.nearbyShops')}</Text>
-        {shops.length > 0 && (
-          <Pressable onPress={() => router.push('/shops')} style={styles.railLink}>
-            <Text style={styles.railLinkText}>Barchasi</Text>
-            <ChevronRight size={14} color={colors.brand.primary} strokeWidth={2.6} />
-          </Pressable>
-        )}
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.railScroll}>
-        {loading
-          ? Array.from({ length: 4 }).map((_, i) => (
-              <View key={i} style={[styles.shopChip, styles.shopChipSkeleton]} />
-            ))
-          : shops.slice(0, 10).map((shop) => (
-              <Pressable
-                key={shop.id}
-                onPress={() => router.push(`/shop/${shop.id}`)}
-                style={({ pressed }) => [styles.shopChip, pressed && { opacity: 0.85 }]}>
-                <View style={styles.shopAvatar}>
-                  <Text style={styles.shopAvatarLetter}>
-                    {shop.name[0]?.toUpperCase() ?? '?'}
-                  </Text>
-                  {!shop.isOpenManual && <View style={styles.closedDot} />}
-                </View>
-                <Text style={styles.shopChipName} numberOfLines={1}>
-                  {shop.name}
-                </Text>
-                <Text style={styles.shopChipMeta}>{shop.distanceKm?.toFixed(1)} km</Text>
-              </Pressable>
-            ))}
-      </ScrollView>
-      <Text style={styles.feedHeading}>{tr('shop.products')}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg.canvas },
+  safe: { flex: 1, backgroundColor: colors.brand.primary },
   header: {
+    backgroundColor: colors.brand.primary,
     paddingHorizontal: layout.screenPadding,
     paddingTop: spacing.xs,
-    paddingBottom: spacing.md,
-    backgroundColor: colors.bg.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-    gap: spacing.sm,
+    paddingBottom: spacing.lg,
+    borderBottomLeftRadius: radius['2xl'],
+    borderBottomRightRadius: radius['2xl'],
+    gap: spacing.md,
   },
-  brand: { ...typography.h2, color: colors.brand.primary },
-  list: { paddingHorizontal: layout.screenPadding, paddingBottom: spacing['3xl'] },
-  row: { flexDirection: 'row', gap: GUTTER, marginBottom: GUTTER },
-  rail: { marginHorizontal: -layout.screenPadding },
-  railHeader: {
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.lg,
+  headerTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  brand: { ...typography.h3, color: colors.text.onPrimary, flexShrink: 0 },
+  locationPill: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
-  railTitle: { ...typography.h4 },
-  railLink: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  railLinkText: { ...typography.caption, color: colors.brand.primary, fontWeight: '700' },
-  railScroll: { paddingHorizontal: layout.screenPadding, gap: spacing.md, paddingBottom: spacing.xs },
-  shopChip: { width: 76, alignItems: 'center', gap: 5 },
-  shopChipSkeleton: { height: 100, borderRadius: radius.md, backgroundColor: colors.bg.surfaceMuted },
-  shopAvatar: {
-    width: 60,
-    height: 60,
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     borderRadius: radius.full,
-    backgroundColor: colors.brand.primary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  locationText: { flex: 1, ...typography.caption, color: colors.text.onPrimary, fontWeight: '600' },
+  searchBar: {
+    backgroundColor: colors.bg.surface,
+    borderRadius: radius.lg,
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+    ...shadow.sm,
+  },
+  searchPlaceholder: { flex: 1, ...typography.body, color: colors.text.hint },
+  mapBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: radius.sm,
+    backgroundColor: colors.brand.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
   },
-  shopAvatarLetter: { color: colors.text.onPrimary, fontSize: 22, fontWeight: '800' },
-  closedDot: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: colors.text.tertiary,
-    borderWidth: 2,
-    borderColor: colors.bg.surface,
+  scroll: { flex: 1, backgroundColor: colors.bg.canvas },
+  list: {
+    padding: layout.screenPadding,
+    paddingBottom: spacing['3xl'],
   },
-  shopChipName: {
-    ...typography.caption,
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.text.primary,
-    textAlign: 'center',
-  },
-  shopChipMeta: { ...typography.caption, fontSize: 10, color: colors.text.secondary },
-  feedHeading: {
-    ...typography.h4,
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xs,
-  },
+  skeletonRow: { flexDirection: 'row', gap: GUTTER },
+  productRow: { flexDirection: 'row', gap: GUTTER },
+  cell: { flex: 1 },
 });
