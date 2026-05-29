@@ -303,5 +303,5 @@ const styles = StyleSheet.create({
   chipTextSmall: { fontSize: 12 },
   chipTextActive: { color: colors.text.onPrimary },
   list: { paddingHorizontal: layout.screenPadding, paddingTop: spacing.md, paddingBottom: spacing['3xl'] },
-  row: { gap: GUTTER, marginBottom: GUTTER },
+  row: { flexDirection: 'row', gap: GUTTER, marginBottom: GUTTER },
 });

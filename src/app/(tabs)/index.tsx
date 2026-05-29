@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   },
   brand: { ...typography.h2, color: colors.brand.primary },
   list: { paddingHorizontal: layout.screenPadding, paddingBottom: spacing['3xl'] },
-  row: { gap: GUTTER, marginBottom: GUTTER },
+  row: { flexDirection: 'row', gap: GUTTER, marginBottom: GUTTER },
   rail: { marginHorizontal: -layout.screenPadding },
   railHeader: {
     paddingHorizontal: layout.screenPadding,
