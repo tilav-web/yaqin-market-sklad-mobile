@@ -43,10 +43,12 @@ export async function registerForPush(): Promise<void> {
     if (status !== 'granted') return;
 
     if (Platform.OS === 'android') {
+      // Note: don't set `sound` to 'default' — expo-notifications treats any
+      // string as a bundled custom sound file and warns if it's missing. Omit
+      // it to use the system default tone.
       await Notifications.setNotificationChannelAsync('default', {
         name: 'Yaqin Market',
         importance: Notifications.AndroidImportance.HIGH,
-        sound: 'default',
       });
     }
 
