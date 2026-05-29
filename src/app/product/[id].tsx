@@ -1,10 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import {
   ChevronRight,
   Minus,
   Plus,
   ShoppingBag,
+  ShoppingCart,
   Star,
   Store,
 } from 'lucide-react-native';
@@ -37,7 +39,11 @@ const unitLabel = (v: Pick<PublicProductVariant, 'unitSize' | 'unitType'>) =>
   `${v.unitSize % 1 === 0 ? v.unitSize : v.unitSize.toFixed(1)} ${UNIT_SHORT[v.unitType]}`;
 
 export default function ProductDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: routeId } = useLocalSearchParams<{ id: string }>();
+  // The active variant is local state so switching variants (0.5L/1L/1.5L)
+  // swaps content in place instead of re-opening the whole screen.
+  const [activeId, setActiveId] = useState(routeId);
+  const id = activeId;
 
   const detailQuery = useQuery({
     queryKey: ['variant', id],
@@ -46,6 +52,8 @@ export default function ProductDetailScreen() {
       return res.data;
     },
     enabled: !!id,
+    // Keep showing the previous variant while the new one loads — no skeleton flash.
+    placeholderData: keepPreviousData,
   });
 
   const reviewsQuery = useQuery({
@@ -55,6 +63,7 @@ export default function ProductDetailScreen() {
       return res.data;
     },
     enabled: !!id,
+    placeholderData: keepPreviousData,
   });
 
   const product = detailQuery.data;
@@ -156,14 +165,14 @@ export default function ProductDetailScreen() {
               <Text style={styles.sectionTitle}>Variantlar</Text>
               <View style={styles.variantRow}>
                 {product.siblings.map((v) => {
-                  const active = v.id === product.id;
+                  const active = v.id === id;
                   return (
                     <Pressable
                       key={v.id}
                       onPress={() => {
                         if (active) return;
                         haptics.selection();
-                        router.replace(`/product/${v.id}`);
+                        setActiveId(v.id);
                       }}
                       style={[styles.variantChip, active && styles.variantChipActive]}>
                       <Text
@@ -238,23 +247,34 @@ export default function ProductDetailScreen() {
 
       <SafeAreaView edges={['bottom']} style={styles.footer}>
         {inCart ? (
-          <View style={styles.qtyControl}>
+          <View style={styles.footerRow}>
+            <View style={styles.qtyControl}>
+              <Pressable
+                onPress={() => {
+                  haptics.light();
+                  updateQty(product.shopId, product.id, inCart.quantity - 1);
+                }}
+                style={styles.qtyBtn}>
+                <Minus size={18} color={colors.brand.primary} strokeWidth={3} />
+              </Pressable>
+              <Text style={styles.qtyValue}>{inCart.quantity}</Text>
+              <Pressable
+                onPress={() => {
+                  haptics.light();
+                  updateQty(product.shopId, product.id, inCart.quantity + 1);
+                }}
+                style={styles.qtyBtn}>
+                <Plus size={18} color={colors.brand.primary} strokeWidth={3} />
+              </Pressable>
+            </View>
             <Pressable
+              style={styles.goCartBtn}
               onPress={() => {
-                haptics.light();
-                updateQty(product.shopId, product.id, inCart.quantity - 1);
-              }}
-              style={styles.qtyBtn}>
-              <Minus size={20} color={colors.brand.primary} strokeWidth={3} />
-            </Pressable>
-            <Text style={styles.qtyValue}>{inCart.quantity}</Text>
-            <Pressable
-              onPress={() => {
-                haptics.light();
-                updateQty(product.shopId, product.id, inCart.quantity + 1);
-              }}
-              style={styles.qtyBtn}>
-              <Plus size={20} color={colors.brand.primary} strokeWidth={3} />
+                haptics.selection();
+                router.push(`/shop/${product.shopId}/checkout`);
+              }}>
+              <ShoppingCart size={18} color={colors.text.onPrimary} strokeWidth={2.4} />
+              <Text style={styles.goCartText}>Savatga o‘tish</Text>
             </Pressable>
           </View>
         ) : (
@@ -410,8 +430,10 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border.subtle,
     paddingHorizontal: layout.screenPadding,
     paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
     ...shadow.lg,
   },
+  footerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -426,17 +448,28 @@ const styles = StyleSheet.create({
   qtyControl: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: spacing.xs,
     height: layout.buttonHeight.lg,
     borderRadius: radius.lg,
     backgroundColor: colors.brand.primarySurface,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.xs,
   },
   qtyBtn: {
-    width: 44,
+    width: 40,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  qtyValue: { ...typography.h3, color: colors.brand.primary, minWidth: 40, textAlign: 'center' },
+  qtyValue: { ...typography.h3, color: colors.brand.primary, minWidth: 32, textAlign: 'center' },
+  goCartBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    height: layout.buttonHeight.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.brand.primary,
+  },
+  goCartText: { ...typography.button, color: colors.text.onPrimary },
 });
