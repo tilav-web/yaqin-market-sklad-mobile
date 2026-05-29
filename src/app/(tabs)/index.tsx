@@ -84,23 +84,32 @@ export default function HomeScreen() {
     [feedQuery.data],
   );
 
-  // Build interleaved rows: 2 products per row, a shop card every few rows.
+  // Build interleaved rows: 2 products per row, a shop card after every few
+  // PRODUCT rows. Shop placement is keyed to the product-row index (not the
+  // mixed output length), so already-rendered rows never shift when a new feed
+  // page arrives. No shops are shown before products exist (avoids the
+  // "shops flash first, then get replaced" jump), and any shops that didn't
+  // fit are appended only once the feed is fully loaded.
   const rows = useMemo<Row[]>(() => {
+    if (items.length === 0) return [];
     const shops = shopsQuery.data ?? [];
     const out: Row[] = [];
     let shopIdx = 0;
+    let productRows = 0;
     for (let i = 0; i < items.length; i += 2) {
       out.push({ kind: 'products', items: items.slice(i, i + 2) });
-      if (out.length % STORE_EVERY_ROWS === 0 && shopIdx < shops.length) {
+      productRows++;
+      if (productRows % STORE_EVERY_ROWS === 0 && shopIdx < shops.length) {
         out.push({ kind: 'store', shop: shops[shopIdx++] });
       }
     }
-    // Surface any remaining shops at the end so all nearby shops are reachable.
-    while (shopIdx < shops.length) {
-      out.push({ kind: 'store', shop: shops[shopIdx++] });
+    if (!feedQuery.hasNextPage) {
+      while (shopIdx < shops.length) {
+        out.push({ kind: 'store', shop: shops[shopIdx++] });
+      }
     }
     return out;
-  }, [items, shopsQuery.data]);
+  }, [items, shopsQuery.data, feedQuery.hasNextPage]);
 
   const isInitialLoading =
     (feedQuery.isLoading && items.length === 0) || (!coords && !!permissionStatus);
