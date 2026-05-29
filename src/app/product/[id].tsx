@@ -89,9 +89,6 @@ export default function ProductDetailScreen() {
   const finalPrice = product.discountPrice ?? product.price;
   const hasDiscount =
     product.discountPrice != null && product.discountPrice < product.price;
-  const discountPct = hasDiscount
-    ? Math.round(((product.price - finalPrice) / product.price) * 100)
-    : 0;
   const outOfStock = product.stock <= 0;
 
   const handleAdd = () => {
@@ -119,18 +116,11 @@ export default function ProductDetailScreen() {
             </View>
           )}
           {/* Small info chips over the image */}
-          <View style={styles.topLeft}>
-            {product.productFamily?.brand ? (
-              <View style={styles.brandChip}>
-                <Text style={styles.brandChipText}>{product.productFamily.brand}</Text>
-              </View>
-            ) : null}
-            {hasDiscount && (
-              <View style={styles.discountBadge}>
-                <Text style={styles.discountText}>−{discountPct}%</Text>
-              </View>
-            )}
-          </View>
+          {product.productFamily?.brand ? (
+            <View style={styles.brandChip}>
+              <Text style={styles.brandChipText}>{product.productFamily.brand}</Text>
+            </View>
+          ) : null}
           <View style={styles.unitBadge}>
             <Text style={styles.unitBadgeText}>{unitLabel(product)}</Text>
           </View>
@@ -345,28 +335,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.brand.primarySurface,
   },
-  topLeft: {
+  brandChip: {
     position: 'absolute',
     top: spacing.lg,
     left: spacing.lg,
-    gap: spacing.xs,
-    alignItems: 'flex-start',
-  },
-  brandChip: {
     backgroundColor: colors.bg.surface,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: radius.full,
   },
   brandChipText: { ...typography.overline, color: colors.brand.primary },
-  discountBadge: {
-    backgroundColor: colors.brand.accent,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.full,
-    alignSelf: 'flex-start',
-  },
-  discountText: { ...typography.bodyStrong, color: colors.text.onAccent, fontWeight: '800' },
   unitBadge: {
     position: 'absolute',
     top: spacing.lg,
