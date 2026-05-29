@@ -118,9 +118,26 @@ export default function ProductDetailScreen() {
               <ShoppingBag size={56} color={colors.brand.primary} strokeWidth={1.3} />
             </View>
           )}
+          {/* Small info chips over the image */}
           {hasDiscount && (
             <View style={styles.discountBadge}>
               <Text style={styles.discountText}>−{discountPct}%</Text>
+            </View>
+          )}
+          <View style={styles.unitBadge}>
+            <Text style={styles.unitBadgeText}>{unitLabel(product)}</Text>
+          </View>
+          {product.ratingCount > 0 && (
+            <View style={styles.ratingChip}>
+              <Star size={12} color={colors.feedback.warning} fill={colors.feedback.warning} strokeWidth={2} />
+              <Text style={styles.ratingChipText}>{product.ratingAverage.toFixed(1)}</Text>
+            </View>
+          )}
+          {outOfStock && (
+            <View style={styles.outOverlay}>
+              <View style={styles.outBadge}>
+                <Text style={styles.outBadgeText}>Hozircha mavjud emas</Text>
+              </View>
             </View>
           )}
         </View>
@@ -148,17 +165,13 @@ export default function ProductDetailScreen() {
             <Text style={styles.unit}>/ {unitLabel(product)}</Text>
           </View>
 
-          <View style={styles.stockRow}>
-            {outOfStock ? (
-              <Text style={[styles.stockBadge, styles.stockOut]}>Tugagan</Text>
-            ) : product.stock <= product.lowStockThreshold ? (
+          {!outOfStock && product.stock <= product.lowStockThreshold && (
+            <View style={styles.stockRow}>
               <Text style={[styles.stockBadge, styles.stockLow]}>
                 Kam qoldi · {product.stock} {UNIT_SHORT[product.unitType]}
               </Text>
-            ) : (
-              <Text style={[styles.stockBadge, styles.stockOk]}>Mavjud</Text>
-            )}
-          </View>
+            </View>
+          )}
 
           {product.siblings.length > 1 && (
             <View style={styles.section}>
@@ -246,7 +259,11 @@ export default function ProductDetailScreen() {
       </ScrollView>
 
       <SafeAreaView edges={['bottom']} style={styles.footer}>
-        {inCart ? (
+        {outOfStock ? (
+          <View style={[styles.addBtn, styles.addBtnDisabled]}>
+            <Text style={styles.addBtnText}>Hozircha mavjud emas</Text>
+          </View>
+        ) : inCart ? (
           <View style={styles.footerRow}>
             <View style={styles.qtyControl}>
               <Pressable
@@ -339,6 +356,46 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
   },
   discountText: { ...typography.bodyStrong, color: colors.text.onAccent, fontWeight: '800' },
+  unitBadge: {
+    position: 'absolute',
+    top: spacing.lg,
+    right: spacing.lg,
+    backgroundColor: colors.overlay.light,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.full,
+  },
+  unitBadgeText: { ...typography.caption, fontWeight: '800', color: colors.text.primary },
+  ratingChip: {
+    position: 'absolute',
+    bottom: spacing.xl + spacing.sm,
+    left: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: colors.overlay.light,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.full,
+  },
+  ratingChipText: { ...typography.caption, fontWeight: '800', color: colors.text.primary },
+  outOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.55)',
+  },
+  outBadge: {
+    backgroundColor: colors.text.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+  },
+  outBadgeText: { ...typography.bodyStrong, color: colors.text.onPrimary, fontWeight: '800' },
   body: {
     padding: layout.screenPadding,
     gap: spacing.sm,
@@ -369,9 +426,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     overflow: 'hidden',
   },
-  stockOk: { color: colors.feedback.success, backgroundColor: colors.feedback.successSurface },
   stockLow: { color: colors.feedback.warning, backgroundColor: colors.feedback.warningSurface },
-  stockOut: { color: colors.feedback.danger, backgroundColor: colors.feedback.dangerSurface },
   section: { marginTop: spacing.lg, gap: spacing.sm },
   sectionTitle: { ...typography.h4 },
   variantRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
