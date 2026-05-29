@@ -323,6 +323,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border.subtle,
     paddingHorizontal: layout.screenPadding,
     paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
     ...shadow.lg,
   },
   footerTotal: {},
