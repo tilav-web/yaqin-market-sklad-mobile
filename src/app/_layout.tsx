@@ -74,6 +74,7 @@ function RootNavigator() {
       <Stack.Screen name="addresses" options={{ title: tr('addr.title') }} />
       <Stack.Screen name="seller-application" options={{ title: tr('sellerApp.title') }} />
       <Stack.Screen name="seller/[shopId]" options={{ headerShown: false }} />
+      <Stack.Screen name="seller/return/[orderId]" options={{ title: 'Qaytarish' }} />
       </Stack>
     </>
   );

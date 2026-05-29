@@ -161,6 +161,8 @@ export interface Order {
   paymentMethod: 'cash' | 'click_online';
   timeline: Array<{ status: OrderStatus; at: string; note?: string }>;
   createdAt: string;
+  /** Optional free-text reason the customer added for returned items. */
+  returnReason?: string | null;
   /** Variant IDs the current user has already reviewed for this order (from GET /orders/:id). */
   reviewedVariantIds?: string[];
 }

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { router } from 'expo-router';
-import { Check, MessageCircle, Minus, Plus, RotateCcw, Star, X } from 'lucide-react-native';
+import { Check, MessageCircle, RotateCcw, Star, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -28,7 +28,7 @@ export default function OrderDetailScreen() {
   const qc = useQueryClient();
   const toast = useToast();
 
-  const [returnDraft, setReturnDraft] = useState<Record<string, number>>({});
+  const [reasonDraft, setReasonDraft] = useState('');
   const [ratingDraft, setRatingDraft] = useState<Record<string, number>>({});
   const [reviewText, setReviewText] = useState<Record<string, string>>({});
 
@@ -60,19 +60,16 @@ export default function OrderDetailScreen() {
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
-  const submitReturn = useMutation({
+  const submitReason = useMutation({
     mutationFn: async () => {
-      const items = Object.entries(returnDraft)
-        .filter(([, qty]) => qty > 0)
-        .map(([orderItemId, quantity]) => ({ orderItemId, quantity }));
-      const res = await api.post<Order>(`/orders/${id}/return`, { items });
+      const res = await api.post<Order>(`/orders/${id}/return-reason`, {
+        reason: reasonDraft.trim(),
+      });
       return res.data;
     },
     onSuccess: () => {
-      setReturnDraft({});
       qc.invalidateQueries({ queryKey: ['order', id] });
-      qc.invalidateQueries({ queryKey: ['orders'] });
-      toast.success('Qaytarish qabul qilindi');
+      toast.success('Rahmat, sabab saqlandi');
     },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
@@ -111,12 +108,8 @@ export default function OrderDetailScreen() {
     );
   }
 
-  const canReturn = order.status === 'delivering' || order.status === 'delivered';
   const canReview = order.status === 'delivered';
-  const returnTotal = Object.entries(returnDraft).reduce((sum, [itemId, qty]) => {
-    const it = order.items.find((i) => i.id === itemId);
-    return sum + (it ? it.unitPrice * qty : 0);
-  }, 0);
+  const hasReturns = order.items.some((i) => i.returnedQuantity > 0);
   const unreviewed = canReview ? order.items.filter((i) => !reviewed.has(i.productVariantId)) : [];
   const pendingRatings = Object.values(ratingDraft).filter((s) => s > 0).length;
 
@@ -180,71 +173,60 @@ export default function OrderDetailScreen() {
         {/* Items */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Mahsulotlar</Text>
-          {order.items.map((it) => {
-            const remaining = it.quantity - it.returnedQuantity;
-            const draft = returnDraft[it.id] ?? 0;
-            return (
-              <View key={it.id} style={styles.itemRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.itemName}>{it.productName}</Text>
-                  <Text style={styles.itemQty}>
-                    {it.quantity} × {it.unitPrice.toLocaleString()} so‘m
-                  </Text>
-                  {it.returnedQuantity > 0 && (
-                    <Text style={styles.returnedTag}>{it.returnedQuantity} ta qaytarilgan</Text>
-                  )}
-                  {canReturn && remaining > 0 && (
-                    <View style={styles.returnStepper}>
-                      <RotateCcw size={13} color={colors.text.tertiary} strokeWidth={2.4} />
-                      <Text style={styles.returnLabel}>Qaytarish:</Text>
-                      <Pressable
-                        style={styles.stepBtn}
-                        onPress={() => {
-                          haptics.light();
-                          setReturnDraft((d) => ({ ...d, [it.id]: Math.max(0, draft - 1) }));
-                        }}>
-                        <Minus size={14} color={colors.brand.primary} strokeWidth={3} />
-                      </Pressable>
-                      <Text style={styles.stepValue}>{draft}</Text>
-                      <Pressable
-                        style={styles.stepBtn}
-                        onPress={() => {
-                          haptics.light();
-                          setReturnDraft((d) => ({ ...d, [it.id]: Math.min(remaining, draft + 1) }));
-                        }}>
-                        <Plus size={14} color={colors.brand.primary} strokeWidth={3} />
-                      </Pressable>
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.itemTotal}>{it.lineTotal.toLocaleString()}</Text>
-              </View>
-            );
-          })}
-
-          {returnTotal > 0 && (
-            <Pressable
-              style={styles.returnBtn}
-              onPress={() =>
-                Alert.alert(
-                  'Qaytarish',
-                  `${returnTotal.toLocaleString()} so‘mlik mahsulotni qaytarasizmi?`,
-                  [
-                    { text: 'Yo‘q', style: 'cancel' },
-                    { text: 'Ha', onPress: () => submitReturn.mutate() },
-                  ],
-                )
-              }>
-              {submitReturn.isPending ? (
-                <ActivityIndicator color={colors.brand.primary} />
-              ) : (
-                <Text style={styles.returnBtnText}>
-                  {returnTotal.toLocaleString()} so‘m qaytarish
+          {order.items.map((it) => (
+            <View key={it.id} style={styles.itemRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.itemName}>{it.productName}</Text>
+                <Text style={styles.itemQty}>
+                  {it.quantity} × {it.unitPrice.toLocaleString()} so‘m
                 </Text>
-              )}
-            </Pressable>
-          )}
+                {it.returnedQuantity > 0 && (
+                  <Text style={styles.returnedTag}>{it.returnedQuantity} ta qaytarilgan</Text>
+                )}
+              </View>
+              <Text style={styles.itemTotal}>{it.lineTotal.toLocaleString()}</Text>
+            </View>
+          ))}
         </View>
+
+        {/* Return reason — optional, prompted after the courier marks returns */}
+        {hasReturns && (
+          <View style={styles.section}>
+            <View style={styles.returnHeader}>
+              <RotateCcw size={16} color={colors.feedback.warning} strokeWidth={2.4} />
+              <Text style={styles.sectionTitle}>Qaytarilgan mahsulotlar</Text>
+            </View>
+            {order.returnReason ? (
+              <Text style={styles.reasonSaved}>“{order.returnReason}”</Text>
+            ) : (
+              <>
+                <Text style={styles.reasonHint}>
+                  Nega qaytardingiz? Sabab qoldirsangiz, do‘kon yaxshilanadi (ixtiyoriy).
+                </Text>
+                <TextInput
+                  style={styles.reviewInput}
+                  placeholder="Masalan: pomidor chirigan edi"
+                  placeholderTextColor={colors.text.hint}
+                  value={reasonDraft}
+                  onChangeText={setReasonDraft}
+                  multiline
+                />
+                {reasonDraft.trim().length > 0 && (
+                  <Pressable
+                    style={styles.primaryBtn}
+                    onPress={() => submitReason.mutate()}
+                    disabled={submitReason.isPending}>
+                    {submitReason.isPending ? (
+                      <ActivityIndicator color={colors.text.onPrimary} />
+                    ) : (
+                      <Text style={styles.primaryBtnText}>Sababni saqlash</Text>
+                    )}
+                  </Pressable>
+                )}
+              </>
+            )}
+          </View>
+        )}
 
         {/* Summary */}
         <View style={styles.section}>
@@ -417,28 +399,10 @@ const styles = StyleSheet.create({
   itemName: { ...typography.bodyStrong, fontSize: 14 },
   itemQty: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
   returnedTag: { ...typography.caption, color: colors.feedback.warning, fontWeight: '700', marginTop: 2 },
-  returnStepper: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.sm },
-  returnLabel: { ...typography.caption, color: colors.text.tertiary },
-  stepBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.sm,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepValue: { ...typography.bodyStrong, minWidth: 20, textAlign: 'center' },
   itemTotal: { ...typography.priceSmall },
-  returnBtn: {
-    marginTop: spacing.sm,
-    height: layout.buttonHeight.md,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  returnBtnText: { ...typography.buttonSmall, color: colors.brand.primary },
+  returnHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  reasonSaved: { ...typography.body, color: colors.text.secondary, fontStyle: 'italic' },
+  reasonHint: { ...typography.bodySmall, color: colors.text.secondary },
   // summary
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
   rowLabel: { ...typography.body, color: colors.text.secondary },

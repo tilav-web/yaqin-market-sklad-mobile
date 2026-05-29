@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, MessageCircle, Package } from 'lucide-react-native';
+import { ArrowLeft, MessageCircle, Package, RotateCcw } from 'lucide-react-native';
 import { useCallback } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -90,6 +90,14 @@ export default function SellerOrdersScreen() {
                 ))}
               </View>
               <Text style={styles.total}>{item.total.toLocaleString()} so‘m</Text>
+              {item.status === 'delivering' && (
+                <Pressable
+                  style={styles.returnBtn}
+                  onPress={() => router.push(`/seller/return/${item.id}`)}>
+                  <RotateCcw size={16} color={colors.feedback.warning} strokeWidth={2.4} />
+                  <Text style={styles.returnBtnText}>Qaytarilgan mahsulotni belgilash</Text>
+                </Pressable>
+              )}
               <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${item.id}`)}>
                 <MessageCircle size={16} color={colors.brand.primary} strokeWidth={2.4} />
                 <Text style={styles.chatBtnText}>Mijoz bilan chat</Text>
@@ -169,6 +177,17 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   chatBtnText: { ...typography.caption, color: colors.brand.primary, fontWeight: '700' },
+  returnBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    height: layout.buttonHeight.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.feedback.warningSurface,
+    marginTop: spacing.sm,
+  },
+  returnBtnText: { ...typography.caption, color: colors.feedback.warning, fontWeight: '700' },
   cancelBtn: { paddingVertical: spacing.sm, alignItems: 'center' },
   cancelBtnText: { ...typography.buttonSmall, color: colors.feedback.danger },
   footer: {
