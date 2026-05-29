@@ -5,6 +5,7 @@ import { ActivityIndicator, StatusBar, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { RealtimeBridge } from '@/components/RealtimeBridge';
 import { ToastProvider } from '@/components/ui/Toast';
 import { useTranslation } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
@@ -50,9 +51,11 @@ function RootNavigator() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: true,
+    <>
+      {status === 'authenticated' && <RealtimeBridge />}
+      <Stack
+        screenOptions={{
+          headerShown: true,
         headerStyle: { backgroundColor: colors.bg.surface },
         headerTintColor: colors.text.primary,
         headerTitleStyle: { fontWeight: '700' },
@@ -70,7 +73,8 @@ function RootNavigator() {
       <Stack.Screen name="addresses" options={{ title: tr('addr.title') }} />
       <Stack.Screen name="seller-application" options={{ title: tr('sellerApp.title') }} />
       <Stack.Screen name="seller/[shopId]" options={{ headerShown: false }} />
-    </Stack>
+      </Stack>
+    </>
   );
 }
 

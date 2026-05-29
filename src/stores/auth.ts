@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { api, extractErrorMessage } from '@/lib/api';
+import { disconnectSocket, reconnectSocket } from '@/lib/socket';
 import { tokenStorage } from '@/lib/storage';
 
 export interface AuthUser {
@@ -71,6 +72,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         code,
       });
       await tokenStorage.save(res.data.tokens.accessToken, res.data.tokens.refreshToken);
+      await reconnectSocket();
       set({ user: res.data.user, status: 'authenticated' });
     } catch (err) {
       throw new Error(extractErrorMessage(err));
@@ -79,6 +81,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   async signOut() {
     await tokenStorage.clear();
+    disconnectSocket();
     set({ user: null, status: 'unauthenticated' });
   },
 }));
