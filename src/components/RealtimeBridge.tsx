@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useToast } from '@/components/ui';
 import { STATUS_LABEL_UZ } from '@/lib/types';
 import type { OrderStatus } from '@/lib/types';
+import { registerForPush } from '@/lib/push';
 import { getSocket } from '@/lib/socket';
 
 interface OrderEvent {
@@ -21,6 +22,11 @@ interface OrderEvent {
 export function RealtimeBridge() {
   const qc = useQueryClient();
   const toast = useToast();
+
+  // Register this device for push once, on mount (authenticated).
+  useEffect(() => {
+    void registerForPush();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
