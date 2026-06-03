@@ -13,6 +13,9 @@
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.yaqin-market.uz"
+      },
       "android": {
         "buildType": "apk"
       }
