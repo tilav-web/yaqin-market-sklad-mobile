@@ -3,6 +3,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { api } from './api';
+import { tokenStorage } from './storage';
 
 /**
  * Foreground behaviour: show the banner + play sound even while the app is open
@@ -59,7 +60,15 @@ export async function registerForPush(): Promise<void> {
     }
 
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
-    await api.post('/users/me/devices', { token, platform: Platform.OS });
+    // When signed in, register + LINK the token to the user; otherwise register
+    // it anonymously so the device still receives broadcast notifications. On
+    // the next sign-in this same token gets linked to the account.
+    const access = await tokenStorage.getAccess();
+    if (access) {
+      await api.post('/users/me/devices', { token, platform: Platform.OS });
+    } else {
+      await api.post('/devices/anonymous', { token, platform: Platform.OS });
+    }
   } catch (err) {
     console.warn('[push] register failed:', (err as Error).message);
   }

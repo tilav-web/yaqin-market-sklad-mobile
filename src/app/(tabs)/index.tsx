@@ -23,6 +23,7 @@ import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { FeedProduct, FeedResponse, PublicShop } from '@/lib/types';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
+import { NotificationBell } from '@/components/NotificationBell';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 
 const SCREEN_W = Dimensions.get('window').width;
@@ -133,7 +134,10 @@ export default function HomeScreen() {
       {/* Red header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.brand}>Yaqin Market</Text>
+          <View style={styles.brandRow}>
+            <Text style={styles.brand}>Yaqin Market</Text>
+            <NotificationBell color={colors.text.onPrimary} />
+          </View>
           <Pressable
             style={[styles.locationPill, usingManualAddress && styles.locationPillManual]}
             onPress={() => setPickerOpen(true)}>
@@ -269,6 +273,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   headerTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   brand: { ...typography.h3, color: colors.text.onPrimary, flexShrink: 0 },
   locationPill: {
     flex: 1,

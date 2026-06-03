@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useGlobalSearchParams } from 'expo-router';
-import { Bell, MapPin, Store, Truck } from 'lucide-react-native';
+import { Bell, Clock, MapPin, Store, Truck } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LocationPickerModal, PickedLocation } from '@/components/LocationPickerModal';
 import { ImageUploader } from '@/components/seller/ImageUploader';
+import { WorkingHoursModal } from '@/components/seller/WorkingHoursModal';
 import { api, extractErrorMessage } from '@/lib/api';
 import { PublicShop } from '@/lib/types';
 import { AlarmMode, useAlarmSettingsStore, useShopAlarm } from '@/stores/alarmSettings';
@@ -90,6 +91,7 @@ export default function ShopSettingsScreen() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [hoursOpen, setHoursOpen] = useState(false);
   const [minOrder, setMinOrder] = useState('');
   const [maxKm, setMaxKm] = useState('');
   const [freeKm, setFreeKm] = useState('');
@@ -208,6 +210,13 @@ export default function ShopSettingsScreen() {
               </Text>
             ) : null}
           </Field>
+          <Field label="Ish vaqti">
+            <Pressable style={styles.mapBtn} onPress={() => setHoursOpen(true)}>
+              <Clock size={18} color={colors.brand.primary} strokeWidth={2.4} />
+              <Text style={styles.mapBtnText}>Ish vaqti va bayramlarni sozlash</Text>
+            </Pressable>
+            <Text style={styles.hint}>Do‘kon jadval bo‘yicha avtomatik ochilib-yopiladi</Text>
+          </Field>
         </Section>
 
         {/* Order alarm */}
@@ -309,6 +318,14 @@ export default function ShopSettingsScreen() {
           if (result.address) setAddress(result.address);
           setPickerVisible(false);
         }}
+      />
+
+      <WorkingHoursModal
+        visible={hoursOpen}
+        shopId={shopId}
+        initialHours={shopQuery.data?.workingHours}
+        initialHolidays={shopQuery.data?.holidays}
+        onClose={() => setHoursOpen(false)}
       />
     </SafeAreaView>
   );

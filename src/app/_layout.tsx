@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RealtimeBridge } from '@/components/RealtimeBridge';
 import { ToastProvider } from '@/components/ui/Toast';
 import { useTranslation } from '@/i18n';
+import { registerForPush } from '@/lib/push';
 import { useAuthStore } from '@/stores/auth';
 import { colors } from '@/theme';
 
@@ -31,6 +32,13 @@ function RootNavigator() {
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  // Register this device for push on launch — anonymously if not signed in, so
+  // even logged-out users can receive broadcast notifications. RealtimeBridge
+  // re-registers (and links the token) once the user is authenticated.
+  useEffect(() => {
+    if (status !== 'loading') void registerForPush();
+  }, [status]);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -71,6 +79,7 @@ function RootNavigator() {
       <Stack.Screen name="orders/index" options={{ title: tr('orders.title') }} />
       <Stack.Screen name="orders/[id]" options={{ title: 'Buyurtma' }} />
       <Stack.Screen name="chat/[orderId]" options={{ title: 'Chat' }} />
+      <Stack.Screen name="notifications" options={{ title: 'Bildirishnomalar' }} />
       <Stack.Screen name="addresses" options={{ title: tr('addr.title') }} />
       <Stack.Screen name="profile/edit" options={{ title: tr('editProfile.title') }} />
       <Stack.Screen name="staff-scan" options={{ headerShown: false }} />

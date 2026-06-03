@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useGlobalSearchParams } from 'expo-router';
-import { BarChart3, ChevronRight, type LucideIcon, Settings2, ShieldBan, Store } from 'lucide-react-native';
+import { BarChart3, Bell, ChevronRight, type LucideIcon, Settings2, ShieldBan, Star, Store } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -93,6 +93,18 @@ export default function SellerHubScreen() {
             title="Hisobot"
             subtitle="Tushum, foyda, olib kelish kerak, muddat"
             onPress={() => router.push(`/seller/${shopId}/stats`)}
+          />
+          <Row
+            icon={Star}
+            title="Sharhlar"
+            subtitle="Mijozlar qoldirgan sharh va baholar"
+            onPress={() => router.push(`/seller/${shopId}/reviews`)}
+          />
+          <Row
+            icon={Bell}
+            title="Bildirishnomalar"
+            subtitle="Push tarixi"
+            onPress={() => router.push('/notifications')}
           />
           <Row
             icon={ShieldBan}

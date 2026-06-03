@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ban, MapPin, MessageCircle, Package, Phone, RotateCcw } from 'lucide-react-native';
-import { ActivityIndicator, Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ban, Bike, Check, MapPin, MessageCircle, Package, Phone, RotateCcw, X } from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
+import { StaffMember } from '@/constants/staffPermissions';
 import { Order, OrderStatus, STATUS_LABEL_UZ } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
@@ -23,6 +25,7 @@ function fmt(n: number): string {
 export default function SellerOrderDetailScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const qc = useQueryClient();
+  const [assignOpen, setAssignOpen] = useState(false);
 
   const orderQuery = useQuery({
     queryKey: ['order-detail', orderId],
@@ -33,6 +36,28 @@ export default function SellerOrderDetailScreen() {
   });
 
   const order = orderQuery.data;
+
+  // Shop staff (to assign a delivering courier).
+  const staffQuery = useQuery({
+    queryKey: ['staff', order?.shopId],
+    enabled: !!order?.shopId,
+    queryFn: async () => {
+      const res = await api.get<StaffMember[]>(`/seller/shops/${order?.shopId}/staff`);
+      return res.data;
+    },
+  });
+
+  const assign = useMutation({
+    mutationFn: async (staffId: string | null) => {
+      await api.post(`/seller/shops/${order?.shopId}/orders/${orderId}/assign`, { staffId });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['order-detail', orderId] });
+      qc.invalidateQueries({ queryKey: ['seller-orders', order?.shopId] });
+      setAssignOpen(false);
+    },
+    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+  });
 
   const advance = useMutation({
     mutationFn: async (status: OrderStatus) => {
@@ -97,6 +122,25 @@ export default function SellerOrderDetailScreen() {
                 <Text style={styles.infoText}>{order.deliveryAddress.address}</Text>
               </View>
             ) : null}
+          </View>
+        ) : null}
+
+        {/* Courier assignment (delivery orders) */}
+        {order.channel !== 'in_store' ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Yetkazuvchi</Text>
+            <View style={styles.assignRow}>
+              <Bike size={16} color={colors.brand.primary} strokeWidth={2.2} />
+              <Text style={styles.assignName}>
+                {(() => {
+                  const m = (staffQuery.data ?? []).find((s) => s.id === order.assignedStaffId);
+                  return m ? `${m.name ?? m.phone} (${m.customRoleName})` : 'Biriktirilmagan';
+                })()}
+              </Text>
+              <Pressable style={styles.assignBtn} onPress={() => setAssignOpen(true)}>
+                <Text style={styles.assignBtnText}>{order.assignedStaffId ? 'O‘zgartirish' : 'Biriktirish'}</Text>
+              </Pressable>
+            </View>
           </View>
         ) : null}
 
@@ -195,6 +239,37 @@ export default function SellerOrderDetailScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      {/* Courier picker */}
+      <Modal visible={assignOpen} transparent animationType="fade" onRequestClose={() => setAssignOpen(false)}>
+        <Pressable style={styles.backdrop} onPress={() => setAssignOpen(false)}>
+          <Pressable style={styles.sheet}>
+            <View style={styles.sheetHead}>
+              <Text style={styles.sheetTitle}>Yetkazuvchini tanlang</Text>
+              <Pressable onPress={() => setAssignOpen(false)} hitSlop={8}>
+                <X size={20} color={colors.text.secondary} />
+              </Pressable>
+            </View>
+            {order.assignedStaffId ? (
+              <Pressable style={styles.staffRow} onPress={() => assign.mutate(null)}>
+                <Text style={[styles.staffName, { color: colors.text.danger }]}>Biriktirishni bekor qilish</Text>
+              </Pressable>
+            ) : null}
+            {(staffQuery.data ?? []).filter((s) => s.isActive).map((s) => (
+              <Pressable key={s.id} style={styles.staffRow} onPress={() => assign.mutate(s.id)}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.staffName}>{s.name ?? s.phone}</Text>
+                  <Text style={styles.staffRole}>{s.customRoleName}</Text>
+                </View>
+                {s.id === order.assignedStaffId ? <Check size={18} color={colors.feedback.success} strokeWidth={2.6} /> : null}
+              </Pressable>
+            ))}
+            {(staffQuery.data ?? []).length === 0 ? (
+              <Text style={styles.staffEmpty}>Xodim yo‘q — avval Xodimlar bo‘limida qo‘shing</Text>
+            ) : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -226,6 +301,18 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   cardTitle: { ...typography.overline, color: colors.text.secondary },
+  assignRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  assignName: { ...typography.bodySmall, color: colors.text.primary, flex: 1 },
+  assignBtn: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.brand.primaryBorder },
+  assignBtnText: { ...typography.caption, fontWeight: '700', color: colors.brand.primary },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: colors.bg.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, gap: spacing.xs, paddingBottom: spacing['2xl'] },
+  sheetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
+  sheetTitle: { ...typography.h4, color: colors.text.primary },
+  staffRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border.subtle },
+  staffName: { ...typography.bodyStrong, color: colors.text.primary },
+  staffRole: { ...typography.caption, color: colors.text.secondary, marginTop: 1 },
+  staffEmpty: { ...typography.bodySmall, color: colors.text.tertiary, paddingVertical: spacing.md, textAlign: 'center' },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   infoLink: { ...typography.bodySmall, fontWeight: '700', color: colors.brand.primary, flex: 1 },
   infoText: { ...typography.bodySmall, color: colors.text.primary, flex: 1 },

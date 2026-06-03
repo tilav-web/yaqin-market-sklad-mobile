@@ -63,6 +63,10 @@ export default function SellerLayout() {
           name="blocked"
           options={{ title: 'Bloklangan foydalanuvchilar', headerLeft: () => <HubBackButton shopId={shopId} /> }}
         />
+        <Tabs.Screen
+          name="reviews"
+          options={{ title: 'Sharhlar', headerLeft: () => <HubBackButton shopId={shopId} /> }}
+        />
       </Tabs>
 
       {pending && (

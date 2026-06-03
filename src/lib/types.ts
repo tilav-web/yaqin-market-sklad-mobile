@@ -16,6 +16,7 @@ export interface PublicShop {
     closeTime: string;
     isOpen: boolean;
   }>;
+  holidays?: Array<{ date: string; reason?: string }>;
   deliveryZone: {
     maxKm: number;
     freeKm: number;
@@ -170,6 +171,10 @@ export interface Order {
   /** Seller-side: joined customer + address (present on /seller/shops/:id/orders). */
   user?: { id: string; name: string | null; phone: string } | null;
   deliveryAddress?: { address: string; latitude: number; longitude: number } | null;
+  /** ShopStaff.id this order is assigned to (e.g. delivering courier). */
+  assignedStaffId?: string | null;
+  /** 'delivery' (app order) or 'in_store' (counter sale). */
+  channel?: 'delivery' | 'in_store';
 }
 
 /** FIFO cost summary attached to seller inventory rows. */
@@ -316,6 +321,16 @@ export interface DebtAccountDetail {
 export interface DebtSummary {
   outstanding: number;
   customers: number;
+}
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown>;
+  kind: string;
+  isRead: boolean;
+  createdAt: string;
 }
 
 export interface MyShop {
