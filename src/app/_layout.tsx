@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, StatusBar, StyleSheet, View } from 'react-native';
@@ -9,18 +9,9 @@ import { RealtimeBridge } from '@/components/RealtimeBridge';
 import { ToastProvider } from '@/components/ui/Toast';
 import { useTranslation } from '@/i18n';
 import { registerForPush } from '@/lib/push';
+import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/stores/auth';
 import { colors } from '@/theme';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-      staleTime: 30_000,
-    },
-  },
-});
 
 function RootNavigator() {
   const status = useAuthStore((s) => s.status);

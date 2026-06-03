@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ChevronRight, Package, Store } from 'lucide-react-native';
+import { ChevronRight, Package, Store, WifiOff } from 'lucide-react-native';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -29,6 +29,14 @@ export default function OrdersScreen() {
         ListEmptyComponent={
           ordersQuery.isLoading ? (
             <ActivityIndicator color={colors.brand.primary} style={{ marginTop: spacing['4xl'] }} />
+          ) : ordersQuery.isError ? (
+            <EmptyState
+              icon={WifiOff}
+              title="Nimadir xato ketdi"
+              description="Internetni tekshirib, qayta urinib ko‘ring"
+              actionLabel="Qayta urinish"
+              onAction={() => void ordersQuery.refetch()}
+            />
           ) : (
             <EmptyState
               icon={Package}

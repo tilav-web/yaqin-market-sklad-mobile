@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { api, extractErrorMessage } from '@/lib/api';
+import { queryClient } from '@/lib/queryClient';
 import { disconnectSocket, reconnectSocket } from '@/lib/socket';
 import { tokenStorage } from '@/lib/storage';
 
@@ -82,6 +83,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   async signOut() {
     await tokenStorage.clear();
     disconnectSocket();
+    // Drop every cached query so the next user never sees the previous
+    // account's orders, cart, debts, etc.
+    queryClient.clear();
     set({ user: null, status: 'unauthenticated' });
   },
 }));

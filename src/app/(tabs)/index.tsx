@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ChevronDown, Map as MapIcon, MapPin, Navigation, Search as SearchIcon, ShoppingBag } from 'lucide-react-native';
+import { ChevronDown, Map as MapIcon, MapPin, Navigation, Search as SearchIcon, ShoppingBag, WifiOff } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -215,6 +215,14 @@ export default function HomeScreen() {
                 </View>
               ))}
             </View>
+          ) : feedQuery.isError ? (
+            <EmptyState
+              icon={WifiOff}
+              title={tr('common.error.title')}
+              description={tr('common.error.desc')}
+              actionLabel={tr('common.retry')}
+              onAction={() => void feedQuery.refetch()}
+            />
           ) : (
             <EmptyState
               icon={coords ? ShoppingBag : MapPin}

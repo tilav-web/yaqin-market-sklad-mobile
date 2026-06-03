@@ -16,6 +16,8 @@ export const translations = {
     'common.loading': 'Yuklanmoqda...',
     'common.search': 'Qidirish',
     'common.error': 'Xatolik',
+    'common.error.title': 'Nimadir xato ketdi',
+    'common.error.desc': 'Internetni tekshirib, qayta urinib ko\'ring.',
     'common.success': 'Muvaffaqiyatli',
     'common.yes': 'Ha',
     'common.no': 'Yo\'q',
@@ -159,6 +161,8 @@ export const translations = {
 
     // Profile
     'profile.section.myShops': 'Mening do\'konlarim',
+    'profile.section.workingFor': 'Men ishlayotgan do\'konlar',
+    'profile.staffRole': 'Xodim',
     'profile.section.account': 'Hisob',
     'profile.section.other': 'Boshqa',
     'profile.becomeSeller': 'Sotuvchi bo\'lish',
@@ -248,6 +252,8 @@ export const translations = {
     'common.loading': 'Юкланмоқда...',
     'common.search': 'Қидириш',
     'common.error': 'Хатолик',
+    'common.error.title': 'Нимадир хато кетди',
+    'common.error.desc': 'Интернетни текшириб, қайта уриниб кўринг.',
     'common.success': 'Муваффақиятли',
     'common.yes': 'Ҳа',
     'common.no': 'Йўқ',
@@ -391,6 +397,8 @@ export const translations = {
 
     // Profile
     'profile.section.myShops': 'Менинг дўконларим',
+    'profile.section.workingFor': 'Мен ишлаётган дўконлар',
+    'profile.staffRole': 'Ходим',
     'profile.section.account': 'Ҳисоб',
     'profile.section.other': 'Бошқа',
     'profile.becomeSeller': 'Сотувчи бўлиш',
@@ -480,6 +488,8 @@ export const translations = {
     'common.loading': 'Загрузка...',
     'common.search': 'Поиск',
     'common.error': 'Ошибка',
+    'common.error.title': 'Что-то пошло не так',
+    'common.error.desc': 'Проверьте интернет и попробуйте снова.',
     'common.success': 'Успешно',
     'common.yes': 'Да',
     'common.no': 'Нет',
@@ -623,6 +633,8 @@ export const translations = {
 
     // Profile
     'profile.section.myShops': 'Мои магазины',
+    'profile.section.workingFor': 'Магазины, где я работаю',
+    'profile.staffRole': 'Сотрудник',
     'profile.section.account': 'Аккаунт',
     'profile.section.other': 'Прочее',
     'profile.becomeSeller': 'Стать продавцом',

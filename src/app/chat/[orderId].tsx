@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useToast } from '@/components/ui/Toast';
 import { api, extractErrorMessage } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { ChatMessage } from '@/lib/types';
@@ -25,6 +26,7 @@ import { haptics } from '@/utils/haptics';
 export default function ChatScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const qc = useQueryClient();
+  const toast = useToast();
   const myId = useAuthStore((s) => s.user?.id);
   const [text, setText] = useState('');
   const listRef = useRef<FlatList<ChatMessage>>(null);
@@ -75,7 +77,7 @@ export default function ChatScreen() {
       });
       setText('');
     },
-    onError: (e) => console.warn(extractErrorMessage(e)),
+    onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
   const messages = messagesQuery.data ?? [];

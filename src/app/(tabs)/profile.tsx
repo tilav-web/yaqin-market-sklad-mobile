@@ -32,6 +32,11 @@ interface SellerApplication {
   rejectionReason: string | null;
 }
 
+interface StaffShop {
+  shop: { id: string; name: string; address: string; isOpenManual: boolean };
+  role: string | null;
+}
+
 const LANG_LABELS: Record<Lang, string> = {
   uz: "O'zbekcha",
   uz_cyrl: 'Ўзбекча',
@@ -70,8 +75,19 @@ export default function ProfileTab() {
     enabled: !!meQuery.data && !meQuery.data.isSellerApproved,
   });
 
+  // Shops where this user works as staff (courier, cashier, …) — any user can
+  // be invited regardless of seller status.
+  const staffShopsQuery = useQuery({
+    queryKey: ['working-for-me'],
+    queryFn: async () => {
+      const res = await api.get<StaffShop[]>('/seller/shops/working-for-me');
+      return res.data;
+    },
+  });
+
   const me = meQuery.data;
   const latestApp = myApplicationsQuery.data?.[0];
+  const staffShops = staffShopsQuery.data ?? [];
 
   function handleLangChange(next: Lang) {
     haptics.selection();
@@ -164,6 +180,22 @@ export default function ProfileTab() {
             </View>
           ) : null}
         </Section>
+
+        {staffShops.length > 0 ? (
+          <Section title={tr('profile.section.workingFor')}>
+            {staffShops.map(({ shop, role }) => (
+              <Row
+                key={shop.id}
+                icon={Store}
+                iconBg={colors.feedback.infoSurface}
+                iconColor={colors.feedback.info}
+                title={shop.name}
+                subtitle={`${role ?? tr('profile.staffRole')} · ${shop.address}`}
+                onPress={() => router.push(`/seller/${shop.id}/orders`)}
+              />
+            ))}
+          </Section>
+        ) : null}
 
         <Section title={tr('profile.section.account')}>
           <Row
