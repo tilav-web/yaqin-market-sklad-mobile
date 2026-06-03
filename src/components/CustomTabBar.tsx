@@ -1,12 +1,18 @@
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs/types';
-import { Home, MapPin, Search, ShoppingBag, User, LucideIcon } from 'lucide-react-native';
-import { useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Home, LucideIcon, MapPin, Search, ShoppingBag, User } from 'lucide-react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, {
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTranslation } from '@/i18n';
 import { colors, radius, shadow, spacing, typography } from '@/theme';
-import { haptics } from '@/utils/haptics';
 
 const ICONS: Record<string, LucideIcon> = {
   index: Home,
@@ -16,7 +22,8 @@ const ICONS: Record<string, LucideIcon> = {
   profile: User,
 };
 
-const LABEL_KEYS: Record<string, 'tab.home' | 'tab.map' | 'tab.search' | 'tab.carts' | 'tab.profile'> = {
+type LabelKey = 'tab.home' | 'tab.map' | 'tab.search' | 'tab.carts' | 'tab.profile';
+const LABEL_KEYS: Record<string, LabelKey> = {
   index: 'tab.home',
   map: 'tab.map',
   search: 'tab.search',
@@ -24,109 +31,124 @@ const LABEL_KEYS: Record<string, 'tab.home' | 'tab.map' | 'tab.search' | 'tab.ca
   profile: 'tab.profile',
 };
 
+// A lively-but-controlled spring for the sliding indicator.
+const SLIDE_SPRING = { damping: 18, stiffness: 220, mass: 0.7 };
+const PRESS_SPRING = { damping: 15, stiffness: 350 };
+
 export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const [barWidth, setBarWidth] = useState(0);
+
+  const tabs = state.routes.filter((r) => ICONS[r.name]);
+  const count = tabs.length;
+  const activeKey = state.routes[state.index]?.key;
+  const activeIndex = Math.max(
+    0,
+    tabs.findIndex((t) => t.key === activeKey),
+  );
+  const itemWidth = count > 0 ? barWidth / count : 0;
+
+  // A single pill slides under the active icon instead of each tab fading its
+  // own highlight — the modern "moving indicator" feel.
+  const indicatorX = useSharedValue(0);
+  const ready = useRef(false);
+  useEffect(() => {
+    if (!itemWidth) return;
+    const x = activeIndex * itemWidth;
+    if (ready.current) {
+      indicatorX.value = withSpring(x, SLIDE_SPRING);
+    } else {
+      // Don't animate the very first placement from x=0.
+      indicatorX.value = x;
+      ready.current = true;
+    }
+  }, [activeIndex, itemWidth, indicatorX]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorX.value }],
+  }));
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          paddingBottom: Math.max(insets.bottom, spacing.sm),
-        },
-      ]}>
-      <View style={styles.bar}>
-        {state.routes.map((route, index) => {
-          if (!ICONS[route.name]) return null;
-          const focused = state.index === index;
-          return (
-            <TabItem
-              key={route.key}
-              icon={ICONS[route.name]}
-              labelKey={LABEL_KEYS[route.name]}
-              focused={focused}
-              onPress={() => {
-                haptics.selection();
-                const event = navigation.emit({
-                  type: 'tabPress',
-                  target: route.key,
-                  canPreventDefault: true,
-                });
-                if (!focused && !event.defaultPrevented) {
-                  navigation.navigate(route.name);
-                }
-              }}
-            />
-          );
-        })}
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
+      <View
+        style={styles.bar}
+        onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}>
+        {itemWidth > 0 && (
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.indicator, { width: itemWidth }, indicatorStyle]}>
+            <View style={styles.pill} />
+          </Animated.View>
+        )}
+
+        {tabs.map((route, index) => (
+          <TabItem
+            key={route.key}
+            icon={ICONS[route.name]}
+            labelKey={LABEL_KEYS[route.name]}
+            focused={index === activeIndex}
+            onPress={() => {
+              const event = navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              });
+              if (index !== activeIndex && !event.defaultPrevented) {
+                navigation.navigate(route.name);
+              }
+            }}
+          />
+        ))}
       </View>
     </View>
   );
 }
 
 interface TabItemProps {
-  icon: LucideIcon;
-  labelKey: 'tab.home' | 'tab.map' | 'tab.search' | 'tab.carts' | 'tab.profile';
-  focused: boolean;
-  onPress: () => void;
+  readonly icon: LucideIcon;
+  readonly labelKey: LabelKey;
+  readonly focused: boolean;
+  readonly onPress: () => void;
 }
 
 function TabItem({ icon: Icon, labelKey, focused, onPress }: TabItemProps) {
   const { tr } = useTranslation();
-  const scale = useRef(new Animated.Value(focused ? 1 : 0.95)).current;
-  const pillOpacity = useRef(new Animated.Value(focused ? 1 : 0)).current;
-  const pillScale = useRef(new Animated.Value(focused ? 1 : 0.7)).current;
-  const pressScale = useRef(new Animated.Value(1)).current;
+  const prog = useSharedValue(focused ? 1 : 0);
+  const press = useSharedValue(1);
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scale, { toValue: focused ? 1 : 0.95, friction: 7, useNativeDriver: true }),
-      Animated.timing(pillOpacity, { toValue: focused ? 1 : 0, duration: 220, useNativeDriver: true }),
-      Animated.spring(pillScale, {
-        toValue: focused ? 1 : 0.7,
-        friction: 7,
-        tension: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [focused, scale, pillOpacity, pillScale]);
+    prog.value = withTiming(focused ? 1 : 0, { duration: 260 });
+  }, [focused, prog]);
+
+  const iconWrapStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: press.value * (1 + prog.value * 0.1) }, { translateY: -prog.value * 3 }],
+  }));
+  const activeIconStyle = useAnimatedStyle(() => ({ opacity: prog.value }));
+  const labelStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(prog.value, [0, 1], [colors.text.tertiary, colors.brand.primary]),
+    opacity: 0.7 + prog.value * 0.3,
+  }));
 
   return (
     <Pressable
       onPress={onPress}
-      onPressIn={() =>
-        Animated.spring(pressScale, { toValue: 0.93, friction: 6, useNativeDriver: true }).start()
-      }
-      onPressOut={() =>
-        Animated.spring(pressScale, { toValue: 1, friction: 5, useNativeDriver: true }).start()
-      }
+      onPressIn={() => {
+        press.value = withSpring(0.86, PRESS_SPRING);
+      }}
+      onPressOut={() => {
+        press.value = withSpring(1, PRESS_SPRING);
+      }}
       style={styles.item}>
-      <Animated.View style={{ transform: [{ scale: pressScale }] }}>
-        <Animated.View
-          style={[
-            styles.pill,
-            {
-              opacity: pillOpacity,
-              transform: [{ scale: pillScale }],
-            },
-          ]}
-        />
-        <Animated.View style={[styles.iconWrap, { transform: [{ scale }] }]}>
-          <Icon
-            size={22}
-            color={focused ? colors.brand.primary : colors.text.tertiary}
-            strokeWidth={focused ? 2.4 : 1.8}
-          />
+      <Animated.View style={[styles.iconWrap, iconWrapStyle]}>
+        {/* Base (inactive) icon, with the active one cross-fading on top. */}
+        <Icon size={22} color={colors.text.tertiary} strokeWidth={1.9} />
+        <Animated.View style={[styles.iconOverlay, activeIconStyle]}>
+          <Icon size={22} color={colors.brand.primary} strokeWidth={2.5} />
         </Animated.View>
       </Animated.View>
-      <Text
-        style={[
-          styles.label,
-          { color: focused ? colors.brand.primary : colors.text.tertiary },
-          focused && { fontWeight: '700' },
-        ]}>
+      <Animated.Text style={[styles.label, labelStyle]} numberOfLines={1}>
         {tr(labelKey)}
-      </Text>
+      </Animated.Text>
     </Pressable>
   );
 }
@@ -145,6 +167,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  indicator: {
+    position: 'absolute',
+    top: 4,
+    left: 0,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pill: {
+    width: 52,
+    height: 34,
+    borderRadius: radius.full,
+    backgroundColor: colors.brand.primarySurface,
+  },
   item: {
     flex: 1,
     alignItems: 'center',
@@ -158,16 +194,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pill: {
+  iconOverlay: {
     position: 'absolute',
-    width: 44,
-    height: 30,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   label: {
     ...typography.caption,
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

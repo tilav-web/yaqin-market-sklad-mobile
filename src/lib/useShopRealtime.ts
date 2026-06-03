@@ -9,9 +9,19 @@ import { getSocket } from '@/lib/socket';
  * is created or changes — so new orders appear without waiting for a poll.
  *
  * `onNewOrder` fires for incoming `order:new` events (e.g. to play a sound or
- * toast). Returns nothing; cleans up its listeners on unmount.
+ * toast), receiving the order payload. Cleans up its listeners on unmount.
  */
-export function useShopRealtime(shopId: string | undefined, onNewOrder?: () => void) {
+export interface NewOrderEvent {
+  orderId: string;
+  status: string;
+  orderNumber: number;
+  shopId: string;
+}
+
+export function useShopRealtime(
+  shopId: string | undefined,
+  onNewOrder?: (order: NewOrderEvent) => void,
+) {
   const qc = useQueryClient();
 
   useEffect(() => {
@@ -26,9 +36,9 @@ export function useShopRealtime(shopId: string | undefined, onNewOrder?: () => v
       const invalidate = () => {
         qc.invalidateQueries({ queryKey: ['seller-orders', shopId] });
       };
-      const onNew = () => {
+      const onNew = (payload: NewOrderEvent) => {
         invalidate();
-        onNewOrder?.();
+        onNewOrder?.(payload);
       };
       socket.on('order:new', onNew);
       socket.on('order:updated', invalidate);

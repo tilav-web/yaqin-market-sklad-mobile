@@ -19,7 +19,7 @@ export interface PublicShop {
   deliveryZone: {
     maxKm: number;
     freeKm: number;
-    pricingType: 'flat' | 'per_km' | 'per_500m';
+    pricingType: 'flat' | 'per_km' | 'per_500m' | 'per_100m';
     pricePerStep: number;
   };
   distanceKm?: number;
@@ -136,6 +136,8 @@ export interface OrderItem {
   unitPrice: number;
   lineTotal: number;
   returnedQuantity: number;
+  /** Joined on seller order views — first photo shown in the card/detail. */
+  productVariant?: { photos: string[] } | null;
 }
 
 export type OrderStatus =
@@ -165,6 +167,155 @@ export interface Order {
   returnReason?: string | null;
   /** Variant IDs the current user has already reviewed for this order (from GET /orders/:id). */
   reviewedVariantIds?: string[];
+  /** Seller-side: joined customer + address (present on /seller/shops/:id/orders). */
+  user?: { id: string; name: string | null; phone: string } | null;
+  deliveryAddress?: { address: string; latitude: number; longitude: number } | null;
+}
+
+/** FIFO cost summary attached to seller inventory rows. */
+export interface VariantCost {
+  avgCost: number;
+  nextCost: number;
+  stockValue: number;
+}
+
+/** A seller-side variant (GET /seller/.../variants) — variant + FIFO cost. */
+export interface SellerVariant extends PublicProductVariant {
+  lowStockThreshold: number;
+  isActive: boolean;
+  expiryDate: string | null;
+  cost: VariantCost;
+}
+
+/** A single FIFO receiving lot. */
+export interface StockBatch {
+  id: string;
+  productVariantId: string;
+  costPrice: number;
+  quantityReceived: number;
+  quantityRemaining: number;
+  expiryDate: string | null;
+  supplierName: string | null;
+  note: string | null;
+  isReturn: boolean;
+  receivedAt: string;
+  createdAt: string;
+}
+
+/** Shared catalogue entry returned when scanning a known barcode. */
+export interface GlobalProduct {
+  id: string;
+  barcode: string;
+  name: string;
+  brand: string | null;
+  defaultUnitType: 'piece' | 'kg' | 'liter' | 'gram' | 'pack';
+  defaultUnitSize: number;
+  categoryId: string | null;
+  photos: string[];
+  isVerified: boolean;
+  usageCount: number;
+}
+
+export type MovementType = 'in' | 'sold' | 'returned' | 'expired' | 'adjusted';
+
+export interface InventoryMovement {
+  id: string;
+  productVariantId: string;
+  type: MovementType;
+  quantity: number;
+  beforeStock: number;
+  afterStock: number;
+  reason: string | null;
+  orderId: string | null;
+  createdAt: string;
+}
+
+export type StatsPeriod = 'today' | '7d' | '30d';
+
+export interface SellerStats {
+  period: StatsPeriod;
+  revenue: number;
+  profit: number;
+  orderCount: number;
+  itemsSold: number;
+  inventoryValue: number;
+  topProducts: { name: string; qty: number; revenue: number }[];
+}
+
+export interface ReorderItem {
+  variantId: string;
+  name: string;
+  stock: number;
+  lowStockThreshold: number;
+  soldLast30: number;
+  perDay: number;
+  daysLeft: number | null;
+  suggestedQty: number;
+  unitCost: number;
+}
+
+export interface ExpiringItem {
+  batchId: string;
+  variantId: string;
+  name: string;
+  quantityRemaining: number;
+  costPrice: number;
+  expiryDate: string;
+  daysToExpiry: number;
+}
+
+// ---- Qarz daftar (debt ledger) ----
+export interface DebtAccount {
+  customerName: string;
+  customerPhone: string;
+  totalDebt: number;
+  totalPaid: number;
+  balance: number;
+  lastActivityAt: string;
+}
+
+export interface DebtLine {
+  variantId: string | null;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface Debt {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  lines: DebtLine[];
+  itemsTotal: number;
+  extraCharge: number;
+  total: number;
+  note: string | null;
+  stockDecremented: boolean;
+  createdAt: string;
+}
+
+export interface DebtPayment {
+  id: string;
+  customerPhone: string;
+  amount: number;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface DebtAccountDetail {
+  customerName: string;
+  customerPhone: string;
+  totalDebt: number;
+  totalPaid: number;
+  balance: number;
+  debts: Debt[];
+  payments: DebtPayment[];
+}
+
+export interface DebtSummary {
+  outstanding: number;
+  customers: number;
 }
 
 export interface MyShop {
@@ -173,6 +324,8 @@ export interface MyShop {
   address: string;
   photos: string[];
   isOpenManual: boolean;
+  /** Count of NEW orders awaiting acceptance — shown as a badge on the profile. */
+  newOrderCount: number;
 }
 
 export interface MeUser {

@@ -75,6 +75,13 @@
             "imageWidth": 76
           }
         }
+      ],
+      "expo-audio",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Do'kon va mahsulot rasmlarini qo'shish uchun galereyaga ruxsat kerak"
+        }
       ]
     ],
     "experiments": {

@@ -55,6 +55,7 @@ export const translations = {
     'home.locationLoading': 'Lokatsiya so\'ralmoqda...',
     'home.locationRetry': 'Lokatsiyani qayta yangilash',
     'home.currentLocation': 'Joriy lokatsiya',
+    'home.notCurrentLocation': 'Joriy joylashuvingiz emas',
     'home.deliveryFree': 'Tekin yetkazish',
     'home.deliveryFee': 'Yetkazish {price} so\'m',
     'home.minOrder': 'Min. {price} so\'m',
@@ -63,12 +64,49 @@ export const translations = {
     // Map
     'map.title': '{n} ta do\'kon xaritada',
     'map.help': 'Pinni bosing → do\'kon ma\'lumotini ko\'ring',
+    'map.filterOpen': 'Ochiq',
+    'map.filterFree': 'Tekin yetkazish',
+    'map.filterRated': 'Reyting 4+',
+    'map.shopsN': '{n} ta do\'kon',
+    'map.shopsQuery': '“{q}” — {n} ta do\'konda',
+    'map.waiting': 'Lokatsiya kutilmoqda…',
 
     // Search
     'search.placeholder': 'Mahsulot qidirish…',
     'search.empty.title': 'Mahsulot nomi bo\'yicha qidiruv',
     'search.empty.desc': 'Faqat yaqin do\'konlardan',
     'search.notFound': 'Mahsulot topilmadi',
+    'search.notFoundDesc': 'Boshqa kalit so\'z yoki filtrlarni sinab ko\'ring',
+    'search.recent': 'Oxirgi qidiruvlar',
+    'search.categories': 'Kategoriyalar',
+    'search.clear': 'Tozalash',
+
+    // Filters
+    'filter.button': 'Filtrlar',
+    'filter.hint': 'Saralash · Narx · Kategoriya',
+    'filter.sort': 'Saralash',
+    'filter.sortCombineHint': 'Narx va reytingni birga tanlash mumkin',
+    'filter.priceRange': 'Narx oralig\'i',
+    'filter.category': 'Kategoriya',
+    'filter.all': 'Hammasi',
+    'filter.onlyDiscount': 'Faqat chegirmali mahsulotlar',
+    'filter.reset': 'Tozalash',
+    'filter.apply': 'Ko\'rsatish',
+    'filter.applyN': 'Ko\'rsatish ({n})',
+    'filter.discounted': 'Chegirmali',
+    'filter.countN': '{n} ta',
+
+    // Sort
+    'sort.popular': 'Mashhur',
+    'sort.cheap': 'Arzon',
+    'sort.expensive': 'Qimmat',
+    'sort.rating': 'Reyting',
+
+    // Price ranges
+    'price.lt10': '10 ming gacha',
+    'price.r10_30': '10–30 ming',
+    'price.r30_100': '30–100 ming',
+    'price.gt100': '100 mingdan',
 
     // Cart
     'cart.empty.title': 'Savatlaringiz bo\'sh',
@@ -101,6 +139,23 @@ export const translations = {
     'shop.inCart': 'Savatda · {n}',
     'shop.closedAlert': 'Do\'kon hozir yopiq',
     'shop.outOfStock': 'Tugadi',
+    'shop.open': 'Ochiq',
+    'shop.closed': 'Yopiq',
+    'shop.enter': 'Do\'konga kirish',
+    'shop.noProducts': 'Mahsulot yo\'q',
+    'shop.freeShort': 'Tekin',
+    'shop.order': 'Buyurtma berish',
+
+    // Product detail
+    'product.reviewsN': '{n} sharh',
+    'product.outOfStock': 'Hozircha mavjud emas',
+    'product.variants': 'Variantlar',
+    'product.description': 'Tavsif',
+    'product.reviews': 'Sharhlar',
+    'product.noReviews': 'Bu mahsulotga hali sharh yo\'q. Birinchi bo\'lib baholang!',
+    'product.lowStock': 'Kam qoldi',
+    'product.goToShop': 'Do\'konga o\'tish',
+    'product.goToCart': 'Savatga o\'tish',
 
     // Profile
     'profile.section.myShops': 'Mening do\'konlarim',
@@ -114,6 +169,24 @@ export const translations = {
     'profile.noShops': 'Hozircha do\'konlaringiz yo\'q',
     'profile.openShop': 'Ochiq',
     'profile.closedShop': 'Yopiq',
+    'profile.user': 'Foydalanuvchi',
+    'profile.joinAsStaff': 'Xodim sifatida qo\'shilish',
+    'seller.pending.title': 'Ariza ko\'rib chiqilmoqda',
+    'seller.pending.desc': 'Arizangiz admin tomonidan ko\'rib chiqilyapti. Tasdiqlangach do\'koningiz ochiladi.',
+    'seller.rejected.title': 'Ariza rad etildi',
+    'seller.rejected.reason': 'Sabab: {reason}',
+    'seller.retry': 'Qayta yuborish',
+
+    // Edit profile
+    'editProfile.title': 'Profilni tahrirlash',
+    'editProfile.name': 'Ism',
+    'editProfile.namePlaceholder': 'Ismingiz',
+    'editProfile.phone': 'Telefon',
+    'editProfile.phoneLocked': 'Telefon raqamini o\'zgartirib bo\'lmaydi',
+    'editProfile.chooseAvatar': 'Avatar tanlang',
+    'editProfile.boy': 'O\'g\'il bola',
+    'editProfile.girl': 'Qiz bola',
+    'editProfile.saving': 'Saqlanmoqda…',
 
     // Addresses
     'addr.title': 'Manzillarim',
@@ -126,6 +199,28 @@ export const translations = {
     'addr.delete': 'O\'chirish',
     'addr.deleteConfirm': 'Manzilni o\'chirasizmi?',
     'addr.default': 'Asosiy',
+    'addr.hint': 'Manzilni tanlang — atrofidagi do\'konlar va mahsulotlar shu joy bo\'yicha ko\'rsatiladi.',
+    'addr.new': 'Yangi manzil',
+    'addr.addressPlaceholder': 'To\'liq manzil (xaritadan tanlasangiz avtomatik to\'ladi)',
+    'addr.pickOnMap': 'Xaritadan belgilash',
+    'addr.pickOnMapAgain': 'Xaritadan boshqa joy tanlash',
+    'addr.makeDefault': 'Asosiy qilish',
+    'addr.active': 'Faol',
+    'addr.saving': 'Saqlanmoqda…',
+    'addr.noLocation': 'Lokatsiya tanlanmagan',
+
+    // Address picker sheet
+    'picker.deliveryAddress': 'Yetkazish manzili',
+    'picker.currentLocation': 'Joriy joylashuvim',
+    'picker.gpsAuto': 'GPS orqali avtomatik',
+    'picker.addNew': 'Yangi manzil qo\'shish',
+    'picker.main': 'asosiy',
+
+    // Location picker (map)
+    'locpicker.dragHint': 'Xaritani suring — pin kerakli joyda tursin',
+    'locpicker.detecting': 'Manzil aniqlanmoqda…',
+    'locpicker.selectedPoint': 'Tanlangan nuqta',
+    'locpicker.confirm': 'Shu joyni belgilash',
 
     // Seller application
     'sellerApp.title': 'Sotuvchi bo\'lish',
@@ -139,7 +234,241 @@ export const translations = {
     'sellerApp.submit': 'Arizani yuborish',
     'sellerApp.sent': 'Arizangiz adminga yuborildi. Tasdiqlangach do\'koningiz yaratiladi.',
   },
+
+  uz_cyrl: {
+    // Common
+    'common.cancel': 'Бекор қилиш',
+    'common.confirm': 'Тасдиқлаш',
+    'common.continue': 'Давом этиш',
+    'common.save': 'Сақлаш',
+    'common.delete': 'Ўчириш',
+    'common.edit': 'Ўзгартириш',
+    'common.back': 'Орқага',
+    'common.retry': 'Қайта уриниш',
+    'common.loading': 'Юкланмоқда...',
+    'common.search': 'Қидириш',
+    'common.error': 'Хатолик',
+    'common.success': 'Муваффақиятли',
+    'common.yes': 'Ҳа',
+    'common.no': 'Йўқ',
+    'common.close': 'Ёпиш',
+    'common.somPerKg': 'сўм/кг',
+    'common.som': 'сўм',
+
+    // Auth
+    'auth.welcome': 'Хуш келибсиз!',
+    'auth.phoneLabel': 'Телефон рақам',
+    'auth.phonePlaceholder': '90 123 45 67',
+    'auth.phoneHelper': 'SMS орқали тасдиқ коди юборамиз',
+    'auth.phoneInvalid': 'Телефон рақам тўлиқ эмас',
+    'auth.continue': 'Давом этиш',
+    'auth.otpTitle': 'Тасдиқ коди',
+    'auth.otpHelper': '{phone} рақамига 6 хонали код юборилди',
+    'auth.otpResendIn': 'Янги код {sec}с дан кейин',
+    'auth.otpResend': 'Янги код юбориш',
+    'auth.otpResent': 'Янги код юборилди',
+    'auth.otpInvalid': 'Код нотўғри',
+    'auth.changeNumber': 'Телефон рақамни ўзгартириш',
+    'auth.signOut': 'Чиқиш',
+    'auth.signOutConfirm': 'Аккаунтдан чиқишни хоҳлайсизми?',
+
+    // Tabs
+    'tab.home': 'Бош саҳифа',
+    'tab.map': 'Харита',
+    'tab.search': 'Қидирув',
+    'tab.carts': 'Саватлар',
+    'tab.profile': 'Профил',
+
+    // Home
+    'home.nearbyShops': 'Яқин дўконлар',
+    'home.shopsCount': '{n} та дўкон етказиб бера олади',
+    'home.empty.title': 'Яқин атрофда дўкон йўқ',
+    'home.empty.desc': 'Сотувчилар ариза юборгандан кейин бу ерда кўринади',
+    'home.locationLoading': 'Локация сўралмоқда...',
+    'home.locationRetry': 'Локацияни қайта янгилаш',
+    'home.currentLocation': 'Жорий локация',
+    'home.notCurrentLocation': 'Жорий жойлашувингиз эмас',
+    'home.deliveryFree': 'Текин етказиш',
+    'home.deliveryFee': 'Етказиш {price} сўм',
+    'home.minOrder': 'Мин. {price} сўм',
+    'home.closed': 'Ёпиқ',
+
+    // Map
+    'map.title': '{n} та дўкон харитада',
+    'map.help': 'Пинни босинг → дўкон маълумотини кўринг',
+    'map.filterOpen': 'Очиқ',
+    'map.filterFree': 'Текин етказиш',
+    'map.filterRated': 'Рейтинг 4+',
+    'map.shopsN': '{n} та дўкон',
+    'map.shopsQuery': '“{q}” — {n} та дўконда',
+    'map.waiting': 'Локация кутилмоқда…',
+
+    // Search
+    'search.placeholder': 'Маҳсулот қидириш…',
+    'search.empty.title': 'Маҳсулот номи бўйича қидирув',
+    'search.empty.desc': 'Фақат яқин дўконлардан',
+    'search.notFound': 'Маҳсулот топилмади',
+    'search.notFoundDesc': 'Бошқа калит сўз ёки фильтрларни синаб кўринг',
+    'search.recent': 'Охирги қидирувлар',
+    'search.categories': 'Категориялар',
+    'search.clear': 'Тозалаш',
+
+    // Filters
+    'filter.button': 'Фильтрлар',
+    'filter.hint': 'Саралаш · Нарх · Категория',
+    'filter.sort': 'Саралаш',
+    'filter.sortCombineHint': 'Нарх ва рейтингни бирга танлаш мумкин',
+    'filter.priceRange': 'Нарх оралиғи',
+    'filter.category': 'Категория',
+    'filter.all': 'Ҳаммаси',
+    'filter.onlyDiscount': 'Фақат чегирмали маҳсулотлар',
+    'filter.reset': 'Тозалаш',
+    'filter.apply': 'Кўрсатиш',
+    'filter.applyN': 'Кўрсатиш ({n})',
+    'filter.discounted': 'Чегирмали',
+    'filter.countN': '{n} та',
+
+    // Sort
+    'sort.popular': 'Машҳур',
+    'sort.cheap': 'Арзон',
+    'sort.expensive': 'Қиммат',
+    'sort.rating': 'Рейтинг',
+
+    // Price ranges
+    'price.lt10': '10 минг гача',
+    'price.r10_30': '10–30 минг',
+    'price.r30_100': '30–100 минг',
+    'price.gt100': '100 мингдан',
+
+    // Cart
+    'cart.empty.title': 'Саватларингиз бўш',
+    'cart.empty.desc': 'Ҳар бир дўкондан танлаган маҳсулотларингиз алоҳида саватга йиғилади',
+    'cart.itemsCount': '{n} та маҳсулот',
+    'cart.proceedToOrder': 'Буюртма бериш →',
+    'cart.proceed': 'Буюртма бериш',
+    'cart.selectAddress': 'Манзил танланг',
+    'cart.subtotal': 'Маҳсулотлар',
+    'cart.deliveryFee': 'Етказиб бериш',
+    'cart.distance': 'Масофа',
+    'cart.total': 'Жами',
+
+    // Orders
+    'orders.title': 'Буюртмаларим',
+    'orders.empty': 'Ҳозирча буюртмалар йўқ',
+    'orders.statusNew': 'Янги',
+    'orders.statusAccepted': 'Қабул қилинди',
+    'orders.statusPreparing': 'Йиғилмоқда',
+    'orders.statusDelivering': 'Йўлда',
+    'orders.statusDelivered': 'Етказилди',
+    'orders.statusCancelled': 'Бекор қилинди',
+    'orders.confirmReceived': 'Буюртмани қабул қилдим',
+    'orders.cancel': 'Бекор қилиш',
+    'orders.cancelConfirm': 'Буюртмани бекор қиласизми?',
+
+    // Shop
+    'shop.products': 'Маҳсулотлар',
+    'shop.addToCart': '+ Саватга',
+    'shop.inCart': 'Саватда · {n}',
+    'shop.closedAlert': 'Дўкон ҳозир ёпиқ',
+    'shop.outOfStock': 'Тугади',
+    'shop.open': 'Очиқ',
+    'shop.closed': 'Ёпиқ',
+    'shop.enter': 'Дўконга кириш',
+    'shop.noProducts': 'Маҳсулот йўқ',
+    'shop.freeShort': 'Текин',
+    'shop.order': 'Буюртма бериш',
+
+    // Product detail
+    'product.reviewsN': '{n} шарҳ',
+    'product.outOfStock': 'Ҳозирча мавжуд эмас',
+    'product.variants': 'Вариантлар',
+    'product.description': 'Тавсиф',
+    'product.reviews': 'Шарҳлар',
+    'product.noReviews': 'Бу маҳсулотга ҳали шарҳ йўқ. Биринчи бўлиб баҳоланг!',
+    'product.lowStock': 'Кам қолди',
+    'product.goToShop': 'Дўконга ўтиш',
+    'product.goToCart': 'Саватга ўтиш',
+
+    // Profile
+    'profile.section.myShops': 'Менинг дўконларим',
+    'profile.section.account': 'Ҳисоб',
+    'profile.section.other': 'Бошқа',
+    'profile.becomeSeller': 'Сотувчи бўлиш',
+    'profile.becomeSellerDesc': 'Ўз дўконингизни бошқаринг',
+    'profile.addresses': 'Манзилларим',
+    'profile.orders': 'Буюртмаларим',
+    'profile.language': 'Тил',
+    'profile.noShops': 'Ҳозирча дўконларингиз йўқ',
+    'profile.openShop': 'Очиқ',
+    'profile.closedShop': 'Ёпиқ',
+    'profile.user': 'Фойдаланувчи',
+    'profile.joinAsStaff': 'Ходим сифатида қўшилиш',
+    'seller.pending.title': 'Ариза кўриб чиқилмоқда',
+    'seller.pending.desc': 'Аризангиз админ томонидан кўриб чиқиляпти. Тасдиқлангач дўконингиз очилади.',
+    'seller.rejected.title': 'Ариза рад этилди',
+    'seller.rejected.reason': 'Сабаб: {reason}',
+    'seller.retry': 'Қайта юбориш',
+
+    // Edit profile
+    'editProfile.title': 'Профилни таҳрирлаш',
+    'editProfile.name': 'Исм',
+    'editProfile.namePlaceholder': 'Исмингиз',
+    'editProfile.phone': 'Телефон',
+    'editProfile.phoneLocked': 'Телефон рақамини ўзгартириб бўлмайди',
+    'editProfile.chooseAvatar': 'Аватар танланг',
+    'editProfile.boy': 'Ўғил бола',
+    'editProfile.girl': 'Қиз бола',
+    'editProfile.saving': 'Сақланмоқда…',
+
+    // Addresses
+    'addr.title': 'Манзилларим',
+    'addr.add': '+ Янги манзил қўшиш',
+    'addr.label': 'Ном (Уй, Иш, ва ҳ.к.)',
+    'addr.address': 'Тўлиқ манзил',
+    'addr.gpsHint': 'Жорий локация',
+    'addr.refreshGps': 'Локацияни янгилаш',
+    'addr.save': 'Сақлаш',
+    'addr.delete': 'Ўчириш',
+    'addr.deleteConfirm': 'Манзилни ўчирасизми?',
+    'addr.default': 'Асосий',
+    'addr.hint': 'Манзилни танланг — атрофидаги дўконлар ва маҳсулотлар шу жой бўйича кўрсатилади.',
+    'addr.new': 'Янги манзил',
+    'addr.addressPlaceholder': 'Тўлиқ манзил (харитадан танласангиз автоматик тўлади)',
+    'addr.pickOnMap': 'Харитадан белгилаш',
+    'addr.pickOnMapAgain': 'Харитадан бошқа жой танлаш',
+    'addr.makeDefault': 'Асосий қилиш',
+    'addr.active': 'Фаол',
+    'addr.saving': 'Сақланмоқда…',
+    'addr.noLocation': 'Локация танланмаган',
+
+    // Address picker sheet
+    'picker.deliveryAddress': 'Етказиш манзили',
+    'picker.currentLocation': 'Жорий жойлашувим',
+    'picker.gpsAuto': 'GPS орқали автоматик',
+    'picker.addNew': 'Янги манзил қўшиш',
+    'picker.main': 'асосий',
+
+    // Location picker (map)
+    'locpicker.dragHint': 'Харитани суринг — пин керакли жойда турсин',
+    'locpicker.detecting': 'Манзил аниқланмоқда…',
+    'locpicker.selectedPoint': 'Танланган нуқта',
+    'locpicker.confirm': 'Шу жойни белгилаш',
+
+    // Seller application
+    'sellerApp.title': 'Сотувчи бўлиш',
+    'sellerApp.desc': 'Ўз маҳалла дўконингизни Yaqin Market платформасига қўшинг',
+    'sellerApp.shopName': 'Дўкон номи',
+    'sellerApp.shopAddress': 'Дўкон манзили',
+    'sellerApp.stir': 'СТИР / ИНН рақами',
+    'sellerApp.stirHelper': 'Ихтиёрий',
+    'sellerApp.gpsTitle': 'Дўкон GPS локацияси',
+    'sellerApp.gpsHelper': 'Дўкон турган жойда туриб "Янгилаш" босинг',
+    'sellerApp.submit': 'Аризани юбориш',
+    'sellerApp.sent': 'Аризангиз админга юборилди. Тасдиқлангач дўконингиз яратилади.',
+  },
+
   ru: {
+    // Common
     'common.cancel': 'Отмена',
     'common.confirm': 'Подтвердить',
     'common.continue': 'Продолжить',
@@ -158,6 +487,7 @@ export const translations = {
     'common.somPerKg': 'сум/кг',
     'common.som': 'сум',
 
+    // Auth
     'auth.welcome': 'Добро пожаловать!',
     'auth.phoneLabel': 'Номер телефона',
     'auth.phonePlaceholder': '90 123 45 67',
@@ -174,12 +504,14 @@ export const translations = {
     'auth.signOut': 'Выйти',
     'auth.signOutConfirm': 'Выйти из аккаунта?',
 
+    // Tabs
     'tab.home': 'Главная',
     'tab.map': 'Карта',
     'tab.search': 'Поиск',
     'tab.carts': 'Корзины',
     'tab.profile': 'Профиль',
 
+    // Home
     'home.nearbyShops': 'Магазины рядом',
     'home.shopsCount': '{n} магазин(ов) доставит',
     'home.empty.title': 'Рядом нет магазинов',
@@ -187,19 +519,60 @@ export const translations = {
     'home.locationLoading': 'Запрос местоположения...',
     'home.locationRetry': 'Обновить местоположение',
     'home.currentLocation': 'Текущая локация',
+    'home.notCurrentLocation': 'Не ваше текущее местоположение',
     'home.deliveryFree': 'Бесплатная доставка',
     'home.deliveryFee': 'Доставка {price} сум',
     'home.minOrder': 'Мин. {price} сум',
     'home.closed': 'Закрыт',
 
+    // Map
     'map.title': '{n} магазинов на карте',
     'map.help': 'Нажмите на пин → информация о магазине',
+    'map.filterOpen': 'Открыт',
+    'map.filterFree': 'Бесплатная доставка',
+    'map.filterRated': 'Рейтинг 4+',
+    'map.shopsN': '{n} магазинов',
+    'map.shopsQuery': '«{q}» — в {n} магазинах',
+    'map.waiting': 'Ожидание локации…',
 
+    // Search
     'search.placeholder': 'Поиск товара…',
     'search.empty.title': 'Поиск по названию товара',
     'search.empty.desc': 'Только из ближайших магазинов',
     'search.notFound': 'Товары не найдены',
+    'search.notFoundDesc': 'Попробуйте другое слово или фильтры',
+    'search.recent': 'Недавние запросы',
+    'search.categories': 'Категории',
+    'search.clear': 'Очистить',
 
+    // Filters
+    'filter.button': 'Фильтры',
+    'filter.hint': 'Сортировка · Цена · Категория',
+    'filter.sort': 'Сортировка',
+    'filter.sortCombineHint': 'Можно выбрать цену и рейтинг вместе',
+    'filter.priceRange': 'Диапазон цен',
+    'filter.category': 'Категория',
+    'filter.all': 'Все',
+    'filter.onlyDiscount': 'Только товары со скидкой',
+    'filter.reset': 'Очистить',
+    'filter.apply': 'Показать',
+    'filter.applyN': 'Показать ({n})',
+    'filter.discounted': 'Со скидкой',
+    'filter.countN': '{n} шт',
+
+    // Sort
+    'sort.popular': 'Популярные',
+    'sort.cheap': 'Дешёвые',
+    'sort.expensive': 'Дорогие',
+    'sort.rating': 'Рейтинг',
+
+    // Price ranges
+    'price.lt10': 'До 10 тыс',
+    'price.r10_30': '10–30 тыс',
+    'price.r30_100': '30–100 тыс',
+    'price.gt100': 'От 100 тыс',
+
+    // Cart
     'cart.empty.title': 'Ваши корзины пусты',
     'cart.empty.desc': 'Товары из каждого магазина собираются в отдельную корзину',
     'cart.itemsCount': '{n} товаров',
@@ -211,6 +584,7 @@ export const translations = {
     'cart.distance': 'Расстояние',
     'cart.total': 'Итого',
 
+    // Orders
     'orders.title': 'Мои заказы',
     'orders.empty': 'Пока нет заказов',
     'orders.statusNew': 'Новый',
@@ -223,12 +597,31 @@ export const translations = {
     'orders.cancel': 'Отменить',
     'orders.cancelConfirm': 'Отменить заказ?',
 
+    // Shop
     'shop.products': 'Товары',
     'shop.addToCart': '+ В корзину',
     'shop.inCart': 'В корзине · {n}',
     'shop.closedAlert': 'Магазин сейчас закрыт',
     'shop.outOfStock': 'Нет в наличии',
+    'shop.open': 'Открыт',
+    'shop.closed': 'Закрыт',
+    'shop.enter': 'Войти в магазин',
+    'shop.noProducts': 'Нет товаров',
+    'shop.freeShort': 'Бесплатно',
+    'shop.order': 'Оформить заказ',
 
+    // Product detail
+    'product.reviewsN': '{n} отзыв.',
+    'product.outOfStock': 'Сейчас недоступно',
+    'product.variants': 'Варианты',
+    'product.description': 'Описание',
+    'product.reviews': 'Отзывы',
+    'product.noReviews': 'У этого товара пока нет отзывов. Оцените первым!',
+    'product.lowStock': 'Осталось мало',
+    'product.goToShop': 'В магазин',
+    'product.goToCart': 'В корзину',
+
+    // Profile
     'profile.section.myShops': 'Мои магазины',
     'profile.section.account': 'Аккаунт',
     'profile.section.other': 'Прочее',
@@ -240,7 +633,26 @@ export const translations = {
     'profile.noShops': 'У вас пока нет магазинов',
     'profile.openShop': 'Открыт',
     'profile.closedShop': 'Закрыт',
+    'profile.user': 'Пользователь',
+    'profile.joinAsStaff': 'Присоединиться как сотрудник',
+    'seller.pending.title': 'Заявка на рассмотрении',
+    'seller.pending.desc': 'Ваша заявка рассматривается администратором. После одобрения откроется магазин.',
+    'seller.rejected.title': 'Заявка отклонена',
+    'seller.rejected.reason': 'Причина: {reason}',
+    'seller.retry': 'Отправить снова',
 
+    // Edit profile
+    'editProfile.title': 'Редактировать профиль',
+    'editProfile.name': 'Имя',
+    'editProfile.namePlaceholder': 'Ваше имя',
+    'editProfile.phone': 'Телефон',
+    'editProfile.phoneLocked': 'Номер телефона изменить нельзя',
+    'editProfile.chooseAvatar': 'Выберите аватар',
+    'editProfile.boy': 'Мальчик',
+    'editProfile.girl': 'Девочка',
+    'editProfile.saving': 'Сохранение…',
+
+    // Addresses
     'addr.title': 'Мои адреса',
     'addr.add': '+ Добавить адрес',
     'addr.label': 'Название (Дом, Работа и т.д.)',
@@ -251,7 +663,30 @@ export const translations = {
     'addr.delete': 'Удалить',
     'addr.deleteConfirm': 'Удалить адрес?',
     'addr.default': 'Основной',
+    'addr.hint': 'Выберите адрес — магазины и товары рядом покажутся по этому месту.',
+    'addr.new': 'Новый адрес',
+    'addr.addressPlaceholder': 'Полный адрес (заполнится автоматически с карты)',
+    'addr.pickOnMap': 'Указать на карте',
+    'addr.pickOnMapAgain': 'Выбрать другое место на карте',
+    'addr.makeDefault': 'Сделать основным',
+    'addr.active': 'Активно',
+    'addr.saving': 'Сохранение…',
+    'addr.noLocation': 'Локация не выбрана',
 
+    // Address picker sheet
+    'picker.deliveryAddress': 'Адрес доставки',
+    'picker.currentLocation': 'Моё местоположение',
+    'picker.gpsAuto': 'Автоматически по GPS',
+    'picker.addNew': 'Добавить адрес',
+    'picker.main': 'основной',
+
+    // Location picker (map)
+    'locpicker.dragHint': 'Двигайте карту — пусть пин будет в нужном месте',
+    'locpicker.detecting': 'Определение адреса…',
+    'locpicker.selectedPoint': 'Выбранная точка',
+    'locpicker.confirm': 'Указать это место',
+
+    // Seller application
     'sellerApp.title': 'Стать продавцом',
     'sellerApp.desc': 'Добавьте свой магазин на платформу Yaqin Market',
     'sellerApp.shopName': 'Название магазина',
@@ -263,7 +698,6 @@ export const translations = {
     'sellerApp.submit': 'Отправить заявку',
     'sellerApp.sent': 'Заявка отправлена администратору. После одобрения магазин будет создан.',
   },
-  uz_cyrl: {} as Record<string, string>,
 } as const;
 
 export type TranslationKey = keyof typeof translations.uz;

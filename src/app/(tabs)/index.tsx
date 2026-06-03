@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ChevronDown, Map as MapIcon, MapPin, Search as SearchIcon, ShoppingBag } from 'lucide-react-native';
-import { useEffect, useMemo } from 'react';
+import { ChevronDown, Map as MapIcon, MapPin, Navigation, Search as SearchIcon, ShoppingBag } from 'lucide-react-native';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AddressPickerSheet } from '@/components/AddressPickerSheet';
 import { ProductCard } from '@/components/ProductCard';
 import { ProductCardSkeleton } from '@/components/ProductCardSkeleton';
 import { StoreFeedCard } from '@/components/StoreFeedCard';
@@ -43,6 +44,8 @@ export default function HomeScreen() {
   const requestPermission = useLocationStore((s) => s.requestPermission);
   const refresh = useLocationStore((s) => s.refresh);
   const permissionStatus = useLocationStore((s) => s.permissionStatus);
+
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
     if (!permissionStatus) {
@@ -92,7 +95,9 @@ export default function HomeScreen() {
   // fit are appended only once the feed is fully loaded.
   const rows = useMemo<Row[]>(() => {
     if (items.length === 0) return [];
-    const shops = shopsQuery.data ?? [];
+    // Closed shops are hidden from the feed (their products are filtered out
+    // server-side, so showing their banner would be misleading).
+    const shops = (shopsQuery.data ?? []).filter((s) => s.isOpenManual);
     const out: Row[] = [];
     let shopIdx = 0;
     let productRows = 0;
@@ -119,6 +124,9 @@ export default function HomeScreen() {
     : coords
       ? tr('home.currentLocation')
       : tr('home.locationLoading');
+  // A manually picked saved address is NOT the device's live position. Surface
+  // this strongly so the customer never browses the wrong area by accident.
+  const usingManualAddress = !!selectedAddress;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -127,13 +135,35 @@ export default function HomeScreen() {
         <View style={styles.headerTop}>
           <Text style={styles.brand}>Yaqin Market</Text>
           <Pressable
-            style={styles.locationPill}
-            onPress={() => router.push('/addresses')}>
-            <MapPin size={13} color={colors.text.onPrimary} strokeWidth={2.4} />
-            <Text style={styles.locationText} numberOfLines={1}>
-              {locationLabel}
-            </Text>
-            <ChevronDown size={13} color="rgba(255,255,255,0.85)" strokeWidth={2.4} />
+            style={[styles.locationPill, usingManualAddress && styles.locationPillManual]}
+            onPress={() => setPickerOpen(true)}>
+            {usingManualAddress ? (
+              <MapPin
+                size={15}
+                color={colors.brand.primary}
+                strokeWidth={2.6}
+                fill={colors.brand.primarySurface}
+              />
+            ) : (
+              <Navigation size={13} color={colors.text.onPrimary} strokeWidth={2.4} />
+            )}
+            <View style={styles.locationTextWrap}>
+              <Text
+                style={[styles.locationText, usingManualAddress && styles.locationTextManual]}
+                numberOfLines={1}>
+                {locationLabel}
+              </Text>
+              {usingManualAddress && (
+                <Text style={styles.locationSub} numberOfLines={1}>
+                  {tr('home.notCurrentLocation')}
+                </Text>
+              )}
+            </View>
+            <ChevronDown
+              size={14}
+              color={usingManualAddress ? colors.text.tertiary : 'rgba(255,255,255,0.85)'}
+              strokeWidth={2.4}
+            />
           </Pressable>
         </View>
 
@@ -221,6 +251,8 @@ export default function HomeScreen() {
           );
         }}
       />
+
+      <AddressPickerSheet visible={pickerOpen} onClose={() => setPickerOpen(false)} />
     </SafeAreaView>
   );
 }
@@ -242,7 +274,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     backgroundColor: 'rgba(255,255,255,0.18)',
     borderRadius: radius.full,
     paddingHorizontal: spacing.sm,
@@ -250,7 +282,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.22)',
   },
-  locationText: { flex: 1, ...typography.caption, color: colors.text.onPrimary, fontWeight: '600' },
+  // Manual address = NOT live GPS: solid white pill with an amber alert border
+  // so it visibly stands out against the red header.
+  locationPillManual: {
+    backgroundColor: colors.bg.surface,
+    borderColor: colors.feedback.warning,
+    borderWidth: 1.5,
+    paddingVertical: 5,
+  },
+  locationTextWrap: { flex: 1 },
+  locationText: { ...typography.caption, color: colors.text.onPrimary, fontWeight: '600' },
+  locationTextManual: { color: colors.text.primary, fontWeight: '700' },
+  locationSub: {
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: '700',
+    color: colors.feedback.warning,
+  },
   searchBar: {
     backgroundColor: colors.bg.surface,
     borderRadius: radius.lg,

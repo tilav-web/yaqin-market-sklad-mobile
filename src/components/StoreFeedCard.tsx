@@ -1,6 +1,7 @@
 import { ChevronRight, Clock, MapPin, Star, Store } from 'lucide-react-native';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { resolveMedia } from '@/lib/api';
 import { PublicShop } from '@/lib/types';
 import { colors, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
@@ -29,7 +30,7 @@ export function StoreFeedCard({ shop, onPress }: Props) {
       }}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.92 }]}>
       {banner ? (
-        <Image source={{ uri: banner }} style={styles.banner} resizeMode="cover" />
+        <Image source={{ uri: resolveMedia(banner) }} style={styles.banner} resizeMode="cover" />
       ) : (
         <View style={[styles.banner, styles.bannerPlaceholder]}>
           <Store size={32} color={colors.brand.primary} strokeWidth={1.5} />

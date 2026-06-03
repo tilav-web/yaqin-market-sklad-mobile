@@ -3,6 +3,7 @@ import { ChevronRight, ShoppingCart, Store, Trash2 } from 'lucide-react-native';
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { resolveMedia } from '@/lib/api';
 import { EmptyState } from '@/components/ui';
 import { useCartStore } from '@/stores/cart';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
@@ -61,7 +62,7 @@ export default function CartsTab() {
                   {lines.slice(0, 5).map((line) => (
                     <View key={line.variantId} style={styles.thumb}>
                       {line.photoUrl ? (
-                        <Image source={{ uri: line.photoUrl }} style={styles.thumbImg} />
+                        <Image source={{ uri: resolveMedia(line.photoUrl) }} style={styles.thumbImg} />
                       ) : (
                         <View style={[styles.thumbImg, styles.thumbPlaceholder]} />
                       )}

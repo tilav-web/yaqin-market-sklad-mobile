@@ -3,6 +3,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Badge } from '@/components/ui/Badge';
 import { useTranslation } from '@/i18n';
+import { resolveMedia } from '@/lib/api';
 import { PublicShop } from '@/lib/types';
 import { colors, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
@@ -24,7 +25,7 @@ export function ShopCard({ shop, onPress }: Props) {
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}>
       <View style={styles.imageWrap}>
         {shop.photos[0] ? (
-          <Image source={{ uri: shop.photos[0] }} style={styles.image} />
+          <Image source={{ uri: resolveMedia(shop.photos[0]) }} style={styles.image} />
         ) : (
           <View style={[styles.image, styles.imagePlaceholder]}>
             <MapPin size={36} color={colors.brand.primary} strokeWidth={1.6} />

@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useToast } from '@/components/ui';
-import { api, extractErrorMessage } from '@/lib/api';
+import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { Order, PublicShop, UserAddress } from '@/lib/types';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
@@ -132,7 +132,7 @@ export default function CheckoutScreen() {
             <View key={line.variantId} style={styles.cartItem}>
               <View style={styles.itemThumb}>
                 {line.photoUrl ? (
-                  <Image source={{ uri: line.photoUrl }} style={styles.itemImg} />
+                  <Image source={{ uri: resolveMedia(line.photoUrl) }} style={styles.itemImg} />
                 ) : (
                   <View style={[styles.itemImg, styles.itemImgPlaceholder]} />
                 )}

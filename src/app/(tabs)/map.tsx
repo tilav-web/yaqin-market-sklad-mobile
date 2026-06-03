@@ -1,11 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
-import { router, useLocalSearchParams } from 'expo-router';
-import { ChevronRight, Gift, Navigation, Star, Store, X } from 'lucide-react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { Gift, Navigation, Star } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ShopPreviewSheet } from '@/components/ShopPreviewSheet';
+import { useTranslation } from '@/i18n';
+import type { TranslationKey } from '@/i18n/translations';
 import { api } from '@/lib/api';
 import { FeedResponse, PublicShop } from '@/lib/types';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
@@ -21,14 +24,16 @@ const MAP_STYLE = [
 
 type FilterKey = 'open' | 'free' | 'rated';
 
-const FILTERS: { key: FilterKey; label: string }[] = [
-  { key: 'open', label: 'Ochiq' },
-  { key: 'free', label: 'Tekin yetkazish' },
-  { key: 'rated', label: 'Reyting 4+' },
+const FILTERS: { key: FilterKey; labelKey: TranslationKey }[] = [
+  { key: 'open', labelKey: 'map.filterOpen' },
+  { key: 'free', labelKey: 'map.filterFree' },
+  { key: 'rated', labelKey: 'map.filterRated' },
 ];
 
 export default function MapTab() {
+  const { tr } = useTranslation();
   const coords = useEffectiveCoords();
+  const selectedAddress = useLocationStore((s) => s.selectedAddress);
   const refresh = useLocationStore((s) => s.refresh);
   const mapRef = useRef<MapView | null>(null);
   const { q } = useLocalSearchParams<{ q?: string }>();
@@ -90,7 +95,7 @@ export default function MapTab() {
     return (
       <SafeAreaView style={styles.center}>
         <ActivityIndicator color={colors.brand.primary} />
-        <Text style={styles.dim}>Lokatsiya kutilmoqda…</Text>
+        <Text style={styles.dim}>{tr('map.waiting')}</Text>
       </SafeAreaView>
     );
   }
@@ -113,8 +118,7 @@ export default function MapTab() {
         customMapStyle={MAP_STYLE}
         showsUserLocation
         showsMyLocationButton={false}
-        toolbarEnabled={false}
-        onPress={() => setSelectedId(null)}>
+        toolbarEnabled={false}>
         {shops.map((shop) => (
           <ShopMarker
             key={shop.id}
@@ -123,13 +127,24 @@ export default function MapTab() {
             onPress={() => setSelectedId(shop.id)}
           />
         ))}
+        {/* The chosen delivery address ("Uy"/"Ish"). GPS already has the blue
+            dot, so we only pin a manually picked address. */}
+        {selectedAddress && (
+          <DeliveryMarker
+            latitude={selectedAddress.latitude}
+            longitude={selectedAddress.longitude}
+            label={selectedAddress.label}
+          />
+        )}
       </MapView>
 
       {/* Top overlay: count banner + filter chips */}
       <SafeAreaView edges={['top']} style={styles.topOverlay} pointerEvents="box-none">
         <View style={styles.banner}>
           <Text style={styles.bannerTitle}>
-            {q ? `“${q}” — ${shops.length} ta do‘konda` : `${shops.length} ta do‘kon`}
+            {q
+              ? tr('map.shopsQuery', { q, n: shops.length })
+              : tr('map.shopsN', { n: shops.length })}
           </Text>
         </View>
         <ScrollView
@@ -149,7 +164,7 @@ export default function MapTab() {
                 {f.key === 'rated' && (
                   <Star size={13} color={on ? colors.text.onPrimary : colors.feedback.warning} fill={on ? colors.text.onPrimary : colors.feedback.warning} />
                 )}
-                <Text style={[styles.chipText, on && styles.chipTextActive]}>{f.label}</Text>
+                <Text style={[styles.chipText, on && styles.chipTextActive]}>{tr(f.labelKey)}</Text>
               </Pressable>
             );
           })}
@@ -160,41 +175,11 @@ export default function MapTab() {
         <Navigation size={20} color={colors.brand.primary} strokeWidth={2.4} />
       </Pressable>
 
-      {selected && (
-        <SafeAreaView edges={['bottom']} style={styles.cardWrap} pointerEvents="box-none">
-          <View style={styles.card}>
-            <Pressable style={styles.cardClose} onPress={() => setSelectedId(null)} hitSlop={8}>
-              <X size={18} color={colors.text.tertiary} />
-            </Pressable>
-            <Pressable style={styles.cardBody} onPress={() => router.push(`/shop/${selected.id}`)}>
-              <View style={styles.cardIcon}>
-                <Store size={22} color={colors.brand.primary} strokeWidth={2.2} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardName} numberOfLines={1}>{selected.name}</Text>
-                <Text style={styles.cardMeta} numberOfLines={1}>
-                  {selected.distanceKm?.toFixed(1)} km ·{' '}
-                  {selected.deliveryFeeAtUser === 0
-                    ? 'Tekin yetkazish'
-                    : `${selected.deliveryFeeAtUser?.toLocaleString()} so‘m`}
-                </Text>
-                <View style={styles.cardBadges}>
-                  <Text style={[styles.badge, selected.isOpenManual ? styles.badgeOpen : styles.badgeClosed]}>
-                    {selected.isOpenManual ? 'Ochiq' : 'Yopiq'}
-                  </Text>
-                  {selected.ratingCount > 0 && (
-                    <Text style={styles.ratingBadge}>★ {selected.ratingAverage.toFixed(1)}</Text>
-                  )}
-                </View>
-              </View>
-              <ChevronRight size={22} color={colors.text.hint} />
-            </Pressable>
-            <Pressable style={styles.enterBtn} onPress={() => router.push(`/shop/${selected.id}`)}>
-              <Text style={styles.enterBtnText}>Do‘konga kirish</Text>
-            </Pressable>
-          </View>
-        </SafeAreaView>
-      )}
+      <ShopPreviewSheet
+        visible={!!selected}
+        shop={selected}
+        onClose={() => setSelectedId(null)}
+      />
     </View>
   );
 }
@@ -223,31 +208,82 @@ function ShopMarker({
 
   if (!Number.isFinite(shop.latitude) || !Number.isFinite(shop.longitude)) return null;
 
+  const closed = !shop.isOpenManual;
+
   return (
     <Marker
       coordinate={{ latitude: shop.latitude, longitude: shop.longitude }}
       onPress={onPress}
       tracksViewChanges={tracks}
       anchor={{ x: 0.5, y: 1 }}>
-      <View style={mk.wrap}>
-        <View style={[mk.pill, selected && mk.pillActive, !shop.isOpenManual && mk.pillClosed]}>
-          <View style={[mk.avatar, selected && mk.avatarActive]}>
+      <View style={[mk.wrap, closed && mk.wrapClosed]}>
+        <View style={[mk.pill, selected && mk.pillActive, closed && mk.pillClosed]}>
+          <View style={[mk.avatar, selected && mk.avatarActive, closed && mk.avatarClosed]}>
             <Text style={[mk.avatarLetter, selected && mk.avatarLetterActive]}>
               {shop.name[0]?.toUpperCase() ?? '?'}
             </Text>
           </View>
           <View style={mk.textCol}>
-            <Text style={[mk.name, selected && mk.textActive]} numberOfLines={1}>
+            <Text style={[mk.name, selected && mk.textActive, closed && mk.textClosed]} numberOfLines={1}>
               {shop.name}
             </Text>
-            {shop.distanceKm !== undefined && (
-              <Text style={[mk.dist, selected && mk.textActive]}>
-                {shop.distanceKm.toFixed(1)} km
-              </Text>
+            {closed ? (
+              <Text style={mk.closedTag}>Yopiq</Text>
+            ) : (
+              shop.distanceKm !== undefined && (
+                <Text style={[mk.dist, selected && mk.textActive]}>
+                  {shop.distanceKm.toFixed(1)} km
+                </Text>
+              )
             )}
           </View>
         </View>
-        <View style={[mk.tail, selected && mk.tailActive, !shop.isOpenManual && mk.tailClosed]} />
+        <View style={[mk.tail, selected && mk.tailActive, closed && mk.tailClosed]} />
+      </View>
+    </Marker>
+  );
+}
+
+/**
+ * Pin for the customer's chosen delivery location (a saved address). A teal
+ * "home" badge with the address label, visually distinct from the red shop
+ * pills so the user can see where their orders will be delivered.
+ */
+function DeliveryMarker({
+  latitude,
+  longitude,
+  label,
+}: {
+  readonly latitude: number;
+  readonly longitude: number;
+  readonly label: string;
+}) {
+  const text = label.length > 10 ? label.slice(0, 10) : label;
+
+  // Re-track for a short while AFTER the text has measured, then stop. Keyed on
+  // `text` so an auto-width pill never snapshots a half-laid-out (clipped) label.
+  const [tracks, setTracks] = useState(true);
+  useEffect(() => {
+    setTracks(true);
+    const id = setTimeout(() => setTracks(false), 1200);
+    return () => clearTimeout(id);
+  }, [text]);
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+
+  return (
+    <Marker
+      coordinate={{ latitude, longitude }}
+      tracksViewChanges={tracks}
+      anchor={{ x: 0.5, y: 1 }}
+      zIndex={999}>
+      <View style={dm.wrap}>
+        <View style={dm.labelPill} onLayout={() => setTracks(true)}>
+          <Text style={dm.labelText} allowFontScaling={false}>
+            {text}
+          </Text>
+        </View>
+        <View style={dm.tail} />
       </View>
     </Marker>
   );
@@ -301,58 +337,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...shadow.md,
   },
-  cardWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
-  card: {
-    margin: layout.screenPadding,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadow.lg,
-  },
-  cardClose: { position: 'absolute', top: spacing.md, right: spacing.md, zIndex: 1, padding: 2 },
-  cardBody: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  cardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardName: { ...typography.h4 },
-  cardMeta: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
-  cardBadges: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
-  badge: {
-    ...typography.caption,
-    fontSize: 11,
-    fontWeight: '700',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-    overflow: 'hidden',
-  },
-  badgeOpen: { color: colors.feedback.success, backgroundColor: colors.feedback.successSurface },
-  badgeClosed: { color: colors.text.tertiary, backgroundColor: colors.bg.surfaceMuted },
-  ratingBadge: {
-    ...typography.caption,
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.feedback.warning,
-    backgroundColor: colors.feedback.warningSurface,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-    overflow: 'hidden',
-  },
-  enterBtn: {
-    height: layout.buttonHeight.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  enterBtnText: { ...typography.button, color: colors.text.onPrimary },
 });
 
 const mk = StyleSheet.create({
@@ -372,7 +356,13 @@ const mk = StyleSheet.create({
     ...shadow.md,
   },
   pillActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
-  pillClosed: { opacity: 0.92 },
+  // Closed: muted gray, faded and dashed — visibly "disabled".
+  wrapClosed: { opacity: 0.6 },
+  pillClosed: {
+    backgroundColor: colors.bg.surfaceMuted,
+    borderColor: colors.border.default,
+    borderStyle: 'dashed',
+  },
   avatar: {
     width: 26,
     height: 26,
@@ -382,12 +372,21 @@ const mk = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarActive: { backgroundColor: colors.text.onPrimary },
+  avatarClosed: { backgroundColor: colors.text.hint },
   avatarLetter: { color: colors.text.onPrimary, fontSize: 13, fontWeight: '800' },
   avatarLetterActive: { color: colors.brand.primary },
   textCol: { flexShrink: 1 },
   name: { ...typography.caption, fontSize: 12, fontWeight: '800', color: colors.text.primary },
   dist: { ...typography.caption, fontSize: 10, color: colors.text.secondary, marginTop: -1 },
   textActive: { color: colors.text.onPrimary },
+  textClosed: { color: colors.text.tertiary },
+  closedTag: {
+    ...typography.caption,
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.text.tertiary,
+    marginTop: -1,
+  },
   tail: {
     width: 0,
     height: 0,
@@ -400,5 +399,32 @@ const mk = StyleSheet.create({
     marginTop: -1,
   },
   tailActive: { borderTopColor: colors.brand.primary },
-  tailClosed: {},
+  tailClosed: { borderTopColor: colors.bg.surfaceMuted },
+});
+
+// Delivery-location pin — a distinct slate-blue so it never reads as a shop.
+const DELIVERY = colors.feedback.info;
+const dm = StyleSheet.create({
+  wrap: { alignItems: 'center' },
+  labelPill: {
+    backgroundColor: DELIVERY,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+    borderRadius: radius.full,
+    borderWidth: 2,
+    borderColor: colors.bg.surface,
+    ...shadow.md,
+  },
+  labelText: { ...typography.caption, fontSize: 13, fontWeight: '800', color: colors.text.onPrimary },
+  tail: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: DELIVERY,
+    marginTop: -1,
+  },
 });

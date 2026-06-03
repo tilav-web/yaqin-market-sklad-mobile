@@ -40,6 +40,14 @@ export function t(name: TName, lang?: Lang): string {
   return name.uz || name.ru || '';
 }
 
+/** Localize a category's name (which stores all three scripts as flat fields). */
+export function catName(
+  c: { nameUzLatn: string; nameUzCyrl: string; nameRu: string },
+  lang?: Lang,
+): string {
+  return t({ uz: c.nameUzLatn, uz_cyrl: c.nameUzCyrl, ru: c.nameRu }, lang);
+}
+
 export function useTranslation() {
   const lang = useLangStore((s) => s.lang);
   const setLang = useLangStore((s) => s.setLang);
@@ -48,6 +56,7 @@ export function useTranslation() {
     setLang,
     tr: (key: TranslationKey, params?: Record<string, string | number>) => tr(key, params, lang),
     t: (name: TName) => t(name, lang),
+    catName: (c: { nameUzLatn: string; nameUzCyrl: string; nameRu: string }) => catName(c, lang),
   };
 }
 

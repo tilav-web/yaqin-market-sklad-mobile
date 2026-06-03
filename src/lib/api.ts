@@ -100,3 +100,41 @@ export function extractErrorMessage(err: unknown): string {
 }
 
 export type ApiRequestConfig = AxiosRequestConfig;
+
+/**
+ * Resolve a stored media value into a URL loadable from the CURRENT api host.
+ *
+ * Uploaded images are stored as host-independent paths (`/api/uploads/<key>`).
+ * This also rewrites any legacy absolute URL that points at `/api/uploads/`
+ * (e.g. an old `http://192.168.x.x:3000/...` or `http://localhost:3000/...`) to
+ * the live host — so images keep loading after the app restarts or the network
+ * changes. External URLs (category icons, etc.) pass through untouched.
+ */
+export function resolveMedia(value?: string | null): string | undefined {
+  if (!value) return undefined;
+  const marker = '/api/uploads/';
+  const i = value.indexOf(marker);
+  if (i >= 0) return `${API_URL}${value.slice(i)}`;
+  return value;
+}
+
+/**
+ * Upload a local image (a file:// URI from expo-image-picker) to the server and
+ * return its public URL. The server stores it in MinIO and serves it back
+ * through `/api/uploads/<key>`, so the returned URL is directly usable in
+ * <Image>. Auth header is attached by the request interceptor.
+ */
+export async function uploadImage(uri: string): Promise<string> {
+  const name = uri.split('/').pop() ?? `photo-${Date.now()}.jpg`;
+  const extMatch = /\.(\w+)$/.exec(name);
+  const ext = (extMatch?.[1] ?? 'jpg').toLowerCase();
+  const MIME: Record<string, string> = { png: 'image/png', webp: 'image/webp' };
+  const mime = MIME[ext] ?? 'image/jpeg';
+  const form = new FormData();
+  // React Native FormData file shape
+  form.append('file', { uri, name, type: mime } as unknown as Blob);
+  const res = await api.post<{ url: string }>('/uploads/image', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data.url;
+}

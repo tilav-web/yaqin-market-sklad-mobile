@@ -22,7 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Skeleton } from '@/components/ui';
-import { api } from '@/lib/api';
+import { api, resolveMedia } from '@/lib/api';
 import { ProductReview, PublicProductVariant, VariantDetail } from '@/lib/types';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
@@ -109,7 +109,7 @@ export default function ProductDetailScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.imageWrap}>
           {product.photos[0] ? (
-            <Image source={{ uri: product.photos[0] }} style={styles.image} />
+            <Image source={{ uri: resolveMedia(product.photos[0]) }} style={styles.image} />
           ) : (
             <View style={[styles.image, styles.imagePlaceholder]}>
               <ShoppingBag size={56} color={colors.brand.primary} strokeWidth={1.3} />

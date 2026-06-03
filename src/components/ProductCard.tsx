@@ -2,6 +2,7 @@ import { Plus, ShoppingBag, Store } from 'lucide-react-native';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
+import { resolveMedia } from '@/lib/api';
 import { FeedProduct } from '@/lib/types';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { colors, radius, shadow, spacing, typography } from '@/theme';
@@ -11,6 +12,8 @@ interface Props {
   readonly product: FeedProduct;
   readonly onPress: () => void;
   readonly cardWidth?: number;
+  /** Hide the shop name/distance chip (e.g. when already inside that shop). */
+  readonly hideShopChip?: boolean;
 }
 
 /**
@@ -19,7 +22,7 @@ interface Props {
  * Visual hierarchy: photo → discount badge → name → shop chip → price → CTA.
  * The CTA collapses into a quantity counter once the variant is in the cart.
  */
-export function ProductCard({ product, onPress, cardWidth }: Props) {
+export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props) {
   const { tr } = useTranslation();
   const addItem = useCartStore((s) => s.addItem);
   const lines = useCartStore((s) => s.carts[product.shopId] ?? EMPTY_CART);
@@ -61,7 +64,7 @@ export function ProductCard({ product, onPress, cardWidth }: Props) {
       ]}>
       <View style={styles.imageWrap}>
         {product.photos[0] ? (
-          <Image source={{ uri: product.photos[0] }} style={styles.image} />
+          <Image source={{ uri: resolveMedia(product.photos[0]) }} style={styles.image} />
         ) : (
           <View style={[styles.image, styles.imagePlaceholder]}>
             <ShoppingBag size={32} color={colors.brand.primary} strokeWidth={1.4} />
@@ -79,16 +82,18 @@ export function ProductCard({ product, onPress, cardWidth }: Props) {
           {product.name}
         </Text>
 
-        <View style={styles.shopChip}>
-          <Store size={11} color={colors.text.tertiary} strokeWidth={2.4} />
-          <Text style={styles.shopName} numberOfLines={1}>
-            {product.shop.name}
-          </Text>
-          <Text style={styles.shopDot}>·</Text>
-          <Text style={styles.shopDistance}>
-            {product.shop.distanceKm.toFixed(1)} km
-          </Text>
-        </View>
+        {!hideShopChip && (
+          <View style={styles.shopChip}>
+            <Store size={11} color={colors.text.tertiary} strokeWidth={2.4} />
+            <Text style={styles.shopName} numberOfLines={1}>
+              {product.shop.name}
+            </Text>
+            <Text style={styles.shopDot}>·</Text>
+            <Text style={styles.shopDistance}>
+              {product.shop.distanceKm.toFixed(1)} km
+            </Text>
+          </View>
+        )}
 
         <View style={styles.priceRow}>
           <View style={{ flexShrink: 1 }}>

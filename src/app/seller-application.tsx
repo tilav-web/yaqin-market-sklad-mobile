@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -10,6 +10,7 @@ import { api, extractErrorMessage } from '@/lib/api';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
 
 export default function SellerApplicationScreen() {
+  const qc = useQueryClient();
   const [shopName, setShopName] = useState('');
   const [shopAddress, setShopAddress] = useState('');
   const [stir, setStir] = useState('');
@@ -32,6 +33,7 @@ export default function SellerApplicationScreen() {
       return res.data;
     },
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['my-applications'] });
       Alert.alert(
         'Yuborildi!',
         'Arizangiz adminga yuborildi. Tasdiqlangach do\'koningiz yaratiladi.',

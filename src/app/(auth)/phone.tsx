@@ -62,7 +62,7 @@ export default function PhoneScreen() {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.langSwitcher}>
-          {(['uz', 'ru'] as const).map((l) => (
+          {(['uz', 'uz_cyrl', 'ru'] as const).map((l) => (
             <Pressable
               key={l}
               onPress={() => {
@@ -71,7 +71,7 @@ export default function PhoneScreen() {
               }}
               style={[styles.langChip, lang === l && styles.langChipActive]}>
               <Text style={[styles.langText, lang === l && styles.langTextActive]}>
-                {l.toUpperCase()}
+                {l === 'uz' ? 'UZ' : l === 'uz_cyrl' ? 'ЎЗ' : 'RU'}
               </Text>
             </Pressable>
           ))}

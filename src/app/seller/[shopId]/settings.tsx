@@ -1,64 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { router, useGlobalSearchParams } from 'expo-router';
+import { BarChart3, ChevronRight, type LucideIcon, Settings2, ShieldBan, Store } from 'lucide-react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrandButton } from '@/components/ui/brand-button';
-import { Brand, Radius, Spacing } from '@/constants/theme';
-import { api, extractErrorMessage } from '@/lib/api';
+import { api } from '@/lib/api';
 import { PublicShop } from '@/lib/types';
+import { colors, layout, radius, spacing, typography } from '@/theme';
+import { haptics } from '@/utils/haptics';
 
-export default function SellerSettingsScreen() {
-  const { shopId } = useLocalSearchParams<{ shopId: string }>();
+/**
+ * Shop hub — a clean, profile-like landing for everything about the shop:
+ * open/closed toggle up top, then organized links to settings, report and
+ * staff (each its own screen). Keeps the bottom bar to 4 essentials.
+ */
+export default function SellerHubScreen() {
+  const { shopId } = useGlobalSearchParams<{ shopId: string }>();
   const qc = useQueryClient();
-  const [minOrder, setMinOrder] = useState('');
-  const [maxKm, setMaxKm] = useState('');
-  const [freeKm, setFreeKm] = useState('');
-  const [price, setPrice] = useState('');
-  const [pricingType, setPricingType] = useState<'flat' | 'per_km' | 'per_500m'>('flat');
 
   const shopQuery = useQuery({
     queryKey: ['seller-shop', shopId],
     queryFn: async () => {
       const res = await api.get<PublicShop>(`/seller/shops/${shopId}`);
-      const s = res.data;
-      setMinOrder(String(s.minOrderPrice));
-      setMaxKm(String(s.deliveryZone.maxKm));
-      setFreeKm(String(s.deliveryZone.freeKm));
-      setPrice(String(s.deliveryZone.pricePerStep));
-      setPricingType(s.deliveryZone.pricingType);
-      return s;
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async () => {
-      const res = await api.patch<PublicShop>(`/seller/shops/${shopId}`, {
-        minOrderPrice: Number(minOrder),
-        deliveryZone: {
-          maxKm: Number(maxKm),
-          freeKm: Number(freeKm),
-          pricingType,
-          pricePerStep: Number(price),
-        },
-      });
       return res.data;
     },
-    onSuccess: () => {
-      Alert.alert('Saqlandi', 'Sozlamalar yangilandi');
-      qc.invalidateQueries({ queryKey: ['seller-shop', shopId] });
-    },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
   });
 
   const toggleOpen = useMutation({
@@ -68,132 +33,164 @@ export default function SellerSettingsScreen() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['seller-shop', shopId] }),
   });
 
-  if (shopQuery.isLoading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={Brand.red} />
-      </View>
-    );
-  }
+  const shop = shopQuery.data;
+  const isOpen = !!shop?.isOpenManual;
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Do&apos;kon holati</Text>
+        {/* Shop header + open toggle */}
+        <View style={styles.headerCard}>
+          <View style={styles.headerTop}>
+            <View style={styles.shopIcon}>
+              <Store size={24} color={colors.brand.primary} strokeWidth={2} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.shopName} numberOfLines={1}>
+                {shop?.name ?? '…'}
+              </Text>
+              <Text style={styles.shopAddr} numberOfLines={1}>
+                {shop?.address ?? ''}
+              </Text>
+            </View>
+          </View>
           <View style={styles.toggleRow}>
-            <Text style={styles.toggleLabel}>
-              {shopQuery.data?.isOpenManual ? '✅ Ochiq' : '⛔ Yopiq'}
-            </Text>
-            <Switch
-              value={shopQuery.data?.isOpenManual}
-              onValueChange={(v) => toggleOpen.mutate(v)}
-              trackColor={{ true: Brand.success }}
-            />
+            <View>
+              <Text style={[styles.toggleLabel, { color: isOpen ? colors.feedback.success : colors.text.danger }]}>
+                {isOpen ? '🟢 Ochiq' : '🔴 Yopiq'}
+              </Text>
+              <Text style={styles.toggleSub}>
+                {isOpen ? 'Mijozlar buyurtma bera oladi' : 'Mahsulotlaringiz ko‘rinmaydi'}
+              </Text>
+            </View>
+            {shopQuery.isLoading ? (
+              <ActivityIndicator color={colors.brand.primary} />
+            ) : (
+              <Switch
+                value={isOpen}
+                onValueChange={(v) => {
+                  haptics.medium();
+                  toggleOpen.mutate(v);
+                }}
+                trackColor={{ true: colors.feedback.success }}
+                thumbColor={colors.bg.surface}
+              />
+            )}
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Minimal buyurtma narxi</Text>
-          <TextInput
-            style={styles.input}
-            value={minOrder}
-            onChangeText={setMinOrder}
-            keyboardType="number-pad"
-            placeholder="0"
+        {/* Management links */}
+        <Text style={styles.sectionTitle}>Boshqaruv</Text>
+        <View style={styles.group}>
+          <Row
+            icon={Settings2}
+            title="Do‘kon sozlamalari"
+            subtitle="Nomi, manzil, rasm, yetkazib berish"
+            onPress={() => router.push(`/seller/${shopId}/shop-settings`)}
+          />
+          <Row
+            icon={BarChart3}
+            title="Hisobot"
+            subtitle="Tushum, foyda, olib kelish kerak, muddat"
+            onPress={() => router.push(`/seller/${shopId}/stats`)}
+          />
+          <Row
+            icon={ShieldBan}
+            title="Bloklangan foydalanuvchilar"
+            subtitle="Bu do‘kon uchun bloklangan mijozlar"
+            onPress={() => router.push(`/seller/${shopId}/blocked`)}
+            last
           />
         </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Yetkazib berish zonasi</Text>
-          <Field label="Maksimal radius (km)">
-            <TextInput
-              style={styles.input}
-              value={maxKm}
-              onChangeText={setMaxKm}
-              keyboardType="numeric"
-              placeholder="4"
-            />
-          </Field>
-          <Field label="Bepul radius (km)">
-            <TextInput
-              style={styles.input}
-              value={freeKm}
-              onChangeText={setFreeKm}
-              keyboardType="numeric"
-              placeholder="2"
-            />
-          </Field>
-          <Field label="Narx hisobi turi">
-            <View style={styles.pricingRow}>
-              {(['flat', 'per_km', 'per_500m'] as const).map((t) => (
-                <Text
-                  key={t}
-                  onPress={() => setPricingType(t)}
-                  style={[styles.pricingChip, pricingType === t && styles.pricingChipActive]}>
-                  {t === 'flat' ? 'Doimiy' : t === 'per_km' ? 'Har km' : 'Har 500m'}
-                </Text>
-              ))}
-            </View>
-          </Field>
-          <Field label="Narxi (so'm)">
-            <TextInput
-              style={styles.input}
-              value={price}
-              onChangeText={setPrice}
-              keyboardType="number-pad"
-              placeholder="5000"
-            />
-          </Field>
-        </View>
-
-        <BrandButton
-          label="Saqlash"
-          onPress={() => updateMutation.mutate()}
-          loading={updateMutation.isPending}
-          variant="accent"
-        />
-        <BrandButton
-          label="← Customer rejimga qaytish"
-          onPress={() => router.replace('/(tabs)')}
-          variant="ghost"
-          style={{ marginTop: Spacing.three }}
-        />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({
+  icon: Icon,
+  title,
+  subtitle,
+  onPress,
+  last,
+}: {
+  icon: LucideIcon;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+  last?: boolean;
+}) {
   return (
-    <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      {children}
-    </View>
+    <Pressable
+      onPress={() => {
+        haptics.selection();
+        onPress();
+      }}
+      style={({ pressed }) => [styles.row, !last && styles.rowBorder, pressed && { backgroundColor: colors.bg.surfaceMuted }]}>
+      <View style={styles.rowIcon}>
+        <Icon size={20} color={colors.brand.primary} strokeWidth={2.1} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.rowTitle}>{title}</Text>
+        <Text style={styles.rowSub} numberOfLines={1}>
+          {subtitle}
+        </Text>
+      </View>
+      <ChevronRight size={18} color={colors.text.tertiary} strokeWidth={2.2} />
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Brand.gray50 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  scroll: { padding: Spacing.four, gap: Spacing.four },
-  section: { backgroundColor: Brand.white, borderRadius: Radius.lg, padding: Spacing.four, gap: Spacing.three },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: Brand.red, textTransform: 'uppercase' },
-  toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  toggleLabel: { fontSize: 16, fontWeight: '600' },
-  field: { gap: 4 },
-  fieldLabel: { fontSize: 13, color: Brand.gray600, fontWeight: '600' },
-  input: { backgroundColor: Brand.gray50, borderRadius: Radius.md, paddingHorizontal: Spacing.four, paddingVertical: 12, fontSize: 16, borderWidth: 1, borderColor: Brand.gray200 },
-  pricingRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  pricingChip: {
-    paddingHorizontal: Spacing.four,
-    paddingVertical: 10,
-    borderRadius: Radius.md,
-    backgroundColor: Brand.gray50,
-    fontSize: 13,
+  container: { flex: 1, backgroundColor: colors.bg.canvas },
+  scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['3xl'] },
+  headerCard: {
+    backgroundColor: colors.bg.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    gap: spacing.md,
     borderWidth: 1,
-    borderColor: Brand.gray200,
-    color: Brand.gray800,
+    borderColor: colors.border.subtle,
   },
-  pricingChipActive: { backgroundColor: Brand.red, color: Brand.white, borderColor: Brand.red, fontWeight: '700' },
+  headerTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  shopIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.full,
+    backgroundColor: colors.brand.primarySurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shopName: { ...typography.h4, color: colors.text.primary },
+  shopAddr: { ...typography.caption, color: colors.text.secondary, marginTop: 1 },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: colors.border.subtle,
+    paddingTop: spacing.md,
+  },
+  toggleLabel: { ...typography.bodyStrong },
+  toggleSub: { ...typography.caption, color: colors.text.secondary, marginTop: 1 },
+  sectionTitle: { ...typography.overline, color: colors.text.secondary, marginLeft: spacing.xs },
+  group: {
+    backgroundColor: colors.bg.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+    overflow: 'hidden',
+  },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
+  rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border.subtle },
+  rowIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: colors.brand.primarySurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowTitle: { ...typography.bodyStrong, color: colors.text.primary },
+  rowSub: { ...typography.caption, color: colors.text.secondary, marginTop: 1 },
 });
