@@ -41,11 +41,15 @@ api.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
     const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+    // Refresh on any 401 except the refresh call itself. NOTE: only exclude
+    // `/auth/refresh` — excluding all of `/auth/` would skip `/auth/me`, so an
+    // expired access token on app launch would log the user out instead of
+    // silently refreshing (the 30-day refresh token stays unused).
     if (
       error.response?.status === 401 &&
       original &&
       !original._retry &&
-      !original.url?.includes('/auth/')
+      !original.url?.includes('/auth/refresh')
     ) {
       original._retry = true;
       const newToken = await refreshAccess();
