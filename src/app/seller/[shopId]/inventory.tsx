@@ -8,6 +8,7 @@ import {
   FlatList,
   Image,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -205,6 +206,20 @@ export default function SellerInventoryScreen() {
         keyExtractor={(v) => v.id}
         contentContainerStyle={styles.list}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={
+              variantsQuery.isFetching &&
+              !variantsQuery.isLoading &&
+              !variantsQuery.isFetchingNextPage
+            }
+            onRefresh={() => {
+              void variantsQuery.refetch();
+            }}
+            tintColor={colors.brand.primary}
+            colors={[colors.brand.primary]}
+          />
+        }
         onEndReachedThreshold={0.4}
         onEndReached={() => {
           if (variantsQuery.hasNextPage && !variantsQuery.isFetchingNextPage) variantsQuery.fetchNextPage();

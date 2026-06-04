@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -117,7 +118,19 @@ export default function OrderDetailScreen() {
 
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={orderQuery.isFetching && !orderQuery.isLoading}
+            onRefresh={() => {
+              void orderQuery.refetch();
+            }}
+            tintColor={colors.brand.primary}
+            colors={[colors.brand.primary]}
+          />
+        }>
         {/* Header */}
         <View style={styles.headerCard}>
           <Text style={styles.orderNum}>#{order.orderNumber}</Text>

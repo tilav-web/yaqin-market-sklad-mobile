@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,7 +18,7 @@ import { Button } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { useTranslation } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 function formatPhone(raw: string): string {
@@ -59,73 +60,75 @@ export default function PhoneScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
-        style={styles.container}
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.langSwitcher}>
-          {(['uz', 'uz_cyrl', 'ru'] as const).map((l) => (
-            <Pressable
-              key={l}
-              onPress={() => {
-                haptics.selection();
-                setLang(l);
-              }}
-              style={[styles.langChip, lang === l && styles.langChipActive]}>
-              <Text style={[styles.langText, lang === l && styles.langTextActive]}>
-                {l === 'uz' ? 'UZ' : l === 'uz_cyrl' ? 'ЎЗ' : 'RU'}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        {/* Scrollable + compact so the keyboard never hides the continue button. */}
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.langSwitcher}>
+            {(['uz', 'uz_cyrl', 'ru'] as const).map((l) => (
+              <Pressable
+                key={l}
+                onPress={() => {
+                  haptics.selection();
+                  setLang(l);
+                }}
+                style={[styles.langChip, lang === l && styles.langChipActive]}>
+                <Text style={[styles.langText, lang === l && styles.langTextActive]}>
+                  {l === 'uz' ? 'UZ' : l === 'uz_cyrl' ? 'ЎЗ' : 'RU'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
 
-        <View style={styles.header}>
-          <View style={styles.logoFrame}>
+          <View style={styles.header}>
             <Image
-              source={require('@/../assets/images/icon.png')}
+              source={require('@/../assets/logo-web.png')}
               style={styles.logo}
               resizeMode="contain"
             />
+            <Text style={styles.subtitle}>{tr('auth.welcome')}</Text>
           </View>
-          <Text style={styles.brandName}>Yaqin Market</Text>
-          <Text style={styles.subtitle}>{tr('auth.welcome')}</Text>
-        </View>
 
-        <View style={styles.body}>
-          <Text style={styles.label}>{tr('auth.phoneLabel')}</Text>
-          <View style={styles.phoneRow}>
-            <View style={styles.prefixBox}>
-              <Text style={styles.prefixText}>🇺🇿</Text>
-              <Text style={styles.prefixCode}>+998</Text>
+          <View style={styles.body}>
+            <Text style={styles.label}>{tr('auth.phoneLabel')}</Text>
+            <View style={styles.phoneRow}>
+              <View style={styles.prefixBox}>
+                <Text style={styles.prefixText}>🇺🇿</Text>
+                <Text style={styles.prefixCode}>+998</Text>
+              </View>
+              <TextInput
+                style={styles.phoneInput}
+                value={formatPhone(raw)}
+                onChangeText={setRaw}
+                keyboardType="phone-pad"
+                placeholder={tr('auth.phonePlaceholder')}
+                placeholderTextColor={colors.text.hint}
+                autoFocus
+                maxLength={13}
+              />
             </View>
-            <TextInput
-              style={styles.phoneInput}
-              value={formatPhone(raw)}
-              onChangeText={setRaw}
-              keyboardType="phone-pad"
-              placeholder={tr('auth.phonePlaceholder')}
-              placeholderTextColor={colors.text.hint}
-              autoFocus
-              maxLength={13}
+            <View style={styles.helperRow}>
+              <ShieldCheck size={14} color={colors.feedback.success} strokeWidth={2.4} />
+              <Text style={styles.helperText}>{tr('auth.phoneHelper')}</Text>
+            </View>
+
+            <Button
+              label={tr('auth.continue')}
+              onPress={handleSubmit}
+              loading={loading}
+              disabled={!isValid}
+              variant="primary"
+              size="lg"
+              fullWidth
+              rightIcon={ArrowRight}
+              haptic="medium"
+              style={styles.cta}
             />
           </View>
-          <View style={styles.helperRow}>
-            <ShieldCheck size={14} color={colors.feedback.success} strokeWidth={2.4} />
-            <Text style={styles.helperText}>{tr('auth.phoneHelper')}</Text>
-          </View>
-        </View>
-
-        <View style={styles.footer}>
-          <Button
-            label={tr('auth.continue')}
-            onPress={handleSubmit}
-            loading={loading}
-            disabled={!isValid}
-            variant="primary"
-            size="lg"
-            fullWidth
-            rightIcon={ArrowRight}
-            haptic="medium"
-          />
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -133,11 +136,11 @@ export default function PhoneScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg.surface },
-  container: {
-    flex: 1,
+  scroll: {
+    flexGrow: 1,
     paddingHorizontal: layout.screenPadding,
-    justifyContent: 'space-between',
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.xl,
+    gap: spacing['2xl'],
   },
   langSwitcher: {
     flexDirection: 'row',
@@ -159,18 +162,8 @@ const styles = StyleSheet.create({
   },
   langText: { ...typography.caption, color: colors.text.secondary, fontWeight: '700' },
   langTextActive: { color: colors.brand.primary },
-  header: { alignItems: 'center', gap: spacing.md, marginTop: spacing.lg },
-  logoFrame: {
-    width: 104,
-    height: 104,
-    borderRadius: radius['2xl'],
-    backgroundColor: colors.brand.accentSurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadow.md,
-  },
-  logo: { width: 78, height: 78, borderRadius: radius.xl },
-  brandName: { ...typography.display, color: colors.brand.primary, marginTop: spacing.sm },
+  header: { alignItems: 'center', gap: spacing.sm, marginTop: spacing.lg },
+  logo: { width: 240, height: 104 },
   subtitle: { ...typography.body, color: colors.text.secondary, textAlign: 'center' },
   body: { gap: spacing.sm },
   label: { ...typography.bodySmall, color: colors.text.secondary, fontWeight: '600' },
@@ -202,5 +195,5 @@ const styles = StyleSheet.create({
   },
   helperRow: { flexDirection: 'row', gap: 6, alignItems: 'center', paddingHorizontal: spacing.xs },
   helperText: { ...typography.caption, color: colors.text.secondary },
-  footer: { paddingBottom: spacing.md },
+  cta: { marginTop: spacing.lg },
 });

@@ -8,6 +8,7 @@ import {
   FlatList,
   Image,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
@@ -100,6 +101,20 @@ export default function ShopDetailScreen() {
         numColumns={2}
         columnWrapperStyle={styles.column}
         ItemSeparatorComponent={() => <View style={{ height: GUTTER }} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={
+              (shopQuery.isFetching && !shopQuery.isLoading) ||
+              (productsQuery.isFetching && !productsQuery.isLoading)
+            }
+            onRefresh={() => {
+              void shopQuery.refetch();
+              void productsQuery.refetch();
+            }}
+            tintColor={colors.brand.primary}
+            colors={[colors.brand.primary]}
+          />
+        }
         ListHeaderComponent={
           <View style={styles.headerWrap}>
             <View style={styles.heroImageWrap}>

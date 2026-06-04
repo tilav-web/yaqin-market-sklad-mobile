@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import {
+  Bell,
   ChevronRight,
   ClipboardList,
   Clock,
   Globe,
+  LogIn,
   LogOut,
   MapPin,
   Pencil,
@@ -13,7 +15,7 @@ import {
   Store,
   XCircle,
 } from 'lucide-react-native';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Badge } from '@/components/ui/Badge';
@@ -21,6 +23,7 @@ import { Card } from '@/components/ui/Card';
 import { avatarEmoji } from '@/constants/avatars';
 import { useLangStore, useTranslation, type Lang } from '@/i18n';
 import { api } from '@/lib/api';
+import { useIsGuest, useRequireAuth } from '@/lib/useRequireAuth';
 import { MeUser, MyShop } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
 import { colors, hitSlop, layout, radius, spacing, typography } from '@/theme';
@@ -48,6 +51,8 @@ export default function ProfileTab() {
   const lang = useLangStore((s) => s.lang);
   const setLang = useLangStore((s) => s.setLang);
   const signOut = useAuthStore((s) => s.signOut);
+  const isGuest = useIsGuest();
+  const requireAuth = useRequireAuth();
 
   const meQuery = useQuery({
     queryKey: ['me'],
@@ -55,6 +60,17 @@ export default function ProfileTab() {
       const res = await api.get<MeUser>('/users/me');
       return res.data;
     },
+    enabled: !isGuest,
+  });
+
+  const unreadQuery = useQuery({
+    queryKey: ['notifications', 'unread'],
+    queryFn: async () => {
+      const res = await api.get<{ count: number }>('/notifications/unread-count');
+      return res.data.count;
+    },
+    enabled: !isGuest,
+    refetchInterval: 30_000,
   });
 
   const myShopsQuery = useQuery({
@@ -83,6 +99,7 @@ export default function ProfileTab() {
       const res = await api.get<StaffShop[]>('/seller/shops/working-for-me');
       return res.data;
     },
+    enabled: !isGuest,
   });
 
   const me = meQuery.data;
@@ -96,32 +113,99 @@ export default function ProfileTab() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Pressable
-          style={styles.header}
-          onPress={() => {
-            haptics.selection();
-            router.push('/profile/edit');
-          }}>
-          <View style={[styles.avatar, avatarEmoji(me?.avatarUrl) ? styles.avatarEmojiBg : null]}>
-            {avatarEmoji(me?.avatarUrl) ? (
-              <Text style={styles.avatarEmoji}>{avatarEmoji(me?.avatarUrl)}</Text>
-            ) : (
-              <Text style={styles.avatarText}>
-                {(me?.name?.[0] ?? me?.phone?.slice(-2) ?? 'Y').toUpperCase()}
-              </Text>
-            )}
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.name}>{me?.name ?? tr('profile.user')}</Text>
-            <Text style={styles.phone}>{me?.phone}</Text>
-          </View>
-          {me?.isAdmin && <Badge label="ADMIN" tone="info" />}
-          <View style={styles.editBtn}>
-            <Pencil size={16} color={colors.brand.primary} strokeWidth={2.4} />
-          </View>
-        </Pressable>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          isGuest ? undefined : (
+            <RefreshControl
+              refreshing={meQuery.isFetching && !meQuery.isLoading}
+              onRefresh={() => {
+                void meQuery.refetch();
+                void myShopsQuery.refetch();
+                void staffShopsQuery.refetch();
+                void unreadQuery.refetch();
+              }}
+              tintColor={colors.brand.primary}
+              colors={[colors.brand.primary]}
+            />
+          )
+        }>
+        {isGuest ? (
+          <Pressable
+            style={styles.guestCard}
+            onPress={() => {
+              haptics.medium();
+              router.push('/(auth)/phone');
+            }}>
+            <View style={styles.guestIcon}>
+              <LogIn size={24} color={colors.brand.primary} strokeWidth={2.4} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.guestTitle}>{tr('profile.guest.title')}</Text>
+              <Text style={styles.guestSub}>{tr('profile.guest.sub')}</Text>
+            </View>
+            <ChevronRight size={18} color={colors.brand.primary} strokeWidth={2.4} />
+          </Pressable>
+        ) : (
+          <Pressable
+            style={styles.header}
+            onPress={() => {
+              haptics.selection();
+              router.push('/profile/edit');
+            }}>
+            <View style={[styles.avatar, avatarEmoji(me?.avatarUrl) ? styles.avatarEmojiBg : null]}>
+              {avatarEmoji(me?.avatarUrl) ? (
+                <Text style={styles.avatarEmoji}>{avatarEmoji(me?.avatarUrl)}</Text>
+              ) : (
+                <Text style={styles.avatarText}>
+                  {(me?.name?.[0] ?? me?.phone?.slice(-2) ?? 'Y').toUpperCase()}
+                </Text>
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.name}>{me?.name ?? tr('profile.user')}</Text>
+              <Text style={styles.phone}>{me?.phone}</Text>
+            </View>
+            {me?.isAdmin && <Badge label="ADMIN" tone="info" />}
+            <View style={styles.editBtn}>
+              <Pencil size={16} color={colors.brand.primary} strokeWidth={2.4} />
+            </View>
+          </Pressable>
+        )}
 
+        {/* Notifications — available to everyone (empty for guests). */}
+        <Section title={tr('profile.section.notifications')}>
+          <Row
+            icon={Bell}
+            iconBg={colors.brand.accentSurface}
+            iconColor={colors.brand.accent}
+            title={tr('notifications.title')}
+            badge={isGuest ? undefined : unreadQuery.data}
+            onPress={() => router.push('/notifications')}
+          />
+        </Section>
+
+        {isGuest ? (
+          <Section title={tr('profile.section.business')}>
+            <Row
+              icon={Store}
+              iconBg={colors.brand.accentSurface}
+              iconColor={colors.brand.accent}
+              title={tr('profile.openShopShort')}
+              onPress={() => requireAuth(() => router.push('/seller/new'))}
+            />
+            <Row
+              icon={QrCode}
+              iconBg={colors.brand.primarySurface}
+              iconColor={colors.brand.primary}
+              title={tr('profile.joinAsStaff')}
+              onPress={() => requireAuth(() => router.push('/staff-scan'))}
+            />
+          </Section>
+        ) : null}
+
+        {!isGuest ? (
+          <>
         <Section title={tr('profile.section.myShops')}>
           {me?.isSellerApproved && myShopsQuery.data && myShopsQuery.data.length > 0
             ? myShopsQuery.data.map((shop) => (
@@ -220,6 +304,8 @@ export default function ProfileTab() {
             onPress={() => router.push('/staff-scan')}
           />
         </Section>
+          </>
+        ) : null}
 
         <Section title={tr('profile.language')}>
           <View style={styles.langBox}>
@@ -241,29 +327,31 @@ export default function ProfileTab() {
           </View>
         </Section>
 
-        <Section title={tr('profile.section.other')}>
-          <Row
-            icon={LogOut}
-            iconBg={colors.feedback.dangerSurface}
-            iconColor={colors.brand.accent}
-            title={tr('auth.signOut')}
-            titleColor={colors.brand.accent}
-            onPress={() => {
-              haptics.warning();
-              Alert.alert(tr('auth.signOut'), tr('auth.signOutConfirm'), [
-                { text: tr('common.cancel'), style: 'cancel' },
-                {
-                  text: tr('auth.signOut'),
-                  style: 'destructive',
-                  onPress: () => {
-                    haptics.heavy();
-                    signOut();
+        {!isGuest ? (
+          <Section title={tr('profile.section.other')}>
+            <Row
+              icon={LogOut}
+              iconBg={colors.feedback.dangerSurface}
+              iconColor={colors.brand.accent}
+              title={tr('auth.signOut')}
+              titleColor={colors.brand.accent}
+              onPress={() => {
+                haptics.warning();
+                Alert.alert(tr('auth.signOut'), tr('auth.signOutConfirm'), [
+                  { text: tr('common.cancel'), style: 'cancel' },
+                  {
+                    text: tr('auth.signOut'),
+                    style: 'destructive',
+                    onPress: () => {
+                      haptics.heavy();
+                      signOut();
+                    },
                   },
-                },
-              ]);
-            }}
-          />
-        </Section>
+                ]);
+              }}
+            />
+          </Section>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -336,6 +424,26 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     borderRadius: radius.lg,
   },
+  guestCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+    backgroundColor: colors.bg.surface,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.brand.primaryBorder,
+  },
+  guestIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.full,
+    backgroundColor: colors.brand.primarySurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guestTitle: { ...typography.h3, color: colors.brand.primary },
+  guestSub: { ...typography.bodySmall, color: colors.text.secondary, marginTop: 2 },
   avatar: {
     width: 64,
     height: 64,

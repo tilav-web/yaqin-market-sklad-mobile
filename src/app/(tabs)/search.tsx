@@ -7,6 +7,7 @@ import {
   Dimensions,
   FlatList,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -258,6 +259,16 @@ export default function SearchTab() {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={feed.isFetching && !feed.isLoading && !feed.isFetchingNextPage}
+              onRefresh={() => {
+                void feed.refetch();
+              }}
+              tintColor={colors.brand.primary}
+              colors={[colors.brand.primary]}
+            />
+          }
           onEndReachedThreshold={0.6}
           onEndReached={() => {
             if (feed.hasNextPage && !feed.isFetchingNextPage) void feed.fetchNextPage();

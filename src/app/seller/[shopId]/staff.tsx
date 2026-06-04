@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useGlobalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useFocusEffect, useGlobalSearchParams } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Switch,
@@ -44,6 +45,14 @@ export default function StaffScreen() {
     },
   });
 
+  // Refetch whenever the screen regains focus, so a staff member who just
+  // joined (scanned the QR) shows up without needing to restart the app.
+  useFocusEffect(
+    useCallback(() => {
+      void qc.invalidateQueries({ queryKey: ['shop-staff', shopId] });
+    }, [qc, shopId]),
+  );
+
   const inviteMutation = useMutation({
     mutationFn: async () => {
       const res = await api.post<InviteResp>(`/seller/shops/${shopId}/staff/invitations`);
@@ -57,7 +66,16 @@ export default function StaffScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl
+            refreshing={staffQuery.isFetching && !staffQuery.isLoading}
+            onRefresh={() => void staffQuery.refetch()}
+            tintColor={Brand.red}
+            colors={[Brand.red]}
+          />
+        }>
         <Text style={styles.hint}>
           Yangi xodim qo‘shish uchun QR yarating va xodim uni ilova orqali skanlasin. Yangi xodimda
           hech qanday ruxsat bo‘lmaydi — kerakli ruxsatlarni o‘zingiz berasiz.

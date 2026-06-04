@@ -4,6 +4,7 @@ import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { resolveMedia } from '@/lib/api';
+import { useRequireAuth } from '@/lib/useRequireAuth';
 import { EmptyState } from '@/components/ui';
 import { useCartStore } from '@/stores/cart';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
@@ -12,6 +13,7 @@ import { haptics } from '@/utils/haptics';
 export default function CartsTab() {
   const carts = useCartStore((s) => s.carts);
   const clearShop = useCartStore((s) => s.clearShop);
+  const requireAuth = useRequireAuth();
   const entries = Object.entries(carts).filter(([, lines]) => lines.length > 0);
 
   return (
@@ -84,7 +86,7 @@ export default function CartsTab() {
                     style={styles.proceedBtn}
                     onPress={() => {
                       haptics.selection();
-                      router.push(`/shop/${shopId}/checkout`);
+                      requireAuth(() => router.push(`/shop/${shopId}/checkout`));
                     }}>
                     <Text style={styles.proceedText}>Buyurtma berish</Text>
                     <ChevronRight size={16} color={colors.text.onPrimary} strokeWidth={2.6} />

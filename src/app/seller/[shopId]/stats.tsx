@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useGlobalSearchParams } from 'expo-router';
 import { AlertTriangle, CalendarClock, Package, ShoppingBag, TrendingUp, Wallet } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '@/lib/api';
@@ -51,7 +51,24 @@ export default function SellerStatsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl
+            refreshing={
+              (statsQuery.isFetching && !statsQuery.isLoading) ||
+              (reorderQuery.isFetching && !reorderQuery.isLoading) ||
+              (expiringQuery.isFetching && !expiringQuery.isLoading)
+            }
+            onRefresh={() => {
+              void statsQuery.refetch();
+              void reorderQuery.refetch();
+              void expiringQuery.refetch();
+            }}
+            tintColor={colors.brand.primary}
+            colors={[colors.brand.primary]}
+          />
+        }>
         {/* Period selector */}
         <View style={styles.periodRow}>
           {PERIODS.map((p) => (

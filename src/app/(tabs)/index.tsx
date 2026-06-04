@@ -23,7 +23,6 @@ import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { FeedProduct, FeedResponse, PublicShop } from '@/lib/types';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
-import { NotificationBell } from '@/components/NotificationBell';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 
 const SCREEN_W = Dimensions.get('window').width;
@@ -136,7 +135,6 @@ export default function HomeScreen() {
         <View style={styles.headerTop}>
           <View style={styles.brandRow}>
             <Text style={styles.brand}>Yaqin Market</Text>
-            <NotificationBell color={colors.text.onPrimary} />
           </View>
           <Pressable
             style={[styles.locationPill, usingManualAddress && styles.locationPillManual]}

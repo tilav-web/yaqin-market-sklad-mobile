@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useFocusEffect, useGlobalSearchParams } from 'expo-router';
 import { Check, ChevronDown, ChevronRight, ChevronUp, MessageCircle, Package, RotateCcw, ScanLine, X } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState, useToast } from '@/components/ui';
@@ -113,6 +113,16 @@ export default function SellerOrdersScreen() {
         keyExtractor={(o) => o.id}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={ordersQuery.isFetching && !ordersQuery.isLoading}
+            onRefresh={() => {
+              void ordersQuery.refetch();
+            }}
+            tintColor={colors.brand.primary}
+            colors={[colors.brand.primary]}
+          />
+        }
         ListEmptyComponent={
           ordersQuery.isLoading ? (
             <ActivityIndicator color={colors.brand.primary} style={{ marginTop: spacing['4xl'] }} />

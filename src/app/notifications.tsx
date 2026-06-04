@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Bell, CheckCheck, MessageCircle, Package, ShoppingBag, TriangleAlert } from 'lucide-react-native';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/ui';
@@ -84,6 +84,16 @@ export default function NotificationsScreen() {
         data={items}
         keyExtractor={(n) => n.id}
         contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl
+            refreshing={listQuery.isFetching && !listQuery.isLoading}
+            onRefresh={() => {
+              void listQuery.refetch();
+            }}
+            tintColor={colors.brand.primary}
+            colors={[colors.brand.primary]}
+          />
+        }
         ListEmptyComponent={
           listQuery.isLoading ? (
             <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />

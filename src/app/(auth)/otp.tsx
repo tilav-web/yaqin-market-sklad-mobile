@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -77,8 +78,12 @@ export default function OtpScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
-        style={styles.container}
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
         <Pressable
           onPress={() => router.back()}
           hitSlop={hitSlop}
@@ -168,6 +173,7 @@ export default function OtpScreen() {
             haptic="none"
           />
         </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -176,11 +182,11 @@ export default function OtpScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg.surface },
   container: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: layout.screenPadding,
     paddingTop: spacing.sm,
-    justifyContent: 'space-between',
     paddingBottom: spacing.lg,
+    gap: spacing.xl,
   },
   backBtn: { padding: spacing.xs, alignSelf: 'flex-start' },
   header: { gap: spacing.sm, marginTop: spacing.lg },

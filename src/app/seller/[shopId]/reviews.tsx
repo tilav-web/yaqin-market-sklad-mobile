@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useGlobalSearchParams } from 'expo-router';
 import { Star } from 'lucide-react-native';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/ui';
@@ -53,6 +53,16 @@ export default function SellerReviewsScreen() {
         data={items}
         keyExtractor={(r) => r.id}
         contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl
+            refreshing={reviewsQuery.isFetching && !reviewsQuery.isLoading}
+            onRefresh={() => {
+              void reviewsQuery.refetch();
+            }}
+            tintColor={colors.brand.primary}
+            colors={[colors.brand.primary]}
+          />
+        }
         ListHeaderComponent={
           items.length > 0 ? (
             <View style={styles.summary}>

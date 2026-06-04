@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useGlobalSearchParams } from 'expo-router';
 import { NotebookText, Plus, UserCircle2 } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CreateDebtModal } from '@/components/seller/CreateDebtModal';
@@ -52,6 +52,20 @@ export default function SellerDebtScreen() {
         data={accountsQuery.data ?? []}
         keyExtractor={(a) => a.customerPhone}
         contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl
+            refreshing={
+              (accountsQuery.isFetching && !accountsQuery.isLoading) ||
+              (summaryQuery.isFetching && !summaryQuery.isLoading)
+            }
+            onRefresh={() => {
+              void accountsQuery.refetch();
+              void summaryQuery.refetch();
+            }}
+            tintColor={colors.brand.primary}
+            colors={[colors.brand.primary]}
+          />
+        }
         ListHeaderComponent={
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Umumiy qarz (olinishi kerak)</Text>

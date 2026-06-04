@@ -34,9 +34,10 @@ function RootNavigator() {
   useEffect(() => {
     if (status === 'loading') return;
     const inAuthGroup = segments[0] === '(auth)';
-    if (status === 'unauthenticated' && !inAuthGroup) {
-      router.replace('/(auth)/phone');
-    } else if (status === 'authenticated' && inAuthGroup) {
+    // Guest mode: unauthenticated users browse freely (products, shops, map,
+    // language, notifications, cart). We only bounce OUT of the auth screens
+    // once login succeeds. Protected actions call requireAuth() to open login.
+    if (status === 'authenticated' && inAuthGroup) {
       router.replace('/(tabs)');
     }
   }, [status, segments, router]);
