@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { router } from 'expo-router';
-import { Check, MessageCircle, RotateCcw, Star, X } from 'lucide-react-native';
+import { Check, MessageCircle, RefreshCw, RotateCcw, Star, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useToast } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
 import { Order, OrderStatus, STATUS_LABEL_UZ } from '@/lib/types';
+import { useCartStore } from '@/stores/cart';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -101,6 +102,8 @@ export default function OrderDetailScreen() {
     [order?.reviewedVariantIds],
   );
 
+  const addItem = useCartStore((s) => s.addItem);
+
   if (orderQuery.isLoading || !order) {
     return (
       <View style={styles.center}>
@@ -108,6 +111,25 @@ export default function OrderDetailScreen() {
       </View>
     );
   }
+
+  const canReorder = order.status === 'delivered' || order.status === 'cancelled';
+
+  const handleReorder = () => {
+    haptics.medium();
+    const shopId = order.shopId;
+    const shopName = order.shop?.name ?? '';
+    for (const it of order.items) {
+      addItem({
+        variantId: it.productVariantId,
+        shopId,
+        shopName,
+        productName: it.productName,
+        unitPrice: it.unitPrice,
+        quantity: it.quantity,
+      });
+    }
+    router.push(`/shop/${shopId}`);
+  };
 
   const canReview = order.status === 'delivered';
   const hasReturns = order.items.some((i) => i.returnedQuantity > 0);
@@ -142,7 +164,7 @@ export default function OrderDetailScreen() {
         {order.status !== 'cancelled' && (
           <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${order.id}`)}>
             <MessageCircle size={18} color={colors.brand.primary} strokeWidth={2.4} />
-            <Text style={styles.chatBtnText}>Sotuvchi bilan bog‘lanish</Text>
+            <Text style={styles.chatBtnText}>Sotuvchi bilan bog'lanish</Text>
           </Pressable>
         )}
 
@@ -191,7 +213,7 @@ export default function OrderDetailScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemName}>{it.productName}</Text>
                 <Text style={styles.itemQty}>
-                  {it.quantity} × {it.unitPrice.toLocaleString()} so‘m
+                  {it.quantity} × {it.unitPrice.toLocaleString()} so'm
                 </Text>
                 {it.returnedQuantity > 0 && (
                   <Text style={styles.returnedTag}>{it.returnedQuantity} ta qaytarilgan</Text>
@@ -210,11 +232,11 @@ export default function OrderDetailScreen() {
               <Text style={styles.sectionTitle}>Qaytarilgan mahsulotlar</Text>
             </View>
             {order.returnReason ? (
-              <Text style={styles.reasonSaved}>“{order.returnReason}”</Text>
+              <Text style={styles.reasonSaved}>"{order.returnReason}"</Text>
             ) : (
               <>
                 <Text style={styles.reasonHint}>
-                  Nega qaytardingiz? Sabab qoldirsangiz, do‘kon yaxshilanadi (ixtiyoriy).
+                  Nega qaytardingiz? Sabab qoldirsangiz, do'kon yaxshilanadi (ixtiyoriy).
                 </Text>
                 <TextInput
                   style={styles.reviewInput}
@@ -243,11 +265,11 @@ export default function OrderDetailScreen() {
 
         {/* Summary */}
         <View style={styles.section}>
-          <Row label="Mahsulotlar" value={`${order.subTotal.toLocaleString()} so‘m`} />
-          <Row label="Yetkazib berish" value={`${order.deliveryFee.toLocaleString()} so‘m`} />
+          <Row label="Mahsulotlar" value={`${order.subTotal.toLocaleString()} so'm`} />
+          <Row label="Yetkazib berish" value={`${order.deliveryFee.toLocaleString()} so'm`} />
           <Row label="Masofa" value={`${order.distanceKm.toFixed(2)} km`} />
           <View style={styles.divider} />
-          <Row label="Jami" value={`${order.total.toLocaleString()} so‘m`} bold />
+          <Row label="Jami" value={`${order.total.toLocaleString()} so'm`} bold />
         </View>
 
         {/* Rating */}
@@ -310,13 +332,20 @@ export default function OrderDetailScreen() {
             style={styles.ghostBtn}
             onPress={() =>
               Alert.alert('Bekor qilish', 'Buyurtmani bekor qilasizmi?', [
-                { text: 'Yo‘q', style: 'cancel' },
+                { text: "Yo'q", style: 'cancel' },
                 { text: 'Ha', style: 'destructive', onPress: () => setStatus.mutate('cancelled') },
               ])
             }
             disabled={setStatus.isPending}>
             <X size={16} color={colors.feedback.danger} strokeWidth={2.6} />
             <Text style={styles.ghostBtnText}>Bekor qilish</Text>
+          </Pressable>
+        )}
+
+        {canReorder && (
+          <Pressable style={styles.reorderBtn} onPress={handleReorder}>
+            <RefreshCw size={16} color={colors.brand.primary} strokeWidth={2.4} />
+            <Text style={styles.reorderBtnText}>Qayta buyurtma berish</Text>
           </Pressable>
         )}
       </ScrollView>
@@ -462,4 +491,16 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
   },
   ghostBtnText: { ...typography.buttonSmall, color: colors.feedback.danger },
+  reorderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    height: layout.buttonHeight.md,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.brand.primary,
+    backgroundColor: colors.brand.primarySurface,
+  },
+  reorderBtnText: { ...typography.buttonSmall, color: colors.brand.primary },
 });
