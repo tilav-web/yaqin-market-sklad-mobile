@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useGlobalSearchParams } from 'expo-router';
-import { BarChart3, Bell, ChevronRight, type LucideIcon, Settings2, ShieldBan, Star, Store } from 'lucide-react-native';
+import { BarChart3, Bell, ChevronRight, type LucideIcon, Settings2, ShieldBan, Star, Store, Wallet } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -109,8 +109,20 @@ export default function SellerHubScreen() {
           <Row
             icon={ShieldBan}
             title="Bloklangan foydalanuvchilar"
-            subtitle="Bu do‘kon uchun bloklangan mijozlar"
+            subtitle="Bu do’kon uchun bloklangan mijozlar"
             onPress={() => router.push(`/seller/${shopId}/blocked`)}
+          />
+          <Row
+            icon={Wallet}
+            title="Balans va to’lovlar"
+            subtitle="Daromad, qarz, mablag’ yechish"
+            onPress={() => router.push(`/seller/${shopId}/balance`)}
+          />
+          <Row
+            icon={Star}
+            title="Prime obuna"
+            subtitle="Komissiyani kamaytirish uchun obuna"
+            onPress={() => router.push(`/seller/${shopId}/prime`)}
             last
           />
         </View>

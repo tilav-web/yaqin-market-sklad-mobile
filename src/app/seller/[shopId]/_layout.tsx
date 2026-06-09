@@ -70,6 +70,14 @@ export default function SellerLayout() {
           name="reviews"
           options={{ title: 'Sharhlar', headerLeft: () => <HubBackButton shopId={shopId} /> }}
         />
+        <Tabs.Screen
+          name="balance"
+          options={{ title: 'Balans', headerLeft: () => <HubBackButton shopId={shopId} /> }}
+        />
+        <Tabs.Screen
+          name="prime"
+          options={{ title: 'Prime obuna', headerLeft: () => <HubBackButton shopId={shopId} /> }}
+        />
       </Tabs>
 
       {pending && (

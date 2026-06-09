@@ -1,7 +1,7 @@
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Clock, Search as SearchIcon, SlidersHorizontal, Tag, X } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -38,17 +38,59 @@ const COLUMNS = 2;
 const GUTTER = spacing.md;
 const CARD_WIDTH = (SCREEN_W - layout.screenPadding * 2 - GUTTER) / COLUMNS;
 
+/* ─── Filter reducer ─── */
+interface FilterState {
+  categoryIds: string[];
+  priceSort: PriceSort;
+  byRating: boolean;
+  priceRange: PriceRangeKey | null;
+  onlyDiscounted: boolean;
+  filterOpen: boolean;
+}
+type FilterAction =
+  | { type: 'TOGGLE_CATEGORY'; id: string }
+  | { type: 'SET_PRICE_SORT'; value: PriceSort }
+  | { type: 'SET_BY_RATING'; value: boolean }
+  | { type: 'SET_PRICE_RANGE'; value: PriceRangeKey | null }
+  | { type: 'SET_ONLY_DISCOUNTED'; value: boolean }
+  | { type: 'OPEN_FILTER' }
+  | { type: 'CLOSE_FILTER' }
+  | { type: 'CLEAR_SORT' }
+  | { type: 'RESET_ALL' };
+
+const FILTER_INIT: FilterState = {
+  categoryIds: [], priceSort: null, byRating: false,
+  priceRange: null, onlyDiscounted: false, filterOpen: false,
+};
+
+function filterReducer(state: FilterState, action: FilterAction): FilterState {
+  switch (action.type) {
+    case 'TOGGLE_CATEGORY':
+      return {
+        ...state,
+        categoryIds: state.categoryIds.includes(action.id)
+          ? state.categoryIds.filter((x) => x !== action.id)
+          : [...state.categoryIds, action.id],
+      };
+    case 'SET_PRICE_SORT': return { ...state, priceSort: action.value };
+    case 'SET_BY_RATING': return { ...state, byRating: action.value };
+    case 'SET_PRICE_RANGE': return { ...state, priceRange: action.value };
+    case 'SET_ONLY_DISCOUNTED': return { ...state, onlyDiscounted: action.value };
+    case 'OPEN_FILTER': return { ...state, filterOpen: true };
+    case 'CLOSE_FILTER': return { ...state, filterOpen: false };
+    case 'CLEAR_SORT': return { ...state, priceSort: null, byRating: false };
+    case 'RESET_ALL': return FILTER_INIT;
+    default: return state;
+  }
+}
+
 export default function SearchTab() {
   const { tr, catName } = useTranslation();
   const coords = useEffectiveCoords();
   const [input, setInput] = useState('');
   const [q, setQ] = useState('');
-  const [categoryIds, setCategoryIds] = useState<string[]>([]);
-  const [priceSort, setPriceSort] = useState<PriceSort>(null);
-  const [byRating, setByRating] = useState(false);
-  const [priceRange, setPriceRange] = useState<PriceRangeKey | null>(null);
-  const [onlyDiscounted, setOnlyDiscounted] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [filters, dispatch] = useReducer(filterReducer, FILTER_INIT);
+  const { categoryIds, priceSort, byRating, priceRange, onlyDiscounted, filterOpen } = filters;
 
   const history = useSearchHistoryStore((s) => s.terms);
   const addHistory = useSearchHistoryStore((s) => s.add);
@@ -153,18 +195,9 @@ export default function SearchTab() {
     return parts.join(' + ');
   }, [priceSort, byRating, tr]);
 
-  const toggleCategory = (id: string) =>
-    setCategoryIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  const clearSort = () => {
-    setPriceSort(null);
-    setByRating(false);
-  };
-  const resetFilters = () => {
-    setCategoryIds([]);
-    clearSort();
-    setPriceRange(null);
-    setOnlyDiscounted(false);
-  };
+  const toggleCategory = useCallback((id: string) => dispatch({ type: 'TOGGLE_CATEGORY', id }), []);
+  const clearSort = useCallback(() => dispatch({ type: 'CLEAR_SORT' }), []);
+  const resetFilters = useCallback(() => dispatch({ type: 'RESET_ALL' }), []);
 
   // Run a saved/suggested term: fill the box, search immediately, remember it.
   const runTerm = (term: string) => {
@@ -216,7 +249,7 @@ export default function SearchTab() {
       </View>
 
       <View style={styles.filterBar}>
-        <Pressable style={styles.filterBtn} onPress={() => setFilterOpen(true)}>
+        <Pressable style={styles.filterBtn} onPress={() => dispatch({ type: 'OPEN_FILTER' })}>
           <SlidersHorizontal size={16} color={colors.brand.primary} strokeWidth={2.4} />
           <Text style={styles.filterBtnText}>{tr('filter.button')}</Text>
           {activeCount > 0 && (
@@ -238,13 +271,13 @@ export default function SearchTab() {
             keyboardShouldPersistTaps="handled">
             {sortActive ? <ActiveChip label={sortSummary} onRemove={clearSort} /> : null}
             {range ? (
-              <ActiveChip label={tr(range.labelKey)} onRemove={() => setPriceRange(null)} />
+              <ActiveChip label={tr(range.labelKey)} onRemove={() => dispatch({ type: 'SET_PRICE_RANGE', value: null })} />
             ) : null}
             {selectedCategories.map((c) => (
               <ActiveChip key={c.id} label={catName(c)} onRemove={() => toggleCategory(c.id)} />
             ))}
             {onlyDiscounted && (
-              <ActiveChip label={tr('filter.discounted')} onRemove={() => setOnlyDiscounted(false)} />
+              <ActiveChip label={tr('filter.discounted')} onRemove={() => dispatch({ type: 'SET_ONLY_DISCOUNTED', value: false })} />
             )}
           </ScrollView>
         )}
@@ -313,19 +346,19 @@ export default function SearchTab() {
 
       <SearchFilterSheet
         visible={filterOpen}
-        onClose={() => setFilterOpen(false)}
+        onClose={() => dispatch({ type: 'CLOSE_FILTER' })}
         categories={leafCategories}
         categoryIds={categoryIds}
         onToggleCategory={toggleCategory}
-        onClearCategories={() => setCategoryIds([])}
+        onClearCategories={() => dispatch({ type: 'RESET_ALL' })}
         priceSort={priceSort}
-        setPriceSort={setPriceSort}
+        setPriceSort={(v) => dispatch({ type: 'SET_PRICE_SORT', value: v })}
         byRating={byRating}
-        setByRating={setByRating}
+        setByRating={(v) => dispatch({ type: 'SET_BY_RATING', value: v })}
         priceRange={priceRange}
-        setPriceRange={setPriceRange}
+        setPriceRange={(v) => dispatch({ type: 'SET_PRICE_RANGE', value: v })}
         onlyDiscounted={onlyDiscounted}
-        setOnlyDiscounted={setOnlyDiscounted}
+        setOnlyDiscounted={(v) => dispatch({ type: 'SET_ONLY_DISCOUNTED', value: v })}
         onReset={resetFilters}
         activeCount={activeCount}
       />
