@@ -6,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/ui';
 import { api, resolveMedia } from '@/lib/api';
-import { routeFromNotificationData } from '@/lib/push';
 import { AppNotification } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -60,7 +59,23 @@ export default function NotificationsScreen() {
 
   const open = (n: AppNotification) => {
     if (!n.isRead) markRead.mutate(n.id);
-    routeFromNotificationData(n.data ?? {}, (href) => router.push(href as Parameters<typeof router.push>[0]));
+    const data = n.data ?? {};
+    const kind = typeof data.kind === 'string' ? data.kind : 'general';
+    const orderId = typeof data.orderId === 'string' ? data.orderId : undefined;
+    const deepLink = typeof data.deepLink === 'string' ? data.deepLink : undefined;
+    const forSeller = data.forSeller === true;
+
+    if (deepLink && deepLink !== '/notifications') {
+      router.push(deepLink as Parameters<typeof router.push>[0]);
+    } else if (kind === 'chat' && orderId) {
+      router.push(`/chat/${orderId}` as Parameters<typeof router.push>[0]);
+    } else if (kind.startsWith('order') && forSeller && orderId) {
+      router.push(`/seller/order/${orderId}` as Parameters<typeof router.push>[0]);
+    } else if (kind.startsWith('order') && orderId) {
+      router.push(`/orders/${orderId}` as Parameters<typeof router.push>[0]);
+    } else {
+      router.push(`/notification/${n.id}` as Parameters<typeof router.push>[0]);
+    }
   };
 
   const items = listQuery.data ?? [];

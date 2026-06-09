@@ -82,6 +82,7 @@ function RootNavigator() {
       <Stack.Screen name="orders/[id]" options={{ title: 'Buyurtma' }} />
       <Stack.Screen name="chat/[orderId]" options={{ title: 'Chat' }} />
       <Stack.Screen name="notifications" options={{ title: 'Bildirishnomalar' }} />
+      <Stack.Screen name="notification/[id]" options={{ title: 'Bildirishnoma' }} />
       <Stack.Screen name="addresses" options={{ title: tr('addr.title') }} />
       <Stack.Screen name="profile/edit" options={{ title: tr('editProfile.title') }} />
       <Stack.Screen name="staff-scan" options={{ headerShown: false }} />
