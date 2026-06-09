@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ban, Bike, Check, MapPin, MessageCircle, Package, Phone, RotateCcw, X } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
+import { useAlarmState } from '@/stores/alarmState';
 import { StaffMember } from '@/constants/staffPermissions';
 import { Order, OrderStatus, STATUS_LABEL_UZ } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -26,6 +27,12 @@ export default function SellerOrderDetailScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const qc = useQueryClient();
   const [assignOpen, setAssignOpen] = useState(false);
+  const clearIfMatch = useAlarmState((s) => s.clearIfMatch);
+
+  // Stop the continuous alarm as soon as the seller opens this specific order.
+  useEffect(() => {
+    if (orderId) clearIfMatch(orderId);
+  }, [orderId, clearIfMatch]);
 
   const orderQuery = useQuery({
     queryKey: ['order-detail', orderId],

@@ -5,12 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SellerTabBar } from '@/components/SellerTabBar';
 import { Brand, Radius, Spacing } from '@/constants/theme';
+import { AlarmMode } from '@/stores/alarmSettings';
 import { PendingOrder, useOrderAlarm } from '@/lib/useOrderAlarm';
 
 function BackButton() {
-  // Pop back to the (already-mounted) customer tabs instead of replacing them —
-  // `replace` re-mounts the whole tab tree (home feed, map…) and causes a
-  // ~1.5s freeze; `back` returns instantly and preserves their state.
   const onBack = () => {
     if (router.canGoBack()) router.back();
     else router.replace('/(tabs)');
@@ -22,7 +20,6 @@ function BackButton() {
   );
 }
 
-/** Back to the shop hub (Sozlamalar tab) for sub-screens opened from it. */
 function HubBackButton({ shopId }: { shopId: string }) {
   return (
     <Pressable style={styles.backBtn} onPress={() => router.navigate(`/seller/${shopId}/settings`)} hitSlop={10}>
@@ -33,7 +30,14 @@ function HubBackButton({ shopId }: { shopId: string }) {
 
 export default function SellerLayout() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
-  const { pending, acknowledge } = useOrderAlarm(shopId);
+  const { pending, acknowledge, alarm } = useOrderAlarm(shopId);
+
+  const handleOpen = () => {
+    if (!pending) return;
+    if (alarm.mode === 'short') acknowledge(); // short: stop alarm immediately
+    // long: alarm continues — stops only when order detail mounts
+    router.navigate(`/seller/order/${pending.orderId}`);
+  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -50,10 +54,9 @@ export default function SellerLayout() {
         <Tabs.Screen name="debt" options={{ title: 'Qarz daftar' }} />
         <Tabs.Screen name="staff" options={{ title: 'Xodimlar' }} />
         <Tabs.Screen name="settings" options={{ title: 'Sozlamalar' }} />
-        {/* Sub-screens reached from the Sozlamalar hub (hidden from the bar). */}
         <Tabs.Screen
           name="shop-settings"
-          options={{ title: 'Do‘kon sozlamalari', headerLeft: () => <HubBackButton shopId={shopId} /> }}
+          options={{ title: "Do'kon sozlamalari", headerLeft: () => <HubBackButton shopId={shopId} /> }}
         />
         <Tabs.Screen
           name="stats"
@@ -72,11 +75,9 @@ export default function SellerLayout() {
       {pending && (
         <NewOrderBanner
           order={pending}
+          mode={alarm.mode}
           onAck={acknowledge}
-          onOpen={() => {
-            acknowledge();
-            router.navigate(`/seller/${shopId}/orders`);
-          }}
+          onOpen={handleOpen}
         />
       )}
     </View>
@@ -85,10 +86,12 @@ export default function SellerLayout() {
 
 function NewOrderBanner({
   order,
+  mode,
   onAck,
   onOpen,
 }: {
   order: PendingOrder;
+  mode: AlarmMode;
   onAck: () => void;
   onOpen: () => void;
 }) {
@@ -100,11 +103,18 @@ function NewOrderBanner({
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.bannerTitle}>Yangi buyurtma!</Text>
-          <Text style={styles.bannerSub}>#{order.orderNumber} — ko&apos;rish uchun bosing</Text>
+          <Text style={styles.bannerSub}>
+            #{order.orderNumber} —{' '}
+            {mode === "long" ? "buyurtmani ochish uchun bosing" : "ko’rish uchun bosing"}
+          </Text>
         </View>
-        <Pressable style={styles.ackBtn} onPress={onAck} hitSlop={8}>
-          <Text style={styles.ackText}>Ko&apos;rdim</Text>
-        </Pressable>
+        {/* In "long" mode there is no dismiss button — the alarm stops only when
+            the seller actually opens the order detail. */}
+        {mode === 'short' && (
+          <Pressable style={styles.ackBtn} onPress={onAck} hitSlop={8}>
+            <Text style={styles.ackText}>Ko&apos;rdim</Text>
+          </Pressable>
+        )}
       </Pressable>
     </SafeAreaView>
   );

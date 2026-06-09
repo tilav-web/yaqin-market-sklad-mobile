@@ -1,47 +1,53 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
-import { NewOrderEvent, useShopRealtime } from '@/lib/useShopRealtime';
+import { useAlarmState } from '@/stores/alarmState';
 import { useShopAlarm } from '@/stores/alarmSettings';
 import { startOrderAlarm, stopOrderAlarm } from '@/utils/alarm';
+import { NewOrderEvent, useShopRealtime } from '@/lib/useShopRealtime';
 
-export interface PendingOrder {
-  orderId: string;
-  orderNumber: number;
-}
+export type { PendingOrder } from '@/stores/alarmState';
 
 /**
  * Plays the new-order alarm for a shop and exposes the pending order so the UI
- * can show a "seen?" banner. In "long" mode the alarm rings until the seller
- * acknowledges (taps "Ko'rdim"); in "short" mode it plays a single alert but
- * the banner still stays until acknowledged.
+ * can show a banner.
  *
- * Mount this once for the whole seller shop section (the shop layout). It works
- * for the owner and any assigned staff — anyone whose device is joined to the
- * shop's realtime room.
+ * "short" mode: vibrates twice, banner can be dismissed with "Ko'rdim".
+ * "long" mode: vibrates continuously — alarm stops ONLY when the seller
+ * opens the specific order-detail page (not just by tapping "Ko'rdim").
  */
 export function useOrderAlarm(shopId: string | undefined) {
   const alarm = useShopAlarm(shopId);
-  const [pending, setPending] = useState<PendingOrder | null>(null);
-
-  // Keep the latest settings without re-subscribing the socket on every change.
   const alarmRef = useRef(alarm);
   alarmRef.current = alarm;
 
-  const onNewOrder = useCallback((order: NewOrderEvent) => {
-    const a = alarmRef.current;
-    if (!a.enabled) return;
-    void startOrderAlarm(a.mode === 'long');
-    setPending({ orderId: order.orderId, orderNumber: order.orderNumber });
-  }, []);
+  const pending = useAlarmState((s) => s.pending);
+  const setPending = useAlarmState((s) => s.setPending);
+
+  const onNewOrder = useCallback(
+    (order: NewOrderEvent) => {
+      const a = alarmRef.current;
+      if (!a.enabled) return;
+      startOrderAlarm(a.mode === 'long');
+      setPending({ orderId: order.orderId, orderNumber: order.orderNumber });
+    },
+    [setPending],
+  );
 
   useShopRealtime(shopId, onNewOrder);
 
+  /**
+   * Dismiss the banner.
+   * - "short" mode: also stops the alarm (may have already stopped on its own).
+   * - "long" mode: hides the banner but the alarm keeps ringing until the order
+   *   detail page mounts and calls useAlarmState.clearIfMatch().
+   */
   const acknowledge = useCallback(() => {
-    stopOrderAlarm();
+    const a = alarmRef.current;
+    if (a.mode === 'short') stopOrderAlarm();
     setPending(null);
-  }, []);
+  }, [setPending]);
 
-  // Make sure the alarm never keeps ringing after leaving the seller section.
+  // Safety net: stop vibration if the seller exits the whole seller section.
   useEffect(() => () => stopOrderAlarm(), []);
 
   return { pending, acknowledge, alarm };
