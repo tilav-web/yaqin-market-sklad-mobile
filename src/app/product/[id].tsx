@@ -1,8 +1,9 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
   ChevronRight,
+  Heart,
   Minus,
   Plus,
   ShoppingBag,
@@ -64,6 +65,20 @@ export default function ProductDetailScreen() {
     },
     enabled: !!id,
     placeholderData: keepPreviousData,
+  });
+
+  const qc = useQueryClient();
+  const favsQ = useQuery<{ productIds: string[] }>({
+    queryKey: ['favorites'],
+    queryFn: async () => (await api.get('/users/me/favorites')).data,
+  });
+  const isFav = favsQ.data?.productIds?.includes(id ?? '') ?? false;
+  const favMut = useMutation({
+    mutationFn: (add: boolean) =>
+      add
+        ? api.post(`/users/me/favorites/products/${id}`)
+        : api.delete(`/users/me/favorites/products/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['favorites'] }),
   });
 
   const product = detailQuery.data;
@@ -139,6 +154,18 @@ export default function ProductDetailScreen() {
               </View>
             </View>
           )}
+          <Pressable
+            style={styles.favBtn}
+            hitSlop={12}
+            onPress={() => { haptics.medium(); favMut.mutate(!isFav); }}
+          >
+            <Heart
+              size={20}
+              color={isFav ? colors.brand.primary : colors.text.onPrimary}
+              fill={isFav ? colors.brand.primary : 'transparent'}
+              strokeWidth={2.2}
+            />
+          </Pressable>
         </View>
 
         <View style={styles.body}>
@@ -345,6 +372,17 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
   },
   brandChipText: { ...typography.overline, color: colors.brand.primary },
+  favBtn: {
+    position: 'absolute',
+    top: spacing.lg + 48,
+    right: spacing.lg,
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   unitBadge: {
     position: 'absolute',
     top: spacing.lg,
