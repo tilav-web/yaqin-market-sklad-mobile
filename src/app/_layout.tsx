@@ -92,6 +92,7 @@ function RootNavigator() {
       <Stack.Screen name="seller/return/[orderId]" options={{ title: 'Qaytarish' }} />
       <Stack.Screen name="seller/order/[orderId]" options={{ title: 'Buyurtma' }} />
       <Stack.Screen name="seller/pos/[shopId]" options={{ headerShown: false }} />
+      <Stack.Screen name="favorites" options={{ title: 'Sevimlilar' }} />
       </Stack>
     </>
   );

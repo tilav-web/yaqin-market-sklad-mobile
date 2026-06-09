@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Clock,
   Globe,
+  Heart,
   LogIn,
   LogOut,
   MapPin,
@@ -323,6 +324,13 @@ export default function ProfileTab() {
             iconColor={colors.feedback.info}
             title={tr('profile.orders')}
             onPress={() => router.push('/orders')}
+          />
+          <Row
+            icon={Heart}
+            iconBg="#FFF0F0"
+            iconColor={colors.brand.primary}
+            title="Sevimlilar"
+            onPress={() => router.push('/favorites')}
           />
           <Row
             icon={QrCode}

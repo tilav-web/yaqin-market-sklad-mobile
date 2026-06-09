@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ChevronRight, MapPin, Store, Truck } from 'lucide-react-native';
+import { ChevronRight, Heart, MapPin, Store, Truck } from 'lucide-react-native';
 import { useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -22,6 +22,7 @@ import { FeedProduct, PublicProductVariant, PublicShop } from '@/lib/types';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { haptics } from '@/utils/haptics';
 
 const SCREEN_W = Dimensions.get('window').width;
 const GUTTER = spacing.sm;
@@ -51,6 +52,22 @@ export default function ShopDetailScreen() {
       return res.data;
     },
     enabled: !!id,
+  });
+
+  const qc = useQueryClient();
+
+  const favsQ = useQuery<{ shopIds: string[] }>({
+    queryKey: ['favorites'],
+    queryFn: async () => (await api.get('/users/me/favorites')).data,
+  });
+  const isFav = favsQ.data?.shopIds?.includes(id ?? '') ?? false;
+
+  const favMut = useMutation({
+    mutationFn: (add: boolean) =>
+      add
+        ? api.post(`/users/me/favorites/shops/${id}`)
+        : api.delete(`/users/me/favorites/shops/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['favorites'] }),
   });
 
   const cartLines = useCartStore((s) => s.carts[id ?? ''] ?? EMPTY_CART);
@@ -125,6 +142,18 @@ export default function ShopDetailScreen() {
                   <Store size={56} color={colors.brand.primary} strokeWidth={1.4} />
                 </View>
               )}
+              <Pressable
+                style={styles.favBtn}
+                hitSlop={12}
+                onPress={() => { haptics.medium(); favMut.mutate(!isFav); }}
+              >
+                <Heart
+                  size={22}
+                  color={isFav ? colors.brand.primary : colors.text.onPrimary}
+                  fill={isFav ? colors.brand.primary : 'transparent'}
+                  strokeWidth={2.2}
+                />
+              </Pressable>
             </View>
             <View style={styles.shopInfo}>
               <Text style={styles.shopName}>{shop.name}</Text>
@@ -204,6 +233,17 @@ const styles = StyleSheet.create({
   headerWrap: { marginBottom: spacing.md },
   heroImageWrap: { height: 200 },
   heroImage: { width: '100%', height: 200, backgroundColor: colors.bg.surfaceMuted },
+  favBtn: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   placeholder: {
     alignItems: 'center',
     justifyContent: 'center',
