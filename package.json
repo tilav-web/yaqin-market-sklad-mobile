@@ -52,6 +52,7 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "postinstall": "node -e \"const fs=require('fs'),p='node_modules/react-native-render-html/package.json',pkg=JSON.parse(fs.readFileSync(p,'utf8'));pkg['react-native']='lib/commonjs/index.js';fs.writeFileSync(p,JSON.stringify(pkg,null,2));\"",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",

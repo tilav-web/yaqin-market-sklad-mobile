@@ -10,4 +10,18 @@ const config = getDefaultConfig(__dirname);
 config.resolver.unstable_enablePackageExports = true;
 config.resolver.unstable_conditionNames = ['require', 'react-native', 'browser', 'import'];
 
+// react-native-render-html ships "react-native": "src/" (raw TS) which Metro
+// cannot transpile from node_modules. Force it to use the compiled CJS build.
+const originalResolve = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === 'react-native-render-html') {
+    return {
+      filePath: require.resolve('react-native-render-html/lib/commonjs/index.js'),
+      type: 'sourceFile',
+    };
+  }
+  if (originalResolve) return originalResolve(context, moduleName, platform);
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 module.exports = config;
