@@ -75,8 +75,13 @@ async function refreshAccess(): Promise<string | null> {
       );
       await tokenStorage.save(res.data.accessToken, res.data.refreshToken);
       return res.data.accessToken;
-    } catch {
-      await tokenStorage.clear();
+    } catch (err) {
+      // Only clear tokens when the server definitively rejects the refresh token
+      // (401 = expired / revoked). Network errors or server 5xx must NOT log
+      // the user out — the session is still valid, connectivity is the problem.
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        await tokenStorage.clear();
+      }
       return null;
     } finally {
       refreshing = null;

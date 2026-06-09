@@ -1,4 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
+import * as Notifications from 'expo-notifications';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, StatusBar, StyleSheet, View } from 'react-native';
@@ -8,7 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RealtimeBridge } from '@/components/RealtimeBridge';
 import { ToastProvider } from '@/components/ui/Toast';
 import { useTranslation } from '@/i18n';
-import { registerForPush } from '@/lib/push';
+import { registerForPush, routeFromNotificationData } from '@/lib/push';
 import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/stores/auth';
 import { colors } from '@/theme';
@@ -30,6 +31,15 @@ function RootNavigator() {
   useEffect(() => {
     if (status !== 'loading') void registerForPush();
   }, [status]);
+
+  // Handle notification taps (app in background or killed).
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as Record<string, unknown>;
+      routeFromNotificationData(data, (href) => router.push(href as Parameters<typeof router.push>[0]));
+    });
+    return () => sub.remove();
+  }, [router]);
 
   useEffect(() => {
     if (status === 'loading') return;

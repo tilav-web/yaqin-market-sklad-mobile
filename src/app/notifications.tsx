@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Bell, CheckCheck, MessageCircle, Package, ShoppingBag, TriangleAlert } from 'lucide-react-native';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/ui';
-import { api } from '@/lib/api';
+import { api, resolveMedia } from '@/lib/api';
+import { routeFromNotificationData } from '@/lib/push';
 import { AppNotification } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -57,15 +58,9 @@ export default function NotificationsScreen() {
     },
   });
 
-  // Tap routing: open the relevant screen based on the notification payload.
   const open = (n: AppNotification) => {
     if (!n.isRead) markRead.mutate(n.id);
-    const kind = n.kind;
-    const orderId = typeof n.data?.orderId === 'string' ? n.data.orderId : undefined;
-    const shopId = typeof n.data?.shopId === 'string' ? n.data.shopId : undefined;
-    if (kind === 'chat' && orderId) router.push(`/chat/${orderId}`);
-    else if (kind.startsWith('order') && shopId) router.push(`/seller/order/${orderId ?? ''}`);
-    else if (kind.startsWith('order') && orderId) router.push(`/orders/${orderId}`);
+    routeFromNotificationData(n.data ?? {}, (href) => router.push(href as Parameters<typeof router.push>[0]));
   };
 
   const items = listQuery.data ?? [];
@@ -103,11 +98,16 @@ export default function NotificationsScreen() {
         }
         renderItem={({ item }) => {
           const Icon = ICON[item.kind] ?? Bell;
+          const imageUrl = typeof item.data?.imageUrl === 'string' ? item.data.imageUrl : undefined;
           return (
             <Pressable style={[styles.row, !item.isRead && styles.rowUnread]} onPress={() => open(item)}>
-              <View style={[styles.iconWrap, !item.isRead && styles.iconWrapUnread]}>
-                <Icon size={18} color={item.isRead ? colors.text.secondary : colors.brand.primary} strokeWidth={2.2} />
-              </View>
+              {imageUrl ? (
+                <Image source={{ uri: resolveMedia(imageUrl) }} style={styles.thumb} />
+              ) : (
+                <View style={[styles.iconWrap, !item.isRead && styles.iconWrapUnread]}>
+                  <Icon size={18} color={item.isRead ? colors.text.secondary : colors.brand.primary} strokeWidth={2.2} />
+                </View>
+              )}
               <View style={{ flex: 1 }}>
                 <Text style={[styles.title, !item.isRead && styles.titleUnread]} numberOfLines={1}>
                   {item.title}
@@ -163,4 +163,5 @@ const styles = StyleSheet.create({
   body: { ...typography.caption, color: colors.text.secondary, marginTop: 1 },
   time: { ...typography.caption, color: colors.text.tertiary, marginTop: 2 },
   dot: { width: 9, height: 9, borderRadius: radius.full, backgroundColor: colors.brand.primary },
+  thumb: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.bg.surfaceMuted },
 });

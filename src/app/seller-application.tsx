@@ -1,10 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
+import { MapPin } from 'lucide-react-native';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandButton } from '@/components/ui/brand-button';
+import { LocationPickerModal, PickedLocation } from '@/components/LocationPickerModal';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import { api, extractErrorMessage } from '@/lib/api';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
@@ -14,10 +16,24 @@ export default function SellerApplicationScreen() {
   const [shopName, setShopName] = useState('');
   const [shopAddress, setShopAddress] = useState('');
   const [stir, setStir] = useState('');
-  // Photos field is a placeholder — file uploads to MinIO will be added in a follow-up
-  const [photoUrl, setPhotoUrl] = useState('https://placehold.co/600x400?text=Shop');
-  const coords = useEffectiveCoords();
+  const [photoUrl] = useState('https://placehold.co/600x400?text=Shop');
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [pickedLocation, setPickedLocation] = useState<PickedLocation | null>(null);
+
+  const autoCoords = useEffectiveCoords();
   const refresh = useLocationStore((s) => s.refresh);
+
+  // Effective coords: manual pick takes priority over auto-detected
+  const coords = pickedLocation ?? autoCoords;
+
+  const handleConfirm = (loc: PickedLocation) => {
+    setPickedLocation(loc);
+    // Auto-fill address from reverse geocode if user hasn't typed anything
+    if (loc.address && !shopAddress) {
+      setShopAddress(loc.address);
+    }
+    setPickerVisible(false);
+  };
 
   const submit = useMutation({
     mutationFn: async () => {
@@ -90,20 +106,33 @@ export default function SellerApplicationScreen() {
 
           <Field label="Do'kon GPS lokatsiyasi *">
             <View style={styles.gpsBox}>
-              {coords ? (
-                <Text style={styles.gpsText}>
-                  📍 {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}
-                </Text>
-              ) : (
-                <Text style={[styles.gpsText, { color: Brand.gray600 }]}>
-                  Lokatsiya yuklanmoqda...
-                </Text>
-              )}
+              <View style={styles.gpsRow}>
+                <MapPin size={16} color={coords ? Brand.blue : Brand.gray400} strokeWidth={2.3} />
+                {coords ? (
+                  <Text style={styles.gpsText}>
+                    {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}
+                    {pickedLocation ? ' (xaritadan)' : ' (avtomatik)'}
+                  </Text>
+                ) : (
+                  <Text style={[styles.gpsText, { color: Brand.gray600 }]}>
+                    Lokatsiya yuklanmoqda...
+                  </Text>
+                )}
+              </View>
               <Text style={styles.gpsHint}>
-                Do&apos;kon turgan joyda turib &quot;Yangilash&quot; bosing
+                Xaritadan aniq joyni belgilang yoki avtomatik aniqlashni kuting
               </Text>
-              <View style={{ marginTop: 8 }}>
-                <BrandButton label="Joriy lokatsiyani olish" onPress={() => refresh()} variant="ghost" />
+              <View style={styles.gpsBtns}>
+                <BrandButton
+                  label="Xaritadan belgilash"
+                  onPress={() => setPickerVisible(true)}
+                  variant="accent"
+                />
+                <BrandButton
+                  label="Qayta aniqlash"
+                  onPress={() => { setPickedLocation(null); refresh(); }}
+                  variant="ghost"
+                />
               </View>
             </View>
           </Field>
@@ -119,6 +148,13 @@ export default function SellerApplicationScreen() {
           />
         </View>
       </ScrollView>
+
+      <LocationPickerModal
+        visible={pickerVisible}
+        initial={coords}
+        onCancel={() => setPickerVisible(false)}
+        onConfirm={handleConfirm}
+      />
     </SafeAreaView>
   );
 }
@@ -151,8 +187,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Brand.gray200,
   },
-  gpsBox: { backgroundColor: Brand.gray50, padding: Spacing.three, borderRadius: Radius.md, borderWidth: 1, borderColor: Brand.gray200, gap: 4 },
-  gpsText: { fontSize: 14, color: Brand.blue, fontWeight: '600' },
+  gpsBox: { backgroundColor: Brand.gray50, padding: Spacing.three, borderRadius: Radius.md, borderWidth: 1, borderColor: Brand.gray200, gap: 8 },
+  gpsRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  gpsText: { fontSize: 14, color: Brand.blue, fontWeight: '600', flex: 1 },
   gpsHint: { fontSize: 12, color: Brand.gray600 },
+  gpsBtns: { gap: 6 },
   footer: { marginTop: Spacing.two },
 });

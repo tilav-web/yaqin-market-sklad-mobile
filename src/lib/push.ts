@@ -44,12 +44,14 @@ export async function registerForPush(): Promise<void> {
     if (status !== 'granted') return;
 
     if (Platform.OS === 'android') {
-      // Note: don't set `sound` to 'default' — expo-notifications treats any
-      // string as a bundled custom sound file and warns if it's missing. Omit
-      // it to use the system default tone.
       await Notifications.setNotificationChannelAsync('default', {
         name: 'Yaqin Market',
         importance: Notifications.AndroidImportance.HIGH,
+        // Show notification content on lock screen (PUBLIC = show fully)
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#0046AD',
+        showBadge: true,
       });
     }
 
@@ -60,9 +62,6 @@ export async function registerForPush(): Promise<void> {
     }
 
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
-    // When signed in, register + LINK the token to the user; otherwise register
-    // it anonymously so the device still receives broadcast notifications. On
-    // the next sign-in this same token gets linked to the account.
     const access = await tokenStorage.getAccess();
     if (access) {
       await api.post('/users/me/devices', { token, platform: Platform.OS });
@@ -71,5 +70,31 @@ export async function registerForPush(): Promise<void> {
     }
   } catch (err) {
     console.warn('[push] register failed:', (err as Error).message);
+  }
+}
+
+/**
+ * Navigate to the correct in-app screen when the user taps a notification.
+ * Call this in a `Notifications.addNotificationResponseReceivedListener`.
+ */
+export function routeFromNotificationData(
+  data: Record<string, unknown>,
+  push: (href: string) => void,
+): void {
+  const kind = typeof data.kind === 'string' ? data.kind : 'general';
+  const orderId = typeof data.orderId === 'string' ? data.orderId : undefined;
+  const deepLink = typeof data.deepLink === 'string' ? data.deepLink : undefined;
+  const forSeller = data.forSeller === true;
+
+  if (deepLink) {
+    push(deepLink);
+  } else if (kind === 'chat' && orderId) {
+    push(`/chat/${orderId}`);
+  } else if (kind.startsWith('order') && forSeller && orderId) {
+    push(`/seller/order/${orderId}`);
+  } else if (kind.startsWith('order') && orderId) {
+    push(`/orders/${orderId}`);
+  } else {
+    push('/notifications');
   }
 }

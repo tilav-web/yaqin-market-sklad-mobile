@@ -192,7 +192,7 @@ export default function ProfileTab() {
               iconBg={colors.brand.accentSurface}
               iconColor={colors.brand.accent}
               title={tr('profile.openShopShort')}
-              onPress={() => requireAuth(() => router.push('/seller/new'))}
+              onPress={() => requireAuth(() => router.push('/seller-application'))}
             />
             <Row
               icon={QrCode}
@@ -222,23 +222,25 @@ export default function ProfileTab() {
               ))
             : null}
 
-          <Pressable
-            onPress={() => {
-              haptics.medium();
-              router.push('/seller/new');
-            }}
-            style={styles.applyCta}>
-            <View style={styles.applyIcon}>
-              <Plus size={22} color={colors.brand.accent} strokeWidth={2.6} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.applyTitle}>Yangi do&apos;kon ochish</Text>
-              <Text style={styles.applySub}>O&apos;z do&apos;koningizni oching va boshqaring</Text>
-            </View>
-            <ChevronRight size={18} color={colors.brand.accent} strokeWidth={2.4} />
-          </Pressable>
-
-          {!me?.isSellerApproved && latestApp?.status === 'pending' ? (
+          {me?.isSellerApproved ? (
+            // Approved seller: can add more shops directly
+            <Pressable
+              onPress={() => {
+                haptics.medium();
+                router.push('/seller/new');
+              }}
+              style={styles.applyCta}>
+              <View style={styles.applyIcon}>
+                <Plus size={22} color={colors.brand.accent} strokeWidth={2.6} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.applyTitle}>Yangi do&apos;kon ochish</Text>
+                <Text style={styles.applySub}>Yana bir do&apos;kon qo&apos;shing va boshqaring</Text>
+              </View>
+              <ChevronRight size={18} color={colors.brand.accent} strokeWidth={2.4} />
+            </Pressable>
+          ) : latestApp?.status === 'pending' ? (
+            // Application submitted, waiting for admin
             <View style={styles.pendingCta}>
               <View style={styles.pendingIcon}>
                 <Clock size={22} color={colors.feedback.warning} strokeWidth={2.4} />
@@ -248,21 +250,47 @@ export default function ProfileTab() {
                 <Text style={styles.applySub}>{tr('seller.pending.desc')}</Text>
               </View>
             </View>
-          ) : null}
-
-          {!me?.isSellerApproved && latestApp?.status === 'rejected' && latestApp.rejectionReason ? (
-            <View style={styles.rejectedCta}>
+          ) : latestApp?.status === 'rejected' ? (
+            // Application rejected — show reason + retry button
+            <Pressable
+              onPress={() => {
+                haptics.medium();
+                router.push('/seller-application');
+              }}
+              style={styles.rejectedCta}>
               <View style={styles.rejectedIcon}>
                 <XCircle size={22} color={colors.brand.primary} strokeWidth={2.4} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rejectedTitle}>{tr('seller.rejected.title')}</Text>
+                {latestApp.rejectionReason ? (
+                  <Text style={styles.applySub}>
+                    {tr('seller.rejected.reason', { reason: latestApp.rejectionReason })}
+                  </Text>
+                ) : null}
+                <Text style={styles.retryText}>Qayta ariza yuborish →</Text>
+              </View>
+            </Pressable>
+          ) : (
+            // No application yet — invite to apply
+            <Pressable
+              onPress={() => {
+                haptics.medium();
+                router.push('/seller-application');
+              }}
+              style={styles.applyCta}>
+              <View style={styles.applyIcon}>
+                <Plus size={22} color={colors.brand.accent} strokeWidth={2.6} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.applyTitle}>Sotuvchi bo&apos;lish</Text>
                 <Text style={styles.applySub}>
-                  {tr('seller.rejected.reason', { reason: latestApp.rejectionReason })}
+                  Ariza yuboring — admin tasdiqlagach do&apos;kon ochasiz
                 </Text>
               </View>
-            </View>
-          ) : null}
+              <ChevronRight size={18} color={colors.brand.accent} strokeWidth={2.4} />
+            </Pressable>
+          )}
         </Section>
 
         {staffShops.length > 0 ? (

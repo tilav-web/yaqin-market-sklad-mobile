@@ -31,14 +31,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   status: 'loading',
 
   async hydrate() {
+    const access = await tokenStorage.getAccess();
+    if (!access) {
+      set({ status: 'unauthenticated' });
+      return;
+    }
     try {
-      const access = await tokenStorage.getAccess();
-      if (!access) {
-        set({ status: 'unauthenticated' });
-        return;
-      }
       const res = await api.get<AuthUser & { sub: string }>('/auth/me');
-      // /auth/me currently returns JWT payload; we'll need a real /users/me later
       set({
         user: {
           id: res.data.sub ?? res.data.id,
@@ -49,8 +48,15 @@ export const useAuthStore = create<AuthState>((set) => ({
         status: 'authenticated',
       });
     } catch {
-      await tokenStorage.clear();
-      set({ user: null, status: 'unauthenticated' });
+      // If refreshAccess() cleared the tokens (refresh token expired/revoked),
+      // the user must re-login. If it was a network/server error, tokens are
+      // still valid — don't wipe them, just show as unauthenticated until retry.
+      const stillHasToken = !!(await tokenStorage.getAccess());
+      if (!stillHasToken) {
+        set({ user: null, status: 'unauthenticated' });
+      } else {
+        set({ status: 'unauthenticated' });
+      }
     }
   },
 
