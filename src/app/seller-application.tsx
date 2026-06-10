@@ -1,50 +1,31 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { MapPin } from 'lucide-react-native';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandButton } from '@/components/ui/brand-button';
-import { LocationPickerModal, PickedLocation } from '@/components/LocationPickerModal';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import { api, extractErrorMessage } from '@/lib/api';
-import { useEffectiveCoords, useLocationStore } from '@/stores/location';
+import { useAuthStore } from '@/stores/auth';
 
 export default function SellerApplicationScreen() {
   const qc = useQueryClient();
-  const [shopName, setShopName] = useState('');
-  const [shopAddress, setShopAddress] = useState('');
-  const [stir, setStir] = useState('');
-  const [photoUrl] = useState('https://placehold.co/600x400?text=Shop');
-  const [pickerVisible, setPickerVisible] = useState(false);
-  const [pickedLocation, setPickedLocation] = useState<PickedLocation | null>(null);
+  const user = useAuthStore((s) => s.user);
 
-  const autoCoords = useEffectiveCoords();
-  const refresh = useLocationStore((s) => s.refresh);
-
-  // Effective coords: manual pick takes priority over auto-detected
-  const coords = pickedLocation ?? autoCoords;
-
-  const handleConfirm = (loc: PickedLocation) => {
-    setPickedLocation(loc);
-    // Auto-fill address from reverse geocode if user hasn't typed anything
-    if (loc.address && !shopAddress) {
-      setShopAddress(loc.address);
-    }
-    setPickerVisible(false);
-  };
+  const nameParts = (user?.name ?? '').trim().split(/\s+/);
+  const [firstName, setFirstName] = useState(nameParts[0] ?? '');
+  const [lastName, setLastName] = useState(nameParts.slice(1).join(' ') ?? '');
+  const [contactPhone, setContactPhone] = useState('');
+  const [note, setNote] = useState('');
 
   const submit = useMutation({
     mutationFn: async () => {
-      if (!coords) throw new Error('Lokatsiya yo\'q');
       const res = await api.post('/sellers/apply', {
-        shopName,
-        shopAddress,
-        shopLatitude: coords.latitude,
-        shopLongitude: coords.longitude,
-        shopPhotos: [photoUrl],
-        stir: stir || undefined,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        contactPhone: contactPhone.trim() || undefined,
+        note: note.trim() || undefined,
       });
       return res.data;
     },
@@ -52,14 +33,14 @@ export default function SellerApplicationScreen() {
       qc.invalidateQueries({ queryKey: ['my-applications'] });
       Alert.alert(
         'Yuborildi!',
-        'Arizangiz adminga yuborildi. Tasdiqlangach do\'koningiz yaratiladi.',
+        'Arizangiz adminga yuborildi. Ko\'rib chiqilgach seller sifatida tasdiqlanasiz.',
         [{ text: 'OK', onPress: () => router.back() }],
       );
     },
     onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
   });
 
-  const canSubmit = shopName && shopAddress && coords;
+  const canSubmit = firstName.trim() && lastName.trim();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -67,74 +48,51 @@ export default function SellerApplicationScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Sotuvchi bo&apos;lish</Text>
           <Text style={styles.subtitle}>
-            O&apos;z mahalla do&apos;koningizni Yaqin Market platformasiga qo&apos;shing
+            Ariza yuboring — admin ko&apos;rib chiqib, seller huquqini beradi.
           </Text>
         </View>
 
         <View style={styles.form}>
-          <Field label="Do'kon nomi *">
+          <Field label="Ism *">
             <TextInput
               style={styles.input}
-              value={shopName}
-              onChangeText={setShopName}
-              placeholder="Masalan: Yaqin Mahalla Market"
+              value={firstName}
+              onChangeText={setFirstName}
+              placeholder="Masalan: Jasur"
               placeholderTextColor={Brand.gray400}
             />
           </Field>
 
-          <Field label="Do'kon manzili *">
+          <Field label="Familya *">
             <TextInput
-              style={[styles.input, { height: 80 }]}
-              value={shopAddress}
-              onChangeText={setShopAddress}
-              placeholder="To'liq manzilni yozing"
+              style={styles.input}
+              value={lastName}
+              onChangeText={setLastName}
+              placeholder="Masalan: Karimov"
+              placeholderTextColor={Brand.gray400}
+            />
+          </Field>
+
+          <Field label="Qo'shimcha telefon (ixtiyoriy)">
+            <TextInput
+              style={styles.input}
+              value={contactPhone}
+              onChangeText={setContactPhone}
+              placeholder="+998 90 000 00 00"
+              keyboardType="phone-pad"
+              placeholderTextColor={Brand.gray400}
+            />
+          </Field>
+
+          <Field label="Qisqacha izoh (ixtiyoriy)">
+            <TextInput
+              style={[styles.input, { height: 90 }]}
+              value={note}
+              onChangeText={setNote}
+              placeholder="O'zingiz haqingizda qisqacha yozing"
               multiline
               placeholderTextColor={Brand.gray400}
             />
-          </Field>
-
-          <Field label="STIR / INN raqami (ixtiyoriy)">
-            <TextInput
-              style={styles.input}
-              value={stir}
-              onChangeText={setStir}
-              placeholder="123456789"
-              keyboardType="number-pad"
-              placeholderTextColor={Brand.gray400}
-            />
-          </Field>
-
-          <Field label="Do'kon GPS lokatsiyasi *">
-            <View style={styles.gpsBox}>
-              <View style={styles.gpsRow}>
-                <MapPin size={16} color={coords ? Brand.blue : Brand.gray400} strokeWidth={2.3} />
-                {coords ? (
-                  <Text style={styles.gpsText}>
-                    {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}
-                    {pickedLocation ? ' (xaritadan)' : ' (avtomatik)'}
-                  </Text>
-                ) : (
-                  <Text style={[styles.gpsText, { color: Brand.gray600 }]}>
-                    Lokatsiya yuklanmoqda...
-                  </Text>
-                )}
-              </View>
-              <Text style={styles.gpsHint}>
-                Xaritadan aniq joyni belgilang yoki avtomatik aniqlashni kuting
-              </Text>
-              <View style={styles.gpsBtns}>
-                <BrandButton
-                  label="Xaritadan belgilash"
-                  onPress={() => setPickerVisible(true)}
-                  variant="accent"
-                />
-                <BrandButton
-                  label="Qayta aniqlash"
-                  onPress={() => { setPickedLocation(null); refresh(); }}
-                  variant="ghost"
-                />
-              </View>
-            </View>
           </Field>
         </View>
 
@@ -148,13 +106,6 @@ export default function SellerApplicationScreen() {
           />
         </View>
       </ScrollView>
-
-      <LocationPickerModal
-        visible={pickerVisible}
-        initial={coords}
-        onCancel={() => setPickerVisible(false)}
-        onConfirm={handleConfirm}
-      />
     </SafeAreaView>
   );
 }
@@ -187,10 +138,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Brand.gray200,
   },
-  gpsBox: { backgroundColor: Brand.gray50, padding: Spacing.three, borderRadius: Radius.md, borderWidth: 1, borderColor: Brand.gray200, gap: 8 },
-  gpsRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  gpsText: { fontSize: 14, color: Brand.blue, fontWeight: '600', flex: 1 },
-  gpsHint: { fontSize: 12, color: Brand.gray600 },
-  gpsBtns: { gap: 6 },
   footer: { marginTop: Spacing.two },
 });
