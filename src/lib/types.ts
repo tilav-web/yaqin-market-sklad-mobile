@@ -362,6 +362,77 @@ export interface CartLine {
   photoUrl?: string;
 }
 
+export interface Promotion {
+  id: string;
+  shopId: string;
+  name: string;
+  type: 'product_discount' | 'category_discount' | 'free_delivery';
+  discountType: 'percent' | 'fixed' | null;
+  discountValue: number | null;
+  targetProductId: string | null;
+  targetCategoryId: string | null;
+  freeDeliveryMinAmount: number | null;
+  startAt: string;
+  endAt: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface ChatTemplate {
+  id: string;
+  shopId: string | null;
+  text: string;
+  isSystem: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface DeliveryRouteStop {
+  orderId: string;
+  orderNumber: string;
+  customerName: string | null;
+  customerPhone: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  distanceKm: number;
+  status: OrderStatus;
+}
+
+export interface DeliveryRoute {
+  shopLatitude: number;
+  shopLongitude: number;
+  stops: DeliveryRouteStop[];
+}
+
+export interface ShopCompletenessItem {
+  key: string;
+  done: boolean;
+  points: number;
+  label: string;
+}
+
+export interface ShopCompleteness {
+  score: number;
+  items: ShopCompletenessItem[];
+}
+
+export interface GlobalCatalogProduct {
+  id: string;
+  barcode: string | null;
+  name: string;
+  brand: string | null;
+  description: string | null;
+  groupName: string | null;
+  defaultUnitType: 'piece' | 'kg' | 'liter' | 'gram' | 'pack';
+  defaultUnitSize: number;
+  categoryId: string | null;
+  photos: string[];
+  isVerified: boolean;
+  isActive: boolean;
+  usageCount: number;
+}
+
 export const STATUS_LABEL_UZ: Record<OrderStatus, string> = {
   new: 'Yangi',
   accepted: 'Qabul qilindi',

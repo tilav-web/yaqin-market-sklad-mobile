@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useFocusEffect, useGlobalSearchParams } from 'expo-router';
-import { Check, ChevronDown, ChevronRight, ChevronUp, MessageCircle, Package, RotateCcw, ScanLine, X } from 'lucide-react-native';
+import { Check, ChevronDown, ChevronRight, ChevronUp, MapPin, MessageCircle, Package, RotateCcw, ScanLine, X } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState, useToast } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
-import { Order, OrderStatus, STATUS_LABEL_UZ } from '@/lib/types';
+import { DeliveryRoute, Order, OrderStatus, STATUS_LABEL_UZ } from '@/lib/types';
 import { useShopRealtime } from '@/lib/useShopRealtime';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
@@ -41,6 +41,7 @@ export default function SellerOrdersScreen() {
   const toast = useToast();
   const [filter, setFilter] = useState<Filter>('new');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [routeOpen, setRouteOpen] = useState(false);
 
   const ordersQuery = useQuery({
     queryKey: ['seller-orders', shopId],
@@ -91,6 +92,16 @@ export default function SellerOrdersScreen() {
     return all.filter((o) => DONE.includes(o.status));
   }, [all, filter]);
 
+  const routeQuery = useQuery({
+    queryKey: ['delivery-route', shopId],
+    queryFn: async () => {
+      const res = await api.get<DeliveryRoute>(`/seller/shops/${shopId}/orders/delivery-route`);
+      return res.data;
+    },
+    enabled: routeOpen,
+    staleTime: 30_000,
+  });
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Filters */}
@@ -106,6 +117,9 @@ export default function SellerOrdersScreen() {
             </Text>
           </Pressable>
         ))}
+        <Pressable style={styles.routeBtn} onPress={() => setRouteOpen(true)}>
+          <MapPin size={15} color={colors.brand.primary} strokeWidth={2.4} />
+        </Pressable>
       </View>
 
       <FlatList
@@ -205,7 +219,7 @@ export default function SellerOrdersScreen() {
 
               <View style={styles.totalRow}>
                 <Text style={styles.total}>{fmt(item.total)} so‘m</Text>
-                <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${item.id}`)}>
+                <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${item.id}?shopId=${shopId}`)}>
                   <MessageCircle size={16} color={colors.brand.primary} strokeWidth={2.4} />
                   <Text style={styles.chatBtnText}>Chat</Text>
                 </Pressable>
@@ -240,6 +254,44 @@ export default function SellerOrdersScreen() {
         <ScanLine size={20} color={colors.text.onPrimary} strokeWidth={2.5} />
         <Text style={styles.fabText}>Sotish</Text>
       </Pressable>
+
+      <Modal visible={routeOpen} transparent animationType="slide" onRequestClose={() => setRouteOpen(false)}>
+        <View style={styles.routeOverlay}>
+          <View style={styles.routeSheet}>
+            <View style={styles.routeHeader}>
+              <Text style={styles.routeTitle}>Yetkazib berish marshruti</Text>
+              <Pressable onPress={() => setRouteOpen(false)} hitSlop={8}>
+                <X size={22} color={colors.text.primary} strokeWidth={2.4} />
+              </Pressable>
+            </View>
+            {routeQuery.isLoading ? (
+              <ActivityIndicator color={colors.brand.primary} style={{ marginVertical: 32 }} />
+            ) : !routeQuery.data?.stops.length ? (
+              <View style={styles.routeEmpty}>
+                <MapPin size={28} color={colors.text.tertiary} strokeWidth={1.8} />
+                <Text style={styles.routeEmptyText}>Hozir yetkazilayotgan buyurtma yo'q</Text>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {routeQuery.data.stops.map((stop, i) => (
+                  <View key={stop.orderId} style={styles.stopRow}>
+                    <View style={styles.stopIndex}>
+                      <Text style={styles.stopIndexText}>{i + 1}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.stopName} numberOfLines={1}>
+                        {stop.customerName ?? stop.customerPhone}
+                      </Text>
+                      <Text style={styles.stopAddr} numberOfLines={2}>{stop.address}</Text>
+                      <Text style={styles.stopDist}>{stop.distanceKm.toFixed(1)} km · #{stop.orderNumber.slice(-6)}</Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -357,4 +409,41 @@ const styles = StyleSheet.create({
   },
   acceptBtn: { backgroundColor: colors.feedback.success },
   actionBtnText: { ...typography.buttonSmall, color: colors.text.onPrimary },
+  routeBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.brand.primaryBorder,
+    backgroundColor: colors.brand.primarySurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  routeOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  routeSheet: {
+    backgroundColor: colors.bg.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.xl,
+    maxHeight: '70%',
+    gap: spacing.md,
+  },
+  routeHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  routeTitle: { ...typography.h3, color: colors.text.primary },
+  routeEmpty: { alignItems: 'center', paddingVertical: spacing['4xl'], gap: spacing.md },
+  routeEmptyText: { ...typography.bodySmall, color: colors.text.secondary },
+  stopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border.subtle },
+  stopIndex: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.brand.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  stopIndexText: { ...typography.caption, color: colors.text.onPrimary, fontWeight: '800' },
+  stopName: { ...typography.bodyStrong, color: colors.text.primary },
+  stopAddr: { ...typography.caption, color: colors.text.secondary, marginTop: 2, lineHeight: 16 },
+  stopDist: { ...typography.caption, color: colors.brand.primary, fontWeight: '700', marginTop: 2 },
 });

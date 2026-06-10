@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useGlobalSearchParams } from 'expo-router';
-import { BarChart3, Bell, ChevronRight, type LucideIcon, Settings2, ShieldBan, Star, Store, Wallet } from 'lucide-react-native';
+import { BarChart3, Bell, BookOpen, ChevronRight, type LucideIcon, MessageSquare, Settings2, ShieldBan, Star, Store, Tag, Wallet } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '@/lib/api';
-import { PublicShop } from '@/lib/types';
+import { PublicShop, ShopCompleteness } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -33,8 +33,18 @@ export default function SellerHubScreen() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['seller-shop', shopId] }),
   });
 
+  const completenessQuery = useQuery({
+    queryKey: ['shop-completeness', shopId],
+    queryFn: async () => {
+      const res = await api.get<ShopCompleteness>(`/seller/shops/${shopId}/completeness`);
+      return res.data;
+    },
+    staleTime: 5 * 60_000,
+  });
+
   const shop = shopQuery.data;
   const isOpen = !!shop?.isOpenManual;
+  const completeness = completenessQuery.data;
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -79,14 +89,50 @@ export default function SellerHubScreen() {
           </View>
         </View>
 
+        {/* Shop completeness */}
+        {completeness && completeness.score < 100 && (
+          <View style={styles.completenessCard}>
+            <View style={styles.completenessHeader}>
+              <Text style={styles.completenessTitle}>Do’kon profili</Text>
+              <Text style={[styles.completenessScore, { color: completeness.score >= 70 ? colors.feedback.success : colors.feedback.warning }]}>
+                {completeness.score}%
+              </Text>
+            </View>
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: `${completeness.score}%` as `${number}%`, backgroundColor: completeness.score >= 70 ? colors.feedback.success : colors.feedback.warning }]} />
+            </View>
+            <Text style={styles.completenessHint}>
+              {completeness.items.filter((i) => !i.done).map((i) => i.label).slice(0, 2).join(‘ · ‘)}
+            </Text>
+          </View>
+        )}
+
         {/* Management links */}
         <Text style={styles.sectionTitle}>Boshqaruv</Text>
         <View style={styles.group}>
           <Row
             icon={Settings2}
-            title="Do‘kon sozlamalari"
+            title="Do’kon sozlamalari"
             subtitle="Nomi, manzil, rasm, yetkazib berish"
             onPress={() => router.push(`/seller/${shopId}/shop-settings`)}
+          />
+          <Row
+            icon={Tag}
+            title="Aksiyalar"
+            subtitle="Chegirma va promokodlar boshqaruvi"
+            onPress={() => router.push(`/seller/${shopId}/promotions`)}
+          />
+          <Row
+            icon={BookOpen}
+            title="Global katalog"
+            subtitle="Platforma mahsulotlaridan nusxa olish"
+            onPress={() => router.push(`/seller/${shopId}/catalog`)}
+          />
+          <Row
+            icon={MessageSquare}
+            title="Chat shablonlari"
+            subtitle="Tez javob shablonlarini boshqarish"
+            onPress={() => router.push(`/seller/${shopId}/chat-templates`)}
           />
           <Row
             icon={BarChart3}
@@ -104,7 +150,7 @@ export default function SellerHubScreen() {
             icon={Bell}
             title="Bildirishnomalar"
             subtitle="Push tarixi"
-            onPress={() => router.push('/notifications')}
+            onPress={() => router.push(‘/notifications’)}
           />
           <Row
             icon={ShieldBan}
@@ -217,4 +263,23 @@ const styles = StyleSheet.create({
   },
   rowTitle: { ...typography.bodyStrong, color: colors.text.primary },
   rowSub: { ...typography.caption, color: colors.text.secondary, marginTop: 1 },
+  completenessCard: {
+    backgroundColor: colors.bg.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  completenessHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  completenessTitle: { ...typography.bodyStrong, color: colors.text.primary },
+  completenessScore: { ...typography.h4 },
+  progressBar: {
+    height: 8,
+    backgroundColor: colors.bg.surfaceMuted,
+    borderRadius: radius.full,
+    overflow: 'hidden',
+  },
+  progressFill: { height: '100%', borderRadius: radius.full },
+  completenessHint: { ...typography.caption, color: colors.text.secondary, lineHeight: 16 },
 });

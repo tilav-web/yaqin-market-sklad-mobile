@@ -78,6 +78,18 @@ export default function SellerLayout() {
           name="prime"
           options={{ title: 'Prime obuna', headerLeft: () => <HubBackButton shopId={shopId} /> }}
         />
+        <Tabs.Screen
+          name="promotions"
+          options={{ title: 'Aksiyalar', headerLeft: () => <HubBackButton shopId={shopId} /> }}
+        />
+        <Tabs.Screen
+          name="catalog"
+          options={{ title: 'Global katalog', headerLeft: () => <HubBackButton shopId={shopId} /> }}
+        />
+        <Tabs.Screen
+          name="chat-templates"
+          options={{ title: 'Chat shablonlari', headerLeft: () => <HubBackButton shopId={shopId} /> }}
+        />
       </Tabs>
 
       {pending && (

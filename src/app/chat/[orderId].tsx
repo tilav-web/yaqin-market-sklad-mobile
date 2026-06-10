@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
-import { Send } from 'lucide-react-native';
+import { Send, Zap } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -18,18 +19,29 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useToast } from '@/components/ui/Toast';
 import { api, extractErrorMessage } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
-import { ChatMessage } from '@/lib/types';
+import { ChatMessage, ChatTemplate } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 export default function ChatScreen() {
-  const { orderId } = useLocalSearchParams<{ orderId: string }>();
+  const { orderId, shopId } = useLocalSearchParams<{ orderId: string; shopId?: string }>();
   const qc = useQueryClient();
   const toast = useToast();
   const myId = useAuthStore((s) => s.user?.id);
   const [text, setText] = useState('');
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   const listRef = useRef<FlatList<ChatMessage>>(null);
+
+  const templatesQuery = useQuery({
+    queryKey: ['chat-templates', shopId],
+    queryFn: async () => {
+      const res = await api.get<ChatTemplate[]>(`/seller/shops/${shopId}/chat-templates`);
+      return res.data;
+    },
+    enabled: !!shopId && templatesOpen,
+    staleTime: 5 * 60_000,
+  });
 
   const messagesQuery = useQuery({
     queryKey: ['chat', orderId],
@@ -136,7 +148,32 @@ export default function ChatScreen() {
           />
         )}
 
+        {templatesOpen && shopId && (
+          <View style={styles.templatesPanel}>
+            {templatesQuery.isLoading ? (
+              <ActivityIndicator color={colors.brand.primary} style={{ margin: spacing.md }} />
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.templatesList}>
+                {(templatesQuery.data ?? []).map((t) => (
+                  <Pressable
+                    key={t.id}
+                    style={styles.templateChip}
+                    onPress={() => { setText(t.text); setTemplatesOpen(false); }}>
+                    <Text style={styles.templateChipText} numberOfLines={2}>{t.text}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        )}
         <View style={styles.inputBar}>
+          {shopId && (
+            <Pressable
+              style={[styles.templateBtn, templatesOpen && styles.templateBtnActive]}
+              onPress={() => setTemplatesOpen((v) => !v)}>
+              <Zap size={18} color={templatesOpen ? colors.text.onPrimary : colors.brand.primary} strokeWidth={2.2} />
+            </Pressable>
+          )}
           <TextInput
             style={styles.input}
             value={text}
@@ -178,6 +215,34 @@ const styles = StyleSheet.create({
   bubbleTextMine: { color: colors.text.onPrimary },
   time: { ...typography.caption, fontSize: 10, color: colors.text.tertiary, marginTop: 2, alignSelf: 'flex-end' },
   timeMine: { color: colors.text.onPrimary, opacity: 0.8 },
+  templatesPanel: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border.subtle,
+    backgroundColor: colors.bg.surfaceMuted,
+    paddingVertical: spacing.sm,
+  },
+  templatesList: { paddingHorizontal: layout.screenPadding, gap: spacing.sm },
+  templateChip: {
+    maxWidth: 200,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: colors.bg.surface,
+    borderWidth: 1,
+    borderColor: colors.brand.primaryBorder,
+  },
+  templateChipText: { ...typography.bodySmall, color: colors.text.primary, lineHeight: 18 },
+  templateBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: colors.brand.primarySurface,
+    borderWidth: 1,
+    borderColor: colors.brand.primaryBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  templateBtnActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',

@@ -1,14 +1,18 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useGlobalSearchParams } from 'expo-router';
-import { ClipboardCheck, History, Minus, Package, PackagePlus, Pencil, Plus, ScanLine, Search, Trash2 } from 'lucide-react-native';
+import { AlertTriangle, ClipboardCheck, Copy, History, Minus, MoreVertical, Package, PackagePlus, Pencil, Plus, ScanLine, Search, Tag, Trash2 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   FlatList,
   Image,
+  Modal,
+  Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -22,7 +26,7 @@ import { KirimModal } from '@/components/seller/KirimModal';
 import { ProductFormModal, ProductPrefill } from '@/components/seller/ProductFormModal';
 import { StockHistoryModal } from '@/components/seller/StockHistoryModal';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
-import { Category, GlobalProduct, SellerVariant } from '@/lib/types';
+import { Category, ExpiringItem, GlobalProduct, SellerVariant } from '@/lib/types';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 
 const UNIT_LABEL: Record<string, string> = {
@@ -37,9 +41,12 @@ function fmt(n: number): string {
   return n.toLocaleString('ru-RU').replace(/,/g, ' ');
 }
 
+type Tab = 'all' | 'expiring';
+
 export default function SellerInventoryScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
   const qc = useQueryClient();
+  const [tab, setTab] = useState<Tab>('all');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<SellerVariant | null>(null);
   const [kirimFor, setKirimFor] = useState<SellerVariant | null>(null);
@@ -51,6 +58,7 @@ export default function SellerInventoryScreen() {
   const [countOpen, setCountOpen] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
 
   // Debounce the search so we don't hit the server on every keystroke.
   useEffect(() => {
@@ -111,6 +119,49 @@ export default function SellerInventoryScreen() {
     onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
   });
 
+  const duplicate = useMutation({
+    mutationFn: async (variantId: string) => {
+      await api.post(`/seller/shops/${shopId}/products/variants/${variantId}/duplicate`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['variants', shopId] });
+      Alert.alert('Nusxa yaratildi', "Mahsulot nusxasi ro'yxatning pastiga qo'shildi.");
+    },
+    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+  });
+
+  const expiringQuery = useQuery({
+    queryKey: ['variants-expiring', shopId],
+    queryFn: async () => {
+      const res = await api.get<ExpiringItem[]>(`/seller/shops/${shopId}/products/variants/expiring`);
+      return res.data;
+    },
+    enabled: tab === 'expiring',
+    staleTime: 60_000,
+  });
+
+  const openVariantMenu = (item: SellerVariant) => {
+    const options = ['Nusxa yaratish', 'Bekor qilish'];
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, cancelButtonIndex: 1 },
+        (idx) => {
+          if (idx === 0) {
+            Alert.alert('Nusxa yaratish', `"${item.name}" dan nusxa yaratilazilanmi?`, [
+              { text: 'Bekor', style: 'cancel' },
+              { text: 'Nusxa', onPress: () => duplicate.mutate(item.id) },
+            ]);
+          }
+        },
+      );
+    } else {
+      Alert.alert(item.name, undefined, [
+        { text: 'Nusxa yaratish', onPress: () => duplicate.mutate(item.id) },
+        { text: 'Bekor', style: 'cancel' },
+      ]);
+    }
+  };
+
   // Add a product WITHOUT a barcode (the scanner's escape hatch).
   const openCreateBlank = () => {
     setScannedBarcode('');
@@ -169,6 +220,26 @@ export default function SellerInventoryScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
+      {/* Tab switcher */}
+      <View style={styles.tabRow}>
+        <Pressable style={[styles.tabBtn, tab === 'all' && styles.tabBtnActive]} onPress={() => setTab('all')}>
+          <Package size={15} color={tab === 'all' ? colors.text.onPrimary : colors.text.secondary} strokeWidth={2.2} />
+          <Text style={[styles.tabBtnText, tab === 'all' && styles.tabBtnTextActive]}>Barcha tovarlar</Text>
+        </Pressable>
+        <Pressable style={[styles.tabBtn, tab === 'expiring' && styles.tabBtnActive]} onPress={() => setTab('expiring')}>
+          <AlertTriangle size={15} color={tab === 'expiring' ? colors.text.onPrimary : colors.feedback.warning} strokeWidth={2.2} />
+          <Text style={[styles.tabBtnText, tab === 'expiring' && styles.tabBtnTextActive]}>Muddatlar</Text>
+        </Pressable>
+        <Pressable style={styles.bulkBtn} onPress={() => setBulkPriceOpen(true)}>
+          <Tag size={15} color={colors.brand.primary} strokeWidth={2.2} />
+          <Text style={styles.bulkBtnText}>Narx</Text>
+        </Pressable>
+      </View>
+
+      {tab === 'expiring' ? (
+        <ExpiringList data={expiringQuery.data ?? []} isLoading={expiringQuery.isLoading} />
+      ) : (
+      <>
       {/* Search + actions (always visible) */}
       <View style={styles.toolbar}>
         <View style={styles.searchBox}>
@@ -279,7 +350,12 @@ export default function SellerInventoryScreen() {
                     {item.unitSize} {UNIT_LABEL[item.unitType] ?? item.unitType}
                   </Text>
                 </View>
-                <Pencil size={16} color={colors.text.tertiary} strokeWidth={2} />
+                <View style={styles.cardTopActions}>
+                  <Pencil size={16} color={colors.text.tertiary} strokeWidth={2} />
+                  <Pressable onPress={() => openVariantMenu(item)} hitSlop={8}>
+                    <MoreVertical size={16} color={colors.text.tertiary} strokeWidth={2} />
+                  </Pressable>
+                </View>
               </Pressable>
 
               {/* Cost / profit strip */}
@@ -337,6 +413,8 @@ export default function SellerInventoryScreen() {
         <Plus size={22} color={colors.text.onPrimary} strokeWidth={2.8} />
         <Text style={styles.fabText}>Mahsulot</Text>
       </Pressable>
+      </>
+      )}
 
       <ProductFormModal
         visible={formOpen}
@@ -353,7 +431,7 @@ export default function SellerInventoryScreen() {
         onClose={() => setScanOpen(false)}
         onScanned={onScanned}
         onSkip={openCreateBlank}
-        title="Mahsulot qo‘shish — barkodni skanlang"
+        title="Mahsulot qo’shish — barkodni skanlang"
       />
 
       <InventoryCountModal
@@ -375,12 +453,254 @@ export default function SellerInventoryScreen() {
         variant={historyFor}
         onClose={() => setHistoryFor(null)}
       />
+
+      <BulkPriceModal
+        visible={bulkPriceOpen}
+        shopId={shopId}
+        categories={leafCategories}
+        onClose={() => setBulkPriceOpen(false)}
+        onDone={() => {
+          setBulkPriceOpen(false);
+          qc.invalidateQueries({ queryKey: [‘variants’, shopId] });
+        }}
+      />
     </SafeAreaView>
+  );
+}
+
+function ExpiringList({ data, isLoading }: { data: ExpiringItem[]; isLoading: boolean }) {
+  if (isLoading) return <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />;
+  if (!data.length) {
+    return (
+      <View style={styles.empty}>
+        <View style={styles.emptyIcon}>
+          <AlertTriangle size={28} color={colors.feedback.warning} strokeWidth={1.8} />
+        </View>
+        <Text style={styles.emptyTitle}>Muddatli tovar yo'q</Text>
+        <Text style={styles.dim}>Yaqin 30 kunda muddati tugaydigan tovarlar bu yerda ko'rinadi</Text>
+      </View>
+    );
+  }
+  return (
+    <ScrollView contentContainerStyle={styles.list}>
+      {data.map((item) => {
+        const urgent = item.daysToExpiry <= 2;
+        return (
+          <View key={item.batchId} style={[styles.card, urgent && styles.cardUrgent]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md }}>
+              <View style={[styles.expiryDaysBox, { backgroundColor: urgent ? colors.feedback.dangerSurface : colors.feedback.warningSurface }]}>
+                <Text style={[styles.expiryDaysNum, { color: urgent ? colors.feedback.danger : colors.feedback.warning }]}>
+                  {item.daysToExpiry}
+                </Text>
+                <Text style={[styles.expiryDaysLabel, { color: urgent ? colors.feedback.danger : colors.feedback.warning }]}>kun</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.unit}>Qoldiq: {item.quantityRemaining} ta</Text>
+                <Text style={styles.unit}>Muddat: {new Date(item.expiryDate).toLocaleDateString('uz-UZ')}</Text>
+              </View>
+            </View>
+          </View>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+function BulkPriceModal({
+  visible,
+  shopId,
+  categories,
+  onClose,
+  onDone,
+}: {
+  visible: boolean;
+  shopId: string;
+  categories: Category[];
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [categoryId, setCategoryId] = useState('');
+  const [adjustType, setAdjustType] = useState<'percent' | 'fixed'>('percent');
+  const [value, setValue] = useState('');
+
+  const bulk = useMutation({
+    mutationFn: async () => {
+      await api.put(`/seller/shops/${shopId}/products/variants/bulk-price`, {
+        categoryId: categoryId || undefined,
+        adjustType,
+        value: parseFloat(value),
+      });
+    },
+    onSuccess: onDone,
+    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+  });
+
+  const reset = () => { setCategoryId(''); setAdjustType('percent'); setValue(''); };
+  const handleClose = () => { reset(); onClose(); };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+      <View style={styles.overlay}>
+        <View style={styles.sheet}>
+          <Text style={styles.sheetTitle}>Narxni ommaviy yangilash</Text>
+          <Text style={styles.sheetSub}>Kategoriya bo'yicha barcha mahsulot narxini foiz yoki miqdorda o'zgartirish</Text>
+
+          <Text style={styles.fieldLabel}>Kategoriya (bo'sh = barchasi)</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
+            <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+              <Pressable
+                style={[styles.catChip, !categoryId && styles.catChipActive]}
+                onPress={() => setCategoryId('')}>
+                <Text style={[styles.catChipText, !categoryId && styles.catChipTextActive]}>Barchasi</Text>
+              </Pressable>
+              {categories.map((c) => (
+                <Pressable
+                  key={c.id}
+                  style={[styles.catChip, categoryId === c.id && styles.catChipActive]}
+                  onPress={() => setCategoryId(c.id)}>
+                  <Text style={[styles.catChipText, categoryId === c.id && styles.catChipTextActive]}>
+                    {c.nameUzLatn}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
+
+          <Text style={styles.fieldLabel}>O'zgartirish turi</Text>
+          <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}>
+            {(['percent', 'fixed'] as const).map((t) => (
+              <Pressable
+                key={t}
+                style={[styles.catChip, adjustType === t && styles.catChipActive, { flex: 1, alignItems: 'center' }]}
+                onPress={() => setAdjustType(t)}>
+                <Text style={[styles.catChipText, adjustType === t && styles.catChipTextActive]}>
+                  {t === 'percent' ? 'Foiz (%)' : "Miqdor (so'm)"}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <TextInput
+            style={styles.priceInput}
+            value={value}
+            onChangeText={setValue}
+            keyboardType="numeric"
+            placeholder={adjustType === 'percent' ? '10 (10% ga oshirish)' : "5000 (5000 so'm qo'shish)"}
+            placeholderTextColor={colors.text.hint}
+          />
+
+          <Pressable
+            style={[styles.confirmBtn, bulk.isPending && { opacity: 0.6 }]}
+            onPress={() => bulk.mutate()}
+            disabled={bulk.isPending || !value}>
+            {bulk.isPending ? (
+              <ActivityIndicator color={colors.text.onPrimary} />
+            ) : (
+              <Text style={styles.confirmBtnText}>Yangilash</Text>
+            )}
+          </Pressable>
+          <Pressable style={styles.cancelBtn} onPress={handleClose}>
+            <Text style={styles.cancelBtnText}>Bekor qilish</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg.canvas },
+  tabRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingHorizontal: layout.screenPadding,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.subtle,
+  },
+  tabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    backgroundColor: colors.bg.surface,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+  },
+  tabBtnActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
+  tabBtnText: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
+  tabBtnTextActive: { color: colors.text.onPrimary },
+  bulkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    backgroundColor: colors.brand.primarySurface,
+    borderWidth: 1,
+    borderColor: colors.brand.primaryBorder,
+  },
+  bulkBtnText: { ...typography.caption, fontWeight: '700', color: colors.brand.primary },
+  cardTopActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  cardUrgent: { borderColor: colors.feedback.danger, borderWidth: 1.5 },
+  expiryDaysBox: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  expiryDaysNum: { fontSize: 22, fontWeight: '800', lineHeight: 26 },
+  expiryDaysLabel: { ...typography.caption, fontWeight: '600' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: colors.bg.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.xl,
+    gap: spacing.sm,
+  },
+  sheetTitle: { ...typography.h3, color: colors.text.primary },
+  sheetSub: { ...typography.bodySmall, color: colors.text.secondary },
+  fieldLabel: { ...typography.caption, fontWeight: '700', color: colors.text.secondary, marginTop: spacing.sm },
+  catChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    backgroundColor: colors.bg.surface,
+  },
+  catChipActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
+  catChipText: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
+  catChipTextActive: { color: colors.text.onPrimary },
+  priceInput: {
+    ...typography.body,
+    color: colors.text.primary,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    backgroundColor: colors.bg.surfaceMuted,
+  },
+  confirmBtn: {
+    height: 52,
+    borderRadius: radius.lg,
+    backgroundColor: colors.brand.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+  },
+  confirmBtnText: { ...typography.buttonMd, color: colors.text.onPrimary },
+  cancelBtn: { alignItems: 'center', paddingVertical: spacing.sm },
+  cancelBtnText: { ...typography.body, color: colors.text.secondary },
   list: { padding: layout.screenPadding, paddingBottom: 100, gap: spacing.md },
   card: {
     backgroundColor: colors.bg.surface,
