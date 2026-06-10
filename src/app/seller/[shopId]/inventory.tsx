@@ -141,8 +141,9 @@ export default function SellerInventoryScreen() {
         setKirimFor(match);
         return;
       }
-    } catch {
-      /* fall through to global lookup */
+    } catch (e) {
+      Alert.alert('Xatolik', extractErrorMessage(e));
+      return;
     }
     try {
       const res = await api.get<GlobalProduct>(`/catalog-global/by-barcode/${encodeURIComponent(code)}`);

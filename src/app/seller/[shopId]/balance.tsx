@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { api } from '@/lib/api';
+import { api, extractErrorMessage } from '@/lib/api';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 interface SellerBalance {
@@ -82,10 +82,7 @@ export default function SellerBalanceScreen() {
       setCardName('');
       Alert.alert('So\'rov yuborildi', 'Admin ko\'rib chiqadi va kartangizga o\'tkazadi.');
     },
-    onError: (e: unknown) => {
-      const msg = (e as any)?.response?.data?.message ?? 'Xatolik yuz berdi';
-      Alert.alert('Xatolik', msg);
-    },
+    onError: (e: unknown) => Alert.alert('Xatolik', extractErrorMessage(e)),
   });
 
   const bal = balQ.data;
@@ -107,6 +104,10 @@ export default function SellerBalanceScreen() {
         {/* Balance cards */}
         {balQ.isLoading ? (
           <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 24 }} />
+        ) : balQ.isError ? (
+          <Text style={{ color: colors.feedback.error, textAlign: 'center', marginTop: 24 }}>
+            Balans ma'lumotlarini yuklashda xatolik
+          </Text>
         ) : bal ? (
           <>
             <View style={styles.cards}>
@@ -191,6 +192,10 @@ export default function SellerBalanceScreen() {
         <Text style={styles.sectionTitle}>Tranzaksiyalar</Text>
         {txQ.isLoading ? (
           <ActivityIndicator color={colors.brand.primary} />
+        ) : txQ.isError ? (
+          <Text style={{ color: colors.feedback.error, textAlign: 'center' }}>
+            Tarix yuklanmadi
+          </Text>
         ) : (
           (txQ.data ?? []).map((tx) => {
             const isPositive = parseFloat(tx.amount) >= 0;
