@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { router } from 'expo-router';
 import { Check, MessageCircle, RefreshCw, RotateCcw, Star, X } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -18,7 +18,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useToast } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
+import { endOrderActivity, updateOrderActivity } from '@/lib/useOrderLiveActivity';
 import { Order, OrderStatus, STATUS_LABEL_UZ } from '@/lib/types';
+import { OrderActivityProps } from '@/widgets/order-activity';
 import { useCartStore } from '@/stores/cart';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
@@ -49,6 +51,20 @@ export default function OrderDetailScreen() {
   });
 
   const order = orderQuery.data;
+
+  useEffect(() => {
+    if (!order) return;
+    const props = {
+      orderNumber: order.orderNumber,
+      shopName: order.shop?.name ?? '',
+      status: order.status as OrderActivityProps['status'],
+    };
+    if (order.status === 'delivered' || order.status === 'cancelled') {
+      void endOrderActivity(props);
+    } else {
+      void updateOrderActivity(props);
+    }
+  }, [order?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setStatus = useMutation({
     mutationFn: async (status: OrderStatus) => {

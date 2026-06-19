@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useToast } from '@/components/ui';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
+import { startOrderActivity } from '@/lib/useOrderLiveActivity';
 import { Order, PublicShop, UserAddress } from '@/lib/types';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
@@ -65,6 +66,11 @@ export default function CheckoutScreen() {
       clearShop(shopId!);
       qc.invalidateQueries({ queryKey: ['orders'] });
       toast.success('Buyurtma yuborildi!');
+      void startOrderActivity({
+        orderNumber: order.orderNumber,
+        shopName: order.shop?.name ?? shop?.name ?? '',
+        status: 'new',
+      });
       router.replace(`/orders/${order.id}`);
     },
     onError: (err) => toast.error(extractErrorMessage(err)),

@@ -12,4 +12,16 @@ export default ({ config }) => ({
     googleServicesFile:
       process.env.GOOGLE_SERVICES_JSON ?? config.android?.googleServicesFile,
   },
+  plugins: [
+    ...(config.plugins ?? []),
+    [
+      'expo-widgets',
+      {
+        bundleIdentifier: 'uz.yaqin.market.widgets',
+        groupIdentifier: 'group.uz.yaqin.market',
+        enablePushNotifications: false,
+        liveActivities: [{ name: 'OrderActivity' }],
+      },
+    ],
+  ],
 });
