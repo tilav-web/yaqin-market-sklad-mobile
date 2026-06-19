@@ -71,7 +71,7 @@ export default function SellerCatalogScreen() {
   const handleClone = () => {
     const p = parseFloat(price.replace(/\s/g, ''));
     if (!cloneTarget || isNaN(p) || p <= 0) {
-      Alert.alert('Xatolik', 'Narxni to'g'ri kiriting');
+      Alert.alert('Xatolik', "Narxni to'g'ri kiriting");
       return;
     }
     cloneMutation.mutate({ globalProductId: cloneTarget.id, price: p });
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  confirmBtnText: { ...typography.buttonMd, color: colors.text.onPrimary },
+  confirmBtnText: { ...typography.button, color: colors.text.onPrimary },
   cancelBtn: { alignItems: 'center', paddingVertical: spacing.sm },
   cancelBtnText: { ...typography.body, color: colors.text.secondary },
 });

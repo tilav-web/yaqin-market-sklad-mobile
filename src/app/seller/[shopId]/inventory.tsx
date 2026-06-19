@@ -310,10 +310,10 @@ export default function SellerInventoryScreen() {
                 <Package size={28} color={colors.brand.primary} strokeWidth={1.8} />
               </View>
               <Text style={styles.emptyTitle}>
-                {search ? 'Topilmadi' : 'Mahsulot yo‘q'}
+                {search ? 'Topilmadi' : "Mahsulot yo'q"}
               </Text>
               <Text style={styles.dim}>
-                {search ? 'Boshqa nom yoki barkod bilan qidiring' : 'Pastdagi tugma orqali birinchi mahsulotni qo‘shing'}
+                {search ? 'Boshqa nom yoki barkod bilan qidiring' : "Pastdagi tugma orqali birinchi mahsulotni qo'shing"}
               </Text>
             </View>
           )
@@ -389,9 +389,9 @@ export default function SellerInventoryScreen() {
                   <Pressable
                     style={styles.delBtn}
                     onPress={() =>
-                      Alert.alert('O‘chirish', `"${item.name}" ni o‘chirasizmi?`, [
+                      Alert.alert("O'chirish", `"${item.name}" ni o'chirasizmi?`, [
                         { text: 'Bekor', style: 'cancel' },
-                        { text: 'O‘chirish', style: 'destructive', onPress: () => remove.mutate(item.id) },
+                        { text: "O'chirish", style: 'destructive', onPress: () => remove.mutate(item.id) },
                       ])
                     }>
                     <Trash2 size={15} color={colors.text.danger} strokeWidth={2.2} />
@@ -431,7 +431,7 @@ export default function SellerInventoryScreen() {
         onClose={() => setScanOpen(false)}
         onScanned={onScanned}
         onSkip={openCreateBlank}
-        title="Mahsulot qo’shish — barkodni skanlang"
+        title="Mahsulot qo'shish — barkodni skanlang"
       />
 
       <InventoryCountModal
@@ -461,7 +461,7 @@ export default function SellerInventoryScreen() {
         onClose={() => setBulkPriceOpen(false)}
         onDone={() => {
           setBulkPriceOpen(false);
-          qc.invalidateQueries({ queryKey: [‘variants’, shopId] });
+          qc.invalidateQueries({ queryKey: ['variants', shopId] });
         }}
       />
     </SafeAreaView>
@@ -698,7 +698,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: spacing.sm,
   },
-  confirmBtnText: { ...typography.buttonMd, color: colors.text.onPrimary },
+  confirmBtnText: { ...typography.button, color: colors.text.onPrimary },
   cancelBtn: { alignItems: 'center', paddingVertical: spacing.sm },
   cancelBtnText: { ...typography.body, color: colors.text.secondary },
   list: { padding: layout.screenPadding, paddingBottom: 100, gap: spacing.md },

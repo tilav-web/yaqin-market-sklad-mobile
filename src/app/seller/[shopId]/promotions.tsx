@@ -139,9 +139,9 @@ export default function PromotionsScreen() {
                   <Pressable
                     style={styles.stopBtn}
                     onPress={() =>
-                      Alert.alert('Aksiyani to'xtatish', 'Aksiya to'xtatilsinmi?', [
-                        { text: 'Yo'q', style: 'cancel' },
-                        { text: 'To'xtatish', style: 'destructive', onPress: () => stop.mutate(item.id) },
+                      Alert.alert("Aksiyani to'xtatish", "Aksiya to'xtatilsinmi?", [
+                        { text: "Yo'q", style: 'cancel' },
+                        { text: "To'xtatish", style: 'destructive', onPress: () => stop.mutate(item.id) },
                       ])
                     }>
                     <Text style={styles.stopBtnText}>To'xtatish</Text>
@@ -242,7 +242,7 @@ function CreatePromotionModal({
                   {(['percent', 'fixed'] as DiscountType[]).map((dt) => (
                     <Pressable key={dt} style={[styles.chip, discountType === dt && styles.chipActive]} onPress={() => setDiscountType(dt)}>
                       <Text style={[styles.chipText, discountType === dt && styles.chipTextActive]}>
-                        {dt === 'percent' ? 'Foiz (%)' : 'Miqdor (so'm)'}
+                        {dt === 'percent' ? 'Foiz (%)' : "Miqdor (so'm)"}
                       </Text>
                     </Pressable>
                   ))}
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: spacing.lg,
   },
-  confirmBtnText: { ...typography.buttonMd, color: colors.text.onPrimary },
+  confirmBtnText: { ...typography.button, color: colors.text.onPrimary },
   cancelBtn: { alignItems: 'center', paddingVertical: spacing.md },
   cancelBtnText: { ...typography.body, color: colors.text.secondary },
 });

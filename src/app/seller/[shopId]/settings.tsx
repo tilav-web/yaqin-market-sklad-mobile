@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router, useGlobalSearchParams } from 'expo-router';
+import { type Href, router, useGlobalSearchParams } from 'expo-router';
 import { BarChart3, Bell, BookOpen, ChevronRight, type LucideIcon, MessageSquare, Settings2, ShieldBan, Star, Store, Tag, Wallet } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -70,7 +70,7 @@ export default function SellerHubScreen() {
                 {isOpen ? '🟢 Ochiq' : '🔴 Yopiq'}
               </Text>
               <Text style={styles.toggleSub}>
-                {isOpen ? 'Mijozlar buyurtma bera oladi' : 'Mahsulotlaringiz ko‘rinmaydi'}
+                {isOpen ? 'Mijozlar buyurtma bera oladi' : "Mahsulotlaringiz ko'rinmaydi"}
               </Text>
             </View>
             {shopQuery.isLoading ? (
@@ -93,7 +93,7 @@ export default function SellerHubScreen() {
         {completeness && completeness.score < 100 && (
           <View style={styles.completenessCard}>
             <View style={styles.completenessHeader}>
-              <Text style={styles.completenessTitle}>Do’kon profili</Text>
+              <Text style={styles.completenessTitle}>Do'kon profili</Text>
               <Text style={[styles.completenessScore, { color: completeness.score >= 70 ? colors.feedback.success : colors.feedback.warning }]}>
                 {completeness.score}%
               </Text>
@@ -102,7 +102,7 @@ export default function SellerHubScreen() {
               <View style={[styles.progressFill, { width: `${completeness.score}%` as `${number}%`, backgroundColor: completeness.score >= 70 ? colors.feedback.success : colors.feedback.warning }]} />
             </View>
             <Text style={styles.completenessHint}>
-              {completeness.items.filter((i) => !i.done).map((i) => i.label).slice(0, 2).join(‘ · ‘)}
+              {completeness.items.filter((i) => !i.done).map((i) => i.label).slice(0, 2).join(' · ')}
             </Text>
           </View>
         )}
@@ -112,7 +112,7 @@ export default function SellerHubScreen() {
         <View style={styles.group}>
           <Row
             icon={Settings2}
-            title="Do’kon sozlamalari"
+            title="Do'kon sozlamalari"
             subtitle="Nomi, manzil, rasm, yetkazib berish"
             onPress={() => router.push(`/seller/${shopId}/shop-settings`)}
           />
@@ -120,19 +120,19 @@ export default function SellerHubScreen() {
             icon={Tag}
             title="Aksiyalar"
             subtitle="Chegirma va promokodlar boshqaruvi"
-            onPress={() => router.push(`/seller/${shopId}/promotions`)}
+            onPress={() => router.push(`/seller/${shopId}/promotions` as Href)}
           />
           <Row
             icon={BookOpen}
             title="Global katalog"
             subtitle="Platforma mahsulotlaridan nusxa olish"
-            onPress={() => router.push(`/seller/${shopId}/catalog`)}
+            onPress={() => router.push(`/seller/${shopId}/catalog` as Href)}
           />
           <Row
             icon={MessageSquare}
             title="Chat shablonlari"
             subtitle="Tez javob shablonlarini boshqarish"
-            onPress={() => router.push(`/seller/${shopId}/chat-templates`)}
+            onPress={() => router.push(`/seller/${shopId}/chat-templates` as Href)}
           />
           <Row
             icon={BarChart3}
@@ -150,18 +150,18 @@ export default function SellerHubScreen() {
             icon={Bell}
             title="Bildirishnomalar"
             subtitle="Push tarixi"
-            onPress={() => router.push(‘/notifications’)}
+            onPress={() => router.push('/notifications')}
           />
           <Row
             icon={ShieldBan}
             title="Bloklangan foydalanuvchilar"
-            subtitle="Bu do’kon uchun bloklangan mijozlar"
+            subtitle="Bu do'kon uchun bloklangan mijozlar"
             onPress={() => router.push(`/seller/${shopId}/blocked`)}
           />
           <Row
             icon={Wallet}
-            title="Balans va to’lovlar"
-            subtitle="Daromad, qarz, mablag’ yechish"
+            title="Balans va to'lovlar"
+            subtitle="Daromad, qarz, mablag' yechish"
             onPress={() => router.push(`/seller/${shopId}/balance`)}
           />
           <Row
