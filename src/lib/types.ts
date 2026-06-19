@@ -162,6 +162,7 @@ export interface Order {
   distanceKm: number;
   status: OrderStatus;
   paymentMethod: 'cash' | 'click_online';
+  paymentStatus: 'not_required' | 'pending' | 'paid' | 'failed';
   timeline: Array<{ status: OrderStatus; at: string; note?: string }>;
   createdAt: string;
   /** Optional free-text reason the customer added for returned items. */

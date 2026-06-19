@@ -105,7 +105,7 @@ export default function SellerBalanceScreen() {
         {balQ.isLoading ? (
           <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 24 }} />
         ) : balQ.isError ? (
-          <Text style={{ color: colors.feedback.error, textAlign: 'center', marginTop: 24 }}>
+          <Text style={{ color: colors.feedback.danger, textAlign: 'center', marginTop: 24 }}>
             Balans ma'lumotlarini yuklashda xatolik
           </Text>
         ) : bal ? (
@@ -193,7 +193,7 @@ export default function SellerBalanceScreen() {
         {txQ.isLoading ? (
           <ActivityIndicator color={colors.brand.primary} />
         ) : txQ.isError ? (
-          <Text style={{ color: colors.feedback.error, textAlign: 'center' }}>
+          <Text style={{ color: colors.feedback.danger, textAlign: 'center' }}>
             Tarix yuklanmadi
           </Text>
         ) : (

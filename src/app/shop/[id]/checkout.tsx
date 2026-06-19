@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ChevronRight, MapPin, Minus, Plus, Wallet } from 'lucide-react-native';
+import * as WebBrowser from 'expo-web-browser';
+import { ChevronRight, CreditCard, MapPin, Minus, Plus, Wallet } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -30,6 +31,7 @@ export default function CheckoutScreen() {
   const clearShop = useCartStore((s) => s.clearShop);
   const updateQty = useCartStore((s) => s.updateQty);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'click_online'>('cash');
 
   const addressesQuery = useQuery({
     queryKey: ['my-addresses'],
@@ -59,18 +61,30 @@ export default function CheckoutScreen() {
         shopId,
         deliveryAddressId: selectedAddressId,
         items: cartLines.map((l) => ({ productVariantId: l.variantId, quantity: l.quantity })),
+        paymentMethod,
       });
       return res.data;
     },
-    onSuccess: (order) => {
+    onSuccess: async (order) => {
       clearShop(shopId!);
       qc.invalidateQueries({ queryKey: ['orders'] });
-      toast.success('Buyurtma yuborildi!');
       void startOrderActivity({
         orderNumber: order.orderNumber,
         shopName: order.shop?.name ?? shop?.name ?? '',
         status: 'new',
       });
+
+      if (paymentMethod === 'click_online') {
+        // Open Click payment page before navigating to order detail
+        try {
+          const { data } = await api.get<{ url: string }>(`/click/orders/${order.id}/url`);
+          await WebBrowser.openBrowserAsync(data.url, { showTitle: true });
+        } catch {
+          toast.error("Click sahifasini ochib bo'lmadi. Buyurtmangizdan to'lang.");
+        }
+      } else {
+        toast.success('Buyurtma yuborildi!');
+      }
       router.replace(`/orders/${order.id}`);
     },
     onError: (err) => toast.error(extractErrorMessage(err)),
@@ -88,7 +102,7 @@ export default function CheckoutScreen() {
   if (!cartLines.length) {
     return (
       <SafeAreaView style={styles.center}>
-        <Text style={styles.dim}>Savat bo‘sh</Text>
+        <Text style={styles.dim}>Savat bo'sh</Text>
       </SafeAreaView>
     );
   }
@@ -124,7 +138,7 @@ export default function CheckoutScreen() {
           ) : (
             <Pressable style={styles.addAddressBtn} onPress={() => router.push('/addresses')}>
               <MapPin size={16} color={colors.brand.primary} strokeWidth={2.4} />
-              <Text style={styles.addAddressText}>Manzil qo‘shish</Text>
+              <Text style={styles.addAddressText}>Manzil qo'shish</Text>
             </Pressable>
           )}
         </View>
@@ -148,7 +162,7 @@ export default function CheckoutScreen() {
                   {line.productName}
                 </Text>
                 <Text style={styles.itemPrice}>
-                  {(line.unitPrice * line.quantity).toLocaleString()} so‘m
+                  {(line.unitPrice * line.quantity).toLocaleString()} so'm
                 </Text>
               </View>
               <View style={styles.qtyControls}>
@@ -170,39 +184,49 @@ export default function CheckoutScreen() {
 
         {/* Payment */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>To‘lov turi</Text>
-          <View style={styles.payRow}>
-            <Wallet size={18} color={colors.feedback.success} strokeWidth={2.2} />
-            <Text style={styles.payText}>Naqd pul</Text>
-          </View>
+          <Text style={styles.sectionTitle}>To'lov turi</Text>
+          <Pressable
+            style={[styles.payRow, paymentMethod === 'cash' && styles.payRowActive]}
+            onPress={() => setPaymentMethod('cash')}>
+            <Wallet size={18} color={paymentMethod === 'cash' ? colors.brand.primary : colors.text.tertiary} strokeWidth={2.2} />
+            <Text style={[styles.payText, paymentMethod === 'cash' && { color: colors.brand.primary }]}>Naqd pul</Text>
+            {paymentMethod === 'cash' && <View style={styles.payCheck} />}
+          </Pressable>
+          <Pressable
+            style={[styles.payRow, paymentMethod === 'click_online' && styles.payRowActive]}
+            onPress={() => setPaymentMethod('click_online')}>
+            <CreditCard size={18} color={paymentMethod === 'click_online' ? colors.brand.primary : colors.text.tertiary} strokeWidth={2.2} />
+            <Text style={[styles.payText, paymentMethod === 'click_online' && { color: colors.brand.primary }]}>Click orqali</Text>
+            {paymentMethod === 'click_online' && <View style={styles.payCheck} />}
+          </Pressable>
         </View>
 
         {/* Summary */}
         <View style={styles.section}>
-          <Row label="Mahsulotlar" value={`${subTotal.toLocaleString()} so‘m`} />
+          <Row label="Mahsulotlar" value={`${subTotal.toLocaleString()} so'm`} />
           <Row
             label="Yetkazib berish"
-            value={deliveryFee === 0 ? 'Tekin' : `${deliveryFee.toLocaleString()} so‘m`}
+            value={deliveryFee === 0 ? 'Tekin' : `${deliveryFee.toLocaleString()} so'm`}
           />
           <View style={styles.divider} />
-          <Row label="Jami" value={`${total.toLocaleString()} so‘m`} bold />
+          <Row label="Jami" value={`${total.toLocaleString()} so'm`} bold />
         </View>
 
         {belowMin && (
           <Text style={styles.warn}>
-            Minimal buyurtma {minOrder.toLocaleString()} so‘m. Yana{' '}
-            {(minOrder - subTotal).toLocaleString()} so‘m qo‘shing.
+            Minimal buyurtma {minOrder.toLocaleString()} so'm. Yana{' '}
+            {(minOrder - subTotal).toLocaleString()} so'm qo'shing.
           </Text>
         )}
         {outOfZone && (
-          <Text style={styles.warn}>Manzil do‘konning yetkazib berish zonasidan tashqarida.</Text>
+          <Text style={styles.warn}>Manzil do'konning yetkazib berish zonasidan tashqarida.</Text>
         )}
       </ScrollView>
 
       <SafeAreaView edges={['bottom']} style={styles.footer}>
         <View style={styles.footerTotal}>
           <Text style={styles.footerTotalLabel}>Jami</Text>
-          <Text style={styles.footerTotalValue}>{total.toLocaleString()} so‘m</Text>
+          <Text style={styles.footerTotalValue}>{total.toLocaleString()} so'm</Text>
         </View>
         <Pressable
           onPress={() => createOrder.mutate()}
@@ -303,9 +327,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    marginBottom: spacing.xs,
   },
-  payText: { ...typography.body, fontWeight: '600' },
+  payRowActive: {
+    borderColor: colors.brand.primary,
+    backgroundColor: `${colors.brand.primary}10`,
+  },
+  payText: { ...typography.body, fontWeight: '600', flex: 1 },
+  payCheck: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.brand.primary,
+  },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rowLabel: { ...typography.body, color: colors.text.secondary },
   rowLabelBold: { color: colors.text.primary, fontWeight: '700' },

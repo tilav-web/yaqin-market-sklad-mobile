@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  confirmBtnText: { ...typography.buttonMd, color: colors.text.onPrimary },
+  confirmBtnText: { ...typography.button, color: colors.text.onPrimary },
   cancelBtn: { alignItems: 'center', paddingVertical: spacing.sm },
   cancelBtnText: { ...typography.body, color: colors.text.secondary },
 });

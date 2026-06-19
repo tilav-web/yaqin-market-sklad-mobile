@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { router } from 'expo-router';
-import { Check, MessageCircle, RefreshCw, RotateCcw, Star, X } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import * as WebBrowser from 'expo-web-browser';
+import { Check, CreditCard, MessageCircle, RefreshCw, RotateCcw, Star, X } from 'lucide-react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -14,11 +16,13 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useToast } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
 import { endOrderActivity, updateOrderActivity } from '@/lib/useOrderLiveActivity';
+import { useOrderSocket } from '@/lib/useOrderSocket';
 import { Order, OrderStatus, STATUS_LABEL_UZ } from '@/lib/types';
 import { OrderActivityProps } from '@/widgets/order-activity';
 import { useCartStore } from '@/stores/cart';
@@ -51,6 +55,8 @@ export default function OrderDetailScreen() {
   });
 
   const order = orderQuery.data;
+  const mapRef = useRef<MapView | null>(null);
+  const { courierLocation } = useOrderSocket(order?.status === 'delivering' ? id : undefined);
 
   useEffect(() => {
     if (!order) return;
@@ -334,6 +340,62 @@ export default function OrderDetailScreen() {
           <Text style={styles.allReviewed}>✓ Barcha mahsulotlar baholangan</Text>
         )}
 
+        {/* Courier map — shown while delivering */}
+        {order.status === 'delivering' && courierLocation && (
+          <View style={styles.mapCard}>
+            <Text style={styles.mapTitle}>Kuryer joylashuvi</Text>
+            <MapView
+              ref={mapRef}
+              provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+              style={styles.map}
+              initialRegion={{
+                latitude: courierLocation.lat,
+                longitude: courierLocation.lng,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              }}>
+              <Marker
+                coordinate={{ latitude: courierLocation.lat, longitude: courierLocation.lng }}
+                title="Kuryer"
+                pinColor={colors.brand.primary}
+              />
+              {order.deliveryAddress && (
+                <Marker
+                  coordinate={{
+                    latitude: order.deliveryAddress.latitude,
+                    longitude: order.deliveryAddress.longitude,
+                  }}
+                  title="Siz"
+                  pinColor={colors.feedback.success}
+                />
+              )}
+            </MapView>
+          </View>
+        )}
+
+        {/* Click payment button */}
+        {order.paymentMethod === 'click_online' && order.paymentStatus === 'pending' && (
+          <Pressable
+            style={styles.clickBtn}
+            onPress={async () => {
+              try {
+                const { data } = await api.get<{ url: string }>(`/click/orders/${order.id}/url`);
+                await WebBrowser.openBrowserAsync(data.url, { showTitle: true });
+                void qc.invalidateQueries({ queryKey: ['order', id] });
+              } catch (e) {
+                toast.error(extractErrorMessage(e));
+              }
+            }}>
+            <CreditCard size={18} color={colors.text.onPrimary} strokeWidth={2.2} />
+            <Text style={styles.clickBtnText}>Click orqali to'lash</Text>
+          </Pressable>
+        )}
+        {order.paymentMethod === 'click_online' && order.paymentStatus === 'paid' && (
+          <View style={styles.paidBadge}>
+            <Text style={styles.paidBadgeText}>✓ Click orqali to'langan</Text>
+          </View>
+        )}
+
         {/* Status actions */}
         {order.status === 'delivering' && (
           <Pressable
@@ -519,4 +581,40 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand.primarySurface,
   },
   reorderBtnText: { ...typography.buttonSmall, color: colors.brand.primary },
+  // courier map
+  mapCard: {
+    backgroundColor: colors.bg.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+    overflow: 'hidden',
+  },
+  mapTitle: { ...typography.overline, color: colors.text.tertiary, marginBottom: spacing.xs },
+  map: { width: '100%', height: 220, borderRadius: radius.md },
+  // click payment
+  clickBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    height: layout.buttonHeight.lg,
+    borderRadius: radius.lg,
+    backgroundColor: '#00B900',
+    ...shadow.sm,
+  },
+  clickBtnText: { ...typography.button, color: colors.text.onPrimary },
+  paidBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: `${colors.feedback.success}18`,
+    borderWidth: 1,
+    borderColor: colors.feedback.success,
+  },
+  paidBadgeText: { ...typography.bodyStrong, color: colors.feedback.success },
 });
