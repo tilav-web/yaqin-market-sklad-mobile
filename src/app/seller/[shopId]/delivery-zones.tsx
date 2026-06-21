@@ -92,9 +92,10 @@ export default function DeliveryZonesScreen() {
   const currentVerts = mode === 'delivery' ? deliveryVerts : freeVerts;
   const setCurrentVerts = mode === 'delivery' ? setDeliveryVerts : setFreeVerts;
 
-  const handleMapPress = (e: { nativeEvent: { coordinate: LatLng } }) => {
+  const handleMapPress = (e: { nativeEvent: { coordinate: LatLng } | null }) => {
+    if (!e?.nativeEvent?.coordinate) return;
     haptics.selection();
-    setCurrentVerts((prev) => [...prev, e.nativeEvent.coordinate]);
+    setCurrentVerts((prev) => [...prev, e.nativeEvent!.coordinate]);
   };
 
   const handleUndo = () => {
