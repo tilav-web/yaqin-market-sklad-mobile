@@ -69,6 +69,7 @@ export default function SellerInventoryScreen() {
   const PAGE = 40;
   const variantsQuery = useInfiniteQuery({
     queryKey: ['variants', shopId, 'page', search, lowOnly],
+    staleTime: 60_000,
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const res = await api.get<SellerVariant[]>(`/seller/shops/${shopId}/products/variants`, {

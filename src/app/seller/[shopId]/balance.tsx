@@ -59,11 +59,13 @@ export default function SellerBalanceScreen() {
 
   const balQ = useQuery<SellerBalance>({
     queryKey: ['seller-balance', shopId],
+    staleTime: 60_000,
     queryFn: async () => (await api.get('/seller/balance')).data,
   });
 
   const txQ = useQuery<SellerTx[]>({
     queryKey: ['seller-txs', shopId],
+    staleTime: 60_000,
     queryFn: async () => (await api.get('/seller/balance/transactions')).data,
   });
 

@@ -45,6 +45,7 @@ export default function SellerOrdersScreen() {
 
   const ordersQuery = useQuery({
     queryKey: ['seller-orders', shopId],
+    staleTime: 20_000,
     queryFn: async () => {
       const res = await api.get<Order[]>(`/seller/shops/${shopId}/orders`);
       return res.data;

@@ -25,6 +25,7 @@ export default function SellerStatsScreen() {
 
   const statsQuery = useQuery({
     queryKey: ['stats', shopId, period],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await api.get<SellerStats>(`/seller/shops/${shopId}/analytics/stats?period=${period}`);
       return res.data;
@@ -33,6 +34,7 @@ export default function SellerStatsScreen() {
 
   const reorderQuery = useQuery({
     queryKey: ['reorder', shopId],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await api.get<ReorderItem[]>(`/seller/shops/${shopId}/analytics/reorder`);
       return res.data;
@@ -41,6 +43,7 @@ export default function SellerStatsScreen() {
 
   const expiringQuery = useQuery({
     queryKey: ['expiring', shopId],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await api.get<ExpiringItem[]>(`/seller/shops/${shopId}/analytics/expiring?days=30`);
       return res.data;

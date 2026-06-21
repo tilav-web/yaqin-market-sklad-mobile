@@ -20,6 +20,7 @@ export default function SellerHubScreen() {
 
   const shopQuery = useQuery({
     queryKey: ['seller-shop', shopId],
+    staleTime: 60_000,
     queryFn: async () => {
       const res = await api.get<PublicShop>(`/seller/shops/${shopId}`);
       return res.data;

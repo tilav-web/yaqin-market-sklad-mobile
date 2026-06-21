@@ -24,6 +24,7 @@ export default function SellerDebtScreen() {
 
   const accountsQuery = useQuery({
     queryKey: ['debts', shopId],
+    staleTime: 60_000,
     queryFn: async () => {
       const res = await api.get<DebtAccount[]>(`/seller/shops/${shopId}/debts`);
       return res.data;
@@ -32,6 +33,7 @@ export default function SellerDebtScreen() {
 
   const summaryQuery = useQuery({
     queryKey: ['debts', shopId, 'summary'],
+    staleTime: 60_000,
     queryFn: async () => {
       const res = await api.get<DebtSummary>(`/seller/shops/${shopId}/debts/summary`);
       return res.data;

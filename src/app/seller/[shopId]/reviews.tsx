@@ -38,6 +38,7 @@ export default function SellerReviewsScreen() {
 
   const reviewsQuery = useQuery({
     queryKey: ['shop-reviews', shopId],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const res = await api.get<ShopReview[]>(`/seller/shops/${shopId}/products/reviews`);
       return res.data;

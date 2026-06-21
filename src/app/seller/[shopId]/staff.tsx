@@ -39,6 +39,7 @@ export default function StaffScreen() {
 
   const staffQuery = useQuery({
     queryKey: ['shop-staff', shopId],
+    staleTime: 60_000,
     queryFn: async () => {
       const res = await api.get<StaffMember[]>(`/seller/shops/${shopId}/staff`);
       return res.data;
