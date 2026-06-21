@@ -1,5 +1,6 @@
-import { Tabs, router, useGlobalSearchParams } from 'expo-router';
+import { Tabs, router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Bell } from 'lucide-react-native';
+import { useCallback, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -20,7 +21,7 @@ function BackButton() {
   );
 }
 
-function HubBackButton({ shopId }: { shopId: string }) {
+function HubBackButton({ shopId }: Readonly<{ shopId: string }>) {
   return (
     <Pressable style={styles.backBtn} onPress={() => router.navigate(`/seller/${shopId}/settings`)} hitSlop={10}>
       <ArrowLeft size={22} color={Brand.white} strokeWidth={2.6} />
@@ -28,72 +29,52 @@ function HubBackButton({ shopId }: { shopId: string }) {
   );
 }
 
+// Module-level stable references (never recreated)
+const renderBackButton = () => <BackButton />;
+const SCREEN_OPTIONS = {
+  headerStyle: { backgroundColor: Brand.red },
+  headerTintColor: Brand.white,
+  headerTitleStyle: { fontWeight: '700' as const },
+  headerLeft: renderBackButton,
+};
+// Factory outside component avoids S6478 "component inside component" lint
+function makeHubLeft(id: string) {
+  return function HubLeft() { return <HubBackButton shopId={id} />; };
+}
+
 export default function SellerLayout() {
-  const { shopId } = useGlobalSearchParams<{ shopId: string }>();
+  const { shopId } = useLocalSearchParams<{ shopId: string }>();
   const { pending, acknowledge, alarm } = useOrderAlarm(shopId);
 
-  const handleOpen = () => {
+  const handleOpen = useCallback(() => {
     if (!pending) return;
-    if (alarm.mode === 'short') acknowledge(); // short: stop alarm immediately
-    // long: alarm continues — stops only when order detail mounts
+    if (alarm.mode === 'short') acknowledge();
     router.navigate(`/seller/order/${pending.orderId}`);
-  };
+  }, [pending, alarm.mode, acknowledge]);
+
+  // Only recreated when shopId changes (useLocalSearchParams won't fire on tab switch)
+  const hubLeft = useMemo(() => makeHubLeft(shopId), [shopId]);
 
   return (
     <View style={{ flex: 1 }}>
       <Tabs
-        tabBar={(props) => <SellerTabBar {...props} />}
-        screenOptions={{
-          headerStyle: { backgroundColor: Brand.red },
-          headerTintColor: Brand.white,
-          headerTitleStyle: { fontWeight: '700' },
-          headerLeft: () => <BackButton />,
-        }}>
+        tabBar={SellerTabBar}
+        screenOptions={SCREEN_OPTIONS}>
         <Tabs.Screen name="orders" options={{ title: 'Buyurtmalar' }} />
         <Tabs.Screen name="inventory" options={{ title: 'Sklad' }} />
         <Tabs.Screen name="debt" options={{ title: 'Qarz daftar' }} />
         <Tabs.Screen name="staff" options={{ title: 'Xodimlar' }} />
         <Tabs.Screen name="settings" options={{ title: 'Sozlamalar' }} />
-        <Tabs.Screen
-          name="shop-settings"
-          options={{ title: "Do'kon sozlamalari", headerLeft: () => <HubBackButton shopId={shopId} /> }}
-        />
-        <Tabs.Screen
-          name="stats"
-          options={{ title: 'Hisobot', headerLeft: () => <HubBackButton shopId={shopId} /> }}
-        />
-        <Tabs.Screen
-          name="blocked"
-          options={{ title: 'Bloklangan foydalanuvchilar', headerLeft: () => <HubBackButton shopId={shopId} /> }}
-        />
-        <Tabs.Screen
-          name="reviews"
-          options={{ title: 'Sharhlar', headerLeft: () => <HubBackButton shopId={shopId} /> }}
-        />
-        <Tabs.Screen
-          name="balance"
-          options={{ title: 'Balans', headerLeft: () => <HubBackButton shopId={shopId} /> }}
-        />
-        <Tabs.Screen
-          name="prime"
-          options={{ title: 'Prime obuna', headerLeft: () => <HubBackButton shopId={shopId} /> }}
-        />
-        <Tabs.Screen
-          name="promotions"
-          options={{ title: 'Aksiyalar', headerLeft: () => <HubBackButton shopId={shopId} /> }}
-        />
-        <Tabs.Screen
-          name="catalog"
-          options={{ title: 'Global katalog', headerLeft: () => <HubBackButton shopId={shopId} /> }}
-        />
-        <Tabs.Screen
-          name="chat-templates"
-          options={{ title: 'Chat shablonlari', headerLeft: () => <HubBackButton shopId={shopId} /> }}
-        />
-        <Tabs.Screen
-          name="delivery-zones"
-          options={{ headerShown: false, tabBarButton: () => null }}
-        />
+        <Tabs.Screen name="shop-settings" options={{ title: "Do'kon sozlamalari", headerLeft: hubLeft }} />
+        <Tabs.Screen name="stats" options={{ title: 'Hisobot', headerLeft: hubLeft }} />
+        <Tabs.Screen name="blocked" options={{ title: 'Bloklangan foydalanuvchilar', headerLeft: hubLeft }} />
+        <Tabs.Screen name="reviews" options={{ title: 'Sharhlar', headerLeft: hubLeft }} />
+        <Tabs.Screen name="balance" options={{ title: 'Balans', headerLeft: hubLeft }} />
+        <Tabs.Screen name="prime" options={{ title: 'Prime obuna', headerLeft: hubLeft }} />
+        <Tabs.Screen name="promotions" options={{ title: 'Aksiyalar', headerLeft: hubLeft }} />
+        <Tabs.Screen name="catalog" options={{ title: 'Global katalog', headerLeft: hubLeft }} />
+        <Tabs.Screen name="chat-templates" options={{ title: 'Chat shablonlari', headerLeft: hubLeft }} />
+        <Tabs.Screen name="delivery-zones" options={{ headerShown: false, tabBarButton: () => null }} />
       </Tabs>
 
       {pending && (
@@ -113,12 +94,12 @@ function NewOrderBanner({
   mode,
   onAck,
   onOpen,
-}: {
+}: Readonly<{
   order: PendingOrder;
   mode: AlarmMode;
   onAck: () => void;
   onOpen: () => void;
-}) {
+}>) {
   return (
     <SafeAreaView edges={['top']} style={styles.bannerWrap} pointerEvents="box-none">
       <Pressable style={styles.banner} onPress={onOpen}>
