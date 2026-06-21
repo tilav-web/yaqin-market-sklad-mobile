@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useFocusEffect, useGlobalSearchParams } from 'expo-router';
-import { Check, ChevronDown, ChevronRight, ChevronUp, MapPin, MessageCircle, Package, RotateCcw, ScanLine, X } from 'lucide-react-native';
+import { Check, ChevronDown, ChevronRight, ChevronUp, MapPin, MessageCircle, Package, Phone, RotateCcw, ScanLine, Truck, X } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,7 +14,7 @@ import { haptics } from '@/utils/haptics';
 
 const NEXT_STATUS: Partial<Record<OrderStatus, { next: OrderStatus; label: string }>> = {
   new: { next: 'accepted', label: 'Qabul qilish' },
-  accepted: { next: 'preparing', label: 'Yig‘ishni boshlash' },
+  accepted: { next: 'preparing', label: "Yig'ishni boshlash" },
   preparing: { next: 'delivering', label: 'Yetkazishga uzatish' },
   delivering: { next: 'delivered', label: 'Yetkazib berdim' },
 };
@@ -102,24 +102,48 @@ export default function SellerOrdersScreen() {
     staleTime: 30_000,
   });
 
+  const deliveringCount = all.filter((o) => o.status === 'delivering').length;
+
+  const EMPTY_MSG: Record<Filter, { title: string; desc: string }> = {
+    new: { title: "Yangi buyurtma yo'q", desc: "Mijozlar buyurtma berganda shu yerda ko'rinadi" },
+    progress: { title: "Jarayondagi buyurtma yo'q", desc: "Qabul qilingan buyurtmalar shu yerda ko'rinadi" },
+    done: { title: "Yakunlangan buyurtma yo'q", desc: "Yetkazilgan va bekor buyurtmalar shu yerda ko'rinadi" },
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      {/* Filters */}
+      {/* ── Filters + route ── */}
       <View style={styles.segments}>
-        {FILTERS.map((f) => (
-          <Pressable
-            key={f.key}
-            onPress={() => setFilter(f.key)}
-            style={[styles.segment, filter === f.key && styles.segmentActive]}>
-            <Text style={[styles.segmentText, filter === f.key && styles.segmentTextActive]}>
-              {f.label}
-              {counts[f.key] > 0 ? ` · ${counts[f.key]}` : ''}
-            </Text>
+        {FILTERS.map((f) => {
+          const cnt = counts[f.key];
+          const isActive = filter === f.key;
+          return (
+            <Pressable
+              key={f.key}
+              onPress={() => setFilter(f.key)}
+              style={[styles.segment, isActive && styles.segmentActive]}>
+              <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>
+                {f.label}
+              </Text>
+              {cnt > 0 && (
+                <View style={[styles.badge, isActive ? styles.badgeActive : f.key === 'new' ? styles.badgeNew : styles.badgeMuted]}>
+                  <Text style={[styles.badgeText, isActive || f.key === 'new' ? styles.badgeTextLight : styles.badgeTextDark]}>
+                    {cnt}
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+          );
+        })}
+        {/* Route button — only when delivering */}
+        {deliveringCount > 0 && (
+          <Pressable style={styles.routeBtn} onPress={() => setRouteOpen(true)}>
+            <Truck size={15} color={colors.brand.primary} strokeWidth={2.4} />
+            <View style={styles.routeBadge}>
+              <Text style={styles.routeBadgeText}>{deliveringCount}</Text>
+            </View>
           </Pressable>
-        ))}
-        <Pressable style={styles.routeBtn} onPress={() => setRouteOpen(true)}>
-          <MapPin size={15} color={colors.brand.primary} strokeWidth={2.4} />
-        </Pressable>
+        )}
       </View>
 
       <FlatList
@@ -130,9 +154,7 @@ export default function SellerOrdersScreen() {
         refreshControl={
           <RefreshControl
             refreshing={ordersQuery.isFetching && !ordersQuery.isLoading}
-            onRefresh={() => {
-              void ordersQuery.refetch();
-            }}
+            onRefresh={() => { void ordersQuery.refetch(); }}
             tintColor={colors.brand.primary}
             colors={[colors.brand.primary]}
           />
@@ -141,20 +163,25 @@ export default function SellerOrdersScreen() {
           ordersQuery.isLoading ? (
             <ActivityIndicator color={colors.brand.primary} style={{ marginTop: spacing['4xl'] }} />
           ) : (
-            <EmptyState icon={Package} title="Buyurtma yo‘q" description="Bu bo‘limda buyurtmalar yo‘q" />
+            <EmptyState
+              icon={filter === 'done' ? Check : filter === 'progress' ? Truck : Package}
+              title={EMPTY_MSG[filter].title}
+              description={EMPTY_MSG[filter].desc}
+            />
           )
         }
         renderItem={({ item }) => {
           const next = NEXT_STATUS[item.status];
           const isOpen = expanded[item.id];
           const itemCount = item.items.reduce((s, it) => s + it.quantity, 0);
+          const customer = item.user?.name ?? item.user?.phone ?? null;
           return (
             <View style={[styles.card, { borderLeftColor: colors.status[item.status] }]}>
-              {/* Header: tap order number → detail. Cancel sits up here, far from Accept. */}
+              {/* Header */}
               <View style={styles.cardHeader}>
                 <Pressable style={styles.numWrap} onPress={() => router.push(`/seller/order/${item.id}`)} hitSlop={6}>
                   <Text style={styles.orderNum}>#{item.orderNumber}</Text>
-                  <ChevronRight size={15} color={colors.text.tertiary} strokeWidth={2.4} />
+                  <ChevronRight size={14} color={colors.text.tertiary} strokeWidth={2.4} />
                 </Pressable>
                 <View style={styles.headerRight}>
                   <View style={[styles.statusBadge, { backgroundColor: colors.status[item.status] }]}>
@@ -166,29 +193,40 @@ export default function SellerOrdersScreen() {
                       hitSlop={8}
                       onPress={() =>
                         Alert.alert('Bekor qilish', `#${item.orderNumber} bekor qilinsinmi?`, [
-                          { text: 'Yo‘q', style: 'cancel' },
+                          { text: "Yo'q", style: 'cancel' },
                           { text: 'Ha', style: 'destructive', onPress: () => advance.mutate({ orderId: item.id, status: 'cancelled' }) },
                         ])
                       }>
-                      <X size={16} color={colors.feedback.danger} strokeWidth={2.8} />
+                      <X size={15} color={colors.feedback.danger} strokeWidth={2.8} />
                     </Pressable>
                   )}
                 </View>
               </View>
-              <Text style={styles.time}>{item.createdAt.slice(11, 16)} · {itemCount} dona</Text>
 
-              {/* Accordion: tap to expand items with images */}
+              {/* Time + customer */}
+              <View style={styles.metaRow}>
+                <Text style={styles.time}>{item.createdAt.slice(11, 16)}</Text>
+                <Text style={styles.dot}>·</Text>
+                <Text style={styles.time}>{itemCount} dona</Text>
+                {customer && (
+                  <>
+                    <Text style={styles.dot}>·</Text>
+                    <Phone size={11} color={colors.text.tertiary} strokeWidth={2} />
+                    <Text style={styles.time} numberOfLines={1}>{customer}</Text>
+                  </>
+                )}
+              </View>
+
+              {/* Accordion */}
               <Pressable
                 style={styles.accordionToggle}
                 onPress={() => setExpanded((e) => ({ ...e, [item.id]: !e[item.id] }))}>
                 <Text style={styles.accordionLabel}>
-                  {isOpen ? 'Mahsulotlarni yashirish' : `${item.items.length} xil mahsulot`}
+                  {isOpen ? 'Yashirish' : `${item.items.length} xil mahsulot`}
                 </Text>
-                {isOpen ? (
-                  <ChevronUp size={16} color={colors.brand.primary} strokeWidth={2.4} />
-                ) : (
-                  <ChevronDown size={16} color={colors.brand.primary} strokeWidth={2.4} />
-                )}
+                {isOpen
+                  ? <ChevronUp size={15} color={colors.brand.primary} strokeWidth={2.4} />
+                  : <ChevronDown size={15} color={colors.brand.primary} strokeWidth={2.4} />}
               </Pressable>
 
               {isOpen ? (
@@ -200,13 +238,11 @@ export default function SellerOrdersScreen() {
                           <Image source={{ uri: it.productVariant.photos[0] }} style={styles.itemImage} />
                         ) : (
                           <View style={[styles.itemImage, styles.itemPlaceholder]}>
-                            <Package size={16} color={colors.brand.primary} strokeWidth={1.7} />
+                            <Package size={14} color={colors.brand.primary} strokeWidth={1.7} />
                           </View>
                         )}
                       </View>
-                      <Text style={styles.itemName} numberOfLines={1}>
-                        {it.productName}
-                      </Text>
+                      <Text style={styles.itemName} numberOfLines={1}>{it.productName}</Text>
                       <Text style={styles.itemQty}>×{it.quantity}</Text>
                     </View>
                   ))}
@@ -218,29 +254,25 @@ export default function SellerOrdersScreen() {
               )}
 
               <View style={styles.totalRow}>
-                <Text style={styles.total}>{fmt(item.total)} so‘m</Text>
+                <Text style={styles.total}>{fmt(item.total)} so'm</Text>
                 <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${item.id}?shopId=${shopId}`)}>
-                  <MessageCircle size={16} color={colors.brand.primary} strokeWidth={2.4} />
+                  <MessageCircle size={14} color={colors.brand.primary} strokeWidth={2.4} />
                   <Text style={styles.chatBtnText}>Chat</Text>
                 </Pressable>
               </View>
 
               {item.status === 'delivering' && (
                 <Pressable style={styles.returnBtn} onPress={() => router.push(`/seller/return/${item.id}`)}>
-                  <RotateCcw size={16} color={colors.feedback.warning} strokeWidth={2.4} />
+                  <RotateCcw size={14} color={colors.feedback.warning} strokeWidth={2.4} />
                   <Text style={styles.returnBtnText}>Qaytarilgan mahsulotni belgilash</Text>
                 </Pressable>
               )}
 
-              {/* Primary advance/accept — big, at the bottom (far from Cancel up top) */}
               {next && (
                 <Pressable
                   style={[styles.actionBtn, item.status === 'new' && styles.acceptBtn]}
-                  onPress={() => {
-                    haptics.medium();
-                    advance.mutate({ orderId: item.id, status: next.next });
-                  }}>
-                  {item.status === 'new' ? <Check size={18} color={colors.text.onPrimary} strokeWidth={2.8} /> : null}
+                  onPress={() => { haptics.medium(); advance.mutate({ orderId: item.id, status: next.next }); }}>
+                  {item.status === 'new' && <Check size={17} color={colors.text.onPrimary} strokeWidth={2.8} />}
                   <Text style={styles.actionBtnText}>{next.label}</Text>
                 </Pressable>
               )}
@@ -298,25 +330,69 @@ export default function SellerOrdersScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg.canvas },
+
+  /* Filter tabs */
   segments: {
     flexDirection: 'row',
     gap: spacing.xs,
     paddingHorizontal: layout.screenPadding,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
+    paddingBottom: spacing.sm,
+    alignItems: 'center',
   },
   segment: {
     flex: 1,
-    paddingVertical: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 9,
     borderRadius: radius.full,
     backgroundColor: colors.bg.surface,
     borderWidth: 1,
     borderColor: colors.border.default,
-    alignItems: 'center',
   },
   segmentActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
   segmentText: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
   segmentTextActive: { color: colors.text.onPrimary },
+
+  /* Count badge on tab */
+  badge: { minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
+  badgeActive: { backgroundColor: 'rgba(255,255,255,0.30)' },
+  badgeNew: { backgroundColor: colors.feedback.danger },
+  badgeMuted: { backgroundColor: colors.bg.surfaceMuted, borderWidth: 1, borderColor: colors.border.default },
+  badgeText: { fontSize: 10, fontWeight: '800', lineHeight: 13 },
+  badgeTextLight: { color: '#fff' },
+  badgeTextDark: { color: colors.text.secondary },
+
+  /* Route button */
+  routeBtn: {
+    position: 'relative',
+    width: 38,
+    height: 38,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.brand.primaryBorder,
+    backgroundColor: colors.brand.primarySurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  routeBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.feedback.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.bg.canvas,
+  },
+  routeBadgeText: { fontSize: 9, color: '#fff', fontWeight: '800' },
+
+  /* FAB */
   fab: {
     position: 'absolute',
     bottom: spacing.lg,
@@ -325,17 +401,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
     paddingHorizontal: spacing.lg,
-    height: 52,
+    height: 50,
     borderRadius: radius.full,
     backgroundColor: colors.brand.primary,
     ...shadow.lg,
   },
   fabText: { ...typography.body, fontWeight: '800', color: colors.text.onPrimary },
+
+  /* List */
   list: { padding: layout.screenPadding, paddingBottom: 96, gap: spacing.md },
+
+  /* Card */
   card: {
     backgroundColor: colors.bg.surface,
     borderRadius: radius.lg,
-    padding: spacing.lg,
+    padding: spacing.md,
     gap: spacing.xs,
     borderLeftWidth: 4,
     borderWidth: 1,
@@ -345,47 +425,57 @@ const styles = StyleSheet.create({
   numWrap: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   orderNum: { ...typography.bodyStrong, color: colors.text.primary },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  statusBadge: { paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: radius.full },
-  statusText: { ...typography.caption, fontSize: 11, color: colors.text.onPrimary, fontWeight: '800' },
+  statusBadge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.full },
+  statusText: { fontSize: 10, color: colors.text.onPrimary, fontWeight: '800' },
   cancelIcon: {
-    width: 28,
-    height: 28,
+    width: 26,
+    height: 26,
     borderRadius: radius.full,
     backgroundColor: colors.feedback.dangerSurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  /* Meta row (time · items · customer) */
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
   time: { ...typography.caption, color: colors.text.tertiary },
+  dot: { ...typography.caption, color: colors.text.hint },
+
+  /* Accordion */
   accordionToggle: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: spacing.xs,
+    marginTop: 2,
     paddingVertical: spacing.xs,
     borderTopWidth: 1,
     borderTopColor: colors.border.subtle,
   },
-  accordionLabel: { ...typography.bodySmall, fontWeight: '700', color: colors.brand.primary },
+  accordionLabel: { ...typography.caption, fontWeight: '700', color: colors.brand.primary },
   preview: { ...typography.caption, color: colors.text.secondary },
-  itemsExpanded: { gap: spacing.sm, marginTop: spacing.xs },
+  itemsExpanded: { gap: spacing.sm, marginTop: 2 },
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  itemImageWrap: { width: 40, height: 40, borderRadius: radius.sm, overflow: 'hidden' },
-  itemImage: { width: 40, height: 40, backgroundColor: colors.brand.primarySurface },
+  itemImageWrap: { width: 36, height: 36, borderRadius: radius.sm, overflow: 'hidden' },
+  itemImage: { width: 36, height: 36, backgroundColor: colors.brand.primarySurface },
   itemPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  itemName: { ...typography.bodySmall, color: colors.text.primary, flex: 1 },
-  itemQty: { ...typography.bodySmall, fontWeight: '800', color: colors.text.primary },
-  totalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.xs },
+  itemName: { ...typography.caption, color: colors.text.primary, flex: 1 },
+  itemQty: { ...typography.caption, fontWeight: '800', color: colors.text.primary },
+
+  /* Total + chat */
+  totalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
   total: { ...typography.h4, color: colors.brand.primary },
   chatBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
     borderRadius: radius.md,
     backgroundColor: colors.brand.primarySurface,
   },
   chatBtnText: { ...typography.caption, color: colors.brand.primary, fontWeight: '700' },
+
+  /* Return + action */
   returnBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -394,7 +484,7 @@ const styles = StyleSheet.create({
     height: layout.buttonHeight.sm,
     borderRadius: radius.md,
     backgroundColor: colors.feedback.warningSurface,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   returnBtnText: { ...typography.caption, color: colors.feedback.warning, fontWeight: '700' },
   actionBtn: {
@@ -405,20 +495,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand.primary,
     height: layout.buttonHeight.md,
     borderRadius: radius.md,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   acceptBtn: { backgroundColor: colors.feedback.success },
   actionBtnText: { ...typography.buttonSmall, color: colors.text.onPrimary },
-  routeBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+
   routeOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   routeSheet: {
     backgroundColor: colors.bg.surface,
