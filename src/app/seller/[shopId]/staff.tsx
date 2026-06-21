@@ -46,11 +46,11 @@ export default function StaffScreen() {
     },
   });
 
-  // Refetch whenever the screen regains focus, so a staff member who just
-  // joined (scanned the QR) shows up without needing to restart the app.
+  // Mark stale on focus (no immediate refetch) — data refreshes on next staleTime expiry
+  // or pull-to-refresh. invalidateQueries with refetchType:'none' avoids freeze on tab switch.
   useFocusEffect(
     useCallback(() => {
-      void qc.invalidateQueries({ queryKey: ['shop-staff', shopId] });
+      void qc.invalidateQueries({ queryKey: ['shop-staff', shopId], refetchType: 'none' });
     }, [qc, shopId]),
   );
 

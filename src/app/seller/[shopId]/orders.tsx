@@ -54,11 +54,16 @@ export default function SellerOrdersScreen() {
   });
 
   // Opening this tab marks the shop's orders as seen → clears the profile badge.
+  // Cache is updated optimistically (no refetch) to avoid a tab-switch freeze.
   useFocusEffect(
     useCallback(() => {
       api
         .post(`/seller/shops/${shopId}/orders/seen`)
-        .then(() => qc.invalidateQueries({ queryKey: ['shops', 'mine'] }))
+        .then(() => {
+          qc.setQueryData<import('@/lib/types').MyShop[]>(['shops', 'mine'], (shops) =>
+            shops?.map((s) => (s.id === shopId ? { ...s, newOrderCount: 0 } : s)),
+          );
+        })
         .catch(() => {});
     }, [shopId, qc]),
   );
