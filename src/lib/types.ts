@@ -1,3 +1,8 @@
+export interface GeoJsonPolygon {
+  type: 'Polygon';
+  coordinates: [number, number][][]; // [[[lng, lat], ...]] — GeoJSON standard
+}
+
 export interface PublicShop {
   id: string;
   name: string;
@@ -23,6 +28,8 @@ export interface PublicShop {
     pricingType: 'flat' | 'per_km' | 'per_500m' | 'per_100m';
     pricePerStep: number;
   };
+  deliveryPolygon?: GeoJsonPolygon | null;
+  freeDeliveryPolygon?: GeoJsonPolygon | null;
   distanceKm?: number;
   deliveryFeeAtUser?: number;
   isWithinZone?: boolean;

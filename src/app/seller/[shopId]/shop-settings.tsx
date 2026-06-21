@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useGlobalSearchParams } from 'expo-router';
-import { Bell, Clock, MapPin, Store, Truck } from 'lucide-react-native';
+import { useGlobalSearchParams, useRouter } from 'expo-router';
+import { Bell, ChevronRight, Clock, MapPin, Map, Store, Truck } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -73,6 +73,7 @@ function fmtSom(n: number): string {
 
 export default function ShopSettingsScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
+  const router = useRouter();
   const qc = useQueryClient();
 
   const alarm = useShopAlarm(shopId);
@@ -258,6 +259,14 @@ export default function ShopSettingsScreen() {
 
         {/* Delivery */}
         <Section title="Yetkazib berish" icon={Truck}>
+          <Pressable
+            style={styles.mapZoneBtn}
+            onPress={() => router.push({ pathname: '/seller/[shopId]/delivery-zones', params: { shopId } } as never)}>
+            <Map size={18} color={colors.brand.primary} strokeWidth={2} />
+            <Text style={styles.mapZoneBtnText}>Xaritada chegara belgilash</Text>
+            <ChevronRight size={16} color={colors.text.tertiary} />
+          </Pressable>
+
           <Field label="Minimal buyurtma summasi (so'm)">
             <TextInput style={styles.input} value={minOrder} onChangeText={setMinOrder} keyboardType="number-pad" />
             <Text style={styles.hint}>Bundan kam summaga buyurtma berib bo'lmaydi</Text>
@@ -410,6 +419,18 @@ function Field({ label, children, flex }: { label: string; children: React.React
 }
 
 const styles = StyleSheet.create({
+  mapZoneBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.brand.primarySurface,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: colors.brand.primaryBorder,
+  },
+  mapZoneBtnText: { ...typography.bodyStrong, color: colors.brand.primary, flex: 1 },
   container: { flex: 1, backgroundColor: colors.bg.canvas },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['3xl'] },
