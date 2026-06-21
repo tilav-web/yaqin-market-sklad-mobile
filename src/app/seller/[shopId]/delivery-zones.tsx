@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useGlobalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, MapPin, RotateCcw, Save, Trash2 } from 'lucide-react-native';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -53,22 +53,21 @@ export default function DeliveryZonesScreen() {
     staleTime: 60_000,
   });
 
-  // Load existing polygons from server on first fetch
-  if (shopQuery.data && !initialized) {
+  // Load existing polygons once when shop data arrives
+  useEffect(() => {
+    if (!shopQuery.data || initialized) return;
     const s = shopQuery.data as PublicShop & {
       deliveryPolygon?: GeoJsonPolygon | null;
       freeDeliveryPolygon?: GeoJsonPolygon | null;
     };
     if (s.deliveryPolygon?.coordinates[0]) {
-      const ring = s.deliveryPolygon.coordinates[0];
-      setDeliveryVerts(toLatLng(ring.slice(0, -1))); // remove closing duplicate
+      setDeliveryVerts(toLatLng(s.deliveryPolygon.coordinates[0].slice(0, -1)));
     }
     if (s.freeDeliveryPolygon?.coordinates[0]) {
-      const ring = s.freeDeliveryPolygon.coordinates[0];
-      setFreeVerts(toLatLng(ring.slice(0, -1)));
+      setFreeVerts(toLatLng(s.freeDeliveryPolygon.coordinates[0].slice(0, -1)));
     }
     setInitialized(true);
-  }
+  }, [shopQuery.data, initialized]);
 
   const shop = shopQuery.data;
   const shopCoord = shop
