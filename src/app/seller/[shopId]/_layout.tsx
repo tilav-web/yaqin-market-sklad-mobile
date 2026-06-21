@@ -52,13 +52,19 @@ export default function SellerLayout() {
     router.navigate(`/seller/order/${pending.orderId}`);
   }, [pending, alarm.mode, acknowledge]);
 
+  // Stable: SellerTabBar must be rendered as JSX (not called directly) to keep hooks alive
+  const tabBar = useCallback(
+    (props: React.ComponentProps<typeof SellerTabBar>) => <SellerTabBar {...props} />,
+    [],
+  );
+
   // Only recreated when shopId changes (useLocalSearchParams won't fire on tab switch)
   const hubLeft = useMemo(() => makeHubLeft(shopId), [shopId]);
 
   return (
     <View style={{ flex: 1 }}>
       <Tabs
-        tabBar={SellerTabBar}
+        tabBar={tabBar}
         screenOptions={SCREEN_OPTIONS}>
         <Tabs.Screen name="orders" options={{ title: 'Buyurtmalar' }} />
         <Tabs.Screen name="inventory" options={{ title: 'Sklad' }} />
