@@ -272,11 +272,10 @@ export default function DeliveryZonesScreen() {
 
   /* ── hint text ── */
   const hint = (() => {
-    if (!pencilOn) return isClosed ? 'Tayyor ✓  Qayta chizish uchun qalamni bosing' : 'Qalamni bosib chizishni boshlang';
-    if (isClosed) return 'Polygon yopiq';
-    if (verts.length === 0) return 'Birinchi nuqtaga barmog\'ingizni qo\'ying, tortib chiziq chizing';
-    if (verts.length < 3) return `Davom eting — ${verts.length} nuqta (kamida 3 kerak)`;
-    return `${verts.length} nuqta — boshiga yaqinlashtirsangiz avtomatik yopiladi`;
+    if (!pencilOn) return isClosed ? 'Tayyor — qayta chizish uchun qalamni bosing' : 'Qalamni bosib chizishni boshlang';
+    if (verts.length === 0) return 'Bosing va torting → chiziq chiziladi';
+    if (verts.length < 3) return `Davom eting (${verts.length} nuqta)`;
+    return 'Boshiga yaqinlashtirsangiz avtomatik yopiladi';
   })();
 
   return (
@@ -301,10 +300,8 @@ export default function DeliveryZonesScreen() {
           pitchEnabled={false}
           initialRegion={{ ...shopCoord, latitudeDelta: 0.06, longitudeDelta: 0.06 }}
         >
-          {/* Shop pin */}
           <Marker coordinate={shopCoord} title={shopQuery.data?.name} pinColor={colors.brand.primary} />
 
-          {/* Delivery zone */}
           {dverts.length >= 3 && dclosed && (
             <Polygon coordinates={dverts} strokeColor={dColor} strokeWidth={2.5} fillColor="rgba(34,197,94,0.14)" />
           )}
@@ -312,7 +309,6 @@ export default function DeliveryZonesScreen() {
             <Polyline coordinates={dverts} strokeColor={dColor} strokeWidth={2.5} />
           )}
 
-          {/* Free zone */}
           {fverts.length >= 3 && fclosed && (
             <Polygon coordinates={fverts} strokeColor={fColor} strokeWidth={2.5} fillColor="rgba(59,130,246,0.14)" />
           )}
@@ -320,7 +316,6 @@ export default function DeliveryZonesScreen() {
             <Polyline coordinates={fverts} strokeColor={fColor} strokeWidth={2.5} />
           )}
 
-          {/* Closing guide (last → first dashed) */}
           {pencilOn && !isClosed && verts.length >= 3 && (
             <Polyline
               coordinates={[verts[verts.length - 1], verts[0]]}
@@ -330,7 +325,6 @@ export default function DeliveryZonesScreen() {
             />
           )}
 
-          {/* First vertex snap target */}
           {pencilOn && !isClosed && verts.length > 0 && (
             <Marker coordinate={verts[0]} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
               <View style={[styles.snapTarget, { borderColor: activeColor }]} />
@@ -338,7 +332,6 @@ export default function DeliveryZonesScreen() {
           )}
         </MapView>
 
-        {/* ── SVG overlay: live preview line (screen space, fast, no async) ── */}
         {pencilOn && svgLine && (
           <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
             <Line
@@ -353,86 +346,82 @@ export default function DeliveryZonesScreen() {
           </Svg>
         )}
 
-        {/* ── Touch overlay: captures gestures when pencil is on ── */}
         {pencilOn && !isClosed && (
           <View style={StyleSheet.absoluteFill} {...panRef.panHandlers} />
         )}
       </View>
 
-      {/* ── HEADER ── */}
-      <SafeAreaView style={styles.header} edges={['top']}>
-        <Pressable style={styles.iconBtn} onPress={() => router.back()} hitSlop={8}>
-          <ArrowLeft size={20} color={colors.text.primary} />
+      {/* ── FLOATING: back (top-left) + save (top-right) ── */}
+      <SafeAreaView style={styles.topControls} edges={['top']} pointerEvents="box-none">
+        <Pressable style={styles.floatBtn} onPress={() => router.back()} hitSlop={8}>
+          <ArrowLeft size={18} color={colors.text.primary} />
         </Pressable>
+        <Pressable
+          style={[styles.floatBtn, saveMutation.isPending && { opacity: 0.5 }]}
+          onPress={() => saveMutation.mutate()}
+          disabled={saveMutation.isPending}
+        >
+          <Save size={18} color={colors.brand.primary} />
+        </Pressable>
+      </SafeAreaView>
 
-        {/* Zone tabs */}
-        <View style={styles.zoneTabs}>
+      {/* ── BOTTOM BAR ── */}
+      <SafeAreaView style={styles.bottom} edges={['bottom']}>
+        {/* Zone toggle + hint in one row */}
+        <View style={styles.topRow}>
           {(['delivery', 'free'] as ZoneKey[]).map((z) => {
             const col = z === 'delivery' ? dColor : fColor;
             const active = zone === z;
             return (
               <TouchableOpacity
                 key={z}
-                style={[styles.zoneTab, active && { borderColor: col, backgroundColor: col + '22' }]}
+                style={[styles.chip, active && { borderColor: col, backgroundColor: col + '20' }]}
                 onPress={() => {
-                  if (pencilOn) return; // can't switch zone while drawing
+                  if (pencilOn) return;
                   setZone(z);
                   lastPx.current = null;
                   firstPx.current = null;
                 }}
               >
-                <View style={[styles.zoneDot, { backgroundColor: col }]} />
-                <Text style={[styles.zoneTabText, active && { color: colors.text.primary }]}>
+                <View style={[styles.chipDot, { backgroundColor: col }]} />
+                <Text style={[styles.chipText, active && { color: colors.text.primary, fontWeight: '700' }]}>
                   {z === 'delivery' ? 'Yetkazib berish' : 'Tekin'}
                 </Text>
               </TouchableOpacity>
             );
           })}
+          <Text style={styles.hint} numberOfLines={1}>{hint}</Text>
         </View>
 
-        <Pressable
-          style={[styles.iconBtn, saveMutation.isPending && { opacity: 0.5 }]}
-          onPress={() => saveMutation.mutate()}
-          disabled={saveMutation.isPending}
-        >
-          <Save size={20} color={colors.brand.primary} />
-        </Pressable>
-      </SafeAreaView>
-
-      {/* ── BOTTOM BAR ── */}
-      <SafeAreaView style={styles.bottom} edges={['bottom']}>
-        <Text style={styles.hint} numberOfLines={2}>{hint}</Text>
-
+        {/* Tool row */}
         <View style={styles.toolRow}>
-          {/* Undo */}
           <TouchableOpacity
             style={[styles.toolBtn, verts.length === 0 && styles.disabled]}
             disabled={verts.length === 0}
             onPress={handleUndo}
+            hitSlop={4}
           >
-            <RotateCcw size={18} color={verts.length === 0 ? colors.text.hint : colors.text.secondary} />
+            <RotateCcw size={16} color={verts.length === 0 ? colors.text.hint : colors.text.secondary} />
           </TouchableOpacity>
 
-          {/* Reset */}
           <TouchableOpacity
             style={[styles.toolBtn, verts.length === 0 && styles.disabled]}
             disabled={verts.length === 0}
             onPress={handleReset}
+            hitSlop={4}
           >
-            <X size={18} color={verts.length === 0 ? colors.text.hint : colors.feedback.danger} />
+            <X size={16} color={verts.length === 0 ? colors.text.hint : colors.feedback.danger} />
           </TouchableOpacity>
 
-          {/* Close polygon (shows only when enough points) */}
           {pencilOn && verts.length >= 3 && !isClosed && (
             <TouchableOpacity
-              style={[styles.closeBtn, { borderColor: activeColor }]}
+              style={[styles.chipBtn, { borderColor: activeColor }]}
               onPress={handleClosePolygon}
             >
-              <Text style={[styles.closeBtnText, { color: activeColor }]}>Yop</Text>
+              <Text style={[styles.chipBtnText, { color: activeColor }]}>Yop</Text>
             </TouchableOpacity>
           )}
 
-          {/* Pencil toggle */}
           <TouchableOpacity
             style={[
               styles.pencilBtn,
@@ -442,19 +431,18 @@ export default function DeliveryZonesScreen() {
             disabled={isClosed}
             onPress={handlePencilToggle}
           >
-            <Pencil size={18} color={pencilOn ? '#fff' : activeColor} />
-            <Text style={[styles.pencilBtnText, pencilOn && { color: '#fff' }]}>
+            <Pencil size={15} color={pencilOn ? '#fff' : activeColor} />
+            <Text style={[styles.pencilText, pencilOn && { color: '#fff' }]}>
               {pencilOn ? 'Chizmoqda' : 'Qalam'}
             </Text>
           </TouchableOpacity>
 
-          {/* Save */}
           <TouchableOpacity
             style={[styles.saveBtn, saveMutation.isPending && { opacity: 0.6 }]}
             disabled={saveMutation.isPending}
             onPress={() => saveMutation.mutate()}
           >
-            <Save size={17} color="#fff" />
+            <Save size={15} color="#fff" />
             <Text style={styles.saveBtnText}>
               {saveMutation.isPending ? 'Saqlanmoqda…' : 'Saqlash'}
             </Text>
@@ -467,59 +455,38 @@ export default function DeliveryZonesScreen() {
 
 /* ── styles ── */
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000' },
-
+  root: { flex: 1 },
   mapWrap: { flex: 1 },
   map: { flex: 1 },
 
   snapTarget: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     borderWidth: 3,
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    backgroundColor: 'rgba(255,255,255,0.75)',
   },
 
-  /* Header */
-  header: {
+  /* Floating top controls */
+  topControls: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.sm,
     paddingBottom: spacing.sm,
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    ...shadow.sm,
-    gap: spacing.xs,
   },
-  iconBtn: {
-    width: 40,
-    height: 40,
+  floatBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.full,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    ...shadow.sm,
   },
-  zoneTabs: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  zoneTab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 7,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.border.default,
-    backgroundColor: colors.bg.surface,
-  },
-  zoneDot: { width: 9, height: 9, borderRadius: 5 },
-  zoneTabText: { ...typography.caption, color: colors.text.secondary, fontWeight: '600' },
 
   /* Bottom */
   bottom: {
@@ -530,24 +497,44 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.97)',
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
-    gap: spacing.sm,
+    paddingBottom: spacing.xs,
+    gap: spacing.xs,
     ...shadow.lg,
   },
-  hint: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    minHeight: 32,
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: radius.full,
+    borderWidth: 1.5,
+    borderColor: colors.border.subtle,
+    backgroundColor: colors.bg.surfaceMuted,
+  },
+  chipDot: { width: 7, height: 7, borderRadius: 4 },
+  chipText: { ...typography.caption, color: colors.text.tertiary, fontSize: 11 },
+  hint: {
+    flex: 1,
+    ...typography.caption,
+    color: colors.text.hint,
+    fontSize: 11,
+    textAlign: 'right',
+  },
+
   toolRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   toolBtn: {
-    width: 44,
-    height: 44,
+    width: 36,
+    height: 36,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -555,41 +542,41 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border.subtle,
   },
-  disabled: { opacity: 0.35 },
+  disabled: { opacity: 0.3 },
 
-  closeBtn: {
-    paddingHorizontal: spacing.md,
-    height: 44,
+  chipBtn: {
+    paddingHorizontal: 12,
+    height: 36,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     backgroundColor: colors.bg.surface,
   },
-  closeBtnText: { ...typography.bodySmall, fontWeight: '700' },
+  chipBtnText: { fontSize: 13, fontWeight: '700' },
 
   pencilBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    height: 44,
-    paddingHorizontal: spacing.md,
+    gap: 4,
+    height: 36,
+    paddingHorizontal: 12,
     borderRadius: radius.md,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: colors.border.default,
     backgroundColor: colors.bg.surface,
   },
-  pencilBtnText: { ...typography.bodySmall, fontWeight: '700', color: colors.text.secondary },
+  pencilText: { fontSize: 13, fontWeight: '600', color: colors.text.secondary },
 
   saveBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
-    height: 44,
+    gap: 5,
+    height: 36,
     borderRadius: radius.lg,
     backgroundColor: colors.brand.primary,
   },
-  saveBtnText: { ...typography.bodySmall, color: '#fff', fontWeight: '700' },
+  saveBtnText: { fontSize: 13, color: '#fff', fontWeight: '700' },
 });

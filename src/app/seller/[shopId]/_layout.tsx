@@ -90,6 +90,10 @@ export default function SellerLayout() {
           name="chat-templates"
           options={{ title: 'Chat shablonlari', headerLeft: () => <HubBackButton shopId={shopId} /> }}
         />
+        <Tabs.Screen
+          name="delivery-zones"
+          options={{ headerShown: false, tabBarButton: () => null }}
+        />
       </Tabs>
 
       {pending && (
