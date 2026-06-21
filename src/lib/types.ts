@@ -42,6 +42,8 @@ export interface Category {
 
 export type FeedSort = 'relevance' | 'price_asc' | 'price_desc' | 'rating';
 
+export type UnitType = 'piece' | 'kg' | 'liter' | 'gram' | 'pack';
+
 export interface PublicProductVariant {
   id: string;
   shopId: string;
@@ -50,7 +52,7 @@ export interface PublicProductVariant {
   brand: string | null;
   photos: string[];
   description: string | null;
-  unitType: 'piece' | 'kg' | 'liter' | 'gram' | 'pack';
+  unitType: UnitType;
   unitSize: number;
   barcode: string | null;
   isVerified: boolean;
@@ -212,7 +214,7 @@ export interface GlobalProduct {
   barcode: string | null;
   name: string;
   brand: string | null;
-  unitType: 'piece' | 'kg' | 'liter' | 'gram' | 'pack';
+  unitType: UnitType;
   unitSize: number;
   categoryId: string | null;
   photos: string[];
@@ -424,13 +426,26 @@ export interface GlobalCatalogProduct {
   brand: string | null;
   description: string | null;
   parentGlobalProductId: string | null;
-  unitType: 'piece' | 'kg' | 'liter' | 'gram' | 'pack';
+  unitType: UnitType;
   unitSize: number;
   categoryId: string | null;
   photos: string[];
   isVerified: boolean;
   isActive: boolean;
   usageCount: number;
+}
+
+/** One shop's offer for the same GlobalProduct — used in price comparison. */
+export interface ProductOffer {
+  variantId: string;
+  shopId: string;
+  shopName: string;
+  shopPhotos: string[];
+  distanceKm: number | null;
+  price: number;
+  discountPrice: number | null;
+  stock: number;
+  isOpen: boolean;
 }
 
 export const STATUS_LABEL_UZ: Record<OrderStatus, string> = {

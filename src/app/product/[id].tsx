@@ -24,8 +24,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Skeleton } from '@/components/ui';
 import { api, resolveMedia } from '@/lib/api';
-import { ProductReview, PublicProductVariant, VariantDetail } from '@/lib/types';
+import { ProductOffer, ProductReview, PublicProductVariant, VariantDetail } from '@/lib/types';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
+import { useEffectiveCoords } from '@/stores/location';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -81,8 +82,22 @@ export default function ProductDetailScreen() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['favorites'] }),
   });
 
+  const coords = useEffectiveCoords();
   const product = detailQuery.data;
   const shopId = product?.shopId ?? '';
+
+  const offersQuery = useQuery({
+    queryKey: ['product-offers', product?.globalProductId, coords?.latitude, coords?.longitude],
+    queryFn: async () => {
+      const res = await api.get<ProductOffer[]>(
+        `/catalog/global-products/${product!.globalProductId}/offers`,
+        { params: { lat: coords?.latitude, lng: coords?.longitude } },
+      );
+      return res.data;
+    },
+    enabled: !!product?.globalProductId,
+    staleTime: 60_000,
+  });
   const lines = useCartStore((s) => s.carts[shopId] ?? EMPTY_CART);
   const addItem = useCartStore((s) => s.addItem);
   const updateQty = useCartStore((s) => s.updateQty);
@@ -249,6 +264,13 @@ export default function ProductDetailScreen() {
             </Pressable>
           )}
 
+          <OffersSection
+            offers={offersQuery.data ?? []}
+            currentVariantId={id}
+            currentPrice={finalPrice}
+            isLoading={offersQuery.isLoading}
+          />
+
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
               Sharhlar {reviewsQuery.data?.length ? `(${reviewsQuery.data.length})` : ''}
@@ -322,6 +344,71 @@ export default function ProductDetailScreen() {
           </Pressable>
         )}
       </SafeAreaView>
+    </View>
+  );
+}
+
+function OffersSection({
+  offers,
+  currentVariantId,
+  currentPrice,
+  isLoading,
+}: {
+  offers: ProductOffer[];
+  currentVariantId: string;
+  currentPrice: number;
+  isLoading: boolean;
+}) {
+  const others = offers.filter((o) => o.variantId !== currentVariantId);
+  if (isLoading || others.length === 0) return null;
+
+  const cheapestPrice = Math.min(...offers.map((o) => o.discountPrice ?? o.price));
+  const SHOW = 5;
+  const visible = others.slice(0, SHOW);
+
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Boshqa do'konlarda</Text>
+      {visible.map((o, idx) => {
+        const effectivePrice = o.discountPrice ?? o.price;
+        const isCheapest = effectivePrice === cheapestPrice && idx === 0;
+        const saving = currentPrice - effectivePrice;
+        return (
+          <Pressable
+            key={o.variantId}
+            style={styles.offerRow}
+            onPress={() => {
+              haptics.selection();
+              router.push(`/product/${o.variantId}`);
+            }}>
+            <View style={styles.offerLeft}>
+              <Text style={styles.offerShop} numberOfLines={1}>{o.shopName}</Text>
+              <Text style={styles.offerMeta}>
+                {o.isOpen ? 'Ochiq' : 'Yopiq'}
+                {o.distanceKm != null ? ` · ${o.distanceKm < 1 ? `${Math.round(o.distanceKm * 1000)} m` : `${o.distanceKm.toFixed(1)} km`}` : ''}
+              </Text>
+            </View>
+            <View style={styles.offerRight}>
+              {isCheapest && (
+                <View style={styles.cheapBadge}>
+                  <Text style={styles.cheapBadgeText}>Eng arzon</Text>
+                </View>
+              )}
+              {saving > 0 && (
+                <Text style={styles.savingText}>−{saving.toLocaleString()} so'm</Text>
+              )}
+              <Text style={[styles.offerPrice, isCheapest && styles.offerPriceCheap]}>
+                {effectivePrice.toLocaleString()}
+              </Text>
+            </View>
+          </Pressable>
+        );
+      })}
+      {others.length > SHOW && (
+        <Text style={styles.offersMore}>
+          + yana {others.length - SHOW} ta do'kon
+        </Text>
+      )}
     </View>
   );
 }
@@ -503,6 +590,35 @@ const styles = StyleSheet.create({
   reviewName: { ...typography.bodyStrong, fontSize: 13 },
   reviewText: { ...typography.bodySmall },
   reviewEmpty: { ...typography.bodySmall, color: colors.text.tertiary },
+  offerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border.subtle,
+    gap: spacing.sm,
+  },
+  offerLeft: { flex: 1, gap: 2 },
+  offerShop: { ...typography.bodyStrong, fontSize: 13, color: colors.text.primary },
+  offerMeta: { ...typography.caption, color: colors.text.tertiary },
+  offerRight: { alignItems: 'flex-end', gap: 2 },
+  offerPrice: { ...typography.bodyStrong, color: colors.text.primary },
+  offerPriceCheap: { color: colors.feedback.success },
+  savingText: { ...typography.caption, color: colors.feedback.success, fontWeight: '700' },
+  cheapBadge: {
+    backgroundColor: colors.feedback.successSurface,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+  },
+  cheapBadgeText: { ...typography.overline, color: colors.feedback.success, fontWeight: '800' },
+  offersMore: {
+    ...typography.caption,
+    color: colors.text.tertiary,
+    textAlign: 'center',
+    paddingTop: spacing.sm,
+  },
   footer: {
     backgroundColor: colors.bg.surface,
     borderTopWidth: 1,
