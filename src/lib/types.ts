@@ -45,24 +45,22 @@ export type FeedSort = 'relevance' | 'price_asc' | 'price_desc' | 'rating';
 export interface PublicProductVariant {
   id: string;
   shopId: string;
-  productFamilyId: string;
+  globalProductId: string;
   name: string;
+  brand: string | null;
   photos: string[];
   description: string | null;
   unitType: 'piece' | 'kg' | 'liter' | 'gram' | 'pack';
   unitSize: number;
+  barcode: string | null;
+  isVerified: boolean;
+  categoryId: string | null;
   price: number;
   discountPrice: number | null;
   stock: number;
   lowStockThreshold: number;
-  barcode: string | null;
   ratingAverage: number;
   ratingCount: number;
-  productFamily?: {
-    id: string;
-    name: string;
-    brand: string | null;
-  };
 }
 
 /**
@@ -211,15 +209,16 @@ export interface StockBatch {
 /** Shared catalogue entry returned when scanning a known barcode. */
 export interface GlobalProduct {
   id: string;
-  barcode: string;
+  barcode: string | null;
   name: string;
   brand: string | null;
-  defaultUnitType: 'piece' | 'kg' | 'liter' | 'gram' | 'pack';
-  defaultUnitSize: number;
+  unitType: 'piece' | 'kg' | 'liter' | 'gram' | 'pack';
+  unitSize: number;
   categoryId: string | null;
   photos: string[];
   isVerified: boolean;
   usageCount: number;
+  parentGlobalProductId: string | null;
 }
 
 export type MovementType = 'in' | 'sold' | 'returned' | 'expired' | 'adjusted';
@@ -424,9 +423,9 @@ export interface GlobalCatalogProduct {
   name: string;
   brand: string | null;
   description: string | null;
-  groupName: string | null;
-  defaultUnitType: 'piece' | 'kg' | 'liter' | 'gram' | 'pack';
-  defaultUnitSize: number;
+  parentGlobalProductId: string | null;
+  unitType: 'piece' | 'kg' | 'liter' | 'gram' | 'pack';
+  unitSize: number;
   categoryId: string | null;
   photos: string[];
   isVerified: boolean;

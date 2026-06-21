@@ -100,40 +100,30 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
     mutationFn: async () => {
       if (isEdit && editing) {
         await api.patch(`/seller/shops/${shopId}/products/variants/${editing.id}`, {
-          name: name.trim(),
           price: Number(price),
           discountPrice: discountPrice ? Number(discountPrice) : null,
           lowStockThreshold: lowStock ? Number(lowStock) : undefined,
-          description: description.trim() || undefined,
-          photos,
         });
         return;
       }
-      // Create: family first, then variant.
-      const fam = await api.post<{ id: string }>(`/seller/shops/${shopId}/products/families`, {
-        name: name.trim(),
-        categoryId: categoryId ?? undefined,
-        brand: brand.trim() || undefined,
-        description: description.trim() || undefined,
-      });
       await api.post(`/seller/shops/${shopId}/products/variants`, {
-        productFamilyId: fam.data.id,
         name: name.trim(),
+        brand: brand.trim() || undefined,
+        categoryId: categoryId ?? undefined,
+        description: description.trim() || undefined,
         unitType,
         unitSize: Number(unitSize) || 1,
+        photos,
         price: Number(price),
         discountPrice: discountPrice ? Number(discountPrice) : undefined,
         stock: Number(stock) || 0,
         costPrice: costPrice ? Number(costPrice) : undefined,
         lowStockThreshold: lowStock ? Number(lowStock) : undefined,
         barcode: barcode.trim() || undefined,
-        description: description.trim() || undefined,
-        photos,
       });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['variants', shopId] });
-      qc.invalidateQueries({ queryKey: ['families', shopId] });
       onClose();
     },
     onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),

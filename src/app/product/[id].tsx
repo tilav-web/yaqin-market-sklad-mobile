@@ -131,9 +131,9 @@ export default function ProductDetailScreen() {
             </View>
           )}
           {/* Small info chips over the image */}
-          {product.productFamily?.brand ? (
+          {product.brand ? (
             <View style={styles.brandChip}>
-              <Text style={styles.brandChipText}>{product.productFamily.brand}</Text>
+              <Text style={styles.brandChipText}>{product.brand}</Text>
             </View>
           ) : null}
           <View style={styles.unitBadge}>

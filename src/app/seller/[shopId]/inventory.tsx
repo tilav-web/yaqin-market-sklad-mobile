@@ -1,15 +1,13 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useGlobalSearchParams } from 'expo-router';
-import { AlertTriangle, ClipboardCheck, Copy, History, Minus, MoreVertical, Package, PackagePlus, Pencil, Plus, ScanLine, Search, Tag, Trash2 } from 'lucide-react-native';
+import { AlertTriangle, ClipboardCheck, History, Minus, MoreVertical, Package, PackagePlus, Pencil, Plus, ScanLine, Search, Tag, Trash2 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   FlatList,
   Image,
   Modal,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -24,6 +22,7 @@ import { BarcodeScannerModal } from '@/components/seller/BarcodeScannerModal';
 import { InventoryCountModal } from '@/components/seller/InventoryCountModal';
 import { KirimModal } from '@/components/seller/KirimModal';
 import { ProductFormModal, ProductPrefill } from '@/components/seller/ProductFormModal';
+import { QuickAddModal } from '@/components/seller/QuickAddModal';
 import { StockHistoryModal } from '@/components/seller/StockHistoryModal';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { Category, ExpiringItem, GlobalProduct, SellerVariant } from '@/lib/types';
@@ -55,6 +54,7 @@ export default function SellerInventoryScreen() {
   const [scanOpen, setScanOpen] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState('');
   const [prefill, setPrefill] = useState<ProductPrefill | null>(null);
+  const [quickAddGp, setQuickAddGp] = useState<import('@/lib/types').GlobalProduct | null>(null);
   const [countOpen, setCountOpen] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -119,16 +119,6 @@ export default function SellerInventoryScreen() {
     onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
   });
 
-  const duplicate = useMutation({
-    mutationFn: async (variantId: string) => {
-      await api.post(`/seller/shops/${shopId}/products/variants/${variantId}/duplicate`);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['variants', shopId] });
-      Alert.alert('Nusxa yaratildi', "Mahsulot nusxasi ro'yxatning pastiga qo'shildi.");
-    },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
-  });
 
   const expiringQuery = useQuery({
     queryKey: ['variants-expiring', shopId],
@@ -141,25 +131,9 @@ export default function SellerInventoryScreen() {
   });
 
   const openVariantMenu = (item: SellerVariant) => {
-    const options = ['Nusxa yaratish', 'Bekor qilish'];
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: 1 },
-        (idx) => {
-          if (idx === 0) {
-            Alert.alert('Nusxa yaratish', `"${item.name}" dan nusxa yaratilazilanmi?`, [
-              { text: 'Bekor', style: 'cancel' },
-              { text: 'Nusxa', onPress: () => duplicate.mutate(item.id) },
-            ]);
-          }
-        },
-      );
-    } else {
-      Alert.alert(item.name, undefined, [
-        { text: 'Nusxa yaratish', onPress: () => duplicate.mutate(item.id) },
-        { text: 'Bekor', style: 'cancel' },
-      ]);
-    }
+    Alert.alert(item.name, undefined, [
+      { text: 'Bekor', style: 'cancel' },
+    ]);
   };
 
   // Add a product WITHOUT a barcode (the scanner's escape hatch).
@@ -176,13 +150,12 @@ export default function SellerInventoryScreen() {
   };
 
   /**
-   * Scanned a barcode. Branch:
-   *  - already in this shop → jump to its Kirim flow (receive stock)
-   *  - in the shared catalogue → open the create form PRE-FILLED
-   *  - unknown → open the create form with just the barcode
+   * Scanned a barcode. Three branches:
+   *  (a) already in this shop → Kirim (receive stock)
+   *  (b) in shared catalogue, but not in this shop → QuickAddModal (price+stock only)
+   *  (c) unknown → full ProductFormModal with barcode pre-filled
    */
   const onScanned = async (code: string) => {
-    // Look the barcode up on the server (the product may not be on a loaded page).
     try {
       const res = await api.get<SellerVariant[]>(`/seller/shops/${shopId}/products/variants`, {
         params: { search: code, limit: 5 },
@@ -197,25 +170,18 @@ export default function SellerInventoryScreen() {
       return;
     }
     try {
-      const res = await api.get<GlobalProduct>(`/catalog-global/by-barcode/${encodeURIComponent(code)}`);
+      const res = await api.get<import('@/lib/types').GlobalProduct>(`/catalog-global/by-barcode/${encodeURIComponent(code)}`);
       const g = res.data;
-      setPrefill({
-        barcode: g.barcode,
-        name: g.name,
-        brand: g.brand,
-        unitType: g.defaultUnitType,
-        unitSize: g.defaultUnitSize,
-        categoryId: g.categoryId,
-        photos: g.photos,
-      });
-      setScannedBarcode('');
+      // (b) GlobalProduct exists in shared catalogue → quick add (price + stock only)
+      setQuickAddGp(g);
+      return;
     } catch {
-      // Not in the catalogue yet — this seller fills it in for everyone else.
+      // (c) Not in catalogue yet → full form
       setPrefill(null);
       setScannedBarcode(code);
+      setEditing(null);
+      setFormOpen(true);
     }
-    setEditing(null);
-    setFormOpen(true);
   };
 
   return (
@@ -424,6 +390,13 @@ export default function SellerInventoryScreen() {
         initialBarcode={scannedBarcode}
         prefill={prefill}
         onClose={() => setFormOpen(false)}
+      />
+
+      <QuickAddModal
+        visible={!!quickAddGp}
+        shopId={shopId}
+        globalProduct={quickAddGp}
+        onClose={() => setQuickAddGp(null)}
       />
 
       <BarcodeScannerModal

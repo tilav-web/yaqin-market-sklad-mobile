@@ -37,6 +37,7 @@ export default function SellerCatalogScreen() {
   const [scanOpen, setScanOpen] = useState(false);
   const [cloneTarget, setCloneTarget] = useState<GlobalCatalogProduct | null>(null);
   const [price, setPrice] = useState('');
+  const [stock, setStock] = useState('');
 
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput.trim()), 350);
@@ -44,9 +45,9 @@ export default function SellerCatalogScreen() {
   }, [searchInput]);
 
   const catalogQuery = useQuery({
-    queryKey: ['global-catalog', search],
+    queryKey: ['global-catalog', shopId, search],
     queryFn: async () => {
-      const res = await api.get<GlobalCatalogProduct[]>('/seller/catalog', {
+      const res = await api.get<GlobalCatalogProduct[]>(`/seller/shops/${shopId}/catalog/search`, {
         params: { q: search || undefined, limit: 40 },
       });
       return res.data;
@@ -56,13 +57,14 @@ export default function SellerCatalogScreen() {
   });
 
   const cloneMutation = useMutation({
-    mutationFn: async ({ globalProductId, price }: { globalProductId: string; price: number }) => {
-      await api.post(`/seller/shops/${shopId}/catalog/${globalProductId}/clone`, { price });
+    mutationFn: async ({ globalProductId, price, stock }: { globalProductId: string; price: number; stock: number }) => {
+      await api.post(`/seller/shops/${shopId}/catalog/clone`, { globalProductId, price, stock });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['variants', shopId] });
       setCloneTarget(null);
       setPrice('');
+      setStock('');
       Alert.alert("Qo'shildi", "Mahsulot do'koningizga qo'shildi.");
     },
     onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
@@ -70,11 +72,12 @@ export default function SellerCatalogScreen() {
 
   const handleClone = () => {
     const p = parseFloat(price.replace(/\s/g, ''));
+    const s = parseInt(stock, 10);
     if (!cloneTarget || isNaN(p) || p <= 0) {
       Alert.alert('Xatolik', "Narxni to'g'ri kiriting");
       return;
     }
-    cloneMutation.mutate({ globalProductId: cloneTarget.id, price: p });
+    cloneMutation.mutate({ globalProductId: cloneTarget.id, price: p, stock: isNaN(s) ? 0 : s });
   };
 
   const onScanned = async (code: string) => {
@@ -147,7 +150,7 @@ export default function SellerCatalogScreen() {
                 <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
                 {item.brand ? <Text style={styles.brand}>{item.brand}</Text> : null}
                 <Text style={styles.unit}>
-                  {item.defaultUnitSize} {UNIT_LABEL[item.defaultUnitType] ?? item.defaultUnitType}
+                  {item.unitSize} {UNIT_LABEL[item.unitType] ?? item.unitType}
                   {item.barcode ? ` · ${item.barcode}` : ''}
                 </Text>
                 <Text style={styles.usage}>{item.usageCount} do'konda ishlatilmoqda</Text>
@@ -168,11 +171,12 @@ export default function SellerCatalogScreen() {
         title="Barkodni skanlang"
       />
 
-      <Modal visible={!!cloneTarget} transparent animationType="slide" onRequestClose={() => setCloneTarget(null)}>
+      <Modal visible={!!cloneTarget} transparent animationType="slide" onRequestClose={() => { setCloneTarget(null); }}>
         <View style={styles.overlay}>
           <View style={styles.sheet}>
             <Text style={styles.sheetTitle}>{cloneTarget?.name}</Text>
-            <Text style={styles.sheetSub}>Narxni kiriting (so'm)</Text>
+            {cloneTarget?.brand ? <Text style={styles.sheetSub}>{cloneTarget.brand}</Text> : null}
+            <Text style={styles.fieldLabel}>Narx (so'm) *</Text>
             <TextInput
               style={styles.priceInput}
               value={price}
@@ -181,6 +185,15 @@ export default function SellerCatalogScreen() {
               placeholder="Masalan: 15000"
               placeholderTextColor={colors.text.hint}
               autoFocus
+            />
+            <Text style={styles.fieldLabel}>Boshlang'ich qoldiq (dona)</Text>
+            <TextInput
+              style={styles.priceInput}
+              value={stock}
+              onChangeText={setStock}
+              keyboardType="number-pad"
+              placeholder="0"
+              placeholderTextColor={colors.text.hint}
             />
             <Pressable
               style={[styles.confirmBtn, cloneMutation.isPending && { opacity: 0.6 }]}
@@ -192,7 +205,7 @@ export default function SellerCatalogScreen() {
                 <Text style={styles.confirmBtnText}>Do'konga qo'shish</Text>
               )}
             </Pressable>
-            <Pressable style={styles.cancelBtn} onPress={() => setCloneTarget(null)}>
+            <Pressable style={styles.cancelBtn} onPress={() => { setCloneTarget(null); setPrice(''); setStock(''); }}>
               <Text style={styles.cancelBtnText}>Bekor qilish</Text>
             </Pressable>
           </View>
@@ -283,6 +296,7 @@ const styles = StyleSheet.create({
   },
   sheetTitle: { ...typography.h3, color: colors.text.primary },
   sheetSub: { ...typography.bodySmall, color: colors.text.secondary },
+  fieldLabel: { ...typography.caption, fontWeight: '700', color: colors.text.secondary, marginTop: spacing.xs },
   priceInput: {
     ...typography.body,
     color: colors.text.primary,
