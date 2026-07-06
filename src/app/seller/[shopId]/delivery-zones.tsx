@@ -15,12 +15,14 @@ import MapView, { LatLng, Marker, Polygon, Polyline, PROVIDER_GOOGLE } from 'rea
 import { Line, Svg } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PILOT_CITY_CENTER } from '@/constants/geo';
 import { api, extractErrorMessage } from '@/lib/api';
 import { GeoJsonPolygon, PublicShop } from '@/lib/types';
 import { colors, radius, shadow, spacing, typography } from '@/theme';
 
 /* ── constants ── */
-const QARSHI = { latitude: 38.8446827, longitude: 65.7803532 };
+// Single-city (Qarshi) pilot fallback — see constants/geo.ts.
+const QARSHI = PILOT_CITY_CENTER;
 const SNAP_PX = 44; // pixels — auto-close snap radius
 
 type ZoneKey = 'delivery' | 'free';

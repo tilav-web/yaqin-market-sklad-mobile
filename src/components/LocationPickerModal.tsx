@@ -12,6 +12,7 @@ import {
 import MapView, { PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PILOT_CITY_CENTER } from '@/constants/geo';
 import { useTranslation } from '@/i18n';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
@@ -29,8 +30,9 @@ interface Props {
   readonly onConfirm: (result: PickedLocation) => void;
 }
 
-// Qarshi markazi — boshlang'ich koordinatasi bo'lmaganda fallback.
-const FALLBACK = { latitude: 38.8446827, longitude: 65.7803532 };
+// GPS-denied/unavailable fallback — see constants/geo.ts for why this is a
+// single-city (Qarshi pilot) hardcode rather than a config value.
+const FALLBACK = PILOT_CITY_CENTER;
 
 function formatGeocode(parts: Location.LocationGeocodedAddress | undefined): string {
   if (!parts) return '';

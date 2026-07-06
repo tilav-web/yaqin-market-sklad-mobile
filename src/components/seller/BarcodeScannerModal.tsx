@@ -1,7 +1,7 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { X } from 'lucide-react-native';
 import { useRef } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, radius, spacing, typography } from '@/theme';
@@ -42,10 +42,23 @@ export function BarcodeScannerModal({ visible, onClose, onScanned, title, onSkip
         ) : !permission.granted ? (
           <SafeAreaView style={styles.center}>
             <Text style={styles.permTitle}>Kameraga ruxsat kerak</Text>
-            <Text style={styles.permDesc}>Barkodni skanlash uchun kameradan foydalanamiz.</Text>
-            <Pressable style={styles.permBtn} onPress={requestPermission}>
-              <Text style={styles.permBtnText}>Ruxsat berish</Text>
-            </Pressable>
+            {permission.canAskAgain ? (
+              <>
+                <Text style={styles.permDesc}>Barkodni skanlash uchun kameradan foydalanamiz.</Text>
+                <Pressable style={styles.permBtn} onPress={requestPermission}>
+                  <Text style={styles.permBtnText}>Ruxsat berish</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Text style={styles.permDesc}>
+                  Kameraga ruxsat butunlay o'chirilgan. Skanerlash uchun uni Sozlamalardan yoqing.
+                </Text>
+                <Pressable style={styles.permBtn} onPress={() => void Linking.openSettings()}>
+                  <Text style={styles.permBtnText}>Sozlamalarni ochish</Text>
+                </Pressable>
+              </>
+            )}
             <Pressable onPress={onClose} style={{ padding: spacing.md }}>
               <Text style={styles.cancel}>Bekor qilish</Text>
             </Pressable>

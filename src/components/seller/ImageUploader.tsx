@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { ImagePlus, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import { extractErrorMessage, resolveMedia, uploadImage } from '@/lib/api';
@@ -32,7 +32,20 @@ export function ImageUploader({ value, onChange, max = 5, size = 88, label, hint
     }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Ruxsat kerak', 'Rasm tanlash uchun galereyaga ruxsat bering');
+      if (!perm.canAskAgain) {
+        // The in-app prompt was already dismissed/denied for good — asking
+        // again does nothing, only Settings can re-enable it.
+        Alert.alert(
+          'Ruxsat kerak',
+          "Galereyaga ruxsat butunlay o'chirilgan. Sozlamalardan yoqing.",
+          [
+            { text: 'Bekor', style: 'cancel' },
+            { text: 'Sozlamalar', onPress: () => void Linking.openSettings() },
+          ],
+        );
+      } else {
+        Alert.alert('Ruxsat kerak', 'Rasm tanlash uchun galereyaga ruxsat bering');
+      }
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
