@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Check, CreditCard, MessageCircle, RefreshCw, RotateCcw, Star, X } from 'lucide-react-native';
+import { AlertCircle, Check, CreditCard, MessageCircle, RefreshCw, RotateCcw, Star, X } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -42,6 +42,10 @@ export default function OrderDetailScreen() {
   const [reasonDraft, setReasonDraft] = useState('');
   const [ratingDraft, setRatingDraft] = useState<Record<string, number>>({});
   const [reviewText, setReviewText] = useState<Record<string, string>>({});
+  const [complaintOpen, setComplaintOpen] = useState(false);
+  const [complaintReason, setComplaintReason] = useState('');
+  const [complaintCustomReason, setComplaintCustomReason] = useState('');
+  const [complaintDesc, setComplaintDesc] = useState('');
 
   const orderQuery = useQuery({
     queryKey: ['order', id],
@@ -122,6 +126,38 @@ export default function OrderDetailScreen() {
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
+  const COMPLAINT_REASONS = [
+    'Mahsulot yetkazilmadi',
+    'Mahsulot sifatsiz',
+    "Noto'g'ri mahsulot keldi",
+    'Kam yetkazildi',
+    'Boshqa',
+  ];
+
+  // Files a dispute within the server's settlement window (the exact
+  // window length is not duplicated client-side — a closed window simply
+  // surfaces as the server's rejection message via extractErrorMessage).
+  const fileComplaint = useMutation({
+    mutationFn: async () => {
+      const reason =
+        complaintReason === 'Boshqa' ? complaintCustomReason.trim() : complaintReason;
+      const res = await api.post(`/orders/${id}/complaint`, {
+        reason,
+        description: complaintDesc.trim() || undefined,
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['order', id] });
+      toast.success('Shikoyatingiz qabul qilindi');
+      setComplaintOpen(false);
+      setComplaintReason('');
+      setComplaintCustomReason('');
+      setComplaintDesc('');
+    },
+    onError: (e) => toast.error(extractErrorMessage(e)),
+  });
+
   const reviewed = useMemo(
     () => new Set(order?.reviewedVariantIds ?? []),
     [order?.reviewedVariantIds],
@@ -157,6 +193,9 @@ export default function OrderDetailScreen() {
   };
 
   const canReview = order.status === 'delivered';
+  const canComplain = order.status === 'delivered' && !order.complaint;
+  const canSubmitComplaint =
+    complaintReason !== '' && (complaintReason !== 'Boshqa' || complaintCustomReason.trim() !== '');
   const hasReturns = order.items.some((i) => i.returnedQuantity > 0);
   const returnedTotal = order.items.reduce((sum, i) => sum + i.unitPrice * i.returnedQuantity, 0);
   const unreviewed = canReview ? order.items.filter((i) => !reviewed.has(i.productVariantId)) : [];
@@ -187,6 +226,17 @@ export default function OrderDetailScreen() {
           </View>
           <AutoCancelCountdown createdAt={order.createdAt} status={order.status} />
         </View>
+
+        {/* Admin force-refund — previously tracked in the DB but never shown
+            to the customer (flagged in the previous session). */}
+        {order.refund && (
+          <View style={styles.refundBanner}>
+            <Text style={styles.refundBannerText}>
+              Qaytarilgan: {order.refund.amount.toLocaleString()} so'm · sana:{' '}
+              {new Date(order.refund.at).toLocaleDateString('uz-UZ')}
+            </Text>
+          </View>
+        )}
 
         {order.status !== 'cancelled' && (
           <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${order.id}`)}>
@@ -360,6 +410,115 @@ export default function OrderDetailScreen() {
           <Text style={styles.allReviewed}>✓ Barcha mahsulotlar baholangan</Text>
         )}
 
+        {/* Complaint — either its current status, or the filing form (only
+            while delivered and within the server's dispute window; a closed
+            window surfaces as the server's own rejection toast). */}
+        {order.status === 'delivered' && order.complaint && (
+          <View style={[styles.section, styles.complaintCard]}>
+            <View style={styles.complaintHeader}>
+              <AlertCircle size={16} color={colors.feedback.danger} strokeWidth={2.2} />
+              <Text style={styles.sectionTitle}>Shikoyat</Text>
+            </View>
+            <Text style={styles.complaintReasonText}>"{order.complaint.reason}"</Text>
+            <View
+              style={[
+                styles.complaintStatusBadge,
+                order.complaint.status === 'resolved'
+                  ? styles.complaintStatusResolved
+                  : styles.complaintStatusOpen,
+              ]}>
+              <Text
+                style={[
+                  styles.complaintStatusText,
+                  order.complaint.status === 'resolved'
+                    ? styles.complaintStatusTextResolved
+                    : styles.complaintStatusTextOpen,
+                ]}>
+                {order.complaint.status === 'resolved' ? "✓ Hal qilindi" : 'Ko\'rib chiqilmoqda'}
+              </Text>
+            </View>
+            {order.complaint.resolvedAt && (
+              <Text style={styles.complaintMeta}>
+                Hal qilingan sana: {new Date(order.complaint.resolvedAt).toLocaleDateString('uz-UZ')}
+              </Text>
+            )}
+          </View>
+        )}
+
+        {canComplain && (
+          <View style={styles.section}>
+            {!complaintOpen ? (
+              <Pressable style={styles.complaintOpenBtn} onPress={() => setComplaintOpen(true)}>
+                <AlertCircle size={16} color={colors.feedback.danger} strokeWidth={2.2} />
+                <Text style={styles.complaintOpenBtnText}>Shikoyat qilish</Text>
+              </Pressable>
+            ) : (
+              <>
+                <Text style={styles.sectionTitle}>Shikoyat sababi</Text>
+                <View style={styles.wrap}>
+                  {COMPLAINT_REASONS.map((r) => (
+                    <Pressable
+                      key={r}
+                      onPress={() => setComplaintReason(r)}
+                      style={[styles.reasonChip, complaintReason === r && styles.reasonChipActive]}>
+                      <Text
+                        style={[
+                          styles.reasonChipText,
+                          complaintReason === r && styles.reasonChipTextActive,
+                        ]}>
+                        {r}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                {complaintReason === 'Boshqa' && (
+                  <TextInput
+                    style={styles.reviewInput}
+                    placeholder="Sababni yozing"
+                    placeholderTextColor={colors.text.hint}
+                    value={complaintCustomReason}
+                    onChangeText={setComplaintCustomReason}
+                  />
+                )}
+                <TextInput
+                  style={[styles.reviewInput, styles.complaintTextarea]}
+                  placeholder="Qo'shimcha izoh (ixtiyoriy)"
+                  placeholderTextColor={colors.text.hint}
+                  value={complaintDesc}
+                  onChangeText={setComplaintDesc}
+                  multiline
+                />
+                <View style={styles.complaintActions}>
+                  <Pressable
+                    style={styles.ghostBtn}
+                    onPress={() => {
+                      setComplaintOpen(false);
+                      setComplaintReason('');
+                      setComplaintCustomReason('');
+                      setComplaintDesc('');
+                    }}>
+                    <Text style={styles.ghostBtnText}>Bekor qilish</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.primaryBtn,
+                      { flex: 1 },
+                      !canSubmitComplaint && styles.primaryBtnDisabled,
+                    ]}
+                    disabled={!canSubmitComplaint || fileComplaint.isPending}
+                    onPress={() => fileComplaint.mutate()}>
+                    {fileComplaint.isPending ? (
+                      <ActivityIndicator color={colors.text.onPrimary} />
+                    ) : (
+                      <Text style={styles.primaryBtnText}>Yuborish</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </>
+            )}
+          </View>
+        )}
+
         {/* Courier map — shown while delivering */}
         {order.status === 'delivering' && courierLocation && (
           <View style={styles.mapCard}>
@@ -522,6 +681,58 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand.primarySurface,
   },
   chatBtnText: { ...typography.buttonSmall, color: colors.brand.primary },
+  // refund banner
+  refundBanner: {
+    backgroundColor: colors.feedback.successSurface,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.feedback.success,
+  },
+  refundBannerText: { ...typography.bodySmall, fontWeight: '700', color: colors.feedback.success },
+  // complaint
+  complaintCard: { borderColor: colors.feedback.danger, borderWidth: 1.5 },
+  complaintHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  complaintReasonText: { ...typography.body, color: colors.text.secondary, fontStyle: 'italic' },
+  complaintStatusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+  },
+  complaintStatusOpen: { backgroundColor: colors.feedback.warningSurface },
+  complaintStatusResolved: { backgroundColor: colors.feedback.successSurface },
+  complaintStatusText: { ...typography.caption, fontWeight: '800' },
+  complaintStatusTextOpen: { color: colors.feedback.warning },
+  complaintStatusTextResolved: { color: colors.feedback.success },
+  complaintMeta: { ...typography.caption, color: colors.text.tertiary },
+  complaintOpenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    height: layout.buttonHeight.md,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.feedback.danger,
+  },
+  complaintOpenBtnText: { ...typography.buttonSmall, color: colors.feedback.danger },
+  complaintTextarea: { minHeight: 64, textAlignVertical: 'top' },
+  complaintActions: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  primaryBtnDisabled: { backgroundColor: colors.text.hint },
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  reasonChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    backgroundColor: colors.bg.surface,
+  },
+  reasonChipActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
+  reasonChipText: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
+  reasonChipTextActive: { color: colors.text.onPrimary },
   section: {
     backgroundColor: colors.bg.surface,
     borderRadius: radius.lg,
