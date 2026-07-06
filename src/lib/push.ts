@@ -2,6 +2,8 @@ import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
+import { usePushPermissionStore } from '@/stores/pushPermission';
+
 import { api } from './api';
 import { tokenStorage } from './storage';
 
@@ -41,7 +43,13 @@ export async function registerForPush(): Promise<void> {
       const req = await Notifications.requestPermissionsAsync();
       status = req.status;
     }
-    if (status !== 'granted') return;
+    if (status !== 'granted') {
+      // Silently returning left the user with no idea push was off and no
+      // path back to Settings. Surface it via a dismissible in-app banner.
+      usePushPermissionStore.getState().setDenied(true);
+      return;
+    }
+    usePushPermissionStore.getState().setDenied(false);
 
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {

@@ -1,9 +1,9 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { WifiOff } from 'lucide-react-native';
+import { BellOff, WifiOff, X } from 'lucide-react-native';
 import { useEffect } from 'react';
-import { ActivityIndicator, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -13,6 +13,7 @@ import { useTranslation } from '@/i18n';
 import { registerForPush, routeFromNotificationData } from '@/lib/push';
 import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/stores/auth';
+import { usePushPermissionStore } from '@/stores/pushPermission';
 import { colors, radius, spacing, typography } from '@/theme';
 
 /** Shown when a stored session couldn't be verified due to a network/server
@@ -20,17 +21,34 @@ import { colors, radius, spacing, typography } from '@/theme';
  * offers a manual retry instead of silently treating them as logged out. */
 function OfflineBanner() {
   const hydrate = useAuthStore((s) => s.hydrate);
-  const insets = useSafeAreaInsets();
   const { tr } = useTranslation();
   return (
-    <View style={[styles.offlineBanner, { top: insets.top + spacing.sm }]} pointerEvents="box-none">
-      <View style={styles.offlineCard}>
-        <WifiOff size={16} color={colors.feedback.warning} strokeWidth={2.4} />
-        <Text style={styles.offlineText}>{tr('common.error.desc')}</Text>
-        <Pressable onPress={() => void hydrate()} hitSlop={8}>
-          <Text style={styles.offlineRetry}>{tr('common.retry')}</Text>
-        </Pressable>
-      </View>
+    <View style={styles.bannerCard}>
+      <WifiOff size={16} color={colors.feedback.warning} strokeWidth={2.4} />
+      <Text style={styles.bannerText}>{tr('common.error.desc')}</Text>
+      <Pressable onPress={() => void hydrate()} hitSlop={8}>
+        <Text style={styles.bannerAction}>{tr('common.retry')}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/** Shown when push notification permission is denied — otherwise the user has
+ * no idea push is off and no path back to Settings to re-enable it. */
+function PushPermissionBanner() {
+  const dismiss = usePushPermissionStore((s) => s.dismiss);
+  return (
+    <View style={styles.bannerCard}>
+      <BellOff size={16} color={colors.feedback.warning} strokeWidth={2.4} />
+      <Text style={styles.bannerText}>
+        Bildirishnomalar o&apos;chirilgan — muhim yangilanishlarni o&apos;tkazib yuborishingiz mumkin
+      </Text>
+      <Pressable onPress={() => void Linking.openSettings()} hitSlop={8}>
+        <Text style={styles.bannerAction}>Sozlamalar</Text>
+      </Pressable>
+      <Pressable onPress={dismiss} hitSlop={8}>
+        <X size={16} color={colors.feedback.warning} strokeWidth={2.4} />
+      </Pressable>
     </View>
   );
 }
@@ -38,8 +56,11 @@ function OfflineBanner() {
 function RootNavigator() {
   const status = useAuthStore((s) => s.status);
   const hydrate = useAuthStore((s) => s.hydrate);
+  const pushDenied = usePushPermissionStore((s) => s.denied);
+  const pushDismissed = usePushPermissionStore((s) => s.dismissed);
   const segments = useSegments();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { tr } = useTranslation();
 
   useEffect(() => {
@@ -81,10 +102,20 @@ function RootNavigator() {
     );
   }
 
+  const showOffline = status === 'offline';
+  const showPushNotice = pushDenied && !pushDismissed;
+
   return (
     <>
       {status === 'authenticated' && <RealtimeBridge />}
-      {status === 'offline' && <OfflineBanner />}
+      {(showOffline || showPushNotice) && (
+        <View
+          style={[styles.bannerStack, { top: insets.top + spacing.sm }]}
+          pointerEvents="box-none">
+          {showOffline && <OfflineBanner />}
+          {showPushNotice && <PushPermissionBanner />}
+        </View>
+      )}
       <Stack
         screenOptions={{
           headerShown: true,
@@ -142,14 +173,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.bg.surface,
   },
-  offlineBanner: {
+  bannerStack: {
     position: 'absolute',
     left: 0,
     right: 0,
     alignItems: 'center',
+    gap: spacing.xs,
     zIndex: 100,
   },
-  offlineCard: {
+  bannerCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -159,7 +191,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderWidth: 1,
     borderColor: colors.feedback.warning,
+    maxWidth: '92%',
   },
-  offlineText: { ...typography.caption, color: colors.feedback.warning, fontWeight: '600', flexShrink: 1 },
-  offlineRetry: { ...typography.caption, color: colors.feedback.warning, fontWeight: '800' },
+  bannerText: { ...typography.caption, color: colors.feedback.warning, fontWeight: '600', flexShrink: 1 },
+  bannerAction: { ...typography.caption, color: colors.feedback.warning, fontWeight: '800' },
 });

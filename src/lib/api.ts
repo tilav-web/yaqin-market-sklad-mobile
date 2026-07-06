@@ -2,6 +2,8 @@ import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } fro
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+import { tr } from '@/i18n';
+
 import { queryClient } from './queryClient';
 import { tokenStorage } from './storage';
 
@@ -114,6 +116,13 @@ export function extractErrorMessage(err: unknown): string {
     const body = err.response?.data as ApiErrorBody | undefined;
     if (body?.message) {
       return Array.isArray(body.message) ? body.message.join(', ') : body.message;
+    }
+    // No `response` at all means the request never reached the server (no
+    // connectivity) or a timeout — the raw axios text ("Network Error",
+    // "timeout of 15000ms exceeded") is untranslated and not user-facing.
+    // Use the existing generic translated message instead.
+    if (!err.response || err.code === 'ECONNABORTED' || err.code === 'ERR_NETWORK') {
+      return tr('common.error.desc');
     }
     if (err.message) return err.message;
   }
