@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ChevronRight,
   Heart,
@@ -23,6 +23,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Skeleton } from '@/components/ui';
+import { trackAddToCart, trackProductView } from '@/lib/analyticsQueue';
 import { api, resolveMedia } from '@/lib/api';
 import { ProductOffer, ProductReview, PublicProductVariant, VariantDetail } from '@/lib/types';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
@@ -103,6 +104,15 @@ export default function ProductDetailScreen() {
   const updateQty = useCartStore((s) => s.updateQty);
   const inCart = lines.find((l) => l.variantId === id);
 
+  // Batched, fire-and-forget product-view logging for the view→cart→order
+  // funnel (SPEC.md §5.3) — one event per variant actually loaded, not per
+  // render (react-query keeps `product` referentially stable across
+  // unchanged refetches, but the id/shopId deps make that explicit anyway).
+  useEffect(() => {
+    if (!product) return;
+    trackProductView(product.shopId, product.id);
+  }, [product?.id, product?.shopId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (detailQuery.isLoading || !product) {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -132,6 +142,7 @@ export default function ProductDetailScreen() {
       quantity: 1,
       photoUrl: product.photos[0],
     });
+    trackAddToCart(product.shopId, product.id);
   };
 
   return (

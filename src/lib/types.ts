@@ -185,6 +185,15 @@ export interface Order {
   assignedStaffId?: string | null;
   /** 'delivery' (app order) or 'in_store' (counter sale). */
   channel?: 'delivery' | 'in_store';
+  /** Customer dispute on this order, if any (from GET /orders/:id — SPEC.md §8.5, §21). */
+  complaint?: {
+    status: 'open' | 'resolved';
+    reason: string;
+    createdAt: string;
+    resolvedAt: string | null;
+  } | null;
+  /** Admin force-refund applied to this order, if any (from GET /orders/:id). */
+  refund?: { amount: number; at: string } | null;
 }
 
 /** FIFO cost summary attached to seller inventory rows. */
@@ -232,7 +241,10 @@ export interface GlobalProduct {
   parentGlobalProductId: string | null;
 }
 
-export type MovementType = 'in' | 'sold' | 'returned' | 'expired' | 'adjusted';
+export type MovementType = 'in' | 'sold' | 'returned' | 'expired' | 'adjusted' | 'damaged';
+
+/** Mandatory reason codes for a "brak" (write-off) — SPEC.md §26.3. */
+export type BrakReasonCode = 'expired' | 'damaged' | 'stolen' | 'other';
 
 export interface InventoryMovement {
   id: string;
@@ -278,6 +290,22 @@ export interface ExpiringItem {
   costPrice: number;
   expiryDate: string;
   daysToExpiry: number;
+}
+
+/**
+ * `GET /seller/shops/:shopId/products/expiring` (SPEC.md §26.2) — a variant
+ * (not a batch) tagged with an urgency tier, mirroring the same tiers the
+ * expiry-alert cron already pushes on: 🔴 expired, 🟠 critical, 🟡 warning.
+ */
+export interface ExpiringVariant extends PublicProductVariant {
+  expiryDate: string;
+  daysToExpiry: number;
+  tier: 'expired' | 'critical' | 'warning';
+}
+
+/** `GET /seller/shops/:shopId/products/low-stock` (SPEC.md §30) — tiered like above. */
+export interface LowStockVariant extends PublicProductVariant {
+  tier: 'critical' | 'warning';
 }
 
 // ---- Qarz daftar (debt ledger) ----
@@ -431,6 +459,7 @@ export interface ShopCompletenessItem {
 
 export interface ShopCompleteness {
   score: number;
+  maxScore: number;
   items: ShopCompletenessItem[];
 }
 

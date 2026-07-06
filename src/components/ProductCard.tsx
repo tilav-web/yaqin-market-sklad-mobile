@@ -2,6 +2,7 @@ import { Plus, ShoppingBag, Store } from 'lucide-react-native';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
+import { trackAddToCart } from '@/lib/analyticsQueue';
 import { resolveMedia } from '@/lib/api';
 import { FeedProduct } from '@/lib/types';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
@@ -49,6 +50,7 @@ export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props
       quantity: 1,
       photoUrl: product.photos[0],
     });
+    trackAddToCart(product.shopId, product.id);
   };
 
   return (
