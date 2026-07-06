@@ -128,24 +128,24 @@ function RootNavigator() {
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="shops" options={{ title: tr('home.nearbyShops') }} />
-      <Stack.Screen name="product/[id]" options={{ title: 'Mahsulot' }} />
-      <Stack.Screen name="shop/[id]/index" options={{ title: 'Do\'kon' }} />
+      <Stack.Screen name="product/[id]" options={{ title: tr('nav.product') }} />
+      <Stack.Screen name="shop/[id]/index" options={{ title: tr('nav.shop') }} />
       <Stack.Screen name="shop/[id]/checkout" options={{ title: tr('cart.proceed') }} />
       <Stack.Screen name="orders/index" options={{ title: tr('orders.title') }} />
-      <Stack.Screen name="orders/[id]" options={{ title: 'Buyurtma' }} />
-      <Stack.Screen name="chat/[orderId]" options={{ title: 'Chat' }} />
-      <Stack.Screen name="notifications" options={{ title: 'Bildirishnomalar' }} />
-      <Stack.Screen name="notification/[id]" options={{ title: 'Bildirishnoma' }} />
+      <Stack.Screen name="orders/[id]" options={{ title: tr('nav.orderDetail') }} />
+      <Stack.Screen name="chat/[orderId]" options={{ title: tr('nav.chat') }} />
+      <Stack.Screen name="notifications" options={{ title: tr('notifications.title') }} />
+      <Stack.Screen name="notification/[id]" options={{ title: tr('nav.notificationDetail') }} />
       <Stack.Screen name="addresses" options={{ title: tr('addr.title') }} />
       <Stack.Screen name="profile/edit" options={{ title: tr('editProfile.title') }} />
       <Stack.Screen name="staff-scan" options={{ headerShown: false }} />
       <Stack.Screen name="seller-application" options={{ title: tr('sellerApp.title') }} />
-      <Stack.Screen name="seller/new" options={{ title: 'Yangi do\'kon' }} />
+      <Stack.Screen name="seller/new" options={{ title: tr('nav.newShop') }} />
       <Stack.Screen name="seller/[shopId]" options={{ headerShown: false }} />
-      <Stack.Screen name="seller/return/[orderId]" options={{ title: 'Qaytarish' }} />
-      <Stack.Screen name="seller/order/[orderId]" options={{ title: 'Buyurtma' }} />
+      <Stack.Screen name="seller/return/[orderId]" options={{ title: tr('nav.returnItems') }} />
+      <Stack.Screen name="seller/order/[orderId]" options={{ title: tr('nav.orderDetail') }} />
       <Stack.Screen name="seller/pos/[shopId]" options={{ headerShown: false }} />
-      <Stack.Screen name="favorites" options={{ title: 'Sevimlilar' }} />
+      <Stack.Screen name="favorites" options={{ title: tr('nav.favorites') }} />
       </Stack>
     </>
   );

@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { Alert } from 'react-native';
 
+import { tr } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
 
 /**
@@ -14,14 +15,14 @@ export function useRequireAuth() {
   const status = useAuthStore((s) => s.status);
   const router = useRouter();
   return useCallback(
-    (action: () => void, message = 'Bu amal uchun tizimga kirishingiz kerak') => {
+    (action: () => void, message?: string) => {
       if (status === 'authenticated') {
         action();
         return;
       }
-      Alert.alert('Tizimga kirish', message, [
-        { text: 'Bekor', style: 'cancel' },
-        { text: 'Kirish', onPress: () => router.push('/(auth)/phone') },
+      Alert.alert(tr('profile.guest.title'), message ?? tr('auth.requireMessage'), [
+        { text: tr('common.cancel'), style: 'cancel' },
+        { text: tr('auth.loginAction'), onPress: () => router.push('/(auth)/phone') },
       ]);
     },
     [status, router],

@@ -41,6 +41,8 @@ export const translations = {
     'auth.changeNumber': 'Telefon raqamni o\'zgartirish',
     'auth.signOut': 'Chiqish',
     'auth.signOutConfirm': 'Akkauntdan chiqishni xohlaysizmi?',
+    'auth.requireMessage': 'Bu amal uchun tizimga kirishingiz kerak',
+    'auth.loginAction': 'Kirish',
 
     // Tabs
     'tab.home': 'Bosh sahifa',
@@ -244,6 +246,16 @@ export const translations = {
     'sellerApp.gpsHelper': 'Do\'kon turgan joyda turib "Yangilash" bosing',
     'sellerApp.submit': 'Arizani yuborish',
     'sellerApp.sent': 'Arizangiz adminga yuborildi. Tasdiqlangach do\'koningiz yaratiladi.',
+
+    // Navigation / screen titles
+    'nav.product': 'Mahsulot',
+    'nav.shop': 'Do\'kon',
+    'nav.orderDetail': 'Buyurtma',
+    'nav.chat': 'Chat',
+    'nav.notificationDetail': 'Bildirishnoma',
+    'nav.newShop': 'Yangi do\'kon',
+    'nav.returnItems': 'Qaytarish',
+    'nav.favorites': 'Sevimlilar',
   },
 
   uz_cyrl: {
@@ -284,6 +296,8 @@ export const translations = {
     'auth.changeNumber': 'Телефон рақамни ўзгартириш',
     'auth.signOut': 'Чиқиш',
     'auth.signOutConfirm': 'Аккаунтдан чиқишни хоҳлайсизми?',
+    'auth.requireMessage': 'Бу амал учун тизимга киришингиз керак',
+    'auth.loginAction': 'Кириш',
 
     // Tabs
     'tab.home': 'Бош саҳифа',
@@ -487,6 +501,16 @@ export const translations = {
     'sellerApp.gpsHelper': 'Дўкон турган жойда туриб "Янгилаш" босинг',
     'sellerApp.submit': 'Аризани юбориш',
     'sellerApp.sent': 'Аризангиз админга юборилди. Тасдиқлангач дўконингиз яратилади.',
+
+    // Navigation / screen titles
+    'nav.product': 'Маҳсулот',
+    'nav.shop': 'Дўкон',
+    'nav.orderDetail': 'Буюртма',
+    'nav.chat': 'Чат',
+    'nav.notificationDetail': 'Билдиришнома',
+    'nav.newShop': 'Янги дўкон',
+    'nav.returnItems': 'Қайтариш',
+    'nav.favorites': 'Севимлилар',
   },
 
   ru: {
@@ -527,6 +551,8 @@ export const translations = {
     'auth.changeNumber': 'Изменить номер',
     'auth.signOut': 'Выйти',
     'auth.signOutConfirm': 'Выйти из аккаунта?',
+    'auth.requireMessage': 'Для этого действия нужно войти в аккаунт',
+    'auth.loginAction': 'Войти',
 
     // Tabs
     'tab.home': 'Главная',
@@ -730,6 +756,16 @@ export const translations = {
     'sellerApp.gpsHelper': 'Находясь в магазине, нажмите "Обновить"',
     'sellerApp.submit': 'Отправить заявку',
     'sellerApp.sent': 'Заявка отправлена администратору. После одобрения магазин будет создан.',
+
+    // Navigation / screen titles
+    'nav.product': 'Товар',
+    'nav.shop': 'Магазин',
+    'nav.orderDetail': 'Заказ',
+    'nav.chat': 'Чат',
+    'nav.notificationDetail': 'Уведомление',
+    'nav.newShop': 'Новый магазин',
+    'nav.returnItems': 'Возврат',
+    'nav.favorites': 'Избранное',
   },
 } as const;
 
