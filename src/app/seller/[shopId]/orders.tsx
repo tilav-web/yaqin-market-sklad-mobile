@@ -1,18 +1,26 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useFocusEffect, useGlobalSearchParams } from 'expo-router';
-import { Check, ChevronDown, ChevronRight, ChevronUp, MapPin, MessageCircle, Package, Phone, RotateCcw, ScanLine, Truck, X } from 'lucide-react-native';
-import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Check, ChevronDown, ChevronRight, ChevronUp, MapPin, MessageCircle, Navigation, Package, Phone, RotateCcw, ScanLine, Truck, X } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Image, Linking, Modal, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
 import { EmptyState, useToast } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
-import { DeliveryRoute, ORDER_STATUS_KEY, Order, OrderStatus } from '@/lib/types';
+import { DeliveryRoute, DeliveryRouteStop, ORDER_STATUS_KEY, Order, OrderStatus } from '@/lib/types';
+import { useShopAccess } from '@/lib/useIsShopOwner';
 import { useShopRealtime } from '@/lib/useShopRealtime';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
+
+/** `https://maps.google.com/?daddr=...` per SPEC.md §27.3 — no installed-app
+ * detection or Yandex fallback, matching the spec's "this is fine" note. */
+function openDirections(lat: number, lng: number) {
+  Linking.openURL(`https://maps.google.com/?daddr=${lat},${lng}&dirflg=d`).catch(() => {});
+}
 
 const NEXT_STATUS: Partial<Record<OrderStatus, { next: OrderStatus; label: string }>> = {
   new: { next: 'accepted', label: 'Qabul qilish' },
@@ -45,6 +53,9 @@ export default function SellerOrdersScreen() {
   const [filter, setFilter] = useState<Filter>('new');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [routeOpen, setRouteOpen] = useState(false);
+  const routeMapRef = useRef<MapView | null>(null);
+  // SPEC.md §27.4 — owners always pass; staff need `orders.view_assigned`.
+  const access = useShopAccess(shopId);
 
   const ordersQuery = useQuery({
     queryKey: ['seller-orders', shopId],
@@ -112,6 +123,25 @@ export default function SellerOrdersScreen() {
   });
 
   const deliveringCount = all.filter((o) => o.status === 'delivering').length;
+  // SPEC.md §27.2 — the button only appears once there are ≥2 orders actually
+  // out for delivery (below that, there's nothing to "optimize").
+  const canSeeRoute = deliveringCount >= 2 && access.has('orders.view_assigned');
+
+  // Fit the map to the shop + all stops once the route loads.
+  useEffect(() => {
+    if (!routeOpen || !routeQuery.data?.stops.length) return;
+    const coords = [
+      { latitude: routeQuery.data.shopLocation.lat, longitude: routeQuery.data.shopLocation.lng },
+      ...routeQuery.data.stops.map((s) => ({ latitude: s.lat, longitude: s.lng })),
+    ];
+    const id = setTimeout(() => {
+      routeMapRef.current?.fitToCoordinates(coords, {
+        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+        animated: true,
+      });
+    }, 350);
+    return () => clearTimeout(id);
+  }, [routeOpen, routeQuery.data]);
 
   const EMPTY_MSG: Record<Filter, { title: string; desc: string }> = {
     new: { title: "Yangi buyurtma yo'q", desc: "Mijozlar buyurtma berganda shu yerda ko'rinadi" },
@@ -144,8 +174,8 @@ export default function SellerOrdersScreen() {
             </Pressable>
           );
         })}
-        {/* Route button — only when delivering */}
-        {deliveringCount > 0 && (
+        {/* Route button — only when ≥2 orders are out for delivery (SPEC.md §27.2) */}
+        {canSeeRoute && (
           <Pressable style={styles.routeBtn} onPress={() => setRouteOpen(true)}>
             <Truck size={15} color={colors.brand.primary} strokeWidth={2.4} />
             <View style={styles.routeBadge}>
@@ -317,27 +347,85 @@ export default function SellerOrdersScreen() {
                 <Text style={styles.routeEmptyText}>Hozir yetkazilayotgan buyurtma yo'q</Text>
               </View>
             ) : (
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {routeQuery.data.stops.map((stop, i) => (
-                  <View key={stop.orderId} style={styles.stopRow}>
-                    <View style={styles.stopIndex}>
-                      <Text style={styles.stopIndexText}>{i + 1}</Text>
+              <>
+                <MapView
+                  ref={routeMapRef}
+                  style={styles.routeMap}
+                  provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+                  initialRegion={{
+                    latitude: routeQuery.data.shopLocation.lat,
+                    longitude: routeQuery.data.shopLocation.lng,
+                    latitudeDelta: 0.05,
+                    longitudeDelta: 0.05,
+                  }}>
+                  {/* Shop — the route's starting point (SPEC.md §27.2: green pin). */}
+                  <Marker
+                    coordinate={{
+                      latitude: routeQuery.data.shopLocation.lat,
+                      longitude: routeQuery.data.shopLocation.lng,
+                    }}
+                    pinColor="green"
+                    title="Do'kon"
+                    description="Marshrut boshlanish nuqtasi"
+                  />
+                  {routeQuery.data.stops.map((stop, i) => (
+                    <RouteStopMarker key={stop.orderId} stop={stop} sequence={i + 1} />
+                  ))}
+                </MapView>
+
+                <ScrollView showsVerticalScrollIndicator={false} style={styles.routeList}>
+                  {routeQuery.data.stops.map((stop, i) => (
+                    <View key={stop.orderId} style={styles.stopRow}>
+                      <View style={styles.stopIndex}>
+                        <Text style={styles.stopIndexText}>{i + 1}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.stopName} numberOfLines={1}>
+                          Buyurtma #{stop.orderNumber.slice(-6)}
+                          {stop.customerPhone ? ` · ${stop.customerPhone}` : ''}
+                        </Text>
+                        <Text style={styles.stopAddr} numberOfLines={2}>{stop.address}</Text>
+                        <Text style={styles.stopDist}>
+                          {stop.distanceFromPreviousKm.toFixed(1)} km oldingi nuqtadan
+                        </Text>
+                      </View>
+                      <Pressable
+                        style={styles.directionsBtn}
+                        onPress={() => openDirections(stop.lat, stop.lng)}>
+                        <Navigation size={14} color={colors.brand.primary} strokeWidth={2.4} />
+                        <Text style={styles.directionsBtnText}>Yo'l ko'rsat</Text>
+                      </Pressable>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.stopName} numberOfLines={1}>
-                        {stop.customerName ?? stop.customerPhone}
-                      </Text>
-                      <Text style={styles.stopAddr} numberOfLines={2}>{stop.address}</Text>
-                      <Text style={styles.stopDist}>{stop.distanceKm.toFixed(1)} km · #{stop.orderNumber.slice(-6)}</Text>
-                    </View>
-                  </View>
-                ))}
-              </ScrollView>
+                  ))}
+                </ScrollView>
+              </>
             )}
           </View>
         </View>
       </Modal>
     </SafeAreaView>
+  );
+}
+
+/** Numbered pin for one delivery stop, in the server's nearest-neighbor sequence. */
+function RouteStopMarker({ stop, sequence }: { readonly stop: DeliveryRouteStop; readonly sequence: number }) {
+  const [tracks, setTracks] = useState(true);
+  useEffect(() => {
+    const id = setTimeout(() => setTracks(false), 700);
+    return () => clearTimeout(id);
+  }, []);
+
+  return (
+    <Marker
+      coordinate={{ latitude: stop.lat, longitude: stop.lng }}
+      anchor={{ x: 0.5, y: 0.5 }}
+      tracksViewChanges={tracks}
+      title={`#${stop.orderNumber.slice(-6)}`}
+      description={stop.address}>
+      <View style={styles.stopPin}>
+        <Text style={styles.stopPinText}>{sequence}</Text>
+      </View>
+    </Marker>
   );
 }
 
@@ -519,13 +607,27 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     padding: spacing.xl,
-    maxHeight: '70%',
+    maxHeight: '88%',
     gap: spacing.md,
   },
   routeHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   routeTitle: { ...typography.h3, color: colors.text.primary },
   routeEmpty: { alignItems: 'center', paddingVertical: spacing['4xl'], gap: spacing.md },
   routeEmptyText: { ...typography.bodySmall, color: colors.text.secondary },
+  routeMap: { width: '100%', height: 220, borderRadius: radius.lg, overflow: 'hidden' },
+  routeList: { maxHeight: 320 },
+  stopPin: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.brand.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.text.onPrimary,
+    ...shadow.xs,
+  },
+  stopPinText: { fontSize: 12, fontWeight: '800', color: colors.text.onPrimary },
   stopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border.subtle },
   stopIndex: {
     width: 28,
@@ -540,4 +642,15 @@ const styles = StyleSheet.create({
   stopName: { ...typography.bodyStrong, color: colors.text.primary },
   stopAddr: { ...typography.caption, color: colors.text.secondary, marginTop: 2, lineHeight: 16 },
   stopDist: { ...typography.caption, color: colors.brand.primary, fontWeight: '700', marginTop: 2 },
+  directionsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 7,
+    borderRadius: radius.md,
+    backgroundColor: colors.brand.primarySurface,
+  },
+  directionsBtnText: { ...typography.caption, color: colors.brand.primary, fontWeight: '700' },
 });

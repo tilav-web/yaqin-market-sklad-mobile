@@ -398,21 +398,27 @@ export interface ChatTemplate {
   createdAt: string;
 }
 
+/**
+ * One stop of `GET /seller/shops/:shopId/orders/delivery-route` (SPEC.md
+ * §27), in nearest-neighbor visiting order — mirrors
+ * orders.service.ts#getDeliveryRoute's return type exactly (there is no
+ * `customerName` or `status` on the wire; all returned stops are already
+ * `delivering`, and the seller's own staff list is the source of names).
+ */
 export interface DeliveryRouteStop {
   orderId: string;
   orderNumber: string;
-  customerName: string | null;
-  customerPhone: string;
+  sequence: number;
   address: string;
-  latitude: number;
-  longitude: number;
-  distanceKm: number;
-  status: OrderStatus;
+  lat: number;
+  lng: number;
+  customerPhone: string | null;
+  total: number;
+  distanceFromPreviousKm: number;
 }
 
 export interface DeliveryRoute {
-  shopLatitude: number;
-  shopLongitude: number;
+  shopLocation: { lat: number; lng: number };
   stops: DeliveryRouteStop[];
 }
 
