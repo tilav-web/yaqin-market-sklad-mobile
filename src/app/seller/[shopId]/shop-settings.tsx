@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { tr } from '@/i18n';
 import { LocationPickerModal, PickedLocation } from '@/components/LocationPickerModal';
 import { ImageUploader } from '@/components/seller/ImageUploader';
 import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
@@ -147,11 +148,11 @@ export default function ShopSettingsScreen() {
       });
     },
     onSuccess: () => {
-      Alert.alert('Saqlandi', 'Sozlamalar yangilandi');
+      Alert.alert(tr('common.saved'), 'Sozlamalar yangilandi');
       qc.invalidateQueries({ queryKey: ['seller-shop', shopId] });
       qc.invalidateQueries({ queryKey: ['shops', 'mine'] });
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   if (isOwner === false) {

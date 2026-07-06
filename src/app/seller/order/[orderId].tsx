@@ -108,7 +108,7 @@ export default function SellerOrderDetailScreen() {
       qc.invalidateQueries({ queryKey: ['seller-orders', order?.shopId] });
       setAssignOpen(false);
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const advance = useMutation({
@@ -119,7 +119,7 @@ export default function SellerOrderDetailScreen() {
       qc.invalidateQueries({ queryKey: ['order-detail', orderId] });
       qc.invalidateQueries({ queryKey: ['seller-orders', order?.shopId] });
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const block = useMutation({
@@ -130,7 +130,7 @@ export default function SellerOrderDetailScreen() {
       qc.invalidateQueries({ queryKey: ['blocked', order?.shopId] });
       Alert.alert('Bloklandi', 'Bu mijoz endi bu do‘kondan buyurtma bera olmaydi');
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   if (orderQuery.isLoading || !order) {
@@ -271,9 +271,9 @@ export default function SellerOrderDetailScreen() {
               <Pressable
                 style={styles.cancelBtn}
                 onPress={() =>
-                  Alert.alert('Bekor qilish', 'Buyurtmani bekor qilasizmi?', [
-                    { text: 'Yo‘q', style: 'cancel' },
-                    { text: 'Ha', style: 'destructive', onPress: () => advance.mutate('cancelled') },
+                  Alert.alert(tr('orders.cancel'), tr('orders.cancelConfirm'), [
+                    { text: tr('common.no'), style: 'cancel' },
+                    { text: tr('common.yes'), style: 'destructive', onPress: () => advance.mutate('cancelled') },
                   ])
                 }>
                 <Text style={styles.cancelText}>Buyurtmani bekor qilish</Text>

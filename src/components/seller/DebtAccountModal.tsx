@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { tr } from '@/i18n';
 import { EmptyState } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
@@ -65,7 +66,7 @@ export function DebtAccountModal({ visible, shopId, phone, onClose, onAddDebt }:
       setPayAmount('');
       setPayOpen(false);
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const a = accountQuery.data;

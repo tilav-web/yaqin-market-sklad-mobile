@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { tr } from '@/i18n';
 import { BarcodeScannerModal } from '@/components/seller/BarcodeScannerModal';
 import { InventoryCountModal } from '@/components/seller/InventoryCountModal';
 import { KirimModal } from '@/components/seller/KirimModal';
@@ -114,7 +115,7 @@ export default function SellerInventoryScreen() {
       await api.post(`/seller/shops/${shopId}/products/variants/${variantId}/stock`, { delta });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['variants', shopId] }),
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const remove = useMutation({
@@ -122,7 +123,7 @@ export default function SellerInventoryScreen() {
       await api.delete(`/seller/shops/${shopId}/products/variants/${variantId}`);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['variants', shopId] }),
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
 
@@ -172,7 +173,7 @@ export default function SellerInventoryScreen() {
         return;
       }
     } catch (e) {
-      Alert.alert('Xatolik', extractErrorMessage(e));
+      Alert.alert(tr('common.error'), extractErrorMessage(e));
       return;
     }
     try {
@@ -514,7 +515,7 @@ function BulkPriceModal({
       });
     },
     onSuccess: onDone,
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const reset = () => { setCategoryId(''); setAdjustType('percent'); setValue(''); };

@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { tr } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -36,7 +37,7 @@ export default function StaffScanScreen() {
         { text: 'OK', onPress: () => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile')) },
       ]);
     } catch (e) {
-      Alert.alert('Xatolik', extractErrorMessage(e), [
+      Alert.alert(tr('common.error'), extractErrorMessage(e), [
         {
           text: 'Qayta urinish',
           onPress: () => {

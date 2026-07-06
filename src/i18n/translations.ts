@@ -19,6 +19,7 @@ export const translations = {
     'common.error.title': 'Nimadir xato ketdi',
     'common.error.desc': 'Internetni tekshirib, qayta urinib ko\'ring.',
     'common.success': 'Muvaffaqiyatli',
+    'common.saved': 'Saqlandi',
     'common.yes': 'Ha',
     'common.no': 'Yo\'q',
     'common.close': 'Yopish',
@@ -137,6 +138,7 @@ export const translations = {
     'orders.confirmReceived': 'Buyurtmani qabul qildim',
     'orders.cancel': 'Bekor qilish',
     'orders.cancelConfirm': 'Buyurtmani bekor qilasizmi?',
+    'orders.cancelConfirmNum': '#{n} bekor qilinsinmi?',
 
     // Shop
     'shop.products': 'Mahsulotlar',
@@ -282,6 +284,7 @@ export const translations = {
     'common.error.title': 'Нимадир хато кетди',
     'common.error.desc': 'Интернетни текшириб, қайта уриниб кўринг.',
     'common.success': 'Муваффақиятли',
+    'common.saved': 'Сақланди',
     'common.yes': 'Ҳа',
     'common.no': 'Йўқ',
     'common.close': 'Ёпиш',
@@ -400,6 +403,7 @@ export const translations = {
     'orders.confirmReceived': 'Буюртмани қабул қилдим',
     'orders.cancel': 'Бекор қилиш',
     'orders.cancelConfirm': 'Буюртмани бекор қиласизми?',
+    'orders.cancelConfirmNum': '#{n} бекор қилинсинми?',
 
     // Shop
     'shop.products': 'Маҳсулотлар',
@@ -545,6 +549,7 @@ export const translations = {
     'common.error.title': 'Что-то пошло не так',
     'common.error.desc': 'Проверьте интернет и попробуйте снова.',
     'common.success': 'Успешно',
+    'common.saved': 'Сохранено',
     'common.yes': 'Да',
     'common.no': 'Нет',
     'common.close': 'Закрыть',
@@ -663,6 +668,7 @@ export const translations = {
     'orders.confirmReceived': 'Получил заказ',
     'orders.cancel': 'Отменить',
     'orders.cancelConfirm': 'Отменить заказ?',
+    'orders.cancelConfirmNum': 'Отменить заказ #{n}?',
 
     // Shop
     'shop.products': 'Товары',

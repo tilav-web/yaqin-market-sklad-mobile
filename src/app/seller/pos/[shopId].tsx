@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { tr } from '@/i18n';
 import { BarcodeScannerModal } from '@/components/seller/BarcodeScannerModal';
 import { useToast } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
@@ -98,7 +99,7 @@ export default function PosScreen() {
       haptics.success();
       toast.show('Sotuv yakunlandi ✓', { variant: 'success' });
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   return (

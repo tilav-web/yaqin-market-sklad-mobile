@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { tr } from '@/i18n';
 import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { EmptyState } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -67,7 +68,7 @@ export default function SellerPrimeScreen() {
     },
     onError: (e: unknown) => {
       const msg = (e as any)?.response?.data?.message ?? 'Xatolik yuz berdi';
-      Alert.alert('Xatolik', msg);
+      Alert.alert(tr('common.error'), msg);
     },
   });
 

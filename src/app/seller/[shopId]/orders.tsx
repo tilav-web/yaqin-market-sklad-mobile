@@ -201,9 +201,9 @@ export default function SellerOrdersScreen() {
                       style={styles.cancelIcon}
                       hitSlop={8}
                       onPress={() =>
-                        Alert.alert('Bekor qilish', `#${item.orderNumber} bekor qilinsinmi?`, [
-                          { text: "Yo'q", style: 'cancel' },
-                          { text: 'Ha', style: 'destructive', onPress: () => advance.mutate({ orderId: item.id, status: 'cancelled' }) },
+                        Alert.alert(tr('orders.cancel'), tr('orders.cancelConfirmNum', { n: item.orderNumber }), [
+                          { text: tr('common.no'), style: 'cancel' },
+                          { text: tr('common.yes'), style: 'destructive', onPress: () => advance.mutate({ orderId: item.id, status: 'cancelled' }) },
                         ])
                       }>
                       <X size={15} color={colors.feedback.danger} strokeWidth={2.8} />

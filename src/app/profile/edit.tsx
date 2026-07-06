@@ -52,7 +52,7 @@ export default function EditProfileScreen() {
       haptics.success();
       router.back();
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const previewEmoji = avatarEmoji(avatarId);

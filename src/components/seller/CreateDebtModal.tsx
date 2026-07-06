@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { tr } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
 import { SellerVariant } from '@/lib/types';
@@ -109,7 +110,7 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
       reset();
       onClose();
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const setQ = (v: SellerVariant, delta: number) => {

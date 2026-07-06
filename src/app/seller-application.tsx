@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { tr } from '@/i18n';
 import { BrandButton } from '@/components/ui/brand-button';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import { api, extractErrorMessage } from '@/lib/api';
@@ -37,7 +38,7 @@ export default function SellerApplicationScreen() {
         [{ text: 'OK', onPress: () => router.back() }],
       );
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const canSubmit = firstName.trim() && lastName.trim();

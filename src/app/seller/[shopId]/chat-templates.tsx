@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { tr } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { ChatTemplate } from '@/lib/types';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
@@ -44,7 +45,7 @@ export default function ChatTemplatesScreen() {
       setCreateOpen(false);
       setText('');
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const update = useMutation({
@@ -57,7 +58,7 @@ export default function ChatTemplatesScreen() {
       setEditTarget(null);
       setText('');
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const remove = useMutation({
@@ -65,7 +66,7 @@ export default function ChatTemplatesScreen() {
       await api.delete(`/seller/shops/${shopId}/chat-templates/${id}`);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['chat-templates', shopId] }),
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const templates = templatesQuery.data ?? [];

@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { tr } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { PublicShop } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -83,10 +84,10 @@ export function WorkingHoursModal({ visible, shopId, initialHours, initialHolida
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['seller-shop', shopId] });
-      Alert.alert('Saqlandi', 'Ish vaqti yangilandi');
+      Alert.alert(tr('common.saved'), 'Ish vaqti yangilandi');
       onClose();
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   return (

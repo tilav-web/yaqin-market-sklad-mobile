@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { tr } from '@/i18n';
 import { LocationPickerModal, PickedLocation } from '@/components/LocationPickerModal';
 import { ImageUploader } from '@/components/seller/ImageUploader';
 import { api, extractErrorMessage } from '@/lib/api';
@@ -41,7 +42,7 @@ export default function NewShopScreen() {
       qc.invalidateQueries({ queryKey: ['me'] });
       router.replace(`/seller/${shop.id}/orders`);
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const onPick = (result: PickedLocation) => {

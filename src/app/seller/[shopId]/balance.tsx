@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { tr } from '@/i18n';
 import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
@@ -92,7 +93,7 @@ export default function SellerBalanceScreen() {
       setCardName('');
       Alert.alert('So\'rov yuborildi', 'Admin ko\'rib chiqadi va kartangizga o\'tkazadi.');
     },
-    onError: (e: unknown) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e: unknown) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const bal = balQ.data;

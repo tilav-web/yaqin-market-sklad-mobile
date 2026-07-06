@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { tr } from '@/i18n';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { GlobalProduct } from '@/lib/types';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -62,7 +63,7 @@ export function QuickAddModal({ visible, shopId, globalProduct, onClose }: Props
       onClose();
       Alert.alert("Qo'shildi", "Mahsulot do'koningizga qo'shildi.");
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const handleClose = () => {

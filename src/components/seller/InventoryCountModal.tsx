@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { tr } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { SellerVariant } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -95,10 +96,10 @@ export function InventoryCountModal({ visible, shopId, onClose }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['variants', shopId] });
-      Alert.alert('Saqlandi', `${changedIds.length} ta mahsulot qoldig'i yangilandi`);
+      Alert.alert(tr('common.saved'), `${changedIds.length} ta mahsulot qoldig'i yangilandi`);
       onClose();
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   return (

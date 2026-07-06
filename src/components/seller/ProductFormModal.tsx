@@ -55,7 +55,7 @@ interface Props {
 
 export function ProductFormModal({ visible, shopId, editing, categories, onClose, initialBarcode, prefill }: Props) {
   const qc = useQueryClient();
-  const { catName } = useTranslation();
+  const { catName, tr } = useTranslation();
   const isEdit = !!editing;
 
   const [name, setName] = useState(editing?.name ?? '');
@@ -137,7 +137,7 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
       qc.invalidateQueries({ queryKey: ['variants', shopId] });
       onClose();
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const canSave = !!name.trim() && !!price && (isEdit || !!stock);

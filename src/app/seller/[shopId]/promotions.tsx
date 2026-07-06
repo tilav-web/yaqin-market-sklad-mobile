@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { tr } from '@/i18n';
 import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { DatePickerModal } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
@@ -78,7 +79,7 @@ export default function PromotionsScreen() {
       await api.patch(`/seller/shops/${shopId}/promotions/${id}/stop`);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['promotions', shopId] }),
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const items = promoQuery.data ?? [];
@@ -226,7 +227,7 @@ function CreatePromotionModal({
       await api.post(`/seller/shops/${shopId}/promotions`, payload);
     },
     onSuccess: onCreated,
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const reset = () => {

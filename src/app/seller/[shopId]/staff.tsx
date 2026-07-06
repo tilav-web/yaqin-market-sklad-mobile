@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 
+import { tr } from '@/i18n';
 import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import {
@@ -66,7 +67,7 @@ export default function StaffScreen() {
       return res.data;
     },
     onSuccess: (data) => setInvite(data),
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const active = (staffQuery.data ?? []).filter((s) => s.isActive);
@@ -153,7 +154,7 @@ function StaffCard({ shopId, member }: { shopId: string; member: StaffMember }) 
       await api.patch(`/seller/shops/${shopId}/staff/${member.id}`, body);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['shop-staff', shopId] }),
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const togglePerm = (key: string) => {

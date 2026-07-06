@@ -3,6 +3,7 @@ import { ImagePlus, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { tr } from '@/i18n';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import { extractErrorMessage, resolveMedia, uploadImage } from '@/lib/api';
 
@@ -65,7 +66,7 @@ export function ImageUploader({ value, onChange, max = 5, size = 88, label, hint
       }
       onChange([...value, ...uploaded].slice(0, max));
     } catch (e) {
-      Alert.alert('Xatolik', extractErrorMessage(e));
+      Alert.alert(tr('common.error'), extractErrorMessage(e));
     } finally {
       setBusy(false);
     }

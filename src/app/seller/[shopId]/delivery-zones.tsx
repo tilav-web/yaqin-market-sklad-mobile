@@ -15,6 +15,7 @@ import MapView, { LatLng, Marker, Polygon, Polyline, PROVIDER_GOOGLE } from 'rea
 import { Line, Svg } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { tr } from '@/i18n';
 import { PILOT_CITY_CENTER } from '@/constants/geo';
 import { api, extractErrorMessage } from '@/lib/api';
 import { GeoJsonPolygon, PublicShop } from '@/lib/types';
@@ -266,10 +267,10 @@ export default function DeliveryZonesScreen() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['shop', shopId] });
-      Alert.alert('Saqlandi', 'Yetkazib berish chegaralari yangilandi.');
+      Alert.alert(tr('common.saved'), 'Yetkazib berish chegaralari yangilandi.');
       router.back();
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   /* ── hint text ── */

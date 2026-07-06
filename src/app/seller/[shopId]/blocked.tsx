@@ -4,6 +4,7 @@ import { ShieldBan, ShieldCheck } from 'lucide-react-native';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { tr } from '@/i18n';
 import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { EmptyState } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
@@ -40,7 +41,7 @@ export default function BlockedUsersScreen() {
       await api.post(`/seller/shops/${shopId}/unblock-user`, { userId });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['blocked', shopId] }),
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   return (

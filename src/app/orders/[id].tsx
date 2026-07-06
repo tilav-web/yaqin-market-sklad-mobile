@@ -429,9 +429,9 @@ export default function OrderDetailScreen() {
           <Pressable
             style={styles.ghostBtn}
             onPress={() =>
-              Alert.alert('Bekor qilish', 'Buyurtmani bekor qilasizmi?', [
-                { text: "Yo'q", style: 'cancel' },
-                { text: 'Ha', style: 'destructive', onPress: () => setStatus.mutate('cancelled') },
+              Alert.alert(tr('orders.cancel'), tr('orders.cancelConfirm'), [
+                { text: tr('common.no'), style: 'cancel' },
+                { text: tr('common.yes'), style: 'destructive', onPress: () => setStatus.mutate('cancelled') },
               ])
             }
             disabled={setStatus.isPending}>

@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { tr } from '@/i18n';
 import { BarcodeScannerModal } from '@/components/seller/BarcodeScannerModal';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
@@ -68,14 +69,14 @@ export default function SellerCatalogScreen() {
       setStock('');
       Alert.alert("Qo'shildi", "Mahsulot do'koningizga qo'shildi.");
     },
-    onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const handleClone = () => {
     const p = parseAmount(price);
     const s = parseAmount(stock);
     if (!cloneTarget || p <= 0) {
-      Alert.alert('Xatolik', "Narxni to'g'ri kiriting");
+      Alert.alert(tr('common.error'), "Narxni to'g'ri kiriting");
       return;
     }
     cloneMutation.mutate({ globalProductId: cloneTarget.id, price: p, stock: s });
