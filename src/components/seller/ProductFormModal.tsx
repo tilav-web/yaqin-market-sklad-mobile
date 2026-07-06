@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ImageUploader } from '@/components/seller/ImageUploader';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
+import { parseAmount } from '@/lib/parseAmount';
 import { Category, PublicProductVariant } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -108,9 +109,9 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
           name: name.trim(),
           photos,
           description: description.trim() || undefined,
-          price: Number(price),
-          discountPrice: discountPrice ? Number(discountPrice) : null,
-          lowStockThreshold: lowStock ? Number(lowStock) : undefined,
+          price: parseAmount(price),
+          discountPrice: discountPrice ? parseAmount(discountPrice) : null,
+          lowStockThreshold: lowStock ? parseAmount(lowStock) : undefined,
         });
         return;
       }
@@ -120,13 +121,15 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
         categoryId: categoryId ?? undefined,
         description: description.trim() || undefined,
         unitType,
+        // unitSize is a genuine decimal (e.g. 0.5 kg) — parseAmount would
+        // strip the "." as if it were a thousands separator, so keep Number().
         unitSize: Number(unitSize) || 1,
         photos,
-        price: Number(price),
-        discountPrice: discountPrice ? Number(discountPrice) : undefined,
-        stock: Number(stock) || 0,
-        costPrice: costPrice ? Number(costPrice) : undefined,
-        lowStockThreshold: lowStock ? Number(lowStock) : undefined,
+        price: parseAmount(price),
+        discountPrice: discountPrice ? parseAmount(discountPrice) : undefined,
+        stock: parseAmount(stock),
+        costPrice: costPrice ? parseAmount(costPrice) : undefined,
+        lowStockThreshold: lowStock ? parseAmount(lowStock) : undefined,
         barcode: barcode.trim() || undefined,
       });
     },

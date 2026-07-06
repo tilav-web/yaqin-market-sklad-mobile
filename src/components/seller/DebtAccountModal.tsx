@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
+import { parseAmount } from '@/lib/parseAmount';
 import { DebtAccountDetail } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -55,7 +56,7 @@ export function DebtAccountModal({ visible, shopId, phone, onClose, onAddDebt }:
     mutationFn: async () => {
       await api.post(`/seller/shops/${shopId}/debts/payment`, {
         customerPhone: phone,
-        amount: Number(payAmount),
+        amount: parseAmount(payAmount),
       });
     },
     onSuccess: () => {
@@ -133,8 +134,8 @@ export function DebtAccountModal({ visible, shopId, phone, onClose, onAddDebt }:
                   autoFocus
                 />
                 <Pressable
-                  style={[styles.payConfirm, !Number(payAmount) && styles.payConfirmDisabled]}
-                  disabled={!Number(payAmount) || pay.isPending}
+                  style={[styles.payConfirm, !parseAmount(payAmount) && styles.payConfirmDisabled]}
+                  disabled={!parseAmount(payAmount) || pay.isPending}
                   onPress={() => pay.mutate()}>
                   <Text style={styles.payConfirmText}>{pay.isPending ? '…' : 'Qabul'}</Text>
                 </Pressable>

@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api, extractErrorMessage } from '@/lib/api';
+import { parseAmount } from '@/lib/parseAmount';
 import { SellerVariant } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -49,8 +50,8 @@ export function KirimModal({ visible, shopId, variant, onClose }: Props) {
     mutationFn: async () => {
       if (!variant) return;
       await api.post(`/seller/shops/${shopId}/products/variants/${variant.id}/receive`, {
-        quantity: Number(quantity),
-        costPrice: Number(costPrice) || 0,
+        quantity: parseAmount(quantity),
+        costPrice: parseAmount(costPrice),
         expiryDate: expiryDate.trim() || undefined,
         supplierName: supplierName.trim() || undefined,
       });
@@ -64,8 +65,8 @@ export function KirimModal({ visible, shopId, variant, onClose }: Props) {
     onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
   });
 
-  const qty = Number(quantity) || 0;
-  const cost = Number(costPrice) || 0;
+  const qty = parseAmount(quantity);
+  const cost = parseAmount(costPrice);
   const price = variant ? variant.discountPrice ?? variant.price : 0;
   const canSave = qty > 0;
 

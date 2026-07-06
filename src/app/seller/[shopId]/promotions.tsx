@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { api, extractErrorMessage } from '@/lib/api';
+import { parseAmount } from '@/lib/parseAmount';
 import { useIsShopOwner } from '@/lib/useIsShopOwner';
 import { Category, Promotion } from '@/lib/types';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
@@ -211,10 +212,14 @@ function CreatePromotionModal({
       if (hasEndDate && endAt) payload.endAt = endAt;
       if (type !== 'free_delivery') {
         payload.discountType = discountType;
-        payload.discountValue = parseFloat(discountValue);
+        // Percent discounts may legitimately use a decimal point (12.5%) —
+        // only fixed so'm amounts are displayed/entered as whole numbers
+        // grouped by spaces, where a "." is virtually always a mis-typed
+        // thousands separator (e.g. "50.000" meaning 50 000 so'm).
+        payload.discountValue = discountType === 'fixed' ? parseAmount(discountValue) : parseFloat(discountValue);
       }
       if (type === 'free_delivery' && freeMinAmount) {
-        payload.freeDeliveryMinAmount = parseInt(freeMinAmount);
+        payload.freeDeliveryMinAmount = parseAmount(freeMinAmount);
       }
       await api.post(`/seller/shops/${shopId}/promotions`, payload);
     },

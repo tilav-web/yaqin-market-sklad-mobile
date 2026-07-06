@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { api, extractErrorMessage } from '@/lib/api';
+import { parseAmount } from '@/lib/parseAmount';
 import { useIsShopOwner } from '@/lib/useIsShopOwner';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -79,7 +80,7 @@ export default function SellerBalanceScreen() {
   const withdraw = useMutation({
     mutationFn: () =>
       api.post('/seller/balance/withdraw', {
-        amount: Number(amount),
+        amount: parseAmount(amount),
         bankCardNumber: cardNum,
         bankCardHolderName: cardName,
       }),

@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api, extractErrorMessage } from '@/lib/api';
+import { parseAmount } from '@/lib/parseAmount';
 import { SellerVariant } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -85,7 +86,7 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
       }, 0),
     [qty, picked],
   );
-  const total = itemsTotal + (Number(extraCharge) || 0);
+  const total = itemsTotal + (parseAmount(extraCharge));
 
   const save = useMutation({
     mutationFn: async () => {
@@ -96,7 +97,7 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
         customerName: name.trim(),
         customerPhone: phone.trim(),
         lines,
-        extraCharge: Number(extraCharge) || 0,
+        extraCharge: parseAmount(extraCharge),
         note: note.trim() || undefined,
         decrementStock,
       });
