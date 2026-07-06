@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useGlobalSearchParams } from 'expo-router';
-import { NotebookText, Plus, UserCircle2 } from 'lucide-react-native';
+import { NotebookText, Plus, UserCircle2, WifiOff } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -71,13 +71,34 @@ export default function SellerDebtScreen() {
         ListHeaderComponent={
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Umumiy qarz (olinishi kerak)</Text>
-            <Text style={styles.summaryValue}>{fmt(summary?.outstanding ?? 0)} so&apos;m</Text>
-            <Text style={styles.summarySub}>{summary?.customers ?? 0} ta mijozda qarz bor</Text>
+            {summaryQuery.isLoading ? (
+              <ActivityIndicator color={colors.text.onPrimary} style={{ alignSelf: 'flex-start', marginTop: 4 }} />
+            ) : summaryQuery.isError ? (
+              <>
+                <Text style={styles.summaryError}>Yuklanmadi — qayta urinib ko&apos;ring</Text>
+                <Pressable onPress={() => void summaryQuery.refetch()} hitSlop={8}>
+                  <Text style={styles.summaryRetry}>Qayta urinish</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Text style={styles.summaryValue}>{fmt(summary?.outstanding ?? 0)} so&apos;m</Text>
+                <Text style={styles.summarySub}>{summary?.customers ?? 0} ta mijozda qarz bor</Text>
+              </>
+            )}
           </View>
         }
         ListEmptyComponent={
           accountsQuery.isLoading ? (
             <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />
+          ) : accountsQuery.isError ? (
+            <EmptyState
+              icon={WifiOff}
+              title="Qarz daftari yuklanmadi"
+              description="Internetni tekshirib, qayta urinib ko'ring"
+              actionLabel="Qayta urinish"
+              onAction={() => void accountsQuery.refetch()}
+            />
           ) : (
             <EmptyState
               icon={NotebookText}
@@ -150,6 +171,8 @@ const styles = StyleSheet.create({
   summaryLabel: { ...typography.bodySmall, color: 'rgba(255,255,255,0.85)' },
   summaryValue: { ...typography.h1, color: colors.text.onPrimary, marginTop: 2 },
   summarySub: { ...typography.caption, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  summaryError: { ...typography.bodyStrong, color: colors.text.onPrimary, marginTop: 4 },
+  summaryRetry: { ...typography.caption, color: colors.text.onPrimary, fontWeight: '800', textDecorationLine: 'underline', marginTop: 2 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -170,7 +170,15 @@ export default function PosScreen() {
             </View>
           ))}
           <View style={styles.cartActions}>
-            <Pressable style={styles.clearBtn} onPress={() => setCart({})} hitSlop={8}>
+            <Pressable
+              style={styles.clearBtn}
+              onPress={() =>
+                Alert.alert('Savatni tozalash', 'Savatdagi barcha mahsulotlar o‘chirilsinmi?', [
+                  { text: 'Bekor', style: 'cancel' },
+                  { text: 'Tozalash', style: 'destructive', onPress: () => setCart({}) },
+                ])
+              }
+              hitSlop={8}>
               <Trash2 size={18} color={colors.text.danger} strokeWidth={2.2} />
             </Pressable>
             <Pressable

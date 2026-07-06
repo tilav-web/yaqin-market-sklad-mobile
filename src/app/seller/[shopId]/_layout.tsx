@@ -1,5 +1,5 @@
 import { Tabs, router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Bell } from 'lucide-react-native';
+import { ArrowLeft, Bell, Home } from 'lucide-react-native';
 import { useCallback, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -35,13 +35,32 @@ function HubBackButton({ shopId }: Readonly<{ shopId: string }>) {
   );
 }
 
+// One-tap exit back to customer mode, shown on EVERY seller screen regardless
+// of nesting depth. Without this, leaving from a screen reached through the
+// settings hub (shop-settings, stats, blocked, reviews, balance, prime,
+// promotions, catalog, chat-templates) took 2+ taps: back to the hub, then
+// back to customer mode — headerLeft on those screens only returns to the hub.
+function CustomerModeButton() {
+  return (
+    <Pressable
+      style={styles.customerBtn}
+      onPress={() => router.replace('/(tabs)/profile')}
+      hitSlop={10}
+      accessibilityLabel="Customer rejimga qaytish">
+      <Home size={20} color={Brand.white} strokeWidth={2.4} />
+    </Pressable>
+  );
+}
+
 // Module-level stable references (never recreated)
 const renderBackButton = () => <BackButton />;
+const renderCustomerModeButton = () => <CustomerModeButton />;
 const SCREEN_OPTIONS = {
   headerStyle: { backgroundColor: Brand.red },
   headerTintColor: Brand.white,
   headerTitleStyle: { fontWeight: '700' as const },
   headerLeft: renderBackButton,
+  headerRight: renderCustomerModeButton,
 };
 // Factory outside component avoids S6478 "component inside component" lint
 function makeHubLeft(id: string) {
@@ -154,6 +173,15 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  customerBtn: {
+    marginRight: Spacing.three,
+    width: 36,
+    height: 36,
+    borderRadius: Radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
   bannerWrap: { position: 'absolute', top: 0, left: 0, right: 0 },
   banner: {

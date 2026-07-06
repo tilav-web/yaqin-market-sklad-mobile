@@ -115,7 +115,12 @@ export default function StaffScreen() {
         <View style={styles.qrWrap} pointerEvents="box-none">
           <View style={styles.qrCard}>
             <Text style={styles.qrTitle}>Xodimni qo‘shish</Text>
-            <Text style={styles.qrSub}>Xodim bu QR ni ilova orqali skanlasin (15 daqiqa amal qiladi)</Text>
+            <Text style={styles.qrSub}>
+              Xodim bu QR ni ilova orqali skanlasin
+              {invite
+                ? ` (${Math.max(1, Math.round((new Date(invite.expiresAt).getTime() - Date.now()) / 60000))} daqiqa amal qiladi)`
+                : ''}
+            </Text>
             <View style={styles.qrBox}>
               {invite && (
                 <QRCode value={`yaqinmarket://staff/join?token=${invite.token}`} size={220} />

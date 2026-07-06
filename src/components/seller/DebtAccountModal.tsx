@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDownCircle, Plus, X } from 'lucide-react-native';
+import { ArrowDownCircle, Plus, WifiOff, X } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EmptyState } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
 import { DebtAccountDetail } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -83,8 +84,16 @@ export function DebtAccountModal({ visible, shopId, phone, onClose, onAddDebt }:
           </Pressable>
         </View>
 
-        {accountQuery.isLoading || !a ? (
+        {accountQuery.isLoading ? (
           <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />
+        ) : accountQuery.isError || !a ? (
+          <EmptyState
+            icon={WifiOff}
+            title="Hisob yuklanmadi"
+            description="Internetni tekshirib, qayta urinib ko'ring"
+            actionLabel="Qayta urinish"
+            onAction={() => void accountQuery.refetch()}
+          />
         ) : (
           <ScrollView contentContainerStyle={styles.scroll}>
             {/* Balance */}
