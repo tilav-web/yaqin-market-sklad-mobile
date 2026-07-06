@@ -95,6 +95,7 @@ export default function ShopSettingsScreen() {
 
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
+  const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -113,6 +114,7 @@ export default function ShopSettingsScreen() {
       const s = res.data;
       setName(s.name);
       setAddress(s.address);
+      setDescription(s.description ?? '');
       setPhotos(s.photos ?? []);
       setCoords({ latitude: s.latitude, longitude: s.longitude });
       setMinOrder(String(s.minOrderPrice));
@@ -136,6 +138,7 @@ export default function ShopSettingsScreen() {
       await api.patch<PublicShop>(`/seller/shops/${shopId}`, {
         name: name.trim(),
         address: address.trim(),
+        description: description.trim() || undefined,
         photos,
         ...(coords ? { latitude: coords.latitude, longitude: coords.longitude } : {}),
         minOrderPrice: Number(minOrder) || 0,
@@ -210,6 +213,17 @@ export default function ShopSettingsScreen() {
               multiline
               placeholderTextColor={colors.text.hint}
             />
+          </Field>
+          <Field label="Do'kon tavsifi">
+            <TextInput
+              style={[styles.input, styles.multiline]}
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              placeholder="Do'koningiz haqida qisqacha (mijozlarga ko'rinadi)"
+              placeholderTextColor={colors.text.hint}
+            />
+            <Text style={styles.hint}>Do'kon profili to'liqligiga ball qo'shadi</Text>
           </Field>
           <Field label="Joylashuv (xaritada)">
             <Pressable style={styles.mapBtn} onPress={() => setPickerVisible(true)}>

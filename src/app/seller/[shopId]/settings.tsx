@@ -1,14 +1,37 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useGlobalSearchParams } from 'expo-router';
-import { BarChart3, Bell, BookOpen, ChevronRight, type LucideIcon, MessageSquare, Settings2, ShieldBan, Star, Store, Tag, Wallet } from 'lucide-react-native';
+import { BarChart3, Bell, BookOpen, Check, ChevronRight, type LucideIcon, MessageSquare, Settings2, ShieldBan, Star, Store, Tag, Wallet } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useShopAccess } from '@/lib/useIsShopOwner';
 import { api } from '@/lib/api';
-import { PublicShop, ShopCompleteness } from '@/lib/types';
+import { PublicShop, ShopCompleteness, ShopCompletenessItem } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
+
+/**
+ * Where tapping a missing completeness checklist item should send the seller
+ * to fix it (SPEC.md §31.3: "Har tavsiya ustiga bosganda tegishli sozlama
+ * sahifasiga o'tish"). The server only returns a `key` + label/points, no
+ * navigation target, so the mapping lives here — keys mirror
+ * shops.service.ts#getCompleteness exactly.
+ */
+function completenessTarget(key: string, shopId: string): Href {
+  switch (key) {
+    case 'delivery_zone':
+      return `/seller/${shopId}/delivery-zones` as Href;
+    case 'products_10':
+    case 'products_50':
+    case 'products_100':
+    case 'product_photos':
+      return `/seller/${shopId}/inventory` as Href;
+    default:
+      // photo_1, photo_3, description, working_hours, gps all live on the
+      // same shop-settings screen.
+      return `/seller/${shopId}/shop-settings` as Href;
+  }
+}
 
 /**
  * Shop hub — a clean, profile-like landing for everything about the shop:
@@ -110,21 +133,23 @@ export default function SellerHubScreen() {
           </View>
         </View>
 
-        {/* Shop completeness */}
+        {/* Shop completeness (SPEC.md §31.3) */}
         {completeness && completeness.score < 100 && (
           <View style={styles.completenessCard}>
             <View style={styles.completenessHeader}>
-              <Text style={styles.completenessTitle}>Do'kon profili</Text>
+              <Text style={styles.completenessTitle}>Do'kon profili to'liqligi</Text>
               <Text style={[styles.completenessScore, { color: completeness.score >= 70 ? colors.feedback.success : colors.feedback.warning }]}>
-                {completeness.score}%
+                {completeness.score} / 100
               </Text>
             </View>
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: `${completeness.score}%` as `${number}%`, backgroundColor: completeness.score >= 70 ? colors.feedback.success : colors.feedback.warning }]} />
             </View>
-            <Text style={styles.completenessHint}>
-              {completeness.items.filter((i) => !i.done).map((i) => i.label).slice(0, 2).join(' · ')}
-            </Text>
+            <View style={styles.checklist}>
+              {completeness.items.map((item) => (
+                <CompletenessRow key={item.key} item={item} shopId={shopId} />
+              ))}
+            </View>
           </View>
         )}
 
@@ -242,6 +267,43 @@ function Row({
   );
 }
 
+/**
+ * One completeness checklist line. Done items are static (✅ + label); missing
+ * ones are tappable and navigate to the settings screen that fixes them, per
+ * SPEC.md §31.3.
+ */
+function CompletenessRow({ item, shopId }: { item: ShopCompletenessItem; shopId: string }) {
+  if (item.done) {
+    return (
+      <View style={styles.checklistRow}>
+        <View style={[styles.checklistIcon, styles.checklistIconDone]}>
+          <Check size={12} color={colors.feedback.success} strokeWidth={3} />
+        </View>
+        <Text style={styles.checklistLabelDone} numberOfLines={1}>
+          {item.label}
+        </Text>
+      </View>
+    );
+  }
+  return (
+    <Pressable
+      onPress={() => {
+        haptics.selection();
+        router.push(completenessTarget(item.key, shopId));
+      }}
+      style={({ pressed }) => [styles.checklistRow, pressed && { opacity: 0.6 }]}>
+      <View style={styles.checklistIcon}>
+        <Text style={styles.checklistIconMissingText}>✕</Text>
+      </View>
+      <Text style={styles.checklistLabel} numberOfLines={1}>
+        {item.label}
+      </Text>
+      <Text style={styles.checklistPoints}>+{item.points} ball</Text>
+      <ChevronRight size={16} color={colors.text.tertiary} strokeWidth={2.2} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg.canvas },
   scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['3xl'] },
@@ -313,4 +375,24 @@ const styles = StyleSheet.create({
   },
   progressFill: { height: '100%', borderRadius: radius.full },
   completenessHint: { ...typography.caption, color: colors.text.secondary, lineHeight: 16 },
+  checklist: { marginTop: spacing.xs, gap: 2 },
+  checklistRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  checklistIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.bg.surfaceMuted,
+  },
+  checklistIconDone: { backgroundColor: colors.feedback.successSurface },
+  checklistIconMissingText: { ...typography.caption, fontSize: 11, fontWeight: '800', color: colors.text.tertiary },
+  checklistLabel: { ...typography.bodySmall, color: colors.text.primary, flex: 1, fontWeight: '600' },
+  checklistLabelDone: { ...typography.bodySmall, color: colors.text.tertiary, flex: 1, textDecorationLine: 'line-through' },
+  checklistPoints: { ...typography.caption, color: colors.feedback.warning, fontWeight: '700' },
 });
