@@ -29,6 +29,29 @@ export function OwnerOnlyNotice() {
   );
 }
 
+/**
+ * Same shell as `OwnerOnlyNotice`, but for screens a staff member COULD reach
+ * if they held the right `StaffPermission` (e.g. `reviews.view`,
+ * `promotions.view`) — as opposed to the truly owner-only screens above that
+ * have no permission flag at all. Shown once `useShopAccess(...).isResolved`
+ * confirms the current user is neither the owner nor holds that permission.
+ */
+export function NoPermissionNotice() {
+  return (
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <View style={styles.center}>
+        <EmptyState
+          icon={ShieldAlert}
+          title="Ruxsat yo'q"
+          description="Bu bo'lim uchun sizda kerakli ruxsat yo'q. Do'kon egasidan so'rang."
+          actionLabel="Orqaga"
+          onAction={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile'))}
+        />
+      </View>
+    </SafeAreaView>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg.canvas },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },

@@ -5,7 +5,9 @@ import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } f
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/ui';
+import { NoPermissionNotice } from '@/components/seller/OwnerOnlyNotice';
 import { api } from '@/lib/api';
+import { useShopAccess } from '@/lib/useIsShopOwner';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 interface ShopReview {
@@ -35,10 +37,15 @@ function Stars({ value }: { value: number }) {
 
 export default function SellerReviewsScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
+  // Gated by `reviews.view` server-side (products.service.ts#listShopReviews)
+  // — owners always pass. Skip the call once resolved and confirmed absent.
+  const access = useShopAccess(shopId);
+  const canView = access.has('reviews.view');
 
   const reviewsQuery = useQuery({
     queryKey: ['shop-reviews', shopId],
     staleTime: 5 * 60_000,
+    enabled: canView,
     queryFn: async () => {
       const res = await api.get<ShopReview[]>(`/seller/shops/${shopId}/products/reviews`);
       return res.data;
@@ -47,6 +54,10 @@ export default function SellerReviewsScreen() {
 
   const items = reviewsQuery.data ?? [];
   const avg = items.length ? items.reduce((s, r) => s + r.stars, 0) / items.length : 0;
+
+  if (access.isResolved && !canView) {
+    return <NoPermissionNotice />;
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>

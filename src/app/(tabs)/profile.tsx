@@ -25,6 +25,7 @@ import { avatarEmoji } from '@/constants/avatars';
 import { useLangStore, useTranslation, type Lang } from '@/i18n';
 import { api } from '@/lib/api';
 import { useIsGuest, useRequireAuth } from '@/lib/useRequireAuth';
+import type { WorkingForMeEntry } from '@/lib/useIsShopOwner';
 import { MeUser, MyShop } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
 import { colors, hitSlop, layout, radius, spacing, typography } from '@/theme';
@@ -34,11 +35,6 @@ interface SellerApplication {
   id: string;
   status: 'pending' | 'approved' | 'rejected';
   rejectionReason: string | null;
-}
-
-interface StaffShop {
-  shop: { id: string; name: string; address: string; isOpenManual: boolean };
-  role: string | null;
 }
 
 const LANG_LABELS: Record<Lang, string> = {
@@ -97,7 +93,7 @@ export default function ProfileTab() {
   const staffShopsQuery = useQuery({
     queryKey: ['working-for-me'],
     queryFn: async () => {
-      const res = await api.get<StaffShop[]>('/seller/shops/working-for-me');
+      const res = await api.get<WorkingForMeEntry[]>('/seller/shops/working-for-me');
       return res.data;
     },
     enabled: !isGuest,

@@ -18,11 +18,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { tr } from '@/i18n';
-import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
+import { NoPermissionNotice } from '@/components/seller/OwnerOnlyNotice';
 import { DatePickerModal } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
-import { useIsShopOwner } from '@/lib/useIsShopOwner';
+import { useShopAccess } from '@/lib/useIsShopOwner';
 import { Category, Promotion } from '@/lib/types';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 
@@ -48,14 +48,15 @@ export default function PromotionsScreen() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<'active' | 'scheduled' | 'ended'>('active');
   const [createOpen, setCreateOpen] = useState(false);
-  // The client has no UI yet to grant staff a promotions permission (see
-  // constants/staffPermissions.ts — the group doesn't exist there even though
-  // the server model supports it), so in practice this is owner-only today.
-  const isOwner = useIsShopOwner(shopId);
+  // Gated by `promotions.view` (list/stats) and `promotions.manage`
+  // (create/stop) server-side (promotions.service.ts) — owners always pass.
+  const access = useShopAccess(shopId);
+  const canView = access.has('promotions.view') || access.has('promotions.manage');
+  const canManage = access.has('promotions.manage');
 
   const promoQuery = useQuery({
     queryKey: ['promotions', shopId, filter],
-    enabled: isOwner !== false,
+    enabled: canView,
     queryFn: async () => {
       const res = await api.get<Promotion[]>(`/seller/shops/${shopId}/promotions`, {
         params: { status: filter },
@@ -89,8 +90,8 @@ export default function PromotionsScreen() {
     { key: 'ended' as const, label: 'Tugagan' },
   ];
 
-  if (isOwner === false) {
-    return <OwnerOnlyNotice />;
+  if (access.isResolved && !canView) {
+    return <NoPermissionNotice />;
   }
 
   return (
@@ -149,7 +150,7 @@ export default function PromotionsScreen() {
                 <Text style={styles.dateText}>
                   {dateLabel(item.startAt)} — {item.endAt ? dateLabel(item.endAt) : 'Muddatsiz'}
                 </Text>
-                {item.isActive && (
+                {item.isActive && canManage && (
                   <Pressable
                     style={styles.stopBtn}
                     onPress={() =>
@@ -167,10 +168,12 @@ export default function PromotionsScreen() {
         />
       )}
 
-      <Pressable style={styles.fab} onPress={() => setCreateOpen(true)}>
-        <Plus size={20} color={colors.text.onPrimary} strokeWidth={2.8} />
-        <Text style={styles.fabText}>Aksiya</Text>
-      </Pressable>
+      {canManage && (
+        <Pressable style={styles.fab} onPress={() => setCreateOpen(true)}>
+          <Plus size={20} color={colors.text.onPrimary} strokeWidth={2.8} />
+          <Text style={styles.fabText}>Aksiya</Text>
+        </Pressable>
+      )}
 
       <CreatePromotionModal
         visible={createOpen}

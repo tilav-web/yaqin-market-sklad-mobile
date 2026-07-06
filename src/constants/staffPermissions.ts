@@ -1,5 +1,107 @@
 export type StaffPreset = 'kassir' | 'menejer' | 'sklad' | 'yetkazib_beruvchi' | 'custom';
 
+/**
+ * Mirror of the server's `ALL_STAFF_PERMISSIONS`
+ * (../../../server/src/shops/entities/shop-staff.entity.ts) — keep in sync.
+ * The server is the actual source of truth/enforcement (via
+ * `assertShopPermission`); this list only drives what the client shows.
+ */
+export const ALL_STAFF_PERMISSIONS = [
+  // inventory
+  'inventory.view',
+  'inventory.product.create',
+  'inventory.product.edit_info',
+  'inventory.product.edit_price',
+  'inventory.product.edit_stock',
+  'inventory.receive',
+  'inventory.count',
+  'inventory.movement.view',
+  'inventory.low_stock_alerts',
+  'inventory.barcode.scan',
+  // sales (in-store POS)
+  'sales.instore',
+  // orders
+  'orders.view_all',
+  'orders.view_assigned',
+  'orders.accept',
+  'orders.update_status',
+  'orders.cancel',
+  'orders.chat',
+  'orders.view_customer_contact',
+  // shop (limited)
+  'shop.toggle_open',
+  'shop.settings.view',
+  // debt ledger (qarz daftar)
+  'debt.manage',
+  // reviews
+  'reviews.view',
+  // promotions
+  'promotions.view',
+  'promotions.manage',
+] as const;
+
+export type StaffPermission = (typeof ALL_STAFF_PERMISSIONS)[number];
+
+/** Mirror of the server's `PRESET_PERMISSIONS` — kept for parity/reference; the
+ * server (shops.service.ts#updateStaff) is what actually applies these when a
+ * preset is selected, this isn't re-sent by the client. */
+export const PRESET_PERMISSIONS: Record<Exclude<StaffPreset, 'custom'>, StaffPermission[]> = {
+  kassir: [
+    'inventory.view',
+    'inventory.product.edit_stock',
+    'inventory.barcode.scan',
+    'sales.instore',
+    'orders.view_all',
+    'orders.accept',
+    'orders.update_status',
+    'orders.chat',
+    'orders.view_customer_contact',
+    'debt.manage',
+  ],
+  menejer: [
+    'inventory.view',
+    'inventory.product.create',
+    'inventory.product.edit_info',
+    'inventory.product.edit_price',
+    'inventory.product.edit_stock',
+    'inventory.receive',
+    'inventory.count',
+    'inventory.movement.view',
+    'inventory.low_stock_alerts',
+    'inventory.barcode.scan',
+    'sales.instore',
+    'orders.view_all',
+    'orders.accept',
+    'orders.update_status',
+    'orders.cancel',
+    'orders.chat',
+    'orders.view_customer_contact',
+    'reviews.view',
+    'shop.toggle_open',
+    'shop.settings.view',
+    'debt.manage',
+    'promotions.view',
+    'promotions.manage',
+  ],
+  sklad: [
+    'inventory.view',
+    'inventory.product.create',
+    'inventory.product.edit_info',
+    'inventory.product.edit_stock',
+    'inventory.receive',
+    'inventory.count',
+    'inventory.movement.view',
+    'inventory.low_stock_alerts',
+    'inventory.barcode.scan',
+  ],
+  yetkazib_beruvchi: [
+    'orders.view_assigned',
+    'orders.update_status',
+    'orders.chat',
+    'orders.view_customer_contact',
+  ],
+};
+
 export interface StaffMember {
   id: string;
   userId: string;
@@ -72,5 +174,12 @@ export const PERMISSION_GROUPS: { title: string; items: { key: string; label: st
   {
     title: 'Sharhlar',
     items: [{ key: 'reviews.view', label: 'Sharhlarni ko‘rish' }],
+  },
+  {
+    title: 'Aksiyalar',
+    items: [
+      { key: 'promotions.view', label: 'Aksiyalarni ko‘rish' },
+      { key: 'promotions.manage', label: 'Aksiya yaratish va boshqarish' },
+    ],
   },
 ];

@@ -5,15 +5,30 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SellerTabBar } from '@/components/SellerTabBar';
+import type { StaffPermission } from '@/constants/staffPermissions';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import { AlarmMode } from '@/stores/alarmSettings';
 import { PendingOrder, useOrderAlarm } from '@/lib/useOrderAlarm';
-import { useIsShopOwner } from '@/lib/useIsShopOwner';
+import { useShopAccess } from '@/lib/useIsShopOwner';
 
-// Bottom-tab routes that hit owner-only endpoints server-side (staff
-// management, the settings hub — which itself fetches the owner-only shop
-// detail). Hidden for staff so they never tap into a screen that 403s.
-const OWNER_ONLY_ROUTES = ['staff', 'settings'];
+// "staff" has no corresponding StaffPermission at all (managing staff is
+// always owner-only server-side) — hidden for anyone who isn't the owner.
+const OWNER_ONLY_ROUTES = ['staff'];
+
+// The "settings" tab is a hub that fans out into shop-settings, promotions,
+// global catalog, chat templates, stats, reviews, blocked users, balance and
+// prime — some owner-only, some gated by one of these staff permissions.
+// Hide the whole tab only when the user holds NONE of them (settings.tsx
+// itself hides/shows each row by its own specific permission).
+const HUB_PERMISSIONS: StaffPermission[] = [
+  'shop.toggle_open',
+  'shop.settings.view',
+  'promotions.view',
+  'promotions.manage',
+  'reviews.view',
+  'orders.chat',
+  'inventory.product.create',
+];
 
 function BackButton() {
   const onBack = () => {
@@ -70,13 +85,17 @@ function makeHubLeft(id: string) {
 export default function SellerLayout() {
   const { shopId } = useLocalSearchParams<{ shopId: string }>();
   const { pending, acknowledge, alarm } = useOrderAlarm(shopId);
-  // undefined while unresolved: treat as "assume owner" here so we don't flash
-  // missing tabs at an actual owner on first render — the far more common case.
-  const isOwner = useIsShopOwner(shopId);
-  const hiddenRoutes = useMemo(
-    () => (isOwner === false ? OWNER_ONLY_ROUTES : []),
-    [isOwner],
-  );
+  // Unresolved (isResolved === false): assume owner/full-access here so we
+  // don't flash missing tabs at an actual owner on first render — the far
+  // more common case. Only hide once we DEFINITELY know the user isn't the
+  // owner (and, for "settings", holds none of HUB_PERMISSIONS either).
+  const access = useShopAccess(shopId);
+  const hiddenRoutes = useMemo(() => {
+    if (!access.isResolved || access.isOwner) return [];
+    const hidden = [...OWNER_ONLY_ROUTES];
+    if (!HUB_PERMISSIONS.some((p) => access.permissions.includes(p))) hidden.push('settings');
+    return hidden;
+  }, [access.isResolved, access.isOwner, access.permissions]);
 
   const handleOpen = useCallback(() => {
     if (!pending) return;
@@ -102,6 +121,7 @@ export default function SellerLayout() {
         screenOptions={SCREEN_OPTIONS}>
         <Tabs.Screen name="orders" options={{ title: 'Buyurtmalar' }} />
         <Tabs.Screen name="inventory" options={{ title: 'Sklad' }} />
+        <Tabs.Screen name="excel" options={{ title: 'Excel import/eksport' }} />
         <Tabs.Screen name="debt" options={{ title: 'Qarz daftar' }} />
         <Tabs.Screen name="staff" options={{ title: 'Xodimlar' }} />
         <Tabs.Screen name="settings" options={{ title: 'Sozlamalar' }} />
