@@ -88,7 +88,9 @@
         {
           "photosPermission": "Do'kon va mahsulot rasmlarini qo'shish uchun galereyaga ruxsat kerak"
         }
-      ]
+      ],
+      "expo-document-picker",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,
