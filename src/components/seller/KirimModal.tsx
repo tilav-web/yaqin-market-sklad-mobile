@@ -19,13 +19,17 @@ import { tr } from '@/i18n';
 import { DatePickerModal } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
-import { SellerVariant } from '@/lib/types';
+import { PublicProductVariant } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 interface Props {
   readonly visible: boolean;
   readonly shopId: string;
-  readonly variant: SellerVariant | null;
+  // Only .id/.name/.stock/.price/.discountPrice are read below — accepting the
+  // broader PublicProductVariant (rather than the seller-only SellerVariant,
+  // which additionally requires a FIFO `cost` summary) lets the tiered
+  // expiring/low-stock lists (SPEC.md §26.2, §30) reuse this same modal.
+  readonly variant: PublicProductVariant | null;
   readonly onClose: () => void;
 }
 

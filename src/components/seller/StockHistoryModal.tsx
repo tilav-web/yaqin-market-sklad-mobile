@@ -37,6 +37,7 @@ const MOVE_META: Record<MovementType, { label: string; color: string; icon: type
   returned: { label: 'Qaytdi', color: colors.feedback.warning, icon: RotateCcw, sign: '+' },
   expired: { label: 'Muddati o\'tdi', color: colors.text.danger, icon: ArrowUpRight, sign: '−' },
   adjusted: { label: 'Tuzatish', color: colors.text.secondary, icon: Settings2, sign: '±' },
+  damaged: { label: 'Brak (shikastlangan)', color: colors.text.danger, icon: ArrowUpRight, sign: '−' },
 };
 
 /** Read-only view of a variant's FIFO lots + recent stock movements. */

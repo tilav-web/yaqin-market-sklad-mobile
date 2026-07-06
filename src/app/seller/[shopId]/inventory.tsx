@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useGlobalSearchParams } from 'expo-router';
-import { AlertTriangle, ClipboardCheck, FileSpreadsheet, History, Minus, MoreVertical, Package, PackagePlus, Pencil, Plus, ScanLine, Search, Tag, Trash2 } from 'lucide-react-native';
+import { AlertTriangle, Ban, ClipboardCheck, FileSpreadsheet, History, Minus, MoreVertical, Package, PackagePlus, Pencil, Percent, Plus, ScanLine, Search, Tag, TrendingDown, Trash2 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { tr } from '@/i18n';
 import { BarcodeScannerModal } from '@/components/seller/BarcodeScannerModal';
+import { BrakStockModal } from '@/components/seller/BrakStockModal';
 import { InventoryCountModal } from '@/components/seller/InventoryCountModal';
 import { KirimModal } from '@/components/seller/KirimModal';
 import { ProductFormModal, ProductPrefill } from '@/components/seller/ProductFormModal';
@@ -27,7 +28,14 @@ import { QuickAddModal } from '@/components/seller/QuickAddModal';
 import { StockHistoryModal } from '@/components/seller/StockHistoryModal';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { useShopAccess } from '@/lib/useIsShopOwner';
-import { Category, ExpiringItem, GlobalProduct, SellerVariant } from '@/lib/types';
+import {
+  Category,
+  ExpiringVariant,
+  GlobalProduct,
+  LowStockVariant,
+  PublicProductVariant,
+  SellerVariant,
+} from '@/lib/types';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 
 const UNIT_LABEL: Record<string, string> = {
@@ -42,7 +50,7 @@ function fmt(n: number): string {
   return n.toLocaleString('ru-RU').replace(/,/g, ' ');
 }
 
-type Tab = 'all' | 'expiring';
+type Tab = 'all' | 'expiring' | 'lowStock';
 
 export default function SellerInventoryScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
@@ -54,8 +62,9 @@ export default function SellerInventoryScreen() {
   const isOwner = access.isOwner;
   const [tab, setTab] = useState<Tab>('all');
   const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<SellerVariant | null>(null);
-  const [kirimFor, setKirimFor] = useState<SellerVariant | null>(null);
+  const [editing, setEditing] = useState<PublicProductVariant | null>(null);
+  const [kirimFor, setKirimFor] = useState<PublicProductVariant | null>(null);
+  const [brakFor, setBrakFor] = useState<PublicProductVariant | null>(null);
   const [historyFor, setHistoryFor] = useState<SellerVariant | null>(null);
   const [lowOnly, setLowOnly] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
@@ -141,23 +150,35 @@ export default function SellerInventoryScreen() {
       qc.invalidateQueries({ queryKey: ['variants', shopId] });
       setPrefill(null);
       setScannedBarcode('');
-      // The duplicate endpoint reuses createCustomProduct's response shape,
-      // which doesn't include the FIFO `cost` summary (only the listing
-      // endpoint computes it) — a brand-new duplicate always starts at 0
-      // stock, so a zeroed cost is accurate, not just a placeholder.
-      setEditing({ ...created, cost: created.cost ?? { avgCost: 0, nextCost: 0, stockValue: 0 } });
+      // `editing` only needs the PublicProductVariant fields ProductFormModal
+      // actually reads — no need to backfill the FIFO `cost` summary here.
+      setEditing(created);
       setFormOpen(true);
     },
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
+  // Tiered "Muddati o'tayotganlar" list (SPEC.md §26.2) — 🔴 expired / 🟠
+  // critical / 🟡 warning. Kept enabled regardless of the active tab so the
+  // tab button can show a live badge count without requiring a visit first.
   const expiringQuery = useQuery({
     queryKey: ['variants-expiring', shopId],
     queryFn: async () => {
-      const res = await api.get<ExpiringItem[]>(`/seller/shops/${shopId}/products/variants/expiring`);
+      const res = await api.get<ExpiringVariant[]>(`/seller/shops/${shopId}/products/expiring`);
       return res.data;
     },
-    enabled: tab === 'expiring',
+    enabled: !!shopId,
+    staleTime: 60_000,
+  });
+
+  // Tiered low-stock list (SPEC.md §30) — 🟠 critical / 🟡 warning.
+  const lowStockQuery = useQuery({
+    queryKey: ['variants-low-stock', shopId],
+    queryFn: async () => {
+      const res = await api.get<LowStockVariant[]>(`/seller/shops/${shopId}/products/low-stock`);
+      return res.data;
+    },
+    enabled: !!shopId,
     staleTime: 60_000,
   });
 
@@ -218,30 +239,55 @@ export default function SellerInventoryScreen() {
     }
   };
 
+  const expiringCount = expiringQuery.data?.length ?? 0;
+  const expiringUrgent = (expiringQuery.data ?? []).some((v) => v.tier === 'expired');
+  const lowStockCount = lowStockQuery.data?.length ?? 0;
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Tab switcher */}
       <View style={styles.tabRow}>
         <Pressable style={[styles.tabBtn, tab === 'all' && styles.tabBtnActive]} onPress={() => setTab('all')}>
           <Package size={15} color={tab === 'all' ? colors.text.onPrimary : colors.text.secondary} strokeWidth={2.2} />
-          <Text style={[styles.tabBtnText, tab === 'all' && styles.tabBtnTextActive]}>Barcha tovarlar</Text>
+          <Text style={[styles.tabBtnText, tab === 'all' && styles.tabBtnTextActive]}>Barchasi</Text>
         </Pressable>
         <Pressable style={[styles.tabBtn, tab === 'expiring' && styles.tabBtnActive]} onPress={() => setTab('expiring')}>
           <AlertTriangle size={15} color={tab === 'expiring' ? colors.text.onPrimary : colors.feedback.warning} strokeWidth={2.2} />
           <Text style={[styles.tabBtnText, tab === 'expiring' && styles.tabBtnTextActive]}>Muddatlar</Text>
+          {expiringCount > 0 && (
+            <View style={[styles.tabBadge, expiringUrgent && styles.tabBadgeUrgent]}>
+              <Text style={styles.tabBadgeText}>{expiringCount}</Text>
+            </View>
+          )}
         </Pressable>
-        <Pressable style={styles.bulkBtn} onPress={() => setBulkPriceOpen(true)}>
-          <Tag size={15} color={colors.brand.primary} strokeWidth={2.2} />
-          <Text style={styles.bulkBtnText}>Narx</Text>
-        </Pressable>
-        <Pressable style={styles.bulkBtn} onPress={() => router.push(`/seller/${shopId}/excel` as Href)}>
-          <FileSpreadsheet size={15} color={colors.brand.primary} strokeWidth={2.2} />
-          <Text style={styles.bulkBtnText}>Excel</Text>
+        <Pressable style={[styles.tabBtn, tab === 'lowStock' && styles.tabBtnActive]} onPress={() => setTab('lowStock')}>
+          <TrendingDown size={15} color={tab === 'lowStock' ? colors.text.onPrimary : colors.feedback.warning} strokeWidth={2.2} />
+          <Text style={[styles.tabBtnText, tab === 'lowStock' && styles.tabBtnTextActive]}>Kam qoldiq</Text>
+          {lowStockCount > 0 && (
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabBadgeText}>{lowStockCount}</Text>
+            </View>
+          )}
         </Pressable>
       </View>
 
       {tab === 'expiring' ? (
-        <ExpiringList data={expiringQuery.data ?? []} isLoading={expiringQuery.isLoading} />
+        <ExpiringList
+          data={expiringQuery.data ?? []}
+          isLoading={expiringQuery.isLoading}
+          onBrak={(v) => setBrakFor(v)}
+          onDiscount={(v) => {
+            setPrefill(null);
+            setEditing(v);
+            setFormOpen(true);
+          }}
+        />
+      ) : tab === 'lowStock' ? (
+        <LowStockList
+          data={lowStockQuery.data ?? []}
+          isLoading={lowStockQuery.isLoading}
+          onKirim={(v) => setKirimFor(v)}
+        />
       ) : (
       <>
       {/* Search + actions (always visible) */}
@@ -267,6 +313,12 @@ export default function SellerInventoryScreen() {
             onPress={() => setLowOnly((v) => !v)}
             style={[styles.lowChip, lowOnly && styles.lowChipActive]}>
             <Text style={[styles.lowChipText, lowOnly && styles.lowChipTextActive]}>Kam qolgan</Text>
+          </Pressable>
+          <Pressable onPress={() => setBulkPriceOpen(true)} style={styles.iconBtn}>
+            <Tag size={18} color={colors.brand.primary} strokeWidth={2.2} />
+          </Pressable>
+          <Pressable onPress={() => router.push(`/seller/${shopId}/excel` as Href)} style={styles.iconBtn}>
+            <FileSpreadsheet size={18} color={colors.brand.primary} strokeWidth={2.2} />
           </Pressable>
           <Pressable onPress={() => setScanOpen(true)} style={styles.iconBtn}>
             <ScanLine size={18} color={colors.brand.primary} strokeWidth={2.2} />
@@ -460,6 +512,13 @@ export default function SellerInventoryScreen() {
         onClose={() => setKirimFor(null)}
       />
 
+      <BrakStockModal
+        visible={!!brakFor}
+        shopId={shopId}
+        variant={brakFor}
+        onClose={() => setBrakFor(null)}
+      />
+
       <StockHistoryModal
         visible={!!historyFor}
         shopId={shopId}
@@ -481,7 +540,29 @@ export default function SellerInventoryScreen() {
   );
 }
 
-function ExpiringList({ data, isLoading }: { data: ExpiringItem[]; isLoading: boolean }) {
+// Theme only defines two alert tones (danger red, warning amber) — 🟠
+// critical and 🟡 warning share the amber tone and are told apart by their
+// emoji/label instead of a third distinct color (SPEC.md §26.2).
+const EXPIRY_TIER_META: Record<
+  ExpiringVariant['tier'],
+  { emoji: string; label: string; color: string; surface: string }
+> = {
+  expired: { emoji: '🔴', label: "Muddati o'tgan", color: colors.feedback.danger, surface: colors.feedback.dangerSurface },
+  critical: { emoji: '🟠', label: 'Kritik', color: colors.feedback.warning, surface: colors.feedback.warningSurface },
+  warning: { emoji: '🟡', label: 'Ogohlantirish', color: colors.feedback.warning, surface: colors.feedback.warningSurface },
+};
+
+function ExpiringList({
+  data,
+  isLoading,
+  onBrak,
+  onDiscount,
+}: {
+  data: ExpiringVariant[];
+  isLoading: boolean;
+  onBrak: (v: ExpiringVariant) => void;
+  onDiscount: (v: ExpiringVariant) => void;
+}) {
   if (isLoading) return <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />;
   if (!data.length) {
     return (
@@ -490,29 +571,125 @@ function ExpiringList({ data, isLoading }: { data: ExpiringItem[]; isLoading: bo
           <AlertTriangle size={28} color={colors.feedback.warning} strokeWidth={1.8} />
         </View>
         <Text style={styles.emptyTitle}>Muddatli tovar yo'q</Text>
-        <Text style={styles.dim}>Yaqin 30 kunda muddati tugaydigan tovarlar bu yerda ko'rinadi</Text>
+        <Text style={styles.dim}>Muddati o'tayotgan yoki tugagan tovarlar bu yerda ko'rinadi</Text>
       </View>
     );
   }
+
+  const tiers: ExpiringVariant['tier'][] = ['expired', 'critical', 'warning'];
+
   return (
     <ScrollView contentContainerStyle={styles.list}>
-      {data.map((item) => {
-        const urgent = item.daysToExpiry <= 2;
+      {tiers.map((tier) => {
+        const items = data.filter((v) => v.tier === tier);
+        if (!items.length) return null;
+        const meta = EXPIRY_TIER_META[tier];
         return (
-          <View key={item.batchId} style={[styles.card, urgent && styles.cardUrgent]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md }}>
-              <View style={[styles.expiryDaysBox, { backgroundColor: urgent ? colors.feedback.dangerSurface : colors.feedback.warningSurface }]}>
-                <Text style={[styles.expiryDaysNum, { color: urgent ? colors.feedback.danger : colors.feedback.warning }]}>
-                  {item.daysToExpiry}
-                </Text>
-                <Text style={[styles.expiryDaysLabel, { color: urgent ? colors.feedback.danger : colors.feedback.warning }]}>kun</Text>
+          <View key={tier} style={styles.tierGroup}>
+            <Text style={[styles.tierGroupTitle, { color: meta.color }]}>
+              {meta.emoji} {meta.label} ({items.length})
+            </Text>
+            {items.map((item) => (
+              <View key={item.id} style={[styles.card, { borderColor: meta.color }]}>
+                <View style={styles.cardMain}>
+                  <View style={[styles.expiryDaysBox, { backgroundColor: meta.surface }]}>
+                    <Text style={[styles.expiryDaysNum, { color: meta.color }]}>
+                      {Math.max(item.daysToExpiry, 0)}
+                    </Text>
+                    <Text style={[styles.expiryDaysLabel, { color: meta.color }]}>kun</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.unit}>
+                      Qoldiq: {item.stock} {UNIT_LABEL[item.unitType] ?? item.unitType} · Muddat:{' '}
+                      {new Date(item.expiryDate).toLocaleDateString('uz-UZ')}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.tierActions}>
+                  <Pressable style={styles.tierActionBtnDanger} onPress={() => onBrak(item)}>
+                    <Ban size={14} color={colors.feedback.danger} strokeWidth={2.2} />
+                    <Text style={styles.tierActionBtnDangerText}>Brak qil</Text>
+                  </Pressable>
+                  <Pressable style={styles.tierActionBtn} onPress={() => onDiscount(item)}>
+                    <Percent size={14} color={colors.brand.primary} strokeWidth={2.2} />
+                    <Text style={styles.tierActionBtnText}>Chegirma qo'y</Text>
+                  </Pressable>
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.unit}>Qoldiq: {item.quantityRemaining} ta</Text>
-                <Text style={styles.unit}>Muddat: {new Date(item.expiryDate).toLocaleDateString('uz-UZ')}</Text>
+            ))}
+          </View>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+const LOW_STOCK_TIER_META: Record<
+  LowStockVariant['tier'],
+  { emoji: string; label: string; color: string; surface: string }
+> = {
+  critical: { emoji: '🟠', label: 'Kritik', color: colors.feedback.danger, surface: colors.feedback.dangerSurface },
+  warning: { emoji: '🟡', label: 'Kam qoldi', color: colors.feedback.warning, surface: colors.feedback.warningSurface },
+};
+
+function LowStockList({
+  data,
+  isLoading,
+  onKirim,
+}: {
+  data: LowStockVariant[];
+  isLoading: boolean;
+  onKirim: (v: LowStockVariant) => void;
+}) {
+  if (isLoading) return <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />;
+  if (!data.length) {
+    return (
+      <View style={styles.empty}>
+        <View style={styles.emptyIcon}>
+          <TrendingDown size={28} color={colors.feedback.warning} strokeWidth={1.8} />
+        </View>
+        <Text style={styles.emptyTitle}>Kam qolgan tovar yo'q</Text>
+        <Text style={styles.dim}>Qoldig'i kam bo'lgan tovarlar bu yerda ko'rinadi</Text>
+      </View>
+    );
+  }
+
+  const tiers: LowStockVariant['tier'][] = ['critical', 'warning'];
+
+  return (
+    <ScrollView contentContainerStyle={styles.list}>
+      {tiers.map((tier) => {
+        const items = data.filter((v) => v.tier === tier);
+        if (!items.length) return null;
+        const meta = LOW_STOCK_TIER_META[tier];
+        return (
+          <View key={tier} style={styles.tierGroup}>
+            <Text style={[styles.tierGroupTitle, { color: meta.color }]}>
+              {meta.emoji} {meta.label} ({items.length})
+            </Text>
+            {items.map((item) => (
+              <View key={item.id} style={[styles.card, { borderColor: meta.color }]}>
+                <View style={styles.cardMain}>
+                  <View style={[styles.expiryDaysBox, { backgroundColor: meta.surface }]}>
+                    <Text style={[styles.expiryDaysNum, { color: meta.color }]}>{item.stock}</Text>
+                    <Text style={[styles.expiryDaysLabel, { color: meta.color }]}>ta</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.unit}>
+                      Chegara: {item.lowStockThreshold} {UNIT_LABEL[item.unitType] ?? item.unitType}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.tierActions}>
+                  <Pressable style={styles.tierActionBtn} onPress={() => onKirim(item)}>
+                    <PackagePlus size={14} color={colors.brand.primary} strokeWidth={2.2} />
+                    <Text style={styles.tierActionBtnText}>Kirim qilish</Text>
+                  </Pressable>
+                </View>
               </View>
-            </View>
+            ))}
           </View>
         );
       })}
@@ -648,6 +825,17 @@ const styles = StyleSheet.create({
   tabBtnActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
   tabBtnText: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
   tabBtnTextActive: { color: colors.text.onPrimary },
+  tabBadge: {
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    backgroundColor: colors.feedback.warning,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabBadgeUrgent: { backgroundColor: colors.feedback.danger },
+  tabBadgeText: { ...typography.caption, fontSize: 10, fontWeight: '800', color: colors.text.onPrimary },
   bulkBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -662,6 +850,40 @@ const styles = StyleSheet.create({
   bulkBtnText: { ...typography.caption, fontWeight: '700', color: colors.brand.primary },
   cardTopActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   cardUrgent: { borderColor: colors.feedback.danger, borderWidth: 1.5 },
+  tierGroup: { gap: spacing.sm },
+  tierGroupTitle: { ...typography.bodyStrong, fontWeight: '800', marginLeft: spacing.xs },
+  tierActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+  },
+  tierActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.brand.primarySurface,
+    borderWidth: 1,
+    borderColor: colors.brand.primaryBorder,
+  },
+  tierActionBtnText: { ...typography.caption, fontWeight: '700', color: colors.brand.primary },
+  tierActionBtnDanger: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.feedback.dangerSurface,
+    borderWidth: 1,
+    borderColor: colors.feedback.danger,
+  },
+  tierActionBtnDangerText: { ...typography.caption, fontWeight: '700', color: colors.feedback.danger },
   expiryDaysBox: {
     width: 52,
     height: 52,
