@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { useIsShopOwner } from '@/lib/useIsShopOwner';
@@ -152,6 +153,7 @@ export default function SellerOrderDetailScreen() {
           </View>
         </View>
         <Text style={styles.dateText}>{order.createdAt.slice(0, 16).replace('T', ' ')}</Text>
+        <AutoCancelCountdown createdAt={order.createdAt} status={order.status} />
 
         {order.status === 'delivering' && (
           <View style={styles.locationBadge}>

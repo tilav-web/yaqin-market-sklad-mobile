@@ -44,11 +44,21 @@ export default function CheckoutScreen() {
     },
   });
 
+  // The delivery zone/fee check must be run against the SELECTED delivery
+  // address's coordinates, not the device's live GPS — otherwise switching
+  // between saved addresses (Home/Work, possibly different delivery zones)
+  // never refetches the zone/fee check and shows stale data for the wrong
+  // address.
+  const selectedAddress = addressesQuery.data?.find((a) => a.id === selectedAddressId);
+  const zoneCheckCoords = selectedAddress
+    ? { latitude: selectedAddress.latitude, longitude: selectedAddress.longitude }
+    : coords;
+
   const shopQuery = useQuery({
-    queryKey: ['shop', shopId, coords?.latitude, coords?.longitude],
+    queryKey: ['shop', shopId, selectedAddressId, zoneCheckCoords?.latitude, zoneCheckCoords?.longitude],
     queryFn: async () => {
       const res = await api.get<PublicShop>(`/shops/${shopId}`, {
-        params: coords ? { lat: coords.latitude, lng: coords.longitude } : undefined,
+        params: zoneCheckCoords ? { lat: zoneCheckCoords.latitude, lng: zoneCheckCoords.longitude } : undefined,
       });
       return res.data;
     },

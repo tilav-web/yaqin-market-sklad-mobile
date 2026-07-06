@@ -19,6 +19,7 @@ import {
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
 import { useToast } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
 import { endOrderActivity, updateOrderActivity } from '@/lib/useOrderLiveActivity';
@@ -155,6 +156,7 @@ export default function OrderDetailScreen() {
 
   const canReview = order.status === 'delivered';
   const hasReturns = order.items.some((i) => i.returnedQuantity > 0);
+  const returnedTotal = order.items.reduce((sum, i) => sum + i.unitPrice * i.returnedQuantity, 0);
   const unreviewed = canReview ? order.items.filter((i) => !reviewed.has(i.productVariantId)) : [];
   const pendingRatings = Object.values(ratingDraft).filter((s) => s > 0).length;
 
@@ -181,6 +183,7 @@ export default function OrderDetailScreen() {
           <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
             <Text style={styles.statusText}>{STATUS_LABEL_UZ[order.status]}</Text>
           </View>
+          <AutoCancelCountdown createdAt={order.createdAt} status={order.status} />
         </View>
 
         {order.status !== 'cancelled' && (
@@ -285,13 +288,28 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
-        {/* Summary */}
+        {/* Summary — subTotal/total already reflect any partial return (the
+            server recalculates and saves them when items are returned), so
+            this always shows what the customer actually owes/paid. When
+            there was a return, call that out explicitly with the refunded
+            amount, derived from the per-item returnedQuantity already shown
+            above — not invented. */}
         <View style={styles.section}>
+          {hasReturns && (
+            <>
+              <Row
+                label="Qaytarilgan"
+                value={`− ${returnedTotal.toLocaleString()} so'm`}
+                tone="warning"
+              />
+              <View style={styles.divider} />
+            </>
+          )}
           <Row label="Mahsulotlar" value={`${order.subTotal.toLocaleString()} so'm`} />
           <Row label="Yetkazib berish" value={`${order.deliveryFee.toLocaleString()} so'm`} />
           <Row label="Masofa" value={`${order.distanceKm.toFixed(2)} km`} />
           <View style={styles.divider} />
-          <Row label="Jami" value={`${order.total.toLocaleString()} so'm`} bold />
+          <Row label={hasReturns ? "Yangi summa (qaytarishdan keyin)" : 'Jami'} value={`${order.total.toLocaleString()} so'm`} bold />
         </View>
 
         {/* Rating */}
@@ -448,11 +466,28 @@ function StarPicker({ value, onChange }: { readonly value: number; readonly onCh
   );
 }
 
-function Row({ label, value, bold }: { readonly label: string; readonly value: string; readonly bold?: boolean }) {
+function Row({
+  label,
+  value,
+  bold,
+  tone,
+}: {
+  readonly label: string;
+  readonly value: string;
+  readonly bold?: boolean;
+  readonly tone?: 'warning';
+}) {
   return (
     <View style={styles.row}>
       <Text style={[styles.rowLabel, bold && styles.rowLabelBold]}>{label}</Text>
-      <Text style={[styles.rowValue, bold && styles.rowValueBold]}>{value}</Text>
+      <Text
+        style={[
+          styles.rowValue,
+          bold && styles.rowValueBold,
+          tone === 'warning' && { color: colors.feedback.warning, fontWeight: '700' },
+        ]}>
+        {value}
+      </Text>
     </View>
   );
 }

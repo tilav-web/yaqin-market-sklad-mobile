@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
 import { EmptyState, useToast } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
 import { DeliveryRoute, Order, OrderStatus, STATUS_LABEL_UZ } from '@/lib/types';
@@ -222,6 +223,10 @@ export default function SellerOrdersScreen() {
                   </>
                 )}
               </View>
+
+              {item.status === 'new' && (
+                <AutoCancelCountdown createdAt={item.createdAt} status={item.status} />
+              )}
 
               {/* Accordion */}
               <Pressable
