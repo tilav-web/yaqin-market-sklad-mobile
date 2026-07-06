@@ -99,7 +99,15 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
   const save = useMutation({
     mutationFn: async () => {
       if (isEdit && editing) {
+        // Name/photo/description stay editable in the form in edit mode too —
+        // previously only price/discountPrice/lowStockThreshold were sent, so
+        // those edits were silently discarded on save. The server itself
+        // rejects name/photo/description edits when this shop doesn't own the
+        // shared catalogue product (surfaced via the existing error toast).
         await api.patch(`/seller/shops/${shopId}/products/variants/${editing.id}`, {
+          name: name.trim(),
+          photos,
+          description: description.trim() || undefined,
           price: Number(price),
           discountPrice: discountPrice ? Number(discountPrice) : null,
           lowStockThreshold: lowStock ? Number(lowStock) : undefined,

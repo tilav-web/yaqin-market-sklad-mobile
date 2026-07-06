@@ -21,8 +21,23 @@ import { useAuthStore } from '@/stores/auth';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
+/**
+ * Strip a leading country-code prefix a user might paste along with the
+ * number (e.g. copying "+998 90 123 45 67" or "998901234567" from another
+ * app) so pasting a full international-format number doesn't push the digit
+ * count past 9 and silently disable Continue. The field itself only ever
+ * accepts the 9 local digits after +998.
+ */
+function stripCountryPrefix(digits: string): string {
+  if (digits.startsWith('998') && digits.length > 9) return digits.slice(3);
+  // A lone leading "8" is the old domestic trunk prefix (8-90-...); only
+  // strip it when there are enough digits left to still be a full number.
+  if (digits.startsWith('8') && digits.length === 10) return digits.slice(1);
+  return digits;
+}
+
 function formatPhone(raw: string): string {
-  const d = raw.replace(/\D/g, '').slice(0, 9);
+  const d = stripCountryPrefix(raw.replace(/\D/g, '')).slice(0, 9);
   const parts = [d.slice(0, 2), d.slice(2, 5), d.slice(5, 7), d.slice(7, 9)].filter(Boolean);
   return parts.join(' ');
 }
@@ -34,7 +49,9 @@ export default function PhoneScreen() {
   const toast = useToast();
   const { tr, setLang, lang } = useTranslation();
 
-  const digits = raw.replace(/\D/g, '');
+  // Same stripping as the display formatter, so a pasted full international
+  // number validates and submits using just the 9 local digits.
+  const digits = stripCountryPrefix(raw.replace(/\D/g, '')).slice(0, 9);
   const isValid = digits.length === 9;
 
   async function handleSubmit() {
@@ -107,7 +124,10 @@ export default function PhoneScreen() {
                 placeholder={tr('auth.phonePlaceholder')}
                 placeholderTextColor={colors.text.hint}
                 autoFocus
-                maxLength={13}
+                // Generous enough that pasting a full "+998 90 123 45 67"
+                // (or similar with dashes/parens) isn't truncated by the
+                // native input before stripCountryPrefix() ever sees it.
+                maxLength={20}
               />
             </View>
             <View style={styles.helperRow}>
