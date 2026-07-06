@@ -171,6 +171,10 @@ export const translations = {
     'profile.guest.sub': 'Buyurtma berish va do\'kon ochish uchun kiring',
     'profile.openShopShort': 'Do\'kon ochish',
     'notifications.title': 'Bildirishnomalar',
+    'notifications.markAllRead': 'Hammasini o\'qilgan deb belgilash',
+    'notifications.empty.title': 'Bildirishnoma yo\'q',
+    'notifications.empty.desc': 'Yangi bildirishnomalar shu yerda ko\'rinadi',
+    'notification.notFound': 'Bildirishnoma topilmadi',
     'profile.staffRole': 'Xodim',
     'profile.section.account': 'Hisob',
     'profile.section.other': 'Boshqa',
@@ -256,6 +260,10 @@ export const translations = {
     'nav.newShop': 'Yangi do\'kon',
     'nav.returnItems': 'Qaytarish',
     'nav.favorites': 'Sevimlilar',
+
+    // Chat
+    'chat.empty': 'Hali xabar yo\'q. Birinchi bo\'lib yozing.',
+    'chat.placeholder': 'Xabar yozing…',
   },
 
   uz_cyrl: {
@@ -426,6 +434,10 @@ export const translations = {
     'profile.guest.sub': 'Буюртма бериш ва дўкон очиш учун киринг',
     'profile.openShopShort': 'Дўкон очиш',
     'notifications.title': 'Билдиришномалар',
+    'notifications.markAllRead': 'Ҳаммасини ўқилган деб белгилаш',
+    'notifications.empty.title': 'Билдиришнома йўқ',
+    'notifications.empty.desc': 'Янги билдиришномалар шу ерда кўринади',
+    'notification.notFound': 'Билдиришнома топилмади',
     'profile.staffRole': 'Ходим',
     'profile.section.account': 'Ҳисоб',
     'profile.section.other': 'Бошқа',
@@ -511,6 +523,10 @@ export const translations = {
     'nav.newShop': 'Янги дўкон',
     'nav.returnItems': 'Қайтариш',
     'nav.favorites': 'Севимлилар',
+
+    // Chat
+    'chat.empty': 'Ҳали хабар йўқ. Биринчи бўлиб ёзинг.',
+    'chat.placeholder': 'Хабар ёзинг…',
   },
 
   ru: {
@@ -681,6 +697,10 @@ export const translations = {
     'profile.guest.sub': 'Войдите, чтобы заказать и открыть магазин',
     'profile.openShopShort': 'Открыть магазин',
     'notifications.title': 'Уведомления',
+    'notifications.markAllRead': 'Отметить все как прочитанные',
+    'notifications.empty.title': 'Нет уведомлений',
+    'notifications.empty.desc': 'Новые уведомления появятся здесь',
+    'notification.notFound': 'Уведомление не найдено',
     'profile.staffRole': 'Сотрудник',
     'profile.section.account': 'Аккаунт',
     'profile.section.other': 'Прочее',
@@ -766,6 +786,10 @@ export const translations = {
     'nav.newShop': 'Новый магазин',
     'nav.returnItems': 'Возврат',
     'nav.favorites': 'Избранное',
+
+    // Chat
+    'chat.empty': 'Пока нет сообщений. Напишите первым.',
+    'chat.placeholder': 'Напишите сообщение…',
   },
 } as const;
 

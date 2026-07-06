@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useToast } from '@/components/ui/Toast';
+import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { ChatMessage, ChatTemplate } from '@/lib/types';
@@ -26,6 +27,7 @@ import { haptics } from '@/utils/haptics';
 
 export default function ChatScreen() {
   const { orderId, shopId } = useLocalSearchParams<{ orderId: string; shopId?: string }>();
+  const { tr } = useTranslation();
   const qc = useQueryClient();
   const toast = useToast();
   const myId = useAuthStore((s) => s.user?.id);
@@ -125,7 +127,7 @@ export default function ChatScreen() {
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
-              <Text style={styles.empty}>Hali xabar yo‘q. Birinchi bo‘lib yozing.</Text>
+              <Text style={styles.empty}>{tr('chat.empty')}</Text>
             }
             renderItem={({ item }) => {
               const mine = item.senderUserId === myId;
@@ -178,7 +180,7 @@ export default function ChatScreen() {
             style={styles.input}
             value={text}
             onChangeText={setText}
-            placeholder="Xabar yozing…"
+            placeholder={tr('chat.placeholder')}
             placeholderTextColor={colors.text.hint}
             multiline
             onSubmitEditing={handleSend}

@@ -5,6 +5,7 @@ import { ActivityIndicator, FlatList, Image, Pressable, RefreshControl, StyleShe
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/ui';
+import { useTranslation } from '@/i18n';
 import { api, resolveMedia } from '@/lib/api';
 import { AppNotification } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -27,6 +28,7 @@ function timeAgo(iso: string): string {
 }
 
 export default function NotificationsScreen() {
+  const { tr } = useTranslation();
   const qc = useQueryClient();
 
   const listQuery = useQuery({
@@ -86,7 +88,7 @@ export default function NotificationsScreen() {
       {hasUnread ? (
         <Pressable style={styles.markAllBtn} onPress={() => markAll.mutate()}>
           <CheckCheck size={16} color={colors.brand.primary} strokeWidth={2.3} />
-          <Text style={styles.markAllText}>Hammasini o‘qilgan deb belgilash</Text>
+          <Text style={styles.markAllText}>{tr('notifications.markAllRead')}</Text>
         </Pressable>
       ) : null}
 
@@ -108,7 +110,7 @@ export default function NotificationsScreen() {
           listQuery.isLoading ? (
             <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />
           ) : (
-            <EmptyState icon={Bell} title="Bildirishnoma yo‘q" description="Yangi bildirishnomalar shu yerda ko‘rinadi" />
+            <EmptyState icon={Bell} title={tr('notifications.empty.title')} description={tr('notifications.empty.desc')} />
           )
         }
         renderItem={({ item }) => {

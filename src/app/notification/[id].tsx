@@ -5,6 +5,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View, useWindowDimensi
 import RenderHtml from 'react-native-render-html';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { AppNotification } from '@/lib/types';
 import { colors, spacing, typography } from '@/theme';
@@ -16,6 +17,7 @@ function formatDate(iso: string) {
 export default function NotificationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { width } = useWindowDimensions();
+  const { tr } = useTranslation();
   const qc = useQueryClient();
 
   const query = useQuery({
@@ -57,7 +59,7 @@ export default function NotificationDetailScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>Bildirishnoma topilmadi</Text>
+          <Text style={styles.emptyText}>{tr('notification.notFound')}</Text>
         </View>
       </SafeAreaView>
     );
