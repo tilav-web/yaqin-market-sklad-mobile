@@ -1,11 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useGlobalSearchParams } from 'expo-router';
-import { CheckCircle, Star } from 'lucide-react-native';
+import { AlertTriangle, CheckCircle, Star } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
+import { EmptyState } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useIsShopOwner } from '@/lib/useIsShopOwner';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 interface PrimePlan {
@@ -32,21 +35,26 @@ export default function SellerPrimeScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
   const qc = useQueryClient();
   const [yearly, setYearly] = useState(false);
+  // Prime billing is the seller's own identity, not shop-scoped — only the
+  // owner has a seller/prime subscription to manage here.
+  const isOwner = useIsShopOwner(shopId);
 
   const plansQ = useQuery<PrimePlan[]>({
     queryKey: ['prime-plans'],
+    enabled: isOwner !== false,
     queryFn: async () => (await api.get('/seller/prime/plans')).data,
   });
 
+  // IMPORTANT: a fetch error here must NOT be treated as "not subscribed" —
+  // `GET /seller/prime/subscription` returns `null` (not an error) when there
+  // genuinely is no active subscription, so any thrown error is a real
+  // fetch/server problem. Swallowing it into `null` previously risked
+  // showing the "Obuna bo'lish" button — and a duplicate charge — on an
+  // already-active Prime shop during a transient outage.
   const subQ = useQuery<ActiveSub | null>({
     queryKey: ['prime-sub', shopId],
-    queryFn: async () => {
-      try {
-        return (await api.get('/seller/prime/subscription')).data;
-      } catch {
-        return null;
-      }
-    },
+    enabled: isOwner !== false,
+    queryFn: async () => (await api.get('/seller/prime/subscription')).data,
   });
 
   const subscribe = useMutation({
@@ -64,6 +72,35 @@ export default function SellerPrimeScreen() {
   });
 
   const activeSub = subQ.data;
+
+  if (isOwner === false) {
+    return <OwnerOnlyNotice />;
+  }
+
+  if (subQ.isLoading || plansQ.isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />
+      </SafeAreaView>
+    );
+  }
+
+  if (subQ.isError || plansQ.isError) {
+    return (
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <EmptyState
+          icon={AlertTriangle}
+          title="Obuna holati yuklanmadi"
+          description="Xavfsizlik uchun holat aniq bo'lmaguncha obuna bo'lish taklif etilmaydi. Internetni tekshirib, qayta urinib ko'ring."
+          actionLabel="Qayta urinish"
+          onAction={() => {
+            void subQ.refetch();
+            void plansQ.refetch();
+          }}
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -97,7 +134,13 @@ export default function SellerPrimeScreen() {
 
         {/* Plans */}
         {(plansQ.data ?? []).map((plan) => {
-          const price = yearly && plan.yearlyPrice ? plan.yearlyPrice : plan.monthlyPrice;
+          // A plan may have no yearly price at all — fall back to monthly
+          // billing for it specifically rather than mislabeling the monthly
+          // price "/ yil" right before charging (the server does the same
+          // fallback when computing the actual charge, see prime.service.ts).
+          const yearlyAvailable = !!plan.yearlyPrice;
+          const effectiveYearly = yearly && yearlyAvailable;
+          const price = effectiveYearly ? plan.yearlyPrice! : plan.monthlyPrice;
           const isCurrent = activeSub?.planId === plan.id;
           return (
             <View key={plan.id} style={[styles.planCard, isCurrent && styles.planCardActive]}>
@@ -110,7 +153,10 @@ export default function SellerPrimeScreen() {
                   </View>
                 )}
               </View>
-              <Text style={styles.planPrice}>{fmt(price)} / {yearly ? 'yil' : 'oy'}</Text>
+              <Text style={styles.planPrice}>{fmt(price)} / {effectiveYearly ? 'yil' : 'oy'}</Text>
+              {yearly && !yearlyAvailable && (
+                <Text style={styles.planDesc}>Bu tarifda yillik variant yo'q — oylik narxda davom etadi</Text>
+              )}
               <Text style={styles.planComm}>Komissiya: {plan.commissionRate}%</Text>
               {plan.description && (
                 <Text style={styles.planDesc}>{plan.description}</Text>
@@ -122,7 +168,7 @@ export default function SellerPrimeScreen() {
                   onPress={() =>
                     Alert.alert(
                       'Obuna bo\'lish',
-                      `${plan.name} tarifiga ${fmt(price)} to'laysiz. Davom etasizmi?`,
+                      `${plan.name} tarifiga ${fmt(price)} / ${effectiveYearly ? 'yil' : 'oy'} to'laysiz. Davom etasizmi?`,
                       [
                         { text: 'Bekor', style: 'cancel' },
                         { text: 'Ha', onPress: () => subscribe.mutate({ planId: plan.id }) },

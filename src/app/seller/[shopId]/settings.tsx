@@ -4,7 +4,9 @@ import { BarChart3, Bell, BookOpen, ChevronRight, type LucideIcon, MessageSquare
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { api } from '@/lib/api';
+import { useIsShopOwner } from '@/lib/useIsShopOwner';
 import { PublicShop, ShopCompleteness } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
@@ -17,10 +19,15 @@ import { haptics } from '@/utils/haptics';
 export default function SellerHubScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
   const qc = useQueryClient();
+  // This whole hub — and every row inside it — fetches or links to owner-only
+  // data (GET /seller/shops/:id 403s for staff). Skip the calls once we're
+  // sure this user isn't the owner and show an explanation instead.
+  const isOwner = useIsShopOwner(shopId);
 
   const shopQuery = useQuery({
     queryKey: ['seller-shop', shopId],
     staleTime: 60_000,
+    enabled: isOwner !== false,
     queryFn: async () => {
       const res = await api.get<PublicShop>(`/seller/shops/${shopId}`);
       return res.data;
@@ -41,11 +48,16 @@ export default function SellerHubScreen() {
       return res.data;
     },
     staleTime: 5 * 60_000,
+    enabled: isOwner !== false,
   });
 
   const shop = shopQuery.data;
   const isOpen = !!shop?.isOpenManual;
   const completeness = completenessQuery.data;
+
+  if (isOwner === false) {
+    return <OwnerOnlyNotice />;
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>

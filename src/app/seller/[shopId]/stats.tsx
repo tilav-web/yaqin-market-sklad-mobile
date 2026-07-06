@@ -5,7 +5,10 @@ import { useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EmptyState } from '@/components/ui';
+import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { api } from '@/lib/api';
+import { useIsShopOwner } from '@/lib/useIsShopOwner';
 import { ExpiringItem, ReorderItem, SellerStats, StatsPeriod } from '@/lib/types';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 
@@ -22,10 +25,14 @@ const PERIODS: { key: StatsPeriod; label: string }[] = [
 export default function SellerStatsScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
   const [period, setPeriod] = useState<StatsPeriod>('7d');
+  // Revenue analytics are owner-only server-side — skip the calls once
+  // confirmed non-owner and explain why instead of a raw 403.
+  const isOwner = useIsShopOwner(shopId);
 
   const statsQuery = useQuery({
     queryKey: ['stats', shopId, period],
     staleTime: 5 * 60_000,
+    enabled: isOwner !== false,
     queryFn: async () => {
       const res = await api.get<SellerStats>(`/seller/shops/${shopId}/analytics/stats?period=${period}`);
       return res.data;
@@ -35,6 +42,7 @@ export default function SellerStatsScreen() {
   const reorderQuery = useQuery({
     queryKey: ['reorder', shopId],
     staleTime: 5 * 60_000,
+    enabled: isOwner !== false,
     queryFn: async () => {
       const res = await api.get<ReorderItem[]>(`/seller/shops/${shopId}/analytics/reorder`);
       return res.data;
@@ -44,11 +52,16 @@ export default function SellerStatsScreen() {
   const expiringQuery = useQuery({
     queryKey: ['expiring', shopId],
     staleTime: 5 * 60_000,
+    enabled: isOwner !== false,
     queryFn: async () => {
       const res = await api.get<ExpiringItem[]>(`/seller/shops/${shopId}/analytics/expiring?days=30`);
       return res.data;
     },
   });
+
+  if (isOwner === false) {
+    return <OwnerOnlyNotice />;
+  }
 
   const s = statsQuery.data;
 
@@ -84,8 +97,16 @@ export default function SellerStatsScreen() {
           ))}
         </View>
 
-        {statsQuery.isLoading || !s ? (
+        {statsQuery.isLoading ? (
           <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />
+        ) : statsQuery.isError || !s ? (
+          <EmptyState
+            icon={AlertTriangle}
+            title="Hisobot yuklanmadi"
+            description="Internetni tekshirib, qayta urinib ko'ring"
+            actionLabel="Qayta urinish"
+            onAction={() => void statsQuery.refetch()}
+          />
         ) : (
           <>
             {/* KPI cards */}

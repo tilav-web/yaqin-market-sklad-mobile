@@ -25,6 +25,7 @@ import { ProductFormModal, ProductPrefill } from '@/components/seller/ProductFor
 import { QuickAddModal } from '@/components/seller/QuickAddModal';
 import { StockHistoryModal } from '@/components/seller/StockHistoryModal';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
+import { useIsShopOwner } from '@/lib/useIsShopOwner';
 import { Category, ExpiringItem, GlobalProduct, SellerVariant } from '@/lib/types';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 
@@ -45,6 +46,10 @@ type Tab = 'all' | 'expiring';
 export default function SellerInventoryScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
   const qc = useQueryClient();
+  // Permanent product delete is owner-only server-side (ensureShopOwner) —
+  // everything else on this screen (view/add/edit/receive) is granted per
+  // staff permission, so only the delete action is hidden for non-owners.
+  const isOwner = useIsShopOwner(shopId);
   const [tab, setTab] = useState<Tab>('all');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<SellerVariant | null>(null);
@@ -353,16 +358,18 @@ export default function SellerInventoryScreen() {
                   <Pressable style={styles.historyBtn} onPress={() => setHistoryFor(item)}>
                     <History size={15} color={colors.text.secondary} strokeWidth={2.2} />
                   </Pressable>
-                  <Pressable
-                    style={styles.delBtn}
-                    onPress={() =>
-                      Alert.alert("O'chirish", `"${item.name}" ni o'chirasizmi?`, [
-                        { text: 'Bekor', style: 'cancel' },
-                        { text: "O'chirish", style: 'destructive', onPress: () => remove.mutate(item.id) },
-                      ])
-                    }>
-                    <Trash2 size={15} color={colors.text.danger} strokeWidth={2.2} />
-                  </Pressable>
+                  {isOwner !== false && (
+                    <Pressable
+                      style={styles.delBtn}
+                      onPress={() =>
+                        Alert.alert("O'chirish", `"${item.name}" ni o'chirasizmi?`, [
+                          { text: 'Bekor', style: 'cancel' },
+                          { text: "O'chirish", style: 'destructive', onPress: () => remove.mutate(item.id) },
+                        ])
+                      }>
+                      <Trash2 size={15} color={colors.text.danger} strokeWidth={2.2} />
+                    </Pressable>
+                  )}
                 </View>
               </View>
 

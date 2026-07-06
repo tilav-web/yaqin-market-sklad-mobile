@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
+import { useIsShopOwner } from '@/lib/useIsShopOwner';
 import { useAlarmState } from '@/stores/alarmState';
 import { StaffMember } from '@/constants/staffPermissions';
 import { Order, OrderStatus, STATUS_LABEL_UZ } from '@/lib/types';
@@ -80,6 +81,8 @@ export default function SellerOrderDetailScreen() {
   });
 
   const order = orderQuery.data;
+  // Blocking a customer is owner-only server-side.
+  const isOwner = useIsShopOwner(order?.shopId);
 
   useCourierLocationEmitter(orderId, order?.status === 'delivering');
 
@@ -258,7 +261,7 @@ export default function SellerOrderDetailScreen() {
         ) : null}
 
         {/* Destructive zone — kept far below the primary action */}
-        {(cancellable || order.user) ? (
+        {(cancellable || (order.user && isOwner !== false)) ? (
           <View style={styles.dangerZone}>
             {cancellable ? (
               <Pressable
@@ -272,7 +275,7 @@ export default function SellerOrderDetailScreen() {
                 <Text style={styles.cancelText}>Buyurtmani bekor qilish</Text>
               </Pressable>
             ) : null}
-            {order.user ? (
+            {order.user && isOwner !== false ? (
               <Pressable
                 style={styles.blockBtn}
                 onPress={() =>

@@ -17,8 +17,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LocationPickerModal, PickedLocation } from '@/components/LocationPickerModal';
 import { ImageUploader } from '@/components/seller/ImageUploader';
+import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { WorkingHoursModal } from '@/components/seller/WorkingHoursModal';
 import { api, extractErrorMessage } from '@/lib/api';
+import { useIsShopOwner } from '@/lib/useIsShopOwner';
 import { PublicShop } from '@/lib/types';
 import { AlarmMode, useAlarmSettingsStore, useShopAlarm } from '@/stores/alarmSettings';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -75,6 +77,9 @@ export default function ShopSettingsScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
   const router = useRouter();
   const qc = useQueryClient();
+  // Shop settings (name, address, delivery zone/pricing) are owner-only
+  // server-side — skip the fetch once confirmed and explain why instead.
+  const isOwner = useIsShopOwner(shopId);
 
   const alarm = useShopAlarm(shopId);
   const setAlarmEnabled = useAlarmSettingsStore((s) => s.setEnabled);
@@ -101,6 +106,7 @@ export default function ShopSettingsScreen() {
 
   const shopQuery = useQuery({
     queryKey: ['seller-shop', shopId],
+    enabled: isOwner !== false,
     queryFn: async () => {
       const res = await api.get<PublicShop>(`/seller/shops/${shopId}`);
       const s = res.data;
@@ -147,6 +153,10 @@ export default function ShopSettingsScreen() {
     },
     onError: (e) => Alert.alert('Xatolik', extractErrorMessage(e)),
   });
+
+  if (isOwner === false) {
+    return <OwnerOnlyNotice />;
+  }
 
   if (shopQuery.isLoading) {
     return (

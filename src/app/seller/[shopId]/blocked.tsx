@@ -4,8 +4,10 @@ import { ShieldBan, ShieldCheck } from 'lucide-react-native';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { EmptyState } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
+import { useIsShopOwner } from '@/lib/useIsShopOwner';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 interface BlockedUser {
@@ -17,14 +19,21 @@ interface BlockedUser {
 export default function BlockedUsersScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
   const qc = useQueryClient();
+  // Block/unblock-user and the blocked-users list are owner-only server-side.
+  const isOwner = useIsShopOwner(shopId);
 
   const blockedQuery = useQuery({
     queryKey: ['blocked', shopId],
+    enabled: isOwner !== false,
     queryFn: async () => {
       const res = await api.get<BlockedUser[]>(`/seller/shops/${shopId}/blocked-users`);
       return res.data;
     },
   });
+
+  if (isOwner === false) {
+    return <OwnerOnlyNotice />;
+  }
 
   const unblock = useMutation({
     mutationFn: async (userId: string) => {

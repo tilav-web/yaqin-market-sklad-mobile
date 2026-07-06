@@ -32,11 +32,16 @@ const LABELS: Record<string, string> = {
 const SLIDE_SPRING = { damping: 18, stiffness: 220, mass: 0.7 };
 const PRESS_SPRING = { damping: 15, stiffness: 350 };
 
-export function SellerTabBar({ state, navigation }: BottomTabBarProps) {
+interface Props extends BottomTabBarProps {
+  /** Route names to omit from the bar — e.g. owner-only tabs for staff. */
+  readonly hiddenRoutes?: readonly string[];
+}
+
+export function SellerTabBar({ state, navigation, hiddenRoutes }: Props) {
   const insets = useSafeAreaInsets();
   const [barWidth, setBarWidth] = useState(0);
 
-  const tabs = state.routes.filter((r) => ICONS[r.name]);
+  const tabs = state.routes.filter((r) => ICONS[r.name] && !hiddenRoutes?.includes(r.name));
   const count = tabs.length;
   const activeKey = state.routes[state.index]?.key;
   const activeIndex = Math.max(

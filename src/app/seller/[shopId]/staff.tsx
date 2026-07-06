@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 
+import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import {
   PERMISSION_GROUPS,
@@ -25,6 +26,7 @@ import {
   StaffPreset,
 } from '@/constants/staffPermissions';
 import { api, extractErrorMessage } from '@/lib/api';
+import { useIsShopOwner } from '@/lib/useIsShopOwner';
 
 interface InviteResp {
   token: string;
@@ -36,10 +38,14 @@ export default function StaffScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
   const qc = useQueryClient();
   const [invite, setInvite] = useState<InviteResp | null>(null);
+  // Staff management is owner-only server-side — skip the call once confirmed
+  // this user isn't the owner and explain why instead of a raw 403.
+  const isOwner = useIsShopOwner(shopId);
 
   const staffQuery = useQuery({
     queryKey: ['shop-staff', shopId],
     staleTime: 60_000,
+    enabled: isOwner !== false,
     queryFn: async () => {
       const res = await api.get<StaffMember[]>(`/seller/shops/${shopId}/staff`);
       return res.data;
@@ -64,6 +70,10 @@ export default function StaffScreen() {
   });
 
   const active = (staffQuery.data ?? []).filter((s) => s.isActive);
+
+  if (isOwner === false) {
+    return <OwnerOnlyNotice />;
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>

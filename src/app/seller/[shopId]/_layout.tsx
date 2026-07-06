@@ -8,6 +8,12 @@ import { SellerTabBar } from '@/components/SellerTabBar';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import { AlarmMode } from '@/stores/alarmSettings';
 import { PendingOrder, useOrderAlarm } from '@/lib/useOrderAlarm';
+import { useIsShopOwner } from '@/lib/useIsShopOwner';
+
+// Bottom-tab routes that hit owner-only endpoints server-side (staff
+// management, the settings hub — which itself fetches the owner-only shop
+// detail). Hidden for staff so they never tap into a screen that 403s.
+const OWNER_ONLY_ROUTES = ['staff', 'settings'];
 
 function BackButton() {
   const onBack = () => {
@@ -45,6 +51,13 @@ function makeHubLeft(id: string) {
 export default function SellerLayout() {
   const { shopId } = useLocalSearchParams<{ shopId: string }>();
   const { pending, acknowledge, alarm } = useOrderAlarm(shopId);
+  // undefined while unresolved: treat as "assume owner" here so we don't flash
+  // missing tabs at an actual owner on first render — the far more common case.
+  const isOwner = useIsShopOwner(shopId);
+  const hiddenRoutes = useMemo(
+    () => (isOwner === false ? OWNER_ONLY_ROUTES : []),
+    [isOwner],
+  );
 
   const handleOpen = useCallback(() => {
     if (!pending) return;
@@ -54,8 +67,10 @@ export default function SellerLayout() {
 
   // Stable: SellerTabBar must be rendered as JSX (not called directly) to keep hooks alive
   const tabBar = useCallback(
-    (props: React.ComponentProps<typeof SellerTabBar>) => <SellerTabBar {...props} />,
-    [],
+    (props: React.ComponentProps<typeof SellerTabBar>) => (
+      <SellerTabBar {...props} hiddenRoutes={hiddenRoutes} />
+    ),
+    [hiddenRoutes],
   );
 
   // Only recreated when shopId changes (useLocalSearchParams won't fire on tab switch)

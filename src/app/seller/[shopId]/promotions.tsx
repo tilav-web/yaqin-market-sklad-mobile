@@ -17,7 +17,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { api, extractErrorMessage } from '@/lib/api';
+import { useIsShopOwner } from '@/lib/useIsShopOwner';
 import { Category, Promotion } from '@/lib/types';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 
@@ -43,9 +45,14 @@ export default function PromotionsScreen() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<'active' | 'scheduled' | 'ended'>('active');
   const [createOpen, setCreateOpen] = useState(false);
+  // The client has no UI yet to grant staff a promotions permission (see
+  // constants/staffPermissions.ts — the group doesn't exist there even though
+  // the server model supports it), so in practice this is owner-only today.
+  const isOwner = useIsShopOwner(shopId);
 
   const promoQuery = useQuery({
     queryKey: ['promotions', shopId, filter],
+    enabled: isOwner !== false,
     queryFn: async () => {
       const res = await api.get<Promotion[]>(`/seller/shops/${shopId}/promotions`, {
         params: { status: filter },
@@ -78,6 +85,10 @@ export default function PromotionsScreen() {
     { key: 'scheduled' as const, label: 'Rejalashtirilgan' },
     { key: 'ended' as const, label: 'Tugagan' },
   ];
+
+  if (isOwner === false) {
+    return <OwnerOnlyNotice />;
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>

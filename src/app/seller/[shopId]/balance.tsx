@@ -15,7 +15,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { api, extractErrorMessage } from '@/lib/api';
+import { useIsShopOwner } from '@/lib/useIsShopOwner';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 interface SellerBalance {
@@ -56,16 +58,21 @@ export default function SellerBalanceScreen() {
   const [cardNum, setCardNum] = useState('');
   const [cardName, setCardName] = useState('');
   const [showWithdraw, setShowWithdraw] = useState(false);
+  // Balance/withdrawal is scoped to the seller (owner) identity, not to shop
+  // staff — skip the calls once confirmed non-owner and explain why.
+  const isOwner = useIsShopOwner(shopId);
 
   const balQ = useQuery<SellerBalance>({
     queryKey: ['seller-balance', shopId],
     staleTime: 60_000,
+    enabled: isOwner !== false,
     queryFn: async () => (await api.get('/seller/balance')).data,
   });
 
   const txQ = useQuery<SellerTx[]>({
     queryKey: ['seller-txs', shopId],
     staleTime: 60_000,
+    enabled: isOwner !== false,
     queryFn: async () => (await api.get('/seller/balance/transactions')).data,
   });
 
@@ -88,6 +95,10 @@ export default function SellerBalanceScreen() {
   });
 
   const bal = balQ.data;
+
+  if (isOwner === false) {
+    return <OwnerOnlyNotice />;
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
