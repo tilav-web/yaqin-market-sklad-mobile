@@ -125,6 +125,7 @@ export const translations = {
     // Orders
     'orders.title': 'Buyurtmalarim',
     'orders.empty': 'Hozircha buyurtmalar yo\'q',
+    'orders.emptyDesc': 'Buyurtma berganingizdan keyin shu yerda ko\'rinadi',
     'orders.statusNew': 'Yangi',
     'orders.statusAccepted': 'Qabul qilindi',
     'orders.statusPreparing': 'Yig\'ilmoqda',
@@ -367,6 +368,7 @@ export const translations = {
     // Orders
     'orders.title': 'Буюртмаларим',
     'orders.empty': 'Ҳозирча буюртмалар йўқ',
+    'orders.emptyDesc': 'Буюртма берганингиздан кейин шу ерда кўринади',
     'orders.statusNew': 'Янги',
     'orders.statusAccepted': 'Қабул қилинди',
     'orders.statusPreparing': 'Йиғилмоқда',
@@ -609,6 +611,7 @@ export const translations = {
     // Orders
     'orders.title': 'Мои заказы',
     'orders.empty': 'Пока нет заказов',
+    'orders.emptyDesc': 'Появится здесь после оформления заказа',
     'orders.statusNew': 'Новый',
     'orders.statusAccepted': 'Принят',
     'orders.statusPreparing': 'Собирается',

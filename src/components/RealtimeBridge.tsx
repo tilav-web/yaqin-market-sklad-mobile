@@ -2,7 +2,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
 import { useToast } from '@/components/ui';
-import { STATUS_LABEL_UZ } from '@/lib/types';
+import { tr } from '@/i18n';
+import { ORDER_STATUS_KEY } from '@/lib/types';
 import type { OrderStatus } from '@/lib/types';
 import { registerForPush } from '@/lib/push';
 import { getSocket } from '@/lib/socket';
@@ -41,7 +42,7 @@ export function RealtimeBridge() {
       };
       const onUpdated = (e: OrderEvent) => {
         refresh(e);
-        toast.show(`#${e.orderNumber}: ${STATUS_LABEL_UZ[e.status]}`, { variant: 'info' });
+        toast.show(`#${e.orderNumber}: ${tr(ORDER_STATUS_KEY[e.status])}`, { variant: 'info' });
       };
       const onNew = (e: OrderEvent) => refresh(e);
 

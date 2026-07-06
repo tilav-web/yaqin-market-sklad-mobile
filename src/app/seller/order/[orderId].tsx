@@ -7,12 +7,13 @@ import { ActivityIndicator, Alert, Image, Linking, Modal, Pressable, ScrollView,
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
+import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { useIsShopOwner } from '@/lib/useIsShopOwner';
 import { useAlarmState } from '@/stores/alarmState';
 import { StaffMember } from '@/constants/staffPermissions';
-import { Order, OrderStatus, STATUS_LABEL_UZ } from '@/lib/types';
+import { ORDER_STATUS_KEY, Order, OrderStatus } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -64,6 +65,7 @@ function fmt(n: number): string {
 
 export default function SellerOrderDetailScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
+  const { tr } = useTranslation();
   const qc = useQueryClient();
   const [assignOpen, setAssignOpen] = useState(false);
   const clearIfMatch = useAlarmState((s) => s.clearIfMatch);
@@ -149,7 +151,7 @@ export default function SellerOrderDetailScreen() {
         <View style={styles.headRow}>
           <Text style={styles.orderNum}>#{order.orderNumber}</Text>
           <View style={[styles.statusBadge, { backgroundColor: colors.status[order.status] }]}>
-            <Text style={styles.statusText}>{STATUS_LABEL_UZ[order.status]}</Text>
+            <Text style={styles.statusText}>{tr(ORDER_STATUS_KEY[order.status])}</Text>
           </View>
         </View>
         <Text style={styles.dateText}>{order.createdAt.slice(0, 16).replace('T', ' ')}</Text>

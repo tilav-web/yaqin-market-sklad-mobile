@@ -1,3 +1,5 @@
+import type { TranslationKey } from '@/i18n/translations';
+
 export interface GeoJsonPolygon {
   type: 'Polygon';
   coordinates: [number, number][][]; // [[[lng, lat], ...]] — GeoJSON standard
@@ -455,11 +457,17 @@ export interface ProductOffer {
   isOpen: boolean;
 }
 
-export const STATUS_LABEL_UZ: Record<OrderStatus, string> = {
-  new: 'Yangi',
-  accepted: 'Qabul qilindi',
-  preparing: 'Yig\'ilmoqda',
-  delivering: 'Yetkazib berilmoqda',
-  delivered: 'Yetkazildi',
-  cancelled: 'Bekor qilindi',
+/**
+ * Translation key for each order status — pass to `tr()` (from
+ * `useTranslation()`) rather than a hardcoded label, so the status text
+ * follows the user's chosen language (uz/uz_cyrl/ru). Replaces the old
+ * `STATUS_LABEL_UZ` hardcoded-Uzbek map.
+ */
+export const ORDER_STATUS_KEY: Record<OrderStatus, TranslationKey> = {
+  new: 'orders.statusNew',
+  accepted: 'orders.statusAccepted',
+  preparing: 'orders.statusPreparing',
+  delivering: 'orders.statusDelivering',
+  delivered: 'orders.statusDelivered',
+  cancelled: 'orders.statusCancelled',
 };

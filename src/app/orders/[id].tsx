@@ -24,7 +24,8 @@ import { useToast } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
 import { endOrderActivity, updateOrderActivity } from '@/lib/useOrderLiveActivity';
 import { useOrderSocket } from '@/lib/useOrderSocket';
-import { Order, OrderStatus, STATUS_LABEL_UZ } from '@/lib/types';
+import { useTranslation } from '@/i18n';
+import { ORDER_STATUS_KEY, Order, OrderStatus } from '@/lib/types';
 import { OrderActivityProps } from '@/widgets/order-activity';
 import { useCartStore } from '@/stores/cart';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
@@ -34,6 +35,7 @@ const FLOW: OrderStatus[] = ['new', 'accepted', 'preparing', 'delivering', 'deli
 
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { tr } = useTranslation();
   const qc = useQueryClient();
   const toast = useToast();
 
@@ -181,7 +183,7 @@ export default function OrderDetailScreen() {
         <View style={styles.headerCard}>
           <Text style={styles.orderNum}>#{order.orderNumber}</Text>
           <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-            <Text style={styles.statusText}>{STATUS_LABEL_UZ[order.status]}</Text>
+            <Text style={styles.statusText}>{tr(ORDER_STATUS_KEY[order.status])}</Text>
           </View>
           <AutoCancelCountdown createdAt={order.createdAt} status={order.status} />
         </View>
@@ -211,7 +213,7 @@ export default function OrderDetailScreen() {
                   </View>
                   <View style={styles.tlBody}>
                     <Text style={[styles.tlLabel, active && styles.tlLabelActive]}>
-                      {STATUS_LABEL_UZ[s]}
+                      {tr(ORDER_STATUS_KEY[s])}
                     </Text>
                     {event && (
                       <Text style={styles.tlTime}>

@@ -7,8 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
 import { EmptyState, useToast } from '@/components/ui';
+import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
-import { DeliveryRoute, Order, OrderStatus, STATUS_LABEL_UZ } from '@/lib/types';
+import { DeliveryRoute, ORDER_STATUS_KEY, Order, OrderStatus } from '@/lib/types';
 import { useShopRealtime } from '@/lib/useShopRealtime';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
@@ -38,6 +39,7 @@ function fmt(n: number): string {
 
 export default function SellerOrdersScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
+  const { tr } = useTranslation();
   const qc = useQueryClient();
   const toast = useToast();
   const [filter, setFilter] = useState<Filter>('new');
@@ -192,7 +194,7 @@ export default function SellerOrdersScreen() {
                 </Pressable>
                 <View style={styles.headerRight}>
                   <View style={[styles.statusBadge, { backgroundColor: colors.status[item.status] }]}>
-                    <Text style={styles.statusText}>{STATUS_LABEL_UZ[item.status]}</Text>
+                    <Text style={styles.statusText}>{tr(ORDER_STATUS_KEY[item.status])}</Text>
                   </View>
                   {(item.status === 'new' || item.status === 'accepted') && (
                     <Pressable

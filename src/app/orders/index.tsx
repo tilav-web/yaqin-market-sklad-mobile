@@ -5,11 +5,13 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/ui';
+import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
-import { Order, STATUS_LABEL_UZ } from '@/lib/types';
+import { ORDER_STATUS_KEY, Order } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 export default function OrdersScreen() {
+  const { tr } = useTranslation();
   const ordersQuery = useQuery({
     queryKey: ['orders', 'mine'],
     queryFn: async () => {
@@ -32,17 +34,13 @@ export default function OrdersScreen() {
           ) : ordersQuery.isError ? (
             <EmptyState
               icon={WifiOff}
-              title="Nimadir xato ketdi"
-              description="Internetni tekshirib, qayta urinib ko‘ring"
-              actionLabel="Qayta urinish"
+              title={tr('common.error.title')}
+              description={tr('common.error.desc')}
+              actionLabel={tr('common.retry')}
               onAction={() => void ordersQuery.refetch()}
             />
           ) : (
-            <EmptyState
-              icon={Package}
-              title="Hozircha buyurtmalar yo‘q"
-              description="Buyurtma berganingizdan keyin shu yerda ko‘rinadi"
-            />
+            <EmptyState icon={Package} title={tr('orders.empty')} description={tr('orders.emptyDesc')} />
           )
         }
         renderItem={({ item }) => (
@@ -52,7 +50,7 @@ export default function OrdersScreen() {
             <View style={styles.cardHeader}>
               <Text style={styles.orderNumber}>#{item.orderNumber}</Text>
               <View style={[styles.statusBadge, { backgroundColor: colors.status[item.status] }]}>
-                <Text style={styles.statusText}>{STATUS_LABEL_UZ[item.status]}</Text>
+                <Text style={styles.statusText}>{tr(ORDER_STATUS_KEY[item.status])}</Text>
               </View>
             </View>
             <View style={styles.shopRow}>
