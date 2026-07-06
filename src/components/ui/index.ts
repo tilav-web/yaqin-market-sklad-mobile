@@ -3,6 +3,7 @@ export type { BadgeTone, OrderStatus } from './Badge';
 export { Button } from './Button';
 export type { ButtonSize, ButtonVariant } from './Button';
 export { Card } from './Card';
+export { DatePickerModal } from './DatePickerModal';
 export { EmptyState } from './EmptyState';
 export { Input } from './Input';
 export { Skeleton } from './Skeleton';

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useGlobalSearchParams } from 'expo-router';
-import { Plus, Tag } from 'lucide-react-native';
+import { CalendarDays, Plus, Tag } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
+import { DatePickerModal } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
 import { useIsShopOwner } from '@/lib/useIsShopOwner';
@@ -205,6 +206,7 @@ function CreatePromotionModal({
   const [startAt, setStartAt] = useState('');
   const [endAt, setEndAt] = useState('');
   const [hasEndDate, setHasEndDate] = useState(true);
+  const [pickingDate, setPickingDate] = useState<'start' | 'end' | null>(null);
 
   const create = useMutation({
     mutationFn: async () => {
@@ -281,15 +283,25 @@ function CreatePromotionModal({
               </>
             )}
 
-            <Text style={styles.fieldLabel}>Boshlanish sanasi (YYYY-MM-DD)</Text>
-            <TextInput style={styles.textField} value={startAt} onChangeText={setStartAt} placeholder="2024-01-01" placeholderTextColor={colors.text.hint} />
+            <Text style={styles.fieldLabel}>Boshlanish sanasi</Text>
+            <Pressable style={styles.dateField} onPress={() => setPickingDate('start')}>
+              <CalendarDays size={16} color={colors.brand.primary} strokeWidth={2.2} />
+              <Text style={[styles.dateFieldText, !startAt && styles.dateFieldPlaceholder]}>
+                {startAt || 'Sanani tanlang'}
+              </Text>
+            </Pressable>
 
             <View style={styles.switchRow}>
               <Text style={styles.fieldLabel}>Tugash sanasi bor</Text>
               <Switch value={hasEndDate} onValueChange={setHasEndDate} trackColor={{ true: colors.brand.primary }} />
             </View>
             {hasEndDate && (
-              <TextInput style={styles.textField} value={endAt} onChangeText={setEndAt} placeholder="2024-12-31" placeholderTextColor={colors.text.hint} />
+              <Pressable style={styles.dateField} onPress={() => setPickingDate('end')}>
+                <CalendarDays size={16} color={colors.brand.primary} strokeWidth={2.2} />
+                <Text style={[styles.dateFieldText, !endAt && styles.dateFieldPlaceholder]}>
+                  {endAt || 'Sanani tanlang'}
+                </Text>
+              </Pressable>
             )}
 
             <Pressable
@@ -308,6 +320,18 @@ function CreatePromotionModal({
           </ScrollView>
         </View>
       </View>
+
+      <DatePickerModal
+        visible={pickingDate !== null}
+        value={pickingDate === 'start' ? startAt : endAt}
+        title={pickingDate === 'start' ? 'Boshlanish sanasi' : 'Tugash sanasi'}
+        onClose={() => setPickingDate(null)}
+        onConfirm={(iso) => {
+          if (pickingDate === 'start') setStartAt(iso);
+          else setEndAt(iso);
+          setPickingDate(null);
+        }}
+      />
     </Modal>
   );
 }
@@ -403,6 +427,19 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: colors.bg.surfaceMuted,
   },
+  dateField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    backgroundColor: colors.bg.surfaceMuted,
+  },
+  dateFieldText: { ...typography.body, color: colors.text.primary },
+  dateFieldPlaceholder: { color: colors.text.hint },
   radioRow: {
     flexDirection: 'row',
     alignItems: 'center',

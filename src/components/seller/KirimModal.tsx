@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { PackagePlus, X } from 'lucide-react-native';
+import { CalendarDays, PackagePlus, X } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   Alert,
@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DatePickerModal } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
 import { SellerVariant } from '@/lib/types';
@@ -38,6 +39,7 @@ export function KirimModal({ visible, shopId, variant, onClose }: Props) {
   const [costPrice, setCostPrice] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [supplierName, setSupplierName] = useState('');
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const reset = () => {
     setQuantity('');
@@ -115,13 +117,12 @@ export function KirimModal({ visible, shopId, variant, onClose }: Props) {
             </Field>
 
             <Field label="Muddati (ixtiyoriy)">
-              <TextInput
-                style={styles.input}
-                value={expiryDate}
-                onChangeText={setExpiryDate}
-                placeholder="YYYY-MM-DD (masalan 2027-01-15)"
-                placeholderTextColor={colors.text.hint}
-              />
+              <Pressable style={styles.dateInput} onPress={() => setDatePickerOpen(true)}>
+                <CalendarDays size={16} color={colors.brand.primary} strokeWidth={2.2} />
+                <Text style={[styles.dateInputText, !expiryDate && styles.dateInputPlaceholder]}>
+                  {expiryDate || 'Sanani tanlang'}
+                </Text>
+              </Pressable>
             </Field>
 
             <Field label="Yetkazib beruvchi (ixtiyoriy)">
@@ -159,6 +160,17 @@ export function KirimModal({ visible, shopId, variant, onClose }: Props) {
           </Pressable>
         </View>
       </SafeAreaView>
+
+      <DatePickerModal
+        visible={datePickerOpen}
+        value={expiryDate}
+        title="Muddati"
+        onClose={() => setDatePickerOpen(false)}
+        onConfirm={(iso) => {
+          setExpiryDate(iso);
+          setDatePickerOpen(false);
+        }}
+      />
     </Modal>
   );
 }
@@ -219,6 +231,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border.default,
   },
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.bg.surface,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+  },
+  dateInputText: { ...typography.body, color: colors.text.primary },
+  dateInputPlaceholder: { color: colors.text.hint },
   preview: {
     backgroundColor: colors.brand.primarySurface,
     borderRadius: radius.md,
