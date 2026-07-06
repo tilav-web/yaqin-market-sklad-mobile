@@ -2,6 +2,7 @@ import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } fro
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+import { queryClient } from './queryClient';
 import { tokenStorage } from './storage';
 
 const ENV_API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -74,6 +75,13 @@ async function refreshAccess(): Promise<string | null> {
         { refreshToken },
       );
       await tokenStorage.save(res.data.accessToken, res.data.refreshToken);
+      // The access token silently rotated — re-authenticate the realtime socket
+      // with it and reconnect, otherwise it keeps using the stale token until a
+      // full re-login and realtime updates die silently in the background.
+      // Dynamic import avoids a circular top-level import (socket.ts imports
+      // API_URL from this module).
+      const { reconnectSocket } = await import('./socket');
+      void reconnectSocket();
       return res.data.accessToken;
     } catch (err) {
       // Only clear tokens when the server definitively rejects the refresh token
@@ -81,6 +89,11 @@ async function refreshAccess(): Promise<string | null> {
       // the user out — the session is still valid, connectivity is the problem.
       if (axios.isAxiosError(err) && err.response?.status === 401) {
         await tokenStorage.clear();
+        // Refresh token is dead — this is a forced logout. Drop cached queries
+        // and tear down the socket so the next login never flashes stale data.
+        queryClient.clear();
+        const { disconnectSocket } = await import('./socket');
+        disconnectSocket();
       }
       return null;
     } finally {

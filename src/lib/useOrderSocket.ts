@@ -20,6 +20,12 @@ export function useOrderSocket(orderId: string | undefined) {
   useEffect(() => {
     if (!orderId) return;
     let cancelled = false;
+    // Named reference so cleanup removes only THIS hook's listener —
+    // `.off('courier:location')` with no handler wipes every listener for that
+    // event on the shared socket singleton, including other mounted screens'.
+    const onLocation = (data: CourierLocation) => {
+      if (!cancelled) setCourierLocation(data);
+    };
 
     void getSocket().then((socket) => {
       if (cancelled) return;
@@ -27,16 +33,14 @@ export function useOrderSocket(orderId: string | undefined) {
         socket.emit('join:order', orderId);
         joined.current = true;
       }
-      socket.on('courier:location', (data: CourierLocation) => {
-        if (!cancelled) setCourierLocation(data);
-      });
+      socket.on('courier:location', onLocation);
     });
 
     return () => {
       cancelled = true;
       joined.current = false;
       void getSocket().then((socket) => {
-        socket.off('courier:location');
+        socket.off('courier:location', onLocation);
       });
     };
   }, [orderId]);
