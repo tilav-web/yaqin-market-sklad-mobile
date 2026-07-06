@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { ChevronRight, ShoppingCart, Store, Trash2 } from 'lucide-react-native';
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { resolveMedia } from '@/lib/api';
@@ -12,6 +12,7 @@ import { haptics } from '@/utils/haptics';
 
 export default function CartsTab() {
   const carts = useCartStore((s) => s.carts);
+  const hasHydrated = useCartStore((s) => s.hasHydrated);
   const clearShop = useCartStore((s) => s.clearShop);
   const requireAuth = useRequireAuth();
   const entries = Object.entries(carts).filter(([, lines]) => lines.length > 0);
@@ -25,7 +26,13 @@ export default function CartsTab() {
         )}
       </View>
 
-      {entries.length === 0 ? (
+      {!hasHydrated ? (
+        // Avoid flashing "cart is empty" before AsyncStorage finishes loading
+        // the persisted cart on cold start.
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color={colors.brand.primary} />
+        </View>
+      ) : entries.length === 0 ? (
         <EmptyState
           icon={ShoppingCart}
           title="Savatlaringiz bo‘sh"
@@ -110,6 +117,7 @@ const styles = StyleSheet.create({
   },
   title: { ...typography.h2 },
   subtitle: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: spacing['4xl'] },
   list: { paddingHorizontal: layout.screenPadding, paddingBottom: spacing['3xl'], gap: spacing.md },
   card: {
     backgroundColor: colors.bg.surface,

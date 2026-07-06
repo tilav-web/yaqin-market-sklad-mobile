@@ -39,10 +39,14 @@ export function LocationHeader({ onPress }: Props) {
   const { tr } = useTranslation();
   const selected = useLocationStore((s) => s.selectedAddress);
   const loading = useLocationStore((s) => s.loading);
+  const hasHydrated = useLocationStore((s) => s.hasHydrated);
   const coords = useEffectiveCoords();
 
-  const isLoading = loading && !coords;
-  const label = pickLabel(selected, !!coords, tr('home.locationLoading'));
+  // Before the persisted `selectedAddress` finishes loading from
+  // AsyncStorage, treat it the same as "still loading" rather than flashing
+  // the GPS/"no address" fallback and then swapping to the saved address.
+  const isLoading = (loading && !coords) || !hasHydrated;
+  const label = hasHydrated ? pickLabel(selected, !!coords, tr('home.locationLoading')) : tr('home.locationLoading');
 
   return (
     <Pressable

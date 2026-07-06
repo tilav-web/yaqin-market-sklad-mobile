@@ -17,14 +17,22 @@ export const DEFAULT_ALARM: ShopAlarm = { enabled: true, mode: 'long' };
 
 interface AlarmState {
   byShop: Record<string, ShopAlarm>;
+  /** True once the persisted alarm settings finished loading from AsyncStorage. */
+  hasHydrated: boolean;
+  setHasHydrated: (v: boolean) => void;
   setEnabled: (shopId: string, enabled: boolean) => void;
   setMode: (shopId: string, mode: AlarmMode) => void;
+  /** Drop per-shop alarm prefs on sign-out — a different seller logging in on
+   *  this device shouldn't inherit the previous account's shop settings. */
+  reset: () => void;
 }
 
 export const useAlarmSettingsStore = create<AlarmState>()(
   persist(
     (set) => ({
       byShop: {},
+      hasHydrated: false,
+      setHasHydrated: (v) => set({ hasHydrated: v }),
       setEnabled: (shopId, enabled) =>
         set((s) => ({
           byShop: { ...s.byShop, [shopId]: { ...(s.byShop[shopId] ?? DEFAULT_ALARM), enabled } },
@@ -33,11 +41,15 @@ export const useAlarmSettingsStore = create<AlarmState>()(
         set((s) => ({
           byShop: { ...s.byShop, [shopId]: { ...(s.byShop[shopId] ?? DEFAULT_ALARM), mode } },
         })),
+      reset: () => set({ byShop: {} }),
     }),
     {
       name: 'yaqin-order-alarm',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (s) => ({ byShop: s.byShop }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     },
   ),
 );

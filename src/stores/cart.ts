@@ -14,6 +14,9 @@ export const EMPTY_CART: readonly CartLine[] = [];
 interface CartState {
   // Map of shopId -> CartLine[]
   carts: Record<string, CartLine[]>;
+  /** True once the persisted cart has finished loading from AsyncStorage. */
+  hasHydrated: boolean;
+  setHasHydrated: (v: boolean) => void;
   addItem: (line: CartLine) => void;
   removeItem: (shopId: string, variantId: string) => void;
   updateQty: (shopId: string, variantId: string, qty: number) => void;
@@ -26,6 +29,10 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       carts: {},
+      hasHydrated: false,
+      setHasHydrated(v) {
+        set({ hasHydrated: v });
+      },
 
       addItem(line) {
         set((state) => {
@@ -92,6 +99,14 @@ export const useCartStore = create<CartState>()(
     {
       name: 'yaqin-cart-v1',
       storage: createJSONStorage(() => AsyncStorage),
+      // Bump `version` and add a real `migrate` whenever the persisted shape
+      // changes, so future schema changes don't silently wipe carts.
+      version: 1,
+      migrate: (persisted) => persisted as CartState,
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
+      partialize: (s) => ({ carts: s.carts }),
     },
   ),
 );

@@ -1,10 +1,11 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import { WifiOff } from 'lucide-react-native';
 import { useEffect } from 'react';
-import { ActivityIndicator, StatusBar, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RealtimeBridge } from '@/components/RealtimeBridge';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -12,7 +13,27 @@ import { useTranslation } from '@/i18n';
 import { registerForPush, routeFromNotificationData } from '@/lib/push';
 import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/stores/auth';
-import { colors } from '@/theme';
+import { colors, radius, spacing, typography } from '@/theme';
+
+/** Shown when a stored session couldn't be verified due to a network/server
+ * error (not a rejected token) — the user may still be logged in, this just
+ * offers a manual retry instead of silently treating them as logged out. */
+function OfflineBanner() {
+  const hydrate = useAuthStore((s) => s.hydrate);
+  const insets = useSafeAreaInsets();
+  const { tr } = useTranslation();
+  return (
+    <View style={[styles.offlineBanner, { top: insets.top + spacing.sm }]} pointerEvents="box-none">
+      <View style={styles.offlineCard}>
+        <WifiOff size={16} color={colors.feedback.warning} strokeWidth={2.4} />
+        <Text style={styles.offlineText}>{tr('common.error.desc')}</Text>
+        <Pressable onPress={() => void hydrate()} hitSlop={8}>
+          <Text style={styles.offlineRetry}>{tr('common.retry')}</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
 
 function RootNavigator() {
   const status = useAuthStore((s) => s.status);
@@ -63,6 +84,7 @@ function RootNavigator() {
   return (
     <>
       {status === 'authenticated' && <RealtimeBridge />}
+      {status === 'offline' && <OfflineBanner />}
       <Stack
         screenOptions={{
           headerShown: true,
@@ -120,4 +142,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.bg.surface,
   },
+  offlineBanner: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  offlineCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.feedback.warningSurface,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.feedback.warning,
+  },
+  offlineText: { ...typography.caption, color: colors.feedback.warning, fontWeight: '600', flexShrink: 1 },
+  offlineRetry: { ...typography.caption, color: colors.feedback.warning, fontWeight: '800' },
 });
