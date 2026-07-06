@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useGlobalSearchParams } from 'expo-router';
-import { AlertTriangle, ClipboardCheck, History, Minus, MoreVertical, Package, PackagePlus, Pencil, Plus, ScanLine, Search, Tag, Trash2 } from 'lucide-react-native';
+import { type Href, router, useGlobalSearchParams } from 'expo-router';
+import { AlertTriangle, ClipboardCheck, FileSpreadsheet, History, Minus, MoreVertical, Package, PackagePlus, Pencil, Plus, ScanLine, Search, Tag, Trash2 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -26,7 +26,7 @@ import { ProductFormModal, ProductPrefill } from '@/components/seller/ProductFor
 import { QuickAddModal } from '@/components/seller/QuickAddModal';
 import { StockHistoryModal } from '@/components/seller/StockHistoryModal';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
-import { useIsShopOwner } from '@/lib/useIsShopOwner';
+import { useShopAccess } from '@/lib/useIsShopOwner';
 import { Category, ExpiringItem, GlobalProduct, SellerVariant } from '@/lib/types';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 
@@ -50,7 +50,8 @@ export default function SellerInventoryScreen() {
   // Permanent product delete is owner-only server-side (ensureShopOwner) —
   // everything else on this screen (view/add/edit/receive) is granted per
   // staff permission, so only the delete action is hidden for non-owners.
-  const isOwner = useIsShopOwner(shopId);
+  const access = useShopAccess(shopId);
+  const isOwner = access.isOwner;
   const [tab, setTab] = useState<Tab>('all');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<SellerVariant | null>(null);
@@ -126,6 +127,29 @@ export default function SellerInventoryScreen() {
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
+  // Duplicate a variant (SPEC.md §24.1) — server returns the new variant
+  // already named "<original> — nusxa" with stock 0; open it straight in the
+  // edit form so the seller can adjust price/photo/etc. before saving.
+  const duplicate = useMutation({
+    mutationFn: async (variantId: string) => {
+      const res = await api.post<SellerVariant>(
+        `/seller/shops/${shopId}/products/variants/${variantId}/duplicate`,
+      );
+      return res.data;
+    },
+    onSuccess: (created) => {
+      qc.invalidateQueries({ queryKey: ['variants', shopId] });
+      setPrefill(null);
+      setScannedBarcode('');
+      // The duplicate endpoint reuses createCustomProduct's response shape,
+      // which doesn't include the FIFO `cost` summary (only the listing
+      // endpoint computes it) — a brand-new duplicate always starts at 0
+      // stock, so a zeroed cost is accurate, not just a placeholder.
+      setEditing({ ...created, cost: created.cost ?? { avgCost: 0, nextCost: 0, stockValue: 0 } });
+      setFormOpen(true);
+    },
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
+  });
 
   const expiringQuery = useQuery({
     queryKey: ['variants-expiring', shopId],
@@ -138,9 +162,12 @@ export default function SellerInventoryScreen() {
   });
 
   const openVariantMenu = (item: SellerVariant) => {
-    Alert.alert(item.name, undefined, [
-      { text: 'Bekor', style: 'cancel' },
-    ]);
+    const options: Array<{ text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }> = [];
+    if (access.has('inventory.product.create')) {
+      options.push({ text: 'Nusxa ko‘chir', onPress: () => duplicate.mutate(item.id) });
+    }
+    options.push({ text: 'Bekor', style: 'cancel' });
+    Alert.alert(item.name, undefined, options);
   };
 
   // Add a product WITHOUT a barcode (the scanner's escape hatch).
@@ -206,6 +233,10 @@ export default function SellerInventoryScreen() {
         <Pressable style={styles.bulkBtn} onPress={() => setBulkPriceOpen(true)}>
           <Tag size={15} color={colors.brand.primary} strokeWidth={2.2} />
           <Text style={styles.bulkBtnText}>Narx</Text>
+        </Pressable>
+        <Pressable style={styles.bulkBtn} onPress={() => router.push(`/seller/${shopId}/excel` as Href)}>
+          <FileSpreadsheet size={15} color={colors.brand.primary} strokeWidth={2.2} />
+          <Text style={styles.bulkBtnText}>Excel</Text>
         </Pressable>
       </View>
 
