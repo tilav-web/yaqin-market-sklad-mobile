@@ -123,6 +123,7 @@ export default function SellerLayout() {
         <Tabs.Screen name="inventory" options={{ title: 'Sklad' }} />
         <Tabs.Screen name="excel" options={{ title: 'Excel import/eksport' }} />
         <Tabs.Screen name="debt" options={{ title: 'Qarz daftar' }} />
+        <Tabs.Screen name="payables" options={{ title: 'Majburiyatlar' }} />
         <Tabs.Screen name="staff" options={{ title: 'Xodimlar' }} />
         <Tabs.Screen name="settings" options={{ title: 'Sozlamalar' }} />
         <Tabs.Screen name="shop-settings" options={{ title: "Do'kon sozlamalari", headerLeft: hubLeft }} />

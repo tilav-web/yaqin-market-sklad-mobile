@@ -1,5 +1,5 @@
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs/types';
-import { ClipboardList, LucideIcon, NotebookText, Package, Settings, Users } from 'lucide-react-native';
+import { ClipboardList, LucideIcon, NotebookText, Package, Settings, Users, Wallet } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
@@ -17,6 +17,7 @@ const ICONS: Record<string, LucideIcon> = {
   orders: ClipboardList,
   inventory: Package,
   debt: NotebookText,
+  payables: Wallet,
   staff: Users,
   settings: Settings,
 };
@@ -25,6 +26,7 @@ const LABELS: Record<string, string> = {
   orders: 'Buyurtmalar',
   inventory: 'Sklad',
   debt: 'Qarz',
+  payables: 'Majbur.',
   staff: 'Xodimlar',
   settings: 'Sozlamalar',
 };

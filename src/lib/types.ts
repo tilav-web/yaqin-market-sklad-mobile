@@ -362,6 +362,70 @@ export interface DebtSummary {
   customers: number;
 }
 
+// ---- Do'kon majburiyatlari (payables — do'konning tashqi kreditorlarga qarzlari) ----
+export type PayableCategory = 'supplier' | 'rent' | 'utility' | 'loan' | 'salary' | 'other';
+
+export interface PayableAccount {
+  id: string;
+  name: string;
+  category: PayableCategory;
+  phone: string | null;
+  totalCharged: number;
+  totalPaid: number;
+  balance: number;
+  lastActivityAt: string | null;
+  nearestDueDate: string | null;
+}
+
+export interface SupplierAccount {
+  id: string;
+  shopId: string;
+  name: string;
+  category: PayableCategory;
+  phone: string | null;
+  note: string | null;
+  isArchived: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PayableCharge {
+  id: string;
+  shopId: string;
+  accountId: string;
+  amount: number;
+  description: string | null;
+  dueDate: string | null;
+  note: string | null;
+  createdByUserId: string | null;
+  createdAt: string;
+}
+
+export interface PayablePayment {
+  id: string;
+  shopId: string;
+  accountId: string;
+  amount: number;
+  note: string | null;
+  createdByUserId: string | null;
+  createdAt: string;
+}
+
+export interface PayableAccountDetail {
+  account: SupplierAccount;
+  totalCharged: number;
+  totalPaid: number;
+  balance: number;
+  charges: PayableCharge[];
+  payments: PayablePayment[];
+}
+
+export interface PayableSummary {
+  outstanding: number;
+  creditors: number;
+  overdue: number;
+}
+
 export interface AppNotification {
   id: string;
   title: string;
