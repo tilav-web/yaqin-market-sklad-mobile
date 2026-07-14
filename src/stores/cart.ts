@@ -42,8 +42,14 @@ export const useCartStore = create<CartState>()(
           if (idx === -1) {
             next = [...existing, line];
           } else {
+            // Take the FRESH line's price/name/photo (whatever the product
+            // looks like right now), just add onto the existing quantity —
+            // otherwise a product added twice keeps showing its price from
+            // the first add, even if it changed (discount ended, etc.) in
+            // between, and checkout's total would silently disagree with
+            // what the server actually charges.
             next = existing.map((l, i) =>
-              i === idx ? { ...l, quantity: l.quantity + line.quantity } : l,
+              i === idx ? { ...line, quantity: l.quantity + line.quantity } : l,
             );
           }
           return { carts: { ...state.carts, [line.shopId]: next } };

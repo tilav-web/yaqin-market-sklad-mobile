@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect, useGlobalSearchParams } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -70,6 +70,16 @@ export default function StaffScreen() {
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
+  // The QR is only valid 10 minutes — without a ticking clock the countdown
+  // text was computed once at open and never changed, so the owner had no
+  // idea it had expired until a scan failed.
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    if (!invite) return;
+    const id = setInterval(() => setNowTick(Date.now()), 15_000);
+    return () => clearInterval(id);
+  }, [invite]);
+
   const active = (staffQuery.data ?? []).filter((s) => s.isActive);
 
   if (isOwner === false) {
@@ -119,7 +129,11 @@ export default function StaffScreen() {
             <Text style={styles.qrSub}>
               Xodim bu QR ni ilova orqali skanlasin
               {invite
-                ? ` (${Math.max(1, Math.round((new Date(invite.expiresAt).getTime() - Date.now()) / 60000))} daqiqa amal qiladi)`
+                ? (() => {
+                    const msLeft = new Date(invite.expiresAt).getTime() - nowTick;
+                    if (msLeft <= 0) return ' — muddati tugadi, yangisini yarating';
+                    return ` (${Math.max(1, Math.round(msLeft / 60000))} daqiqa amal qiladi)`;
+                  })()
                 : ''}
             </Text>
             <View style={styles.qrBox}>
@@ -127,8 +141,13 @@ export default function StaffScreen() {
                 <QRCode value={`yaqinmarket://staff/join?token=${invite.token}`} size={220} />
               )}
             </View>
-            <Pressable style={styles.qrRegen} onPress={() => inviteMutation.mutate()}>
-              <Text style={styles.qrRegenText}>Yangi QR</Text>
+            <Pressable
+              style={styles.qrRegen}
+              onPress={() => inviteMutation.mutate()}
+              disabled={inviteMutation.isPending}>
+              <Text style={styles.qrRegenText}>
+                {inviteMutation.isPending ? 'Yaratilmoqda…' : 'Yangi QR'}
+              </Text>
             </Pressable>
             <Pressable
               style={styles.qrClose}

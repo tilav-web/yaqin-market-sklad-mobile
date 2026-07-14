@@ -25,7 +25,7 @@ import { api, extractErrorMessage } from '@/lib/api';
 import { endOrderActivity, updateOrderActivity } from '@/lib/useOrderLiveActivity';
 import { useOrderSocket } from '@/lib/useOrderSocket';
 import { useTranslation } from '@/i18n';
-import { ORDER_STATUS_KEY, Order, OrderStatus } from '@/lib/types';
+import { ORDER_STATUS_KEY, Order, OrderStatus, PublicProductVariant } from '@/lib/types';
 import { OrderActivityProps } from '@/widgets/order-activity';
 import { useCartStore } from '@/stores/cart';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
@@ -175,18 +175,34 @@ export default function OrderDetailScreen() {
 
   const canReorder = order.status === 'delivered' || order.status === 'cancelled';
 
-  const handleReorder = () => {
+  const handleReorder = async () => {
     haptics.medium();
     const shopId = order.shopId;
     const shopName = order.shop?.name ?? '';
+
+    // order.items carries this order's HISTORICAL price/no photo — cart
+    // merging now trusts the newest addItem() call as the current truth
+    // (fixes a stale-price bug elsewhere), so reordering must feed it
+    // today's actual price, not what was charged last time.
+    let current: PublicProductVariant[] = [];
+    try {
+      const res = await api.get<PublicProductVariant[]>(`/catalog/shops/${shopId}/products`);
+      current = res.data;
+    } catch {
+      // Fall back to historical data below rather than blocking reorder entirely.
+    }
+    const currentById = new Map(current.map((v) => [v.id, v]));
+
     for (const it of order.items) {
+      const live = currentById.get(it.productVariantId);
       addItem({
         variantId: it.productVariantId,
         shopId,
         shopName,
         productName: it.productName,
-        unitPrice: it.unitPrice,
+        unitPrice: live ? live.discountPrice ?? live.price : it.unitPrice,
         quantity: it.quantity,
+        photoUrl: live?.photos[0] ?? it.productVariant?.photos[0],
       });
     }
     router.push(`/shop/${shopId}`);
