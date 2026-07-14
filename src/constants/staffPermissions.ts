@@ -33,6 +33,8 @@ export const ALL_STAFF_PERMISSIONS = [
   'shop.settings.view',
   // debt ledger (qarz daftar)
   'debt.manage',
+  // payables — shop's own debts to external creditors (ta'minotchi/ijara/kredit)
+  'payables.manage',
   // reviews
   'reviews.view',
   // promotions
@@ -80,6 +82,7 @@ export const PRESET_PERMISSIONS: Record<Exclude<StaffPreset, 'custom'>, StaffPer
     'shop.toggle_open',
     'shop.settings.view',
     'debt.manage',
+    'payables.manage',
     'promotions.view',
     'promotions.manage',
   ],
@@ -163,6 +166,10 @@ export const PERMISSION_GROUPS: { title: string; items: { key: string; label: st
   {
     title: 'Qarz daftar',
     items: [{ key: 'debt.manage', label: 'Qarz yozish va to‘lov qabul qilish' }],
+  },
+  {
+    title: 'Kontragent qarzlari',
+    items: [{ key: 'payables.manage', label: 'Ta’minotchi/ijara qarzlarini boshqarish' }],
   },
   {
     title: 'Do‘kon',
