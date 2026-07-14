@@ -1,12 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { AppState } from 'react-native';
 
 import { useToast } from '@/components/ui';
 import { tr } from '@/i18n';
 import { ORDER_STATUS_KEY } from '@/lib/types';
 import type { OrderStatus } from '@/lib/types';
 import { registerForPush } from '@/lib/push';
-import { getSocket } from '@/lib/socket';
+import { getSocket, reconnectSocket } from '@/lib/socket';
 
 interface OrderEvent {
   orderId: string;
@@ -27,6 +28,18 @@ export function RealtimeBridge() {
   // Register this device for push once, on mount (authenticated).
   useEffect(() => {
     void registerForPush();
+  }, []);
+
+  // Re-authenticate and reconnect whenever the app returns to the
+  // foreground — the access token may have rotated (or just expired) while
+  // backgrounded, and socket.io's own auto-reconnect would otherwise keep
+  // using the stale one, silently losing realtime updates until some
+  // unrelated API call happens to trigger a 401 → refresh.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void reconnectSocket();
+    });
+    return () => sub.remove();
   }, []);
 
   useEffect(() => {

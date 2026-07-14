@@ -82,6 +82,27 @@ export async function registerForPush(): Promise<void> {
 }
 
 /**
+ * Unlink this device's push token from the account on logout. Must be called
+ * BEFORE the auth tokens are cleared (the request needs the still-valid
+ * access token). On a shared device, skipping this left the device receiving
+ * the just-logged-out user's pushes (shown in full on the lock screen) until
+ * a different user logged in and re-linked the token.
+ */
+export async function unregisterPush(): Promise<void> {
+  try {
+    const projectId = resolveProjectId();
+    if (!projectId) return;
+    const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+    await api.delete('/users/me/devices', { data: { token } });
+  } catch (err) {
+    console.warn('[push] unregister failed:', (err as Error).message);
+  }
+}
+
+/** Matches the id shapes we ever hand out (UUIDs) — rejects anything else before it lands in a route path. */
+const isSafeId = (v: string): boolean => /^[a-zA-Z0-9_-]{1,64}$/.test(v);
+
+/**
  * Navigate to the correct in-app screen when the user taps a notification.
  * Call this in a `Notifications.addNotificationResponseReceivedListener`.
  */
@@ -90,8 +111,12 @@ export function routeFromNotificationData(
   push: (href: string) => void,
 ): void {
   const kind = typeof data.kind === 'string' ? data.kind : 'general';
-  const orderId = typeof data.orderId === 'string' ? data.orderId : undefined;
-  const deepLink = typeof data.deepLink === 'string' ? data.deepLink : undefined;
+  const rawOrderId = typeof data.orderId === 'string' ? data.orderId : undefined;
+  const orderId = rawOrderId && isSafeId(rawOrderId) ? rawOrderId : undefined;
+  const rawDeepLink = typeof data.deepLink === 'string' ? data.deepLink : undefined;
+  // Only ever navigate to a relative in-app path — never an absolute
+  // URL/protocol a malformed or spoofed push payload could smuggle in.
+  const deepLink = rawDeepLink && rawDeepLink.startsWith('/') && !rawDeepLink.startsWith('//') ? rawDeepLink : undefined;
   const forSeller = data.forSeller === true;
 
   if (deepLink) {

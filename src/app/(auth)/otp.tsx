@@ -22,14 +22,19 @@ import { haptics } from '@/utils/haptics';
 
 const CODE_LENGTH = 6;
 
+const DEFAULT_RESEND_SEC = 60;
+
 export default function OtpScreen() {
-  const { phone = '' } = useLocalSearchParams<{ phone: string }>();
+  const { phone = '', resendAfterSec } = useLocalSearchParams<{ phone: string; resendAfterSec?: string }>();
   const { tr } = useTranslation();
   const toast = useToast();
 
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resendIn, setResendIn] = useState(60);
+  // Server-driven cooldown (it ramps up on repeated requests) rather than a
+  // hardcoded 60s — otherwise the button re-enables before the server will
+  // actually accept another request, and a 429 just leaves the user stuck.
+  const [resendIn, setResendIn] = useState(() => Number(resendAfterSec) || DEFAULT_RESEND_SEC);
   const inputRef = useRef<TextInput>(null);
 
   const verifyOtp = useAuthStore((s) => s.verifyOtp);
@@ -65,13 +70,17 @@ export default function OtpScreen() {
   async function handleResend() {
     if (resendIn > 0) return;
     try {
-      await requestOtp(phone);
-      setResendIn(60);
+      const res = await requestOtp(phone);
+      setResendIn(res.resendAfterSec || DEFAULT_RESEND_SEC);
       haptics.success();
       toast.success(tr('auth.otpResent'));
     } catch (err) {
       haptics.error();
       toast.error((err as Error).message);
+      // Even on failure (e.g. the server's own cooldown/rate-limit rejected
+      // it), apply a fallback cooldown — otherwise the button re-enables
+      // immediately and the user can hammer retry with no limit.
+      setResendIn(DEFAULT_RESEND_SEC);
     }
   }
 

@@ -63,9 +63,9 @@ export default function PhoneScreen() {
     const phone = `+998${digits}`;
     setLoading(true);
     try {
-      await requestOtp(phone);
+      const { resendAfterSec } = await requestOtp(phone);
       haptics.success();
-      router.push({ pathname: '/(auth)/otp', params: { phone } });
+      router.push({ pathname: '/(auth)/otp', params: { phone, resendAfterSec: String(resendAfterSec) } });
     } catch (err) {
       haptics.error();
       toast.error((err as Error).message);

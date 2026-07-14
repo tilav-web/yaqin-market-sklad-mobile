@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { api, extractErrorMessage } from '@/lib/api';
+import { unregisterPush } from '@/lib/push';
 import { queryClient } from '@/lib/queryClient';
 import { disconnectSocket, reconnectSocket } from '@/lib/socket';
 import { tokenStorage } from '@/lib/storage';
@@ -98,6 +99,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   async signOut() {
+    // Unlink the push token while the access token is still valid — after
+    // tokenStorage.clear() the request would go out unauthenticated.
+    await unregisterPush();
     await tokenStorage.clear();
     disconnectSocket();
     // Drop every cached query so the next user never sees the previous
