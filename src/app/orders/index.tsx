@@ -1,14 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ChevronRight, Package, Store, WifiOff } from 'lucide-react-native';
+import { ChevronRight, Navigation, Package, Store, WifiOff } from 'lucide-react-native';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
-import { ORDER_STATUS_KEY, Order } from '@/lib/types';
+import { ORDER_STATUS_KEY, Order, OrderStatus } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
+
+const ACTIVE_STATUSES: OrderStatus[] = ['new', 'accepted', 'preparing', 'delivering'];
 
 export default function OrdersScreen() {
   const { tr } = useTranslation();
@@ -21,8 +23,24 @@ export default function OrdersScreen() {
     refetchInterval: 30_000,
   });
 
+  const activeCount = (ordersQuery.data ?? []).filter((o) => ACTIVE_STATUSES.includes(o.status)).length;
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
+      {activeCount > 0 ? (
+        <Pressable style={styles.trackingBanner} onPress={() => router.push('/orders/tracking')}>
+          <View style={styles.trackingIconWrap}>
+            <Navigation size={16} color={colors.text.onPrimary} strokeWidth={2.4} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.trackingTitle}>Jonli kuzatuv</Text>
+            <Text style={styles.trackingSubtitle}>
+              {activeCount} ta faol buyurtma — barchasini bitta xaritada ko'ring
+            </Text>
+          </View>
+          <ChevronRight size={18} color={colors.brand.primary} />
+        </Pressable>
+      ) : null}
       <FlatList
         data={ordersQuery.data ?? []}
         keyExtractor={(item) => item.id}
@@ -80,6 +98,28 @@ export default function OrdersScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg.canvas },
+  trackingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    margin: layout.screenPadding,
+    marginBottom: 0,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.brand.primarySurface,
+    borderWidth: 1,
+    borderColor: colors.brand.primaryBorder,
+  },
+  trackingIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.full,
+    backgroundColor: colors.brand.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trackingTitle: { ...typography.bodyStrong, color: colors.text.primary },
+  trackingSubtitle: { ...typography.caption, color: colors.text.secondary, marginTop: 1 },
   list: { padding: layout.screenPadding, gap: spacing.md },
   card: {
     backgroundColor: colors.bg.surface,

@@ -3,8 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 import { getSocket } from './socket';
 
 export interface CourierLocation {
+  orderId: string;
   lat: number;
   lng: number;
+  etaMinutes: number | null;
   updatedAt: string;
 }
 
@@ -23,8 +25,13 @@ export function useOrderSocket(orderId: string | undefined) {
     // Named reference so cleanup removes only THIS hook's listener —
     // `.off('courier:location')` with no handler wipes every listener for that
     // event on the shared socket singleton, including other mounted screens'.
+    // Filtered by orderId too: the socket may be joined to more than one
+    // order room at once (e.g. this screen plus the multi-order tracking
+    // screen both mounted), and every joined room's events land on the same
+    // listener — without the filter a location update for a different order
+    // would overwrite this one's state.
     const onLocation = (data: CourierLocation) => {
-      if (!cancelled) setCourierLocation(data);
+      if (!cancelled && data.orderId === orderId) setCourierLocation(data);
     };
 
     void getSocket().then((socket) => {
@@ -41,6 +48,7 @@ export function useOrderSocket(orderId: string | undefined) {
       joined.current = false;
       void getSocket().then((socket) => {
         socket.off('courier:location', onLocation);
+        socket.emit('leave:order', orderId);
       });
     };
   }, [orderId]);

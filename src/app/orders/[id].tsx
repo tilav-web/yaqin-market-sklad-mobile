@@ -65,6 +65,17 @@ export default function OrderDetailScreen() {
   const mapRef = useRef<MapView | null>(null);
   const { courierLocation } = useOrderSocket(order?.status === 'delivering' ? id : undefined);
 
+  // Keep the camera centered on the courier as they move — `initialRegion`
+  // only applies to the first render, so without this the pin quietly
+  // wanders toward the map's edge as the courier gets closer.
+  useEffect(() => {
+    if (!courierLocation || !mapRef.current) return;
+    mapRef.current.animateToRegion(
+      { latitude: courierLocation.lat, longitude: courierLocation.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 },
+      400,
+    );
+  }, [courierLocation]);
+
   useEffect(() => {
     if (!order) return;
     const props = {
@@ -538,7 +549,12 @@ export default function OrderDetailScreen() {
         {/* Courier map — shown while delivering */}
         {order.status === 'delivering' && courierLocation && (
           <View style={styles.mapCard}>
-            <Text style={styles.mapTitle}>Kuryer joylashuvi</Text>
+            <View style={styles.mapTitleRow}>
+              <Text style={styles.mapTitle}>Kuryer joylashuvi</Text>
+              {courierLocation.etaMinutes != null ? (
+                <Text style={styles.mapEta}>~{courierLocation.etaMinutes} daqiqada yetib keladi</Text>
+              ) : null}
+            </View>
             <MapView
               ref={mapRef}
               provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
@@ -855,7 +871,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border.subtle,
     overflow: 'hidden',
   },
-  mapTitle: { ...typography.overline, color: colors.text.tertiary, marginBottom: spacing.xs },
+  mapTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs },
+  mapTitle: { ...typography.overline, color: colors.text.tertiary },
+  mapEta: { ...typography.caption, fontWeight: '700', color: colors.brand.primary },
   map: { width: '100%', height: 220, borderRadius: radius.md },
   // click payment
   clickBtn: {

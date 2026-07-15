@@ -10,6 +10,12 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { RealtimeBridge } from '@/components/RealtimeBridge';
 import { ToastProvider } from '@/components/ui/Toast';
 import { useTranslation } from '@/i18n';
+// Side-effect import: registers the background courier-location task via
+// TaskManager.defineTask. Must run on every app launch — including a
+// headless relaunch the OS performs just to deliver a background location
+// update — so it belongs at the root, not lazily inside the courier's order
+// screen (which may never mount before the OS needs the task to exist).
+import '@/lib/courier-location-task';
 import { registerForPush, routeFromNotificationData } from '@/lib/push';
 import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/stores/auth';

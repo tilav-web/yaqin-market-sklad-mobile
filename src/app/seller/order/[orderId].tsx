@@ -1,15 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import * as Location from 'expo-location';
 import { Ban, Bike, Check, MapPin, MessageCircle, Navigation, Package, Phone, RotateCcw, X } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
+import { isTrackingOrder, startCourierTracking, stopCourierTracking } from '@/lib/courier-location-task';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
-import { getSocket } from '@/lib/socket';
 import { useIsShopOwner } from '@/lib/useIsShopOwner';
 import { useAlarmState } from '@/stores/alarmState';
 import { StaffMember } from '@/constants/staffPermissions';
@@ -17,39 +16,67 @@ import { ORDER_STATUS_KEY, Order, OrderStatus } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
-function useCourierLocationEmitter(orderId: string | undefined, active: boolean) {
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+/**
+ * Starts/stops live location reporting to match the order's status —
+ * continues in the background (locked phone) once granted, via
+ * startCourierTracking/expo-task-manager, not tied to this screen staying
+ * mounted. Shows the store-required in-app disclosure before the OS
+ * "Always Allow" location prompt.
+ */
+function useCourierTracking(orderId: string | undefined, status: OrderStatus | undefined): boolean {
+  const [isTracking, setIsTracking] = useState(false);
 
   useEffect(() => {
-    if (!active || !orderId) return;
-
+    if (!orderId || !status) return;
     let cancelled = false;
 
-    const emit = async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted' || cancelled) return;
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        if (cancelled) return;
-        const socket = await getSocket();
-        socket.emit('courier:location', {
-          orderId,
-          lat: loc.coords.latitude,
-          lng: loc.coords.longitude,
-        });
-      } catch {
-        // Silently ignore location errors — network/GPS may be unavailable
-      }
-    };
+    if (status !== 'delivering') {
+      void stopCourierTracking(orderId).then(() => {
+        if (!cancelled) setIsTracking(false);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
 
-    void emit();
-    intervalRef.current = setInterval(() => { void emit(); }, 10_000);
+    void isTrackingOrder(orderId).then((already) => {
+      if (cancelled) return;
+      if (already) {
+        setIsTracking(true);
+        return;
+      }
+
+      Alert.alert(
+        'Joylashuvni ulashish',
+        "Yetkazib berish davomida joylashuvingiz mijozga ko'rsatiladi — ilova fon rejimida yoki telefon qulflangan bo'lsa ham. Bu faqat shu buyurtma yetkazilguncha ishlaydi.",
+        [
+          { text: 'Bekor qilish', style: 'cancel' },
+          {
+            text: 'Roziman',
+            onPress: () => {
+              void startCourierTracking(orderId).then((result) => {
+                if (cancelled) return;
+                if (result.ok) {
+                  setIsTracking(true);
+                } else {
+                  Alert.alert(
+                    'Joylashuv ruxsati kerak',
+                    'Mijozga jonli joylashuvni ko\'rsatish uchun telefon sozlamalaridan Yaqin Market ilovasiga "Doim ruxsat berish" joylashuv huquqini bering.',
+                  );
+                }
+              });
+            },
+          },
+        ],
+      );
+    });
 
     return () => {
       cancelled = true;
-      if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [orderId, active]);
+  }, [orderId, status]);
+
+  return isTracking;
 }
 
 const NEXT_STATUS: Partial<Record<OrderStatus, { next: OrderStatus; label: string }>> = {
@@ -87,7 +114,7 @@ export default function SellerOrderDetailScreen() {
   // Blocking a customer is owner-only server-side.
   const isOwner = useIsShopOwner(order?.shopId);
 
-  useCourierLocationEmitter(orderId, order?.status === 'delivering');
+  const isTracking = useCourierTracking(orderId, order?.status);
 
   // Shop staff (to assign a delivering courier).
   const staffQuery = useQuery({
@@ -157,7 +184,7 @@ export default function SellerOrderDetailScreen() {
         <Text style={styles.dateText}>{order.createdAt.slice(0, 16).replace('T', ' ')}</Text>
         <AutoCancelCountdown createdAt={order.createdAt} status={order.status} />
 
-        {order.status === 'delivering' && (
+        {isTracking && (
           <View style={styles.locationBadge}>
             <Navigation size={13} color={colors.feedback.success} strokeWidth={2.4} />
             <Text style={styles.locationBadgeText}>Lokatsiya mijozga uzatilmoqda</Text>
