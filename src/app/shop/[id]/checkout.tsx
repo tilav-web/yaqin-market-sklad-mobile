@@ -20,7 +20,7 @@ import { useToast } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { startOrderActivity } from '@/lib/useOrderLiveActivity';
-import { Order, PublicShop, UserAddress } from '@/lib/types';
+import { Order, PublicShop, SavedCard, UserAddress } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
@@ -47,6 +47,26 @@ export default function CheckoutScreen() {
   const [courierComment, setCourierComment] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'click_online'>('cash');
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+
+  const cardsQuery = useQuery({
+    queryKey: ['saved-cards'],
+    queryFn: async () => (await api.get<SavedCard[]>('/click/cards')).data,
+    enabled: paymentMethod === 'click_online',
+  });
+  const activeCards = (cardsQuery.data ?? []).filter((c) => c.status === 'active');
+
+  // Pre-select the default saved card the first time the list loads — after
+  // that the user's own tap (including explicitly picking "redirect" /
+  // deselecting) is never overridden again.
+  const cardsPrefilled = useRef(false);
+  useEffect(() => {
+    if (!cardsPrefilled.current && activeCards.length > 0) {
+      setSelectedCardId(activeCards.find((c) => c.isDefault)?.id ?? activeCards[0].id);
+      cardsPrefilled.current = true;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCards.length]);
 
   const addressesQuery = useQuery({
     queryKey: ['my-addresses'],
@@ -155,7 +175,17 @@ export default function CheckoutScreen() {
         status: 'new',
       });
 
-      if (paymentMethod === 'click_online') {
+      if (paymentMethod === 'click_online' && selectedCardId) {
+        // Charge the saved card directly — no redirect needed. Failure still
+        // leaves the order placed (paymentStatus stays pending); the order
+        // detail screen offers the same saved-card retry + the redirect.
+        try {
+          await api.post(`/click/orders/${order.id}/pay-with-card`, { cardId: selectedCardId });
+          toast.success('Buyurtma yuborildi!');
+        } catch (e) {
+          toast.error(extractErrorMessage(e));
+        }
+      } else if (paymentMethod === 'click_online') {
         // Open Click payment page before navigating to order detail
         try {
           const { data } = await api.get<{ url: string }>(`/click/orders/${order.id}/url`);
@@ -327,6 +357,39 @@ export default function CheckoutScreen() {
             <Text style={[styles.payText, paymentMethod === 'click_online' && { color: colors.brand.primary }]}>Click orqali</Text>
             {paymentMethod === 'click_online' && <View style={styles.payCheck} />}
           </Pressable>
+
+          {paymentMethod === 'click_online' && (
+            <View style={styles.cardSubList}>
+              {activeCards.map((card) => {
+                const active = selectedCardId === card.id;
+                return (
+                  <Pressable
+                    key={card.id}
+                    style={[styles.cardSubRow, active && styles.cardSubRowActive]}
+                    onPress={() => setSelectedCardId(card.id)}>
+                    <View style={[styles.radio, active && styles.radioActive]}>
+                      {active && <View style={styles.radioDot} />}
+                    </View>
+                    <Text style={styles.cardSubText}>{card.cardNumberMasked ?? '••••'}</Text>
+                    {card.isDefault && <Text style={styles.cardSubDefault}>{tr('cards.default')}</Text>}
+                  </Pressable>
+                );
+              })}
+              <Pressable
+                style={[styles.cardSubRow, !selectedCardId && styles.cardSubRowActive]}
+                onPress={() => setSelectedCardId(null)}>
+                <View style={[styles.radio, !selectedCardId && styles.radioActive]}>
+                  {!selectedCardId && <View style={styles.radioDot} />}
+                </View>
+                <Text style={styles.cardSubText}>{tr('checkout.payWithRedirect')}</Text>
+              </Pressable>
+              {activeCards.length === 0 && (
+                <Pressable onPress={() => router.push('/saved-cards')}>
+                  <Text style={styles.addCardHint}>{tr('checkout.addCardHint')}</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Summary */}
@@ -484,6 +547,28 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: colors.brand.primary,
   },
+  cardSubList: { gap: spacing.xs, paddingLeft: spacing.lg, marginTop: 2, marginBottom: spacing.xs },
+  cardSubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  cardSubRowActive: {},
+  radio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: colors.border.strong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioActive: { borderColor: colors.brand.primary },
+  radioDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.brand.primary },
+  cardSubText: { ...typography.bodySmall, color: colors.text.primary, flex: 1 },
+  cardSubDefault: { ...typography.caption, color: colors.brand.primary, fontWeight: '700' },
+  addCardHint: { ...typography.caption, color: colors.brand.primary, fontWeight: '700', marginTop: spacing.xs },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rowLabel: { ...typography.body, color: colors.text.secondary },
   rowLabelBold: { color: colors.text.primary, fontWeight: '700' },

@@ -25,7 +25,7 @@ import { api, extractErrorMessage } from '@/lib/api';
 import { endOrderActivity, updateOrderActivity } from '@/lib/useOrderLiveActivity';
 import { useOrderSocket } from '@/lib/useOrderSocket';
 import { useTranslation } from '@/i18n';
-import { ORDER_STATUS_KEY, Order, OrderStatus, ProductOffer, PublicProductVariant } from '@/lib/types';
+import { ORDER_STATUS_KEY, Order, OrderStatus, ProductOffer, PublicProductVariant, SavedCard } from '@/lib/types';
 import { OrderActivityProps } from '@/widgets/order-activity';
 import { useCartStore } from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
@@ -124,6 +124,23 @@ export default function OrderDetailScreen() {
       void updateOrderActivity(props);
     }
   }, [order?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const cardsQuery = useQuery({
+    queryKey: ['saved-cards'],
+    queryFn: async () => (await api.get<SavedCard[]>('/click/cards')).data,
+    enabled: order?.paymentMethod === 'click_online' && order?.paymentStatus === 'pending',
+  });
+
+  const payWithCard = useMutation({
+    mutationFn: async (cardId: string) => {
+      await api.post(`/click/orders/${id}/pay-with-card`, { cardId });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['order', id] });
+      toast.success("To'lov muvaffaqiyatli o'tdi");
+    },
+    onError: (e) => toast.error(extractErrorMessage(e)),
+  });
 
   const setStatus = useMutation({
     mutationFn: async (status: OrderStatus) => {
@@ -676,23 +693,62 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
-        {/* Click payment button */}
-        {order.paymentMethod === 'click_online' && order.paymentStatus === 'pending' && (
-          <Pressable
-            style={styles.clickBtn}
-            onPress={async () => {
-              try {
-                const { data } = await api.get<{ url: string }>(`/click/orders/${order.id}/url`);
-                await WebBrowser.openBrowserAsync(data.url, { showTitle: true });
-                void qc.invalidateQueries({ queryKey: ['order', id] });
-              } catch (e) {
-                toast.error(extractErrorMessage(e));
-              }
-            }}>
-            <CreditCard size={18} color={colors.text.onPrimary} strokeWidth={2.2} />
-            <Text style={styles.clickBtnText}>Click orqali to'lash</Text>
-          </Pressable>
-        )}
+        {/* Saved-card retry — one tap, no redirect, for a pending online order */}
+        {order.paymentMethod === 'click_online' &&
+          order.paymentStatus === 'pending' &&
+          (cardsQuery.data ?? [])
+            .filter((c) => c.status === 'active')
+            .map((card) => (
+              <Pressable
+                key={card.id}
+                style={styles.clickBtn}
+                disabled={payWithCard.isPending}
+                onPress={() => payWithCard.mutate(card.id)}>
+                {payWithCard.isPending ? (
+                  <ActivityIndicator color={colors.text.onPrimary} />
+                ) : (
+                  <>
+                    <CreditCard size={18} color={colors.text.onPrimary} strokeWidth={2.2} />
+                    <Text style={styles.clickBtnText}>
+                      {card.cardNumberMasked ?? '••••'} {tr('checkout.payWithCard')}
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            ))}
+
+        {/* Click payment button — the redirect fallback; demoted to a ghost
+            button once a one-tap saved-card option is available above. */}
+        {order.paymentMethod === 'click_online' && order.paymentStatus === 'pending' && (() => {
+          const hasCards = (cardsQuery.data ?? []).some((c) => c.status === 'active');
+          return (
+            <Pressable
+              style={hasCards ? styles.ghostBtn : styles.clickBtn}
+              onPress={async () => {
+                try {
+                  const { data } = await api.get<{ url: string }>(`/click/orders/${order.id}/url`);
+                  await WebBrowser.openBrowserAsync(data.url, { showTitle: true });
+                  void qc.invalidateQueries({ queryKey: ['order', id] });
+                } catch (e) {
+                  toast.error(extractErrorMessage(e));
+                }
+              }}>
+              <CreditCard
+                size={18}
+                color={hasCards ? colors.brand.primary : colors.text.onPrimary}
+                strokeWidth={2.2}
+              />
+              <Text
+                style={
+                  hasCards
+                    ? [styles.ghostBtnText, { color: colors.brand.primary }]
+                    : styles.clickBtnText
+                }>
+                {hasCards ? tr('checkout.payWithRedirect') : "Click orqali to'lash"}
+              </Text>
+            </Pressable>
+          );
+        })()}
         {order.paymentMethod === 'click_online' && order.paymentStatus === 'paid' && (
           <View style={styles.paidBadge}>
             <Text style={styles.paidBadgeText}>✓ Click orqali to'langan</Text>

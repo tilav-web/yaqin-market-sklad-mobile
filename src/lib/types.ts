@@ -576,6 +576,14 @@ export interface ProductOffer {
   isOpen: boolean;
 }
 
+/** A tokenized Click card saved for repeat "pay with card" checkouts (GET /click/cards). */
+export interface SavedCard {
+  id: string;
+  cardNumberMasked: string | null;
+  isDefault: boolean;
+  status: 'pending_verify' | 'active';
+}
+
 /**
  * Translation key for each order status — pass to `tr()` (from
  * `useTranslation()`) rather than a hardcoded label, so the status text

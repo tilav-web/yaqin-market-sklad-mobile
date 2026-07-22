@@ -5,6 +5,7 @@ import {
   ChevronRight,
   ClipboardList,
   Clock,
+  CreditCard,
   Globe,
   Heart,
   LogIn,
@@ -313,6 +314,13 @@ export default function ProfileTab() {
             iconColor={colors.brand.primary}
             title={tr('profile.addresses')}
             onPress={() => router.push('/addresses')}
+          />
+          <Row
+            icon={CreditCard}
+            iconBg={colors.feedback.infoSurface}
+            iconColor={colors.feedback.info}
+            title={tr('cards.title')}
+            onPress={() => router.push('/saved-cards')}
           />
           <Row
             icon={ClipboardList}
