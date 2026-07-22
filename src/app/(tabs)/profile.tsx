@@ -9,7 +9,6 @@ import {
   Globe,
   Heart,
   LogIn,
-  LogOut,
   MapPin,
   Plus,
   QrCode,
@@ -17,13 +16,15 @@ import {
   Store,
   XCircle,
 } from 'lucide-react-native';
+import { useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LanguagePickerSheet, LANG_LABELS } from '@/components/LanguagePickerSheet';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { avatarEmoji } from '@/constants/avatars';
-import { useLangStore, useTranslation, type Lang } from '@/i18n';
+import { useLangStore, useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { useIsGuest, useRequireAuth } from '@/lib/useRequireAuth';
 import type { WorkingForMeEntry } from '@/lib/useIsShopOwner';
@@ -38,12 +39,6 @@ interface SellerApplication {
   rejectionReason: string | null;
 }
 
-const LANG_LABELS: Record<Lang, string> = {
-  uz: "O'zbekcha",
-  uz_cyrl: 'Ўзбекча',
-  ru: 'Русский',
-};
-
 export default function ProfileTab() {
   const { tr } = useTranslation();
   const lang = useLangStore((s) => s.lang);
@@ -51,6 +46,7 @@ export default function ProfileTab() {
   const signOut = useAuthStore((s) => s.signOut);
   const isGuest = useIsGuest();
   const requireAuth = useRequireAuth();
+  const [langSheetVisible, setLangSheetVisible] = useState(false);
 
   const meQuery = useQuery({
     queryKey: ['me'],
@@ -103,11 +99,6 @@ export default function ProfileTab() {
   const me = meQuery.data;
   const latestApp = myApplicationsQuery.data?.[0];
   const staffShops = staffShopsQuery.data ?? [];
-
-  function handleLangChange(next: Lang) {
-    haptics.selection();
-    setLang(next);
-  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -198,11 +189,9 @@ export default function ProfileTab() {
         )}
 
         {/* Notifications — available to everyone (empty for guests). */}
-        <Section title={tr('profile.section.notifications')}>
+        <Section>
           <Row
             icon={Bell}
-            iconBg={colors.brand.accentSurface}
-            iconColor={colors.brand.accent}
             title={tr('notifications.title')}
             badge={isGuest ? undefined : unreadQuery.data}
             onPress={() => router.push('/notifications')}
@@ -210,18 +199,14 @@ export default function ProfileTab() {
         </Section>
 
         {isGuest ? (
-          <Section title={tr('profile.section.business')}>
+          <Section>
             <Row
               icon={Store}
-              iconBg={colors.brand.accentSurface}
-              iconColor={colors.brand.accent}
               title={tr('profile.openShopShort')}
               onPress={() => requireAuth(() => router.push('/seller-application'))}
             />
             <Row
               icon={QrCode}
-              iconBg={colors.brand.primarySurface}
-              iconColor={colors.brand.primary}
               title={tr('profile.joinAsStaff')}
               onPress={() => requireAuth(() => router.push('/staff-scan'))}
             />
@@ -230,226 +215,179 @@ export default function ProfileTab() {
 
         {!isGuest ? (
           <>
-        <Section title={tr('profile.section.myShops')}>
-          {me?.isSellerApproved && myShopsQuery.data && myShopsQuery.data.length > 0
-            ? myShopsQuery.data.map((shop) => (
-                <Row
-                  key={shop.id}
-                  icon={Store}
-                  iconBg={colors.brand.accentSurface}
-                  iconColor={colors.brand.accent}
-                  title={shop.name}
-                  subtitle={`${shop.isOpenManual ? tr('profile.openShop') : tr('profile.closedShop')} · ${shop.address}`}
-                  badge={shop.newOrderCount}
-                  onPress={() => router.push(`/seller/${shop.id}/orders`)}
-                />
-              ))
-            : null}
+            <Section>
+              {me?.isSellerApproved && myShopsQuery.data && myShopsQuery.data.length > 0
+                ? myShopsQuery.data.map((shop) => (
+                    <Row
+                      key={shop.id}
+                      icon={Store}
+                      title={shop.name}
+                      subtitle={`${shop.isOpenManual ? tr('profile.openShop') : tr('profile.closedShop')} · ${shop.address}`}
+                      badge={shop.newOrderCount}
+                      onPress={() => router.push(`/seller/${shop.id}/orders`)}
+                    />
+                  ))
+                : null}
 
-          {me?.isSellerApproved ? (
-            // Approved seller: can add more shops directly
-            <Pressable
-              onPress={() => {
-                haptics.medium();
-                router.push('/seller/new');
-              }}
-              style={styles.applyCta}>
-              <View style={styles.applyIcon}>
-                <Plus size={22} color={colors.brand.accent} strokeWidth={2.6} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.applyTitle}>Yangi do&apos;kon ochish</Text>
-                <Text style={styles.applySub}>Yana bir do&apos;kon qo&apos;shing va boshqaring</Text>
-              </View>
-              <ChevronRight size={18} color={colors.brand.accent} strokeWidth={2.4} />
-            </Pressable>
-          ) : latestApp?.status === 'pending' ? (
-            // Application submitted, waiting for admin
-            <View style={styles.pendingCta}>
-              <View style={styles.pendingIcon}>
-                <Clock size={22} color={colors.feedback.warning} strokeWidth={2.4} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.pendingTitle}>{tr('seller.pending.title')}</Text>
-                <Text style={styles.applySub}>{tr('seller.pending.desc')}</Text>
-              </View>
-            </View>
-          ) : latestApp?.status === 'rejected' ? (
-            // Application rejected — show reason + retry button
-            <Pressable
-              onPress={() => {
-                haptics.medium();
-                router.push('/seller-application');
-              }}
-              style={styles.rejectedCta}>
-              <View style={styles.rejectedIcon}>
-                <XCircle size={22} color={colors.brand.primary} strokeWidth={2.4} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rejectedTitle}>{tr('seller.rejected.title')}</Text>
-                {latestApp.rejectionReason ? (
-                  <Text style={styles.applySub}>
-                    {tr('seller.rejected.reason', { reason: latestApp.rejectionReason })}
-                  </Text>
-                ) : null}
-                <Text style={styles.retryText}>Qayta ariza yuborish →</Text>
-              </View>
-            </Pressable>
-          ) : (
-            // No application yet — invite to apply
-            <Pressable
-              onPress={() => {
-                haptics.medium();
-                router.push('/seller-application');
-              }}
-              style={styles.applyCta}>
-              <View style={styles.applyIcon}>
-                <Plus size={22} color={colors.brand.accent} strokeWidth={2.6} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.applyTitle}>Sotuvchi bo&apos;lish</Text>
-                <Text style={styles.applySub}>
-                  Ariza yuboring — admin tasdiqlagach do&apos;kon ochasiz
-                </Text>
-              </View>
-              <ChevronRight size={18} color={colors.brand.accent} strokeWidth={2.4} />
-            </Pressable>
-          )}
-        </Section>
+              {me?.isSellerApproved ? (
+                // Approved seller: can add more shops directly
+                <Pressable
+                  onPress={() => {
+                    haptics.medium();
+                    router.push('/seller/new');
+                  }}
+                  style={styles.applyCta}>
+                  <View style={styles.applyIcon}>
+                    <Plus size={22} color={colors.brand.accent} strokeWidth={2.6} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.applyTitle}>Yangi do&apos;kon ochish</Text>
+                    <Text style={styles.applySub}>Yana bir do&apos;kon qo&apos;shing va boshqaring</Text>
+                  </View>
+                  <ChevronRight size={18} color={colors.brand.accent} strokeWidth={2.4} />
+                </Pressable>
+              ) : latestApp?.status === 'pending' ? (
+                // Application submitted, waiting for admin
+                <View style={styles.pendingCta}>
+                  <View style={styles.pendingIcon}>
+                    <Clock size={22} color={colors.feedback.warning} strokeWidth={2.4} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.pendingTitle}>{tr('seller.pending.title')}</Text>
+                    <Text style={styles.applySub}>{tr('seller.pending.desc')}</Text>
+                  </View>
+                </View>
+              ) : latestApp?.status === 'rejected' ? (
+                // Application rejected — show reason + retry button
+                <Pressable
+                  onPress={() => {
+                    haptics.medium();
+                    router.push('/seller-application');
+                  }}
+                  style={styles.rejectedCta}>
+                  <View style={styles.rejectedIcon}>
+                    <XCircle size={22} color={colors.brand.primary} strokeWidth={2.4} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.rejectedTitle}>{tr('seller.rejected.title')}</Text>
+                    {latestApp.rejectionReason ? (
+                      <Text style={styles.applySub}>
+                        {tr('seller.rejected.reason', { reason: latestApp.rejectionReason })}
+                      </Text>
+                    ) : null}
+                    <Text style={styles.retryText}>Qayta ariza yuborish →</Text>
+                  </View>
+                </Pressable>
+              ) : (
+                // No application yet — invite to apply
+                <Pressable
+                  onPress={() => {
+                    haptics.medium();
+                    router.push('/seller-application');
+                  }}
+                  style={styles.applyCta}>
+                  <View style={styles.applyIcon}>
+                    <Plus size={22} color={colors.brand.accent} strokeWidth={2.6} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.applyTitle}>Sotuvchi bo&apos;lish</Text>
+                    <Text style={styles.applySub}>
+                      Ariza yuboring — admin tasdiqlagach do&apos;kon ochasiz
+                    </Text>
+                  </View>
+                  <ChevronRight size={18} color={colors.brand.accent} strokeWidth={2.4} />
+                </Pressable>
+              )}
+            </Section>
 
-        {staffShops.length > 0 ? (
-          <Section title={tr('profile.section.workingFor')}>
-            {staffShops.map(({ shop, role }) => (
-              <Row
-                key={shop.id}
-                icon={Store}
-                iconBg={colors.feedback.infoSurface}
-                iconColor={colors.feedback.info}
-                title={shop.name}
-                subtitle={`${role ?? tr('profile.staffRole')} · ${shop.address}`}
-                onPress={() => router.push(`/seller/${shop.id}/orders`)}
-              />
-            ))}
-          </Section>
-        ) : null}
+            {staffShops.length > 0 ? (
+              <Section>
+                {staffShops.map(({ shop, role }) => (
+                  <Row
+                    key={shop.id}
+                    icon={Store}
+                    title={shop.name}
+                    subtitle={`${role ?? tr('profile.staffRole')} · ${shop.address}`}
+                    onPress={() => router.push(`/seller/${shop.id}/orders`)}
+                  />
+                ))}
+              </Section>
+            ) : null}
 
-        <Section title={tr('profile.section.account')}>
-          <Row
-            icon={MapPin}
-            iconBg={colors.brand.primarySurface}
-            iconColor={colors.brand.primary}
-            title={tr('profile.addresses')}
-            onPress={() => router.push('/addresses')}
-          />
-          <Row
-            icon={CreditCard}
-            iconBg={colors.feedback.infoSurface}
-            iconColor={colors.feedback.info}
-            title={tr('cards.title')}
-            onPress={() => router.push('/saved-cards')}
-          />
-          <Row
-            icon={ClipboardList}
-            iconBg={colors.feedback.infoSurface}
-            iconColor={colors.feedback.info}
-            title={tr('profile.orders')}
-            onPress={() => router.push('/orders')}
-          />
-          <Row
-            icon={Heart}
-            iconBg="#FFF0F0"
-            iconColor={colors.brand.primary}
-            title="Sevimlilar"
-            onPress={() => router.push('/favorites')}
-          />
-          <Row
-            icon={QrCode}
-            iconBg={colors.brand.accentSurface}
-            iconColor={colors.brand.accent}
-            title={tr('profile.joinAsStaff')}
-            onPress={() => router.push('/staff-scan')}
-          />
-        </Section>
+            <Section>
+              <Row icon={MapPin} title={tr('profile.addresses')} onPress={() => router.push('/addresses')} />
+              <Row icon={CreditCard} title={tr('cards.title')} onPress={() => router.push('/saved-cards')} />
+              <Row icon={ClipboardList} title={tr('profile.orders')} onPress={() => router.push('/orders')} />
+              <Row icon={Heart} title="Sevimlilar" onPress={() => router.push('/favorites')} />
+              <Row icon={QrCode} title={tr('profile.joinAsStaff')} onPress={() => router.push('/staff-scan')} />
+            </Section>
           </>
         ) : null}
 
-        <Section title={tr('profile.language')}>
-          <View style={styles.langBox}>
-            {(['uz', 'uz_cyrl', 'ru'] as Lang[]).map((l) => (
-              <Pressable
-                key={l}
-                onPress={() => handleLangChange(l)}
-                style={[styles.langItem, lang === l && styles.langItemActive]}>
-                <Globe
-                  size={16}
-                  color={lang === l ? colors.brand.primary : colors.text.tertiary}
-                  strokeWidth={2.2}
-                />
-                <Text style={[styles.langText, lang === l && styles.langTextActive]}>
-                  {LANG_LABELS[l]}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+        <Section>
+          <Row
+            icon={Globe}
+            title={tr('profile.language')}
+            value={LANG_LABELS[lang]}
+            onPress={() => setLangSheetVisible(true)}
+          />
         </Section>
 
-        {!isGuest ? (
-          <Section title={tr('profile.section.other')}>
-            <Row
-              icon={LogOut}
-              iconBg={colors.feedback.dangerSurface}
-              iconColor={colors.brand.accent}
-              title={tr('auth.signOut')}
-              titleColor={colors.brand.accent}
-              onPress={() => {
-                haptics.warning();
-                Alert.alert(tr('auth.signOut'), tr('auth.signOutConfirm'), [
-                  { text: tr('common.cancel'), style: 'cancel' },
-                  {
-                    text: tr('auth.signOut'),
-                    style: 'destructive',
-                    onPress: () => {
-                      haptics.heavy();
-                      signOut();
-                    },
+        {!isGuest && (
+          <Pressable
+            style={styles.logoutBtn}
+            onPress={() => {
+              haptics.warning();
+              Alert.alert(tr('auth.signOut'), tr('auth.signOutConfirm'), [
+                { text: tr('common.cancel'), style: 'cancel' },
+                {
+                  text: tr('auth.signOut'),
+                  style: 'destructive',
+                  onPress: () => {
+                    haptics.heavy();
+                    signOut();
                   },
-                ]);
-              }}
-            />
-          </Section>
-        ) : null}
+                },
+              ]);
+            }}>
+            <Text style={styles.logoutText}>{tr('auth.signOut')}</Text>
+          </Pressable>
+        )}
       </ScrollView>
+
+      <LanguagePickerSheet
+        visible={langSheetVisible}
+        value={lang}
+        onSelect={setLang}
+        onClose={() => setLangSheetVisible(false)}
+      />
     </SafeAreaView>
   );
 }
 
 interface SectionProps {
-  title: string;
   children: React.ReactNode;
 }
-function Section({ title, children }: SectionProps) {
+function Section({ children }: SectionProps) {
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <Card padding="none" elevation="xs">
-        {children}
-      </Card>
-    </View>
+    <Card padding="none" elevation="xs">
+      {children}
+    </Card>
   );
 }
 
 interface RowProps {
   icon: typeof MapPin;
-  iconBg: string;
-  iconColor: string;
   title: string;
   subtitle?: string;
   titleColor?: string;
+  /** Trailing value text before the chevron (e.g. current language). */
+  value?: string;
   /** Optional count badge shown before the chevron (e.g. pending orders). */
   badge?: number;
   onPress: () => void;
 }
-function Row({ icon: Icon, iconBg, iconColor, title, subtitle, titleColor, badge, onPress }: RowProps) {
+function Row({ icon: Icon, title, subtitle, titleColor, value, badge, onPress }: RowProps) {
   return (
     <Pressable
       onPress={() => {
@@ -458,8 +396,8 @@ function Row({ icon: Icon, iconBg, iconColor, title, subtitle, titleColor, badge
       }}
       hitSlop={hitSlop}
       style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.bg.surfaceMuted }]}>
-      <View style={[styles.rowIcon, { backgroundColor: iconBg }]}>
-        <Icon size={18} color={iconColor} strokeWidth={2.2} />
+      <View style={styles.rowIconWrap}>
+        <Icon size={21} color={colors.text.secondary} strokeWidth={1.8} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={[styles.rowTitle, titleColor && { color: titleColor }]}>{title}</Text>
@@ -469,6 +407,7 @@ function Row({ icon: Icon, iconBg, iconColor, title, subtitle, titleColor, badge
           </Text>
         )}
       </View>
+      {value && <Text style={styles.rowValue}>{value}</Text>}
       {badge && badge > 0 ? (
         <View style={styles.rowBadge}>
           <Text style={styles.rowBadgeText}>{badge}</Text>
@@ -555,11 +494,6 @@ const styles = StyleSheet.create({
   avatarText: { color: colors.brand.primary, fontSize: 24, fontWeight: '800' },
   name: { ...typography.h3, color: colors.text.onPrimary, flexShrink: 1 },
   phone: { ...typography.bodySmall, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
-  section: { gap: spacing.sm },
-  sectionTitle: {
-    ...typography.overline,
-    paddingHorizontal: spacing.md,
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -569,15 +503,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border.subtle,
   },
-  rowIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  rowIconWrap: { width: 26, alignItems: 'center' },
   rowTitle: { ...typography.bodyStrong },
   rowSub: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
+  rowValue: { ...typography.body, color: colors.text.tertiary },
   rowBadge: {
     minWidth: 24,
     height: 24,
@@ -642,16 +571,12 @@ const styles = StyleSheet.create({
   rejectedTitle: { ...typography.h4, color: colors.brand.primary },
   retryText: { ...typography.bodySmall, color: colors.brand.primary, fontWeight: '800', marginTop: spacing.xs },
   dim: { ...typography.bodySmall, padding: spacing.lg, color: colors.text.secondary },
-  langBox: { padding: spacing.sm, gap: 4 },
-  langItem: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
+  logoutBtn: {
+    height: layout.buttonHeight.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.brand.primary,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  langItemActive: { backgroundColor: colors.brand.primarySurface },
-  langText: { ...typography.bodyStrong, color: colors.text.secondary },
-  langTextActive: { color: colors.brand.primary },
+  logoutText: { ...typography.button, color: colors.text.onPrimary },
 });
