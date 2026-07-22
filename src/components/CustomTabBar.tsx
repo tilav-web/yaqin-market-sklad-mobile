@@ -34,6 +34,10 @@ const LABEL_KEYS: Record<string, LabelKey> = {
 // A lively-but-controlled spring for the sliding indicator.
 const SLIDE_SPRING = { damping: 18, stiffness: 220, mass: 0.7 };
 const PRESS_SPRING = { damping: 15, stiffness: 350 };
+// The floating bar's own horizontal padding — subtracted from the measured
+// layout width so the sliding indicator lines up with the tab items (which
+// live inside that padding), not the bar's full border-box width.
+const BAR_HPADDING = spacing.sm;
 
 export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
@@ -72,7 +76,7 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
     <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
       <View
         style={styles.bar}
-        onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}>
+        onLayout={(e) => setBarWidth(Math.max(0, e.nativeEvent.layout.width - BAR_HPADDING * 2))}>
         {itemWidth > 0 && (
           <Animated.View
             pointerEvents="none"
@@ -154,18 +158,23 @@ function TabItem({ icon: Icon, labelKey, focused, onPress }: TabItemProps) {
 }
 
 const styles = StyleSheet.create({
+  // Transparent gutter (matches the page canvas) that just reserves the
+  // safe-area inset — the visible bar below floats inside it with margin on
+  // every side rather than sitting flush against the screen edges.
   container: {
-    backgroundColor: colors.bg.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.bg.canvas,
+    paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
-    ...shadow.md,
   },
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    backgroundColor: colors.bg.surface,
+    borderRadius: radius['2xl'],
+    paddingHorizontal: BAR_HPADDING,
+    marginBottom: spacing.xs,
+    ...shadow.lg,
   },
   indicator: {
     position: 'absolute',
