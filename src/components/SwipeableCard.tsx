@@ -14,6 +14,7 @@ import { colors, radius, spacing } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 const THRESHOLD = 88;
+const HOLD_DURATION = 180;
 
 interface Props {
   readonly children: ReactNode;
@@ -24,18 +25,25 @@ interface Props {
 }
 
 /**
- * Hold-and-drag row: swipe left commits a delete (the row itself animates
- * off-screen, no separate confirm — undo lives in the caller's countdown
- * toast), swipe right makes the card the default. Either direction is a
- * no-op if its handler is omitted.
+ * Hold-then-drag row: a short hold (with a shrink + haptic tick, so the
+ * gesture reads as deliberate rather than an accidental list-scroll flick)
+ * arms the swipe — only then does dragging move the card. Left commits a
+ * delete (the row animates off-screen; undo lives in the caller's countdown
+ * toast), right makes the card the default. Either direction is a no-op if
+ * its handler is omitted.
  */
 export function SwipeableCard({ children, onDelete, onMakeDefault }: Props) {
   const translateX = useSharedValue(0);
+  const scale = useSharedValue(1);
   const crossed = useSharedValue(false);
 
   const pan = Gesture.Pan()
-    .activeOffsetX([-12, 12])
+    .activateAfterLongPress(HOLD_DURATION)
     .failOffsetY([-14, 14])
+    .onStart(() => {
+      scale.value = withTiming(0.96, { duration: 120 });
+      runOnJS(haptics.medium)();
+    })
     .onUpdate((e) => {
       let x = e.translationX;
       if (x < 0 && !onDelete) x = 0;
@@ -58,10 +66,13 @@ export function SwipeableCard({ children, onDelete, onMakeDefault }: Props) {
       } else {
         translateX.value = withSpring(0);
       }
+    })
+    .onFinalize(() => {
+      scale.value = withTiming(1, { duration: 150 });
     });
 
   const cardStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
+    transform: [{ translateX: translateX.value }, { scale: scale.value }],
   }));
   const deleteBgStyle = useAnimatedStyle(() => ({
     opacity: translateX.value < 0 ? Math.min(1, -translateX.value / THRESHOLD) : 0,
