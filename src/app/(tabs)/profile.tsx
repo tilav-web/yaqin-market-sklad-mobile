@@ -158,15 +158,19 @@ export default function ProfileTab() {
                 router.push('/profile/edit');
               }}>
               <View style={styles.avatarWrap}>
-                <View style={styles.avatar}>
-                  {avatarSource(me?.avatarUrl) ? (
-                    <Image source={avatarSource(me?.avatarUrl)!} style={styles.avatarImage} />
-                  ) : (
+                {avatarSource(me?.avatarUrl) ? (
+                  <Image
+                    source={avatarSource(me?.avatarUrl)!}
+                    style={styles.avatarImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.avatarFallback}>
                     <Text style={styles.avatarText}>
                       {(me?.name?.[0] ?? me?.phone?.slice(-2) ?? 'Y').toUpperCase()}
                     </Text>
-                  )}
-                </View>
+                  </View>
+                )}
                 {!me?.name && (
                   <View style={styles.fixCaption}>
                     <Text style={styles.fixCaptionText} numberOfLines={1}>
@@ -424,7 +428,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.lg,
   },
-  avatarWrap: { width: 64, height: 64, borderRadius: radius.full, overflow: 'hidden' },
+  avatarWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.full,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
   fixCaption: {
     position: 'absolute',
     left: 0,
@@ -456,17 +467,14 @@ const styles = StyleSheet.create({
   },
   guestTitle: { ...typography.h3, color: colors.brand.primary },
   guestSub: { ...typography.bodySmall, color: colors.text.secondary, marginTop: 2 },
-  avatar: {
+  avatarImage: { width: 64, height: 64 },
+  avatarFallback: {
     width: 64,
     height: 64,
-    borderRadius: radius.full,
     backgroundColor: 'rgba(255,255,255,0.95)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: radius.full },
   avatarText: { color: colors.brand.primary, fontSize: 24, fontWeight: '800' },
   name: { ...typography.h3, color: colors.text.onPrimary, flexShrink: 1 },
   phone: { ...typography.bodySmall, color: 'rgba(255,255,255,0.85)', marginTop: 2 },

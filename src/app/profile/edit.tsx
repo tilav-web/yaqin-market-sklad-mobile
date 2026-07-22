@@ -113,7 +113,7 @@ export default function EditProfileScreen() {
         <View style={styles.previewWrap}>
           <View style={styles.previewAvatar}>
             {previewSource ? (
-              <Image source={previewSource} style={styles.previewImage} />
+              <Image source={previewSource} style={styles.previewImage} resizeMode="cover" />
             ) : (
               <Text style={styles.previewInitial}>{initial}</Text>
             )}
@@ -205,7 +205,7 @@ export default function EditProfileScreen() {
                 onPress={() => pick(opt.id)}
                 style={[styles.avatarCell, active && styles.avatarCellActive]}>
                 <View style={styles.avatarCellImageWrap}>
-                  <Image source={opt.source} style={styles.avatarCellImage} />
+                  <Image source={opt.source} style={styles.avatarCellImage} resizeMode="cover" />
                 </View>
                 {active && (
                   <View style={styles.checkDot}>
@@ -252,13 +252,14 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: radius.full,
+    overflow: 'hidden',
     backgroundColor: colors.brand.primary,
     borderWidth: 3,
     borderColor: colors.brand.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  previewImage: { width: '100%', height: '100%', borderRadius: radius.full },
+  previewImage: { width: 90, height: 90, borderRadius: radius.full },
   previewInitial: { color: colors.text.onPrimary, fontSize: 36, fontWeight: '800' },
   label: { ...typography.overline, marginBottom: spacing.sm },
   input: {
