@@ -164,6 +164,10 @@ const styles = StyleSheet.create({
   // The visible bar below floats on top of whatever's actually behind it
   // rather than a second flat-colored strip.
   container: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
   },

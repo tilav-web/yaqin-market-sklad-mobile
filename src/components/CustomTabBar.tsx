@@ -163,8 +163,14 @@ function TabItem({ icon: Icon, labelKey, focused, onPress }: TabItemProps) {
 }
 
 const styles = StyleSheet.create({
-  // Fully transparent — only the bar below (white + border) paints anything.
+  // Floats over the scene instead of reserving its own layout row — no dead
+  // canvas-colored strip between the content and the bar; only the bar
+  // itself (white + border) paints anything, and content scrolls behind it.
   container: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
   },
