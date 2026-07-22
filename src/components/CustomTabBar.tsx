@@ -1,4 +1,4 @@
-import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs/types';
+import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import { Home, LucideIcon, MapPin, Search, ShoppingBag, User } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -39,7 +39,7 @@ const PRESS_SPRING = { damping: 15, stiffness: 350 };
 // live inside that padding), not the bar's full border-box width.
 const BAR_HPADDING = spacing.sm;
 
-export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
+export function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
   const insets = useSafeAreaInsets();
   const [barWidth, setBarWidth] = useState(0);
 
@@ -158,10 +158,11 @@ function TabItem({ icon: Icon, labelKey, focused, onPress }: TabItemProps) {
 }
 
 const styles = StyleSheet.create({
-  // Fully transparent — just reserves the safe-area inset and side margins.
-  // The visible bar below floats on top of whatever's actually behind it
-  // rather than a second flat-colored strip.
+  // Matches the page canvas so nothing shows through — the navigator's own
+  // tab-bar slot defaults to a gray theme background, which otherwise peeks
+  // through the margin around the floating bar below.
   container: {
+    backgroundColor: colors.bg.canvas,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
   },
@@ -171,6 +172,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: colors.bg.surface,
     borderRadius: radius['2xl'],
+    borderWidth: 1,
+    borderColor: colors.brand.primaryBorder,
     paddingHorizontal: BAR_HPADDING,
     marginBottom: spacing.xs,
     ...shadow.lg,

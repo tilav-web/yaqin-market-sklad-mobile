@@ -130,6 +130,11 @@ function RootNavigator() {
         headerTitleStyle: { fontWeight: '700' },
         headerShadowVisible: false,
         contentStyle: { backgroundColor: colors.bg.canvas },
+        // Telegram-style swipe-to-go-back from anywhere on screen, not just
+        // an edge sliver — react-native-screens supports this on Android too
+        // once explicitly enabled (native-stack only defaults it on iOS).
+        gestureEnabled: true,
+        fullScreenGestureEnabled: true,
       }}>
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
