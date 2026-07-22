@@ -20,6 +20,13 @@ import { useEffectiveCoords, useLocationStore } from '@/stores/location';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
+/** "uy" / "UY BOSHQA" → "Uy" / "Uy boshqa" — labels always save this way, regardless of how it was typed. */
+function capitalizeLabel(s: string): string {
+  const trimmed = s.trim();
+  if (!trimmed) return trimmed;
+  return trimmed[0].toUpperCase() + trimmed.slice(1).toLowerCase();
+}
+
 export default function AddressesScreen() {
   const { tr } = useTranslation();
   const qc = useQueryClient();
@@ -78,7 +85,7 @@ export default function AddressesScreen() {
       const point = picked ?? coords;
       if (!point) throw new Error(tr('addr.noLocation'));
       const res = await api.post<UserAddress>('/users/me/addresses', {
-        label,
+        label: capitalizeLabel(label),
         address,
         latitude: point.latitude,
         longitude: point.longitude,
@@ -106,7 +113,7 @@ export default function AddressesScreen() {
       // `|| undefined`) — otherwise clearing a previously-set field would be
       // dropped by JSON serialization and silently leave the old value.
       const res = await api.patch<UserAddress>(`/users/me/addresses/${editingId}`, {
-        label,
+        label: capitalizeLabel(label),
         address,
         ...(picked ? { latitude: picked.latitude, longitude: picked.longitude } : {}),
         entrance: entrance.trim(),

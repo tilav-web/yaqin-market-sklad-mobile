@@ -215,90 +215,58 @@ export default function ProfileTab() {
 
         {!isGuest ? (
           <>
-            <Section>
-              {me?.isSellerApproved && myShopsQuery.data && myShopsQuery.data.length > 0
-                ? myShopsQuery.data.map((shop) => (
-                    <Row
-                      key={shop.id}
-                      icon={Store}
-                      title={shop.name}
-                      subtitle={`${shop.isOpenManual ? tr('profile.openShop') : tr('profile.closedShop')} · ${shop.address}`}
-                      badge={shop.newOrderCount}
-                      onPress={() => router.push(`/seller/${shop.id}/orders`)}
-                    />
-                  ))
-                : null}
+            {(me?.isSellerApproved && myShopsQuery.data && myShopsQuery.data.length > 0) ||
+            latestApp?.status === 'pending' ||
+            latestApp?.status === 'rejected' ? (
+              <Section>
+                {me?.isSellerApproved && myShopsQuery.data
+                  ? myShopsQuery.data.map((shop) => (
+                      <Row
+                        key={shop.id}
+                        icon={Store}
+                        title={shop.name}
+                        subtitle={`${shop.isOpenManual ? tr('profile.openShop') : tr('profile.closedShop')} · ${shop.address}`}
+                        badge={shop.newOrderCount}
+                        onPress={() => router.push(`/seller/${shop.id}/orders`)}
+                      />
+                    ))
+                  : null}
 
-              {me?.isSellerApproved ? (
-                // Approved seller: can add more shops directly
-                <Pressable
-                  onPress={() => {
-                    haptics.medium();
-                    router.push('/seller/new');
-                  }}
-                  style={styles.applyCta}>
-                  <View style={styles.applyIcon}>
-                    <Plus size={22} color={colors.brand.accent} strokeWidth={2.6} />
+                {latestApp?.status === 'pending' ? (
+                  // Application submitted, waiting for admin
+                  <View style={styles.pendingCta}>
+                    <View style={styles.pendingIcon}>
+                      <Clock size={22} color={colors.feedback.warning} strokeWidth={2.4} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.pendingTitle}>{tr('seller.pending.title')}</Text>
+                      <Text style={styles.applySub}>{tr('seller.pending.desc')}</Text>
+                    </View>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.applyTitle}>Yangi do&apos;kon ochish</Text>
-                    <Text style={styles.applySub}>Yana bir do&apos;kon qo&apos;shing va boshqaring</Text>
-                  </View>
-                  <ChevronRight size={18} color={colors.brand.accent} strokeWidth={2.4} />
-                </Pressable>
-              ) : latestApp?.status === 'pending' ? (
-                // Application submitted, waiting for admin
-                <View style={styles.pendingCta}>
-                  <View style={styles.pendingIcon}>
-                    <Clock size={22} color={colors.feedback.warning} strokeWidth={2.4} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.pendingTitle}>{tr('seller.pending.title')}</Text>
-                    <Text style={styles.applySub}>{tr('seller.pending.desc')}</Text>
-                  </View>
-                </View>
-              ) : latestApp?.status === 'rejected' ? (
-                // Application rejected — show reason + retry button
-                <Pressable
-                  onPress={() => {
-                    haptics.medium();
-                    router.push('/seller-application');
-                  }}
-                  style={styles.rejectedCta}>
-                  <View style={styles.rejectedIcon}>
-                    <XCircle size={22} color={colors.brand.primary} strokeWidth={2.4} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.rejectedTitle}>{tr('seller.rejected.title')}</Text>
-                    {latestApp.rejectionReason ? (
-                      <Text style={styles.applySub}>
-                        {tr('seller.rejected.reason', { reason: latestApp.rejectionReason })}
-                      </Text>
-                    ) : null}
-                    <Text style={styles.retryText}>Qayta ariza yuborish →</Text>
-                  </View>
-                </Pressable>
-              ) : (
-                // No application yet — invite to apply
-                <Pressable
-                  onPress={() => {
-                    haptics.medium();
-                    router.push('/seller-application');
-                  }}
-                  style={styles.applyCta}>
-                  <View style={styles.applyIcon}>
-                    <Plus size={22} color={colors.brand.accent} strokeWidth={2.6} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.applyTitle}>Sotuvchi bo&apos;lish</Text>
-                    <Text style={styles.applySub}>
-                      Ariza yuboring — admin tasdiqlagach do&apos;kon ochasiz
-                    </Text>
-                  </View>
-                  <ChevronRight size={18} color={colors.brand.accent} strokeWidth={2.4} />
-                </Pressable>
-              )}
-            </Section>
+                ) : latestApp?.status === 'rejected' ? (
+                  // Application rejected — show reason + retry button
+                  <Pressable
+                    onPress={() => {
+                      haptics.medium();
+                      router.push('/seller-application');
+                    }}
+                    style={styles.rejectedCta}>
+                    <View style={styles.rejectedIcon}>
+                      <XCircle size={22} color={colors.brand.primary} strokeWidth={2.4} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.rejectedTitle}>{tr('seller.rejected.title')}</Text>
+                      {latestApp.rejectionReason ? (
+                        <Text style={styles.applySub}>
+                          {tr('seller.rejected.reason', { reason: latestApp.rejectionReason })}
+                        </Text>
+                      ) : null}
+                      <Text style={styles.retryText}>Qayta ariza yuborish →</Text>
+                    </View>
+                  </Pressable>
+                ) : null}
+              </Section>
+            ) : null}
 
             {staffShops.length > 0 ? (
               <Section>
@@ -319,6 +287,15 @@ export default function ProfileTab() {
               <Row icon={CreditCard} title={tr('cards.title')} onPress={() => router.push('/saved-cards')} />
               <Row icon={ClipboardList} title={tr('profile.orders')} onPress={() => router.push('/orders')} />
               <Row icon={Heart} title="Sevimlilar" onPress={() => router.push('/favorites')} />
+              {me?.isSellerApproved ? (
+                <Row icon={Plus} title={tr('profile.openShopShort')} onPress={() => router.push('/seller/new')} />
+              ) : latestApp?.status !== 'pending' && latestApp?.status !== 'rejected' ? (
+                <Row
+                  icon={Store}
+                  title={tr('profile.openShopShort')}
+                  onPress={() => requireAuth(() => router.push('/seller-application'))}
+                />
+              ) : null}
               <Row icon={QrCode} title={tr('profile.joinAsStaff')} onPress={() => router.push('/staff-scan')} />
             </Section>
           </>
@@ -517,23 +494,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   rowBadgeText: { color: colors.text.onPrimary, fontSize: 13, fontWeight: '800' },
-  applyCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.brand.accentSurface,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-  },
-  applyIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  applyTitle: { ...typography.h4, color: colors.brand.accent },
   applySub: { ...typography.bodySmall, color: colors.text.secondary, marginTop: 2 },
   pendingCta: {
     flexDirection: 'row',
