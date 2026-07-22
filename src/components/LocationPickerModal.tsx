@@ -1,8 +1,9 @@
 import * as Location from 'expo-location';
-import { Check, MapPin, X } from 'lucide-react-native';
+import { Check, MapPin, Navigation, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Modal,
   Pressable,
   StyleSheet,
@@ -51,7 +52,9 @@ function formatGeocode(parts: Location.LocationGeocodedAddress | undefined): str
 /**
  * Full-screen map picker. A pin stays fixed at the screen center while the map
  * pans beneath it; whatever sits under the pin is the chosen point. The address
- * label is reverse-geocoded (debounced) after each pan settles.
+ * label is reverse-geocoded (debounced) after each pan settles. The pin lifts
+ * off the map while panning and drops back down on release — mirrors the
+ * Yandex/Google Maps "drag to pin a spot" feel.
  */
 export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: Props) {
   const { tr } = useTranslation();
@@ -59,7 +62,10 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
   const [center, setCenter] = useState(start);
   const [addressLabel, setAddressLabel] = useState('');
   const [geocoding, setGeocoding] = useState(false);
+  const [locating, setLocating] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mapRef = useRef<MapView>(null);
+  const lift = useRef(new Animated.Value(0)).current;
 
   // Reset to the starting point whenever the modal (re)opens.
   useEffect(() => {
@@ -85,9 +91,38 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
     }, 450);
   };
 
+  const onRegionChange = () => {
+    Animated.spring(lift, { toValue: 1, friction: 6, useNativeDriver: true }).start();
+  };
+
   const onRegionChangeComplete = (r: Region) => {
+    Animated.spring(lift, { toValue: 0, friction: 5, tension: 120, useNativeDriver: true }).start();
     setCenter({ latitude: r.latitude, longitude: r.longitude });
     reverseGeocode(r.latitude, r.longitude);
+  };
+
+  const recenterToMyLocation = async () => {
+    if (locating) return;
+    setLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      haptics.selection();
+      mapRef.current?.animateToRegion(
+        {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        },
+        450,
+      );
+    } catch {
+      // GPS unavailable/denied — the map simply stays put.
+    } finally {
+      setLocating(false);
+    }
   };
 
   const handleConfirm = () => {
@@ -99,10 +134,16 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
     });
   };
 
+  const pinTranslateY = lift.interpolate({ inputRange: [0, 1], outputRange: [0, -14] });
+  const pinScale = lift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
+  const groundScale = lift.interpolate({ inputRange: [0, 1], outputRange: [1, 0.55] });
+  const groundOpacity = lift.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.12] });
+
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onCancel}>
       <View style={styles.fill}>
         <MapView
+          ref={mapRef}
           style={styles.fill}
           provider={PROVIDER_GOOGLE}
           initialRegion={{
@@ -111,15 +152,23 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
             latitudeDelta: 0.01,
             longitudeDelta: 0.01,
           }}
+          onRegionChange={onRegionChange}
           onRegionChangeComplete={onRegionChangeComplete}
           showsUserLocation
           showsMyLocationButton={false}
         />
 
-        {/* Fixed center pin (sits visually above the map's center point). */}
+        {/* Fixed center pin (sits visually above the map's center point). Lifts
+            off the map while panning, drops back down on release. */}
         <View pointerEvents="none" style={styles.pinWrap}>
-          <MapPin size={40} color={colors.brand.primary} strokeWidth={2.5} fill={colors.brand.primarySurface} />
-          <View style={styles.pinDot} />
+          <Animated.View style={{ transform: [{ translateY: pinTranslateY }, { scale: pinScale }] }}>
+            <View style={styles.pinShadow}>
+              <MapPin size={46} color={colors.brand.primary} strokeWidth={2.3} fill={colors.brand.primarySurface} />
+            </View>
+          </Animated.View>
+          <Animated.View
+            style={[styles.groundShadow, { opacity: groundOpacity, transform: [{ scaleX: groundScale }] }]}
+          />
         </View>
 
         {/* Top bar */}
@@ -134,6 +183,15 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
           </View>
         </SafeAreaView>
 
+        {/* Floating "use my current location" button. */}
+        <Pressable style={styles.locateBtn} onPress={recenterToMyLocation} hitSlop={8}>
+          {locating ? (
+            <ActivityIndicator size="small" color={colors.brand.primary} />
+          ) : (
+            <Navigation size={20} color={colors.brand.primary} strokeWidth={2.4} />
+          )}
+        </Pressable>
+
         {/* Bottom confirmation card */}
         <SafeAreaView edges={['bottom']} style={styles.bottom} pointerEvents="box-none">
           <View style={styles.card}>
@@ -147,9 +205,6 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
                     {addressLabel || tr('locpicker.selectedPoint')}
                   </Text>
                 )}
-                <Text style={styles.coordText}>
-                  {center.latitude.toFixed(5)}, {center.longitude.toFixed(5)}
-                </Text>
               </View>
             </View>
             <Pressable style={styles.confirmBtn} onPress={handleConfirm}>
@@ -174,13 +229,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Lift the pin so its tip (not its center) marks the point, and add a ground dot.
-  pinDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.brand.primary,
-    marginTop: -6,
+  pinShadow: {
+    ...shadow.md,
+  },
+  // Sits at the true center point (the pin's tip lifts above it); shrinks and
+  // fades while the pin is lifted, mimicking a dropped shadow gaining distance.
+  groundShadow: {
+    width: 16,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.palette.black,
+    marginTop: -4,
   },
   topBar: {
     position: 'absolute',
@@ -211,6 +270,18 @@ const styles = StyleSheet.create({
     ...shadow.md,
   },
   topHintText: { ...typography.caption, color: colors.text.secondary },
+  locateBtn: {
+    position: 'absolute',
+    right: layout.screenPadding,
+    bottom: 200,
+    width: 48,
+    height: 48,
+    borderRadius: radius.full,
+    backgroundColor: colors.bg.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadow.md,
+  },
   bottom: {
     position: 'absolute',
     left: 0,
@@ -227,7 +298,6 @@ const styles = StyleSheet.create({
   },
   addrRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   addrText: { ...typography.body, fontWeight: '600', color: colors.text.primary },
-  coordText: { ...typography.caption, color: colors.text.tertiary, marginTop: 2 },
   confirmBtn: {
     flexDirection: 'row',
     alignItems: 'center',

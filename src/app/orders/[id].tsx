@@ -744,14 +744,14 @@ export default function OrderDetailScreen() {
                     ? [styles.ghostBtnText, { color: colors.brand.primary }]
                     : styles.clickBtnText
                 }>
-                {hasCards ? tr('checkout.payWithRedirect') : "Click orqali to'lash"}
+                {hasCards ? tr('checkout.payWithRedirect') : tr('checkout.cardPayment')}
               </Text>
             </Pressable>
           );
         })()}
         {order.paymentMethod === 'click_online' && order.paymentStatus === 'paid' && (
           <View style={styles.paidBadge}>
-            <Text style={styles.paidBadgeText}>✓ Click orqali to'langan</Text>
+            <Text style={styles.paidBadgeText}>{tr('checkout.paidBadge')}</Text>
           </View>
         )}
 

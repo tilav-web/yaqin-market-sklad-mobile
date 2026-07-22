@@ -6,6 +6,9 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,6 +18,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AddCardForm } from '@/components/AddCardForm';
+import { CardVisual } from '@/components/CardVisual';
 import { CheckoutAddressSheet } from '@/components/CheckoutAddressSheet';
 import { useToast } from '@/components/ui';
 import { useTranslation } from '@/i18n';
@@ -25,6 +30,7 @@ import { useAuthStore } from '@/stores/auth';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { detectCardBrand } from '@/utils/cardBrand';
 
 export default function CheckoutScreen() {
   const { id: shopId } = useLocalSearchParams<{ id: string }>();
@@ -48,6 +54,7 @@ export default function CheckoutScreen() {
   const [recipientPhone, setRecipientPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'click_online'>('cash');
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [addCardSheetVisible, setAddCardSheetVisible] = useState(false);
 
   const cardsQuery = useQuery({
     queryKey: ['saved-cards'],
@@ -181,7 +188,7 @@ export default function CheckoutScreen() {
         // detail screen offers the same saved-card retry + the redirect.
         try {
           await api.post(`/click/orders/${order.id}/pay-with-card`, { cardId: selectedCardId });
-          toast.success('Buyurtma yuborildi!');
+          toast.success(tr('checkout.orderSent'));
         } catch (e) {
           toast.error(extractErrorMessage(e));
         }
@@ -191,10 +198,10 @@ export default function CheckoutScreen() {
           const { data } = await api.get<{ url: string }>(`/click/orders/${order.id}/url`);
           await WebBrowser.openBrowserAsync(data.url, { showTitle: true });
         } catch {
-          toast.error("Click sahifasini ochib bo'lmadi. Buyurtmangizdan to'lang.");
+          toast.error(tr('checkout.paymentPageError'));
         }
       } else {
-        toast.success('Buyurtma yuborildi!');
+        toast.success(tr('checkout.orderSent'));
       }
       router.replace(`/orders/${order.id}`);
     },
@@ -213,7 +220,7 @@ export default function CheckoutScreen() {
   if (!cartLines.length) {
     return (
       <SafeAreaView style={styles.center}>
-        <Text style={styles.dim}>Savat bo'sh</Text>
+        <Text style={styles.dim}>{tr('cart.empty.title')}</Text>
       </SafeAreaView>
     );
   }
@@ -242,7 +249,7 @@ export default function CheckoutScreen() {
           ) : (
             <Pressable style={styles.addAddressBtn} onPress={() => router.push('/addresses')}>
               <MapPin size={16} color={colors.brand.primary} strokeWidth={2.4} />
-              <Text style={styles.addAddressText}>Manzil qo'shish</Text>
+              <Text style={styles.addAddressText}>{tr('addr.add')}</Text>
             </Pressable>
           )}
         </View>
@@ -304,7 +311,7 @@ export default function CheckoutScreen() {
         {/* Items */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            {shop?.name ?? 'Mahsulotlar'} · {cartLines.length} ta
+            {shop?.name ?? tr('cart.subtotal')} · {tr('cart.itemsCount', { n: cartLines.length })}
           </Text>
           {cartLines.map((line) => (
             <View key={line.variantId} style={styles.cartItem}>
@@ -320,7 +327,7 @@ export default function CheckoutScreen() {
                   {line.productName}
                 </Text>
                 <Text style={styles.itemPrice}>
-                  {(line.unitPrice * line.quantity).toLocaleString()} so'm
+                  {(line.unitPrice * line.quantity).toLocaleString()} {tr('common.som')}
                 </Text>
               </View>
               <View style={styles.qtyControls}>
@@ -342,19 +349,19 @@ export default function CheckoutScreen() {
 
         {/* Payment */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>To'lov turi</Text>
+          <Text style={styles.sectionTitle}>{tr('checkout.paymentTitle')}</Text>
           <Pressable
             style={[styles.payRow, paymentMethod === 'cash' && styles.payRowActive]}
             onPress={() => setPaymentMethod('cash')}>
             <Wallet size={18} color={paymentMethod === 'cash' ? colors.brand.primary : colors.text.tertiary} strokeWidth={2.2} />
-            <Text style={[styles.payText, paymentMethod === 'cash' && { color: colors.brand.primary }]}>Naqd pul</Text>
+            <Text style={[styles.payText, paymentMethod === 'cash' && { color: colors.brand.primary }]}>{tr('checkout.cash')}</Text>
             {paymentMethod === 'cash' && <View style={styles.payCheck} />}
           </Pressable>
           <Pressable
             style={[styles.payRow, paymentMethod === 'click_online' && styles.payRowActive]}
             onPress={() => setPaymentMethod('click_online')}>
             <CreditCard size={18} color={paymentMethod === 'click_online' ? colors.brand.primary : colors.text.tertiary} strokeWidth={2.2} />
-            <Text style={[styles.payText, paymentMethod === 'click_online' && { color: colors.brand.primary }]}>Click orqali</Text>
+            <Text style={[styles.payText, paymentMethod === 'click_online' && { color: colors.brand.primary }]}>{tr('checkout.cardPayment')}</Text>
             {paymentMethod === 'click_online' && <View style={styles.payCheck} />}
           </Pressable>
 
@@ -362,6 +369,7 @@ export default function CheckoutScreen() {
             <View style={styles.cardSubList}>
               {activeCards.map((card) => {
                 const active = selectedCardId === card.id;
+                const brand = detectCardBrand(card.cardNumberMasked ?? '');
                 return (
                   <Pressable
                     key={card.id}
@@ -370,7 +378,15 @@ export default function CheckoutScreen() {
                     <View style={[styles.radio, active && styles.radioActive]}>
                       {active && <View style={styles.radioDot} />}
                     </View>
-                    <Text style={styles.cardSubText}>{card.cardNumberMasked ?? '••••'}</Text>
+                    <CardVisual
+                      size="mini"
+                      brand={brand}
+                      numberText={card.cardNumberMasked ?? '••••'}
+                      fallbackLabel={tr('cards.genericName')}
+                    />
+                    <Text style={styles.cardSubText} numberOfLines={1}>
+                      {card.label || card.cardNumberMasked || '••••'}
+                    </Text>
                     {card.isDefault && <Text style={styles.cardSubDefault}>{tr('cards.default')}</Text>}
                   </Pressable>
                 );
@@ -383,41 +399,41 @@ export default function CheckoutScreen() {
                 </View>
                 <Text style={styles.cardSubText}>{tr('checkout.payWithRedirect')}</Text>
               </Pressable>
-              {activeCards.length === 0 && (
-                <Pressable onPress={() => router.push('/saved-cards')}>
-                  <Text style={styles.addCardHint}>{tr('checkout.addCardHint')}</Text>
-                </Pressable>
-              )}
+              <Pressable onPress={() => setAddCardSheetVisible(true)}>
+                <Text style={styles.addCardHint}>
+                  {activeCards.length === 0 ? tr('checkout.addCardHint') : tr('cards.add')}
+                </Text>
+              </Pressable>
             </View>
           )}
         </View>
 
         {/* Summary */}
         <View style={styles.section}>
-          <Row label="Mahsulotlar" value={`${subTotal.toLocaleString()} so'm`} />
+          <Row label={tr('cart.subtotal')} value={`${subTotal.toLocaleString()} ${tr('common.som')}`} />
           <Row
-            label="Yetkazib berish"
-            value={deliveryFee === 0 ? 'Tekin' : `${deliveryFee.toLocaleString()} so'm`}
+            label={tr('cart.deliveryFee')}
+            value={deliveryFee === 0 ? tr('shop.freeShort') : `${deliveryFee.toLocaleString()} ${tr('common.som')}`}
           />
           <View style={styles.divider} />
-          <Row label="Jami" value={`${total.toLocaleString()} so'm`} bold />
+          <Row label={tr('cart.total')} value={`${total.toLocaleString()} ${tr('common.som')}`} bold />
         </View>
 
         {belowMin && (
           <Text style={styles.warn}>
-            Minimal buyurtma {minOrder.toLocaleString()} so'm. Yana{' '}
-            {(minOrder - subTotal).toLocaleString()} so'm qo'shing.
+            {tr('checkout.belowMinWarn', {
+              min: minOrder.toLocaleString(),
+              rest: (minOrder - subTotal).toLocaleString(),
+            })}
           </Text>
         )}
-        {outOfZone && (
-          <Text style={styles.warn}>Manzil do'konning yetkazib berish zonasidan tashqarida.</Text>
-        )}
+        {outOfZone && <Text style={styles.warn}>{tr('checkout.outOfZoneWarn')}</Text>}
       </ScrollView>
 
       <SafeAreaView edges={['bottom']} style={styles.footer}>
         <View style={styles.footerTotal}>
-          <Text style={styles.footerTotalLabel}>Jami</Text>
-          <Text style={styles.footerTotalValue}>{total.toLocaleString()} so'm</Text>
+          <Text style={styles.footerTotalLabel}>{tr('cart.total')}</Text>
+          <Text style={styles.footerTotalValue}>{total.toLocaleString()} {tr('common.som')}</Text>
         </View>
         <Pressable
           onPress={() => createOrder.mutate()}
@@ -428,12 +444,12 @@ export default function CheckoutScreen() {
           ) : (
             <Text style={styles.orderBtnText}>
               {!selectedAddressId
-                ? 'Manzil tanlang'
+                ? tr('cart.selectAddress')
                 : belowMin
-                  ? 'Minimal summaga yetmadi'
+                  ? tr('checkout.belowMinBtn')
                   : outOfZone
-                    ? 'Zonadan tashqarida'
-                    : 'Buyurtma berish'}
+                    ? tr('checkout.outOfZoneBtn')
+                    : tr('cart.proceed')}
             </Text>
           )}
         </Pressable>
@@ -446,6 +462,32 @@ export default function CheckoutScreen() {
         onSelect={selectAddress}
         onClose={() => setAddressSheetVisible(false)}
       />
+
+      <Modal
+        visible={addCardSheetVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAddCardSheetVisible(false)}>
+        <Pressable style={styles.sheetBackdrop} onPress={() => setAddCardSheetVisible(false)} />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.sheetWrap}
+          pointerEvents="box-none">
+          <SafeAreaView edges={['bottom']} style={styles.sheetCard}>
+            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.sheetScroll}>
+              <View style={styles.sheetHandle} />
+              <Text style={styles.sheetTitle}>{tr('cards.add')}</Text>
+              <AddCardForm
+                onDone={(card) => {
+                  setSelectedCardId(card.id);
+                  setAddCardSheetVisible(false);
+                }}
+                onCancel={() => setAddCardSheetVisible(false)}
+              />
+            </ScrollView>
+          </SafeAreaView>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -608,4 +650,22 @@ const styles = StyleSheet.create({
   },
   orderBtnDisabled: { backgroundColor: colors.text.hint },
   orderBtnText: { ...typography.button, color: colors.text.onPrimary },
+  sheetBackdrop: { flex: 1, backgroundColor: colors.overlay.scrim },
+  sheetWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  sheetCard: {
+    backgroundColor: colors.bg.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    maxHeight: '85%',
+  },
+  sheetScroll: { padding: layout.screenPadding, paddingBottom: spacing['3xl'] },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border.strong,
+    alignSelf: 'center',
+    marginBottom: spacing.md,
+  },
+  sheetTitle: { ...typography.h4, color: colors.text.primary, marginBottom: spacing.md },
 });

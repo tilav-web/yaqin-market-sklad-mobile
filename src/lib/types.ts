@@ -580,6 +580,7 @@ export interface ProductOffer {
 export interface SavedCard {
   id: string;
   cardNumberMasked: string | null;
+  label: string | null;
   isDefault: boolean;
   status: 'pending_verify' | 'active';
 }

@@ -149,6 +149,10 @@ export default function AddressesScreen() {
     setPicked(result);
     if (result.address) setAddress(result.address);
     setPickerVisible(false);
+    // Brand-new addresses go map-first: the detail form only appears once a
+    // point has been confirmed. Re-picking from inside an already-open form
+    // (edit, or "choose another spot") leaves `adding` untouched (already true).
+    setAdding(true);
   };
 
   const selectAsActive = (item: UserAddress) => {
@@ -265,18 +269,8 @@ export default function AddressesScreen() {
 
               <Pressable style={styles.mapBtn} onPress={() => setPickerVisible(true)}>
                 <MapPin size={18} color={colors.brand.primary} strokeWidth={2.4} />
-                <Text style={styles.mapBtnText}>
-                  {picked ? tr('addr.pickOnMapAgain') : tr('addr.pickOnMap')}
-                </Text>
+                <Text style={styles.mapBtnText}>{tr('addr.pickOnMapAgain')}</Text>
               </Pressable>
-
-              <Text style={styles.gpsHint}>
-                {picked
-                  ? `📍 ${picked.latitude.toFixed(5)}, ${picked.longitude.toFixed(5)}`
-                  : coords
-                    ? `📍 ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`
-                    : tr('home.locationLoading')}
-              </Text>
 
               <View style={styles.detailsGrid}>
                 <TextInput
@@ -322,7 +316,7 @@ export default function AddressesScreen() {
               </Pressable>
             </View>
           ) : (
-            <Pressable style={styles.addBtn} onPress={() => setAdding(true)}>
+            <Pressable style={styles.addBtn} onPress={() => setPickerVisible(true)}>
               <Text style={styles.addBtnText}>{tr('addr.add')}</Text>
             </Pressable>
           )
@@ -435,7 +429,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand.primarySurface,
   },
   mapBtnText: { ...typography.body, color: colors.brand.primary, fontWeight: '700' },
-  gpsHint: { ...typography.caption, color: colors.text.tertiary },
   saveBtn: {
     backgroundColor: colors.brand.primary,
     height: layout.buttonHeight.md,

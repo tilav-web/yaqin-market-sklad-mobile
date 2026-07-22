@@ -115,6 +115,14 @@ export const colors = {
     scrim: 'rgba(13, 12, 11, 0.55)',
     light: 'rgba(255, 255, 255, 0.9)',
   },
+  // Bank-card mockup faces — keyed by the detected BIN brand (see
+  // utils/cardBrand.ts). `unknown` covers a card number not yet long enough
+  // to classify (or a foreign BIN outside Uzcard/Humo).
+  cardBrand: {
+    uzcard: { base: '#1E5FBF', dark: '#123D7D', text: '#FFFFFF' },
+    humo: { base: '#0EA37A', dark: '#0B6E54', text: '#FFFFFF' },
+    unknown: { base: palette.gray700, dark: palette.gray900, text: '#FFFFFF' },
+  },
 } as const;
 
 export type ColorTokens = typeof colors;
