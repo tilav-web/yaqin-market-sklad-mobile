@@ -693,9 +693,19 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
-        {/* Saved-card retry — one tap, no redirect, for a pending online order */}
+        {/* A failed charge must never be silently invisible — the customer has
+            no other way to learn the payment didn't go through. */}
+        {order.paymentMethod === 'click_online' && order.paymentStatus === 'failed' && (
+          <View style={styles.failedBadge}>
+            <Text style={styles.failedBadgeText}>{tr('checkout.paymentFailedBadge')}</Text>
+          </View>
+        )}
+
+        {/* Saved-card retry — one tap, no redirect, for a pending/failed
+            online payment on an order that can still be paid. */}
         {order.paymentMethod === 'click_online' &&
-          order.paymentStatus === 'pending' &&
+          (order.paymentStatus === 'pending' || order.paymentStatus === 'failed') &&
+          !isTerminalStatus(order.status) &&
           (cardsQuery.data ?? [])
             .filter((c) => c.status === 'active')
             .map((card) => (
@@ -719,36 +729,39 @@ export default function OrderDetailScreen() {
 
         {/* Click payment button — the redirect fallback; demoted to a ghost
             button once a one-tap saved-card option is available above. */}
-        {order.paymentMethod === 'click_online' && order.paymentStatus === 'pending' && (() => {
-          const hasCards = (cardsQuery.data ?? []).some((c) => c.status === 'active');
-          return (
-            <Pressable
-              style={hasCards ? styles.ghostBtn : styles.clickBtn}
-              onPress={async () => {
-                try {
-                  const { data } = await api.get<{ url: string }>(`/click/orders/${order.id}/url`);
-                  await WebBrowser.openBrowserAsync(data.url, { showTitle: true });
-                  void qc.invalidateQueries({ queryKey: ['order', id] });
-                } catch (e) {
-                  toast.error(extractErrorMessage(e));
-                }
-              }}>
-              <CreditCard
-                size={18}
-                color={hasCards ? colors.brand.primary : colors.text.onPrimary}
-                strokeWidth={2.2}
-              />
-              <Text
-                style={
-                  hasCards
-                    ? [styles.ghostBtnText, { color: colors.brand.primary }]
-                    : styles.clickBtnText
-                }>
-                {hasCards ? tr('checkout.payWithRedirect') : tr('checkout.cardPayment')}
-              </Text>
-            </Pressable>
-          );
-        })()}
+        {order.paymentMethod === 'click_online' &&
+          (order.paymentStatus === 'pending' || order.paymentStatus === 'failed') &&
+          !isTerminalStatus(order.status) &&
+          (() => {
+            const hasCards = (cardsQuery.data ?? []).some((c) => c.status === 'active');
+            return (
+              <Pressable
+                style={hasCards ? styles.ghostBtn : styles.clickBtn}
+                onPress={async () => {
+                  try {
+                    const { data } = await api.get<{ url: string }>(`/click/orders/${order.id}/url`);
+                    await WebBrowser.openBrowserAsync(data.url, { showTitle: true });
+                    void qc.invalidateQueries({ queryKey: ['order', id] });
+                  } catch (e) {
+                    toast.error(extractErrorMessage(e));
+                  }
+                }}>
+                <CreditCard
+                  size={18}
+                  color={hasCards ? colors.brand.primary : colors.text.onPrimary}
+                  strokeWidth={2.2}
+                />
+                <Text
+                  style={
+                    hasCards
+                      ? [styles.ghostBtnText, { color: colors.brand.primary }]
+                      : styles.clickBtnText
+                  }>
+                  {hasCards ? tr('checkout.payWithRedirect') : tr('checkout.cardPayment')}
+                </Text>
+              </Pressable>
+            );
+          })()}
         {order.paymentMethod === 'click_online' && order.paymentStatus === 'paid' && (
           <View style={styles.paidBadge}>
             <Text style={styles.paidBadgeText}>{tr('checkout.paidBadge')}</Text>
@@ -1076,4 +1089,16 @@ const styles = StyleSheet.create({
     borderColor: colors.feedback.success,
   },
   paidBadgeText: { ...typography.bodyStrong, color: colors.feedback.success },
+  failedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: `${colors.feedback.danger}18`,
+    borderWidth: 1,
+    borderColor: colors.feedback.danger,
+  },
+  failedBadgeText: { ...typography.bodyStrong, color: colors.feedback.danger },
 });
