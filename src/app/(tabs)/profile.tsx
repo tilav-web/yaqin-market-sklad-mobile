@@ -433,8 +433,6 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: radius.full,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
   },
   fixCaption: {
     position: 'absolute',
