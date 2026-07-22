@@ -17,13 +17,13 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LanguagePickerSheet, LANG_LABELS } from '@/components/LanguagePickerSheet';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
-import { avatarEmoji } from '@/constants/avatars';
+import { avatarSource } from '@/constants/avatars';
 import { useLangStore, useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { useIsGuest, useRequireAuth } from '@/lib/useRequireAuth';
@@ -158,9 +158,9 @@ export default function ProfileTab() {
                 router.push('/profile/edit');
               }}>
               <View style={styles.avatarWrap}>
-                <View style={[styles.avatar, avatarEmoji(me?.avatarUrl) ? styles.avatarEmojiBg : null]}>
-                  {avatarEmoji(me?.avatarUrl) ? (
-                    <Text style={styles.avatarEmoji}>{avatarEmoji(me?.avatarUrl)}</Text>
+                <View style={styles.avatar}>
+                  {avatarSource(me?.avatarUrl) ? (
+                    <Image source={avatarSource(me?.avatarUrl)!} style={styles.avatarImage} />
                   ) : (
                     <Text style={styles.avatarText}>
                       {(me?.name?.[0] ?? me?.phone?.slice(-2) ?? 'Y').toUpperCase()}
@@ -466,8 +466,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarEmojiBg: { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)' },
-  avatarEmoji: { fontSize: 34 },
+  avatarImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: radius.full },
   avatarText: { color: colors.brand.primary, fontSize: 24, fontWeight: '800' },
   name: { ...typography.h3, color: colors.text.onPrimary, flexShrink: 1 },
   phone: { ...typography.bodySmall, color: 'rgba(255,255,255,0.85)', marginTop: 2 },

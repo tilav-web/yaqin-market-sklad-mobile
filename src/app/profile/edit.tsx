@@ -4,6 +4,7 @@ import { Calendar, Check, Lock } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AVATAR_GROUPS, avatarEmoji } from '@/constants/avatars';
+import { AVATAR_OPTIONS, avatarSource } from '@/constants/avatars';
 import { DatePickerModal } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
@@ -28,6 +29,15 @@ function splitLegacyName(name: string | null): { first: string; last: string } {
   const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return { first: '', last: '' };
   return { first: parts[0], last: parts.slice(1).join(' ') };
+}
+
+const MIN_AGE_YEARS = 5;
+
+/** Latest birth date that still makes someone at least MIN_AGE_YEARS old today. */
+function maxBirthDate(): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - MIN_AGE_YEARS);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export default function EditProfileScreen() {
@@ -75,7 +85,7 @@ export default function EditProfileScreen() {
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
-  const previewEmoji = avatarEmoji(avatarId);
+  const previewSource = avatarSource(avatarId);
   const initial = (firstName?.[0] ?? user?.phone?.slice(-2) ?? 'Y').toUpperCase();
   const canSave = firstName.trim().length > 0;
 
@@ -94,9 +104,9 @@ export default function EditProfileScreen() {
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {/* Live preview */}
         <View style={styles.previewWrap}>
-          <View style={[styles.previewAvatar, previewEmoji ? styles.previewAvatarEmoji : null]}>
-            {previewEmoji ? (
-              <Text style={styles.previewEmoji}>{previewEmoji}</Text>
+          <View style={styles.previewAvatar}>
+            {previewSource ? (
+              <Image source={previewSource} style={styles.previewImage} />
             ) : (
               <Text style={styles.previewInitial}>{initial}</Text>
             )}
@@ -179,29 +189,26 @@ export default function EditProfileScreen() {
 
         {/* Avatar picker */}
         <Text style={[styles.label, { marginTop: spacing.lg }]}>{tr('editProfile.chooseAvatar')}</Text>
-        {AVATAR_GROUPS.map((group) => (
-          <View key={group.titleKey} style={styles.group}>
-            <Text style={styles.groupTitle}>{tr(group.titleKey)}</Text>
-            <View style={styles.grid}>
-              {group.options.map((opt) => {
-                const active = avatarId === opt.id;
-                return (
-                  <Pressable
-                    key={opt.id}
-                    onPress={() => pick(opt.id)}
-                    style={[styles.avatarCell, active && styles.avatarCellActive]}>
-                    <Text style={styles.avatarEmoji}>{opt.emoji}</Text>
-                    {active && (
-                      <View style={styles.checkDot}>
-                        <Check size={11} color={colors.text.onPrimary} strokeWidth={3} />
-                      </View>
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        ))}
+        <View style={styles.grid}>
+          {AVATAR_OPTIONS.map((opt) => {
+            const active = avatarId === opt.id;
+            return (
+              <Pressable
+                key={opt.id}
+                onPress={() => pick(opt.id)}
+                style={[styles.avatarCell, active && styles.avatarCellActive]}>
+                <View style={styles.avatarCellImageWrap}>
+                  <Image source={opt.source} style={styles.avatarCellImage} />
+                </View>
+                {active && (
+                  <View style={styles.checkDot}>
+                    <Check size={11} color={colors.text.onPrimary} strokeWidth={3} />
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
       </ScrollView>
 
       <View style={styles.footer}>
@@ -219,6 +226,7 @@ export default function EditProfileScreen() {
         visible={datePickerVisible}
         value={birthDate}
         title={tr('editProfile.birthDate')}
+        maxDate={maxBirthDate()}
         onConfirm={(iso) => {
           setBirthDate(iso);
           setDatePickerVisible(false);
@@ -243,8 +251,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  previewAvatarEmoji: { backgroundColor: colors.brand.primarySurface, borderColor: colors.brand.primaryBorder },
-  previewEmoji: { fontSize: 52 },
+  previewImage: { width: '100%', height: '100%', borderRadius: radius.full },
   previewInitial: { color: colors.text.onPrimary, fontSize: 36, fontWeight: '800' },
   label: { ...typography.overline, marginBottom: spacing.sm },
   input: {
@@ -300,21 +307,19 @@ const styles = StyleSheet.create({
   },
   phoneText: { ...typography.body, color: colors.text.secondary },
   hint: { ...typography.caption, color: colors.text.tertiary, marginTop: spacing.xs },
-  group: { marginTop: spacing.md },
-  groupTitle: { ...typography.bodySmall, fontWeight: '700', color: colors.text.secondary, marginBottom: spacing.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   avatarCell: {
-    width: 60,
-    height: 60,
+    width: 64,
+    height: 64,
     borderRadius: radius.full,
-    backgroundColor: colors.bg.surface,
-    borderWidth: 1.5,
-    borderColor: colors.border.subtle,
+    borderWidth: 2,
+    borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarCellActive: { borderColor: colors.brand.primary, backgroundColor: colors.brand.primarySurface },
-  avatarEmoji: { fontSize: 30 },
+  avatarCellActive: { borderColor: colors.brand.primary },
+  avatarCellImageWrap: { width: 56, height: 56, borderRadius: radius.full, overflow: 'hidden' },
+  avatarCellImage: { width: '100%', height: '100%' },
   checkDot: {
     position: 'absolute',
     top: -2,

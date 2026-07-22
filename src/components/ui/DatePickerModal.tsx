@@ -11,6 +11,8 @@ interface Props {
   readonly onConfirm: (isoDate: string) => void;
   readonly onClose: () => void;
   readonly title?: string;
+  /** Latest selectable date ('YYYY-MM-DD') — e.g. birth date capped to "at least N years old". Later years/months/days are hidden or disabled. */
+  readonly maxDate?: string;
 }
 
 const WEEKDAYS = ['Ya', 'Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh'];
@@ -48,19 +50,23 @@ function parseIso(iso: string): Date | null {
  * scrollable year grid — flipping month-by-month to reach a birth year
  * decades back would otherwise take dozens of taps.
  */
-export function DatePickerModal({ visible, value, onConfirm, onClose, title }: Props) {
-  const [viewDate, setViewDate] = useState(() => parseIso(value ?? '') ?? new Date());
+export function DatePickerModal({ visible, value, onConfirm, onClose, title, maxDate }: Props) {
+  const maxParsed = maxDate ? parseIso(maxDate) : null;
+  const [viewDate, setViewDate] = useState(() => parseIso(value ?? '') ?? maxParsed ?? new Date());
   const [selected, setSelected] = useState<string | null>(value ?? null);
   const [mode, setMode] = useState<'calendar' | 'year'>('calendar');
 
-  // Re-sync to the field's current value each time the picker opens.
+  // Re-sync to the field's current value each time the picker opens. With no
+  // value yet and a maxDate cap (birth date), start the view there instead of
+  // "today" — today would just be a wall of disabled days otherwise.
   useEffect(() => {
     if (visible) {
       const parsed = parseIso(value ?? '');
-      setViewDate(parsed ?? new Date());
+      setViewDate(parsed ?? maxParsed ?? new Date());
       setSelected(value ?? null);
       setMode('calendar');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, value]);
 
   const year = viewDate.getFullYear();
@@ -72,12 +78,19 @@ export function DatePickerModal({ visible, value, onConfirm, onClose, title }: P
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
 
+  const viewYm = year * 12 + month;
+  const maxYm = maxParsed ? maxParsed.getFullYear() * 12 + maxParsed.getMonth() : null;
+  const nextMonthDisabled = maxYm !== null && viewYm >= maxYm;
+  const years = maxParsed ? YEARS.filter((y) => y <= maxParsed.getFullYear()) : YEARS;
+
   const pickYear = (y: number) => {
-    setViewDate(new Date(y, month, 1));
+    let m = month;
+    if (maxParsed && y === maxParsed.getFullYear() && m > maxParsed.getMonth()) m = maxParsed.getMonth();
+    setViewDate(new Date(y, m, 1));
     setMode('calendar');
   };
 
-  const yearIndex = Math.max(0, YEARS.indexOf(year));
+  const yearIndex = Math.max(0, years.indexOf(year));
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -99,8 +112,16 @@ export function DatePickerModal({ visible, value, onConfirm, onClose, title }: P
               </Text>
             </Pressable>
             {mode === 'calendar' ? (
-              <Pressable style={styles.navBtn} onPress={() => setViewDate(new Date(year, month + 1, 1))} hitSlop={8}>
-                <ChevronRight size={20} color={colors.brand.primary} strokeWidth={2.4} />
+              <Pressable
+                style={[styles.navBtn, nextMonthDisabled && styles.navBtnDisabled]}
+                disabled={nextMonthDisabled}
+                onPress={() => setViewDate(new Date(year, month + 1, 1))}
+                hitSlop={8}>
+                <ChevronRight
+                  size={20}
+                  color={nextMonthDisabled ? colors.text.hint : colors.brand.primary}
+                  strokeWidth={2.4}
+                />
               </Pressable>
             ) : (
               <View style={styles.navBtn} />
@@ -109,7 +130,7 @@ export function DatePickerModal({ visible, value, onConfirm, onClose, title }: P
 
           {mode === 'year' ? (
             <FlatList
-              data={YEARS}
+              data={years}
               keyExtractor={(y) => String(y)}
               numColumns={YEAR_COLUMNS}
               initialScrollIndex={Math.floor(yearIndex / YEAR_COLUMNS)}
@@ -145,12 +166,21 @@ export function DatePickerModal({ visible, value, onConfirm, onClose, title }: P
                   if (day === null) return <View key={`empty-${i}`} style={styles.cell} />;
                   const iso = toIso(year, month, day);
                   const active = selected === iso;
+                  const disabled = !!maxParsed && viewYm === maxYm && day > maxParsed.getDate();
                   return (
                     <Pressable
                       key={iso}
+                      disabled={disabled}
                       style={[styles.cell, active && styles.cellActive]}
                       onPress={() => setSelected(iso)}>
-                      <Text style={[styles.cellText, active && styles.cellTextActive]}>{day}</Text>
+                      <Text
+                        style={[
+                          styles.cellText,
+                          active && styles.cellTextActive,
+                          disabled && styles.cellTextDisabled,
+                        ]}>
+                        {day}
+                      </Text>
                     </Pressable>
                   );
                 })}
@@ -200,6 +230,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.brand.primarySurface,
   },
+  navBtnDisabled: { backgroundColor: colors.bg.surfaceMuted },
   headerText: { ...typography.bodyStrong, color: colors.text.primary },
   weekRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xs },
   weekday: { ...typography.caption, color: colors.text.tertiary, fontWeight: '700', width: CELL_SIZE, textAlign: 'center' },
@@ -208,6 +239,7 @@ const styles = StyleSheet.create({
   cellActive: { backgroundColor: colors.brand.primary },
   cellText: { ...typography.body, color: colors.text.primary },
   cellTextActive: { color: colors.text.onPrimary, fontWeight: '700' },
+  cellTextDisabled: { color: colors.text.hint },
   yearList: { maxHeight: YEAR_ROW_HEIGHT * 4.5, marginTop: spacing.xs },
   yearCell: {
     flex: 1 / YEAR_COLUMNS,
