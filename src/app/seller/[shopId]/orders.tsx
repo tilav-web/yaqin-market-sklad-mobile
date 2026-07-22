@@ -39,7 +39,7 @@ const FILTERS: { key: Filter; label: string }[] = [
 // "Jarayonda" = accepted/preparing/delivering. "Yangi" = only awaiting accept.
 // "Yakunlangan" = fully closed (delivered or cancelled).
 const PROGRESS: OrderStatus[] = ['accepted', 'preparing', 'delivering'];
-const DONE: OrderStatus[] = ['delivered', 'cancelled'];
+const DONE: OrderStatus[] = ['delivered', 'cancelled', 'seller_no_response', 'seller_rejected'];
 
 function fmt(n: number): string {
   return n.toLocaleString('ru-RU').replace(/,/g, ' ');
@@ -230,12 +230,23 @@ export default function SellerOrdersScreen() {
                     <Pressable
                       style={styles.cancelIcon}
                       hitSlop={8}
-                      onPress={() =>
-                        Alert.alert(tr('orders.cancel'), tr('orders.cancelConfirmNum', { n: item.orderNumber }), [
-                          { text: tr('common.no'), style: 'cancel' },
-                          { text: tr('common.yes'), style: 'destructive', onPress: () => advance.mutate({ orderId: item.id, status: 'cancelled' }) },
-                        ])
-                      }>
+                      onPress={() => {
+                        // A `new` order hasn't been accepted yet — declining it is
+                        // seller_rejected (triggers the customer's "try another
+                        // store" flow), distinct from cancelling an accepted one.
+                        const isNew = item.status === 'new';
+                        const nextStatus: OrderStatus = isNew ? 'seller_rejected' : 'cancelled';
+                        Alert.alert(
+                          isNew ? 'Buyurtmani rad etish' : tr('orders.cancel'),
+                          isNew
+                            ? `#${item.orderNumber} rad etilsinmi?`
+                            : tr('orders.cancelConfirmNum', { n: item.orderNumber }),
+                          [
+                            { text: tr('common.no'), style: 'cancel' },
+                            { text: tr('common.yes'), style: 'destructive', onPress: () => advance.mutate({ orderId: item.id, status: nextStatus }) },
+                          ],
+                        );
+                      }}>
                       <X size={15} color={colors.feedback.danger} strokeWidth={2.8} />
                     </Pressable>
                   )}

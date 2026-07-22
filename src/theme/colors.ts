@@ -98,6 +98,8 @@ export const colors = {
     delivering: palette.red,
     delivered: palette.success,
     cancelled: palette.gray500,
+    seller_no_response: palette.warning,
+    seller_rejected: palette.warning,
   },
   feedback: {
     success: palette.success,

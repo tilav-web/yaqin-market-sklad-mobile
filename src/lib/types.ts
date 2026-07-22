@@ -146,8 +146,8 @@ export interface OrderItem {
   unitPrice: number;
   lineTotal: number;
   returnedQuantity: number;
-  /** Joined on seller order views — first photo shown in the card/detail. */
-  productVariant?: { photos: string[] } | null;
+  /** Joined on seller order views — first photo shown in the card/detail; also carries globalProductId for the "find elsewhere" suggestion flow. */
+  productVariant?: { photos: string[]; globalProductId?: string } | null;
 }
 
 export type OrderStatus =
@@ -156,7 +156,11 @@ export type OrderStatus =
   | 'preparing'
   | 'delivering'
   | 'delivered'
-  | 'cancelled';
+  | 'cancelled'
+  /** Shop never accepted it within the 5-minute window. Not the customer's fault — see the reorder/find-elsewhere suggestions on the order screen. */
+  | 'seller_no_response'
+  /** Shop explicitly declined before accepting. Same suggestion flow as seller_no_response. */
+  | 'seller_rejected';
 
 export interface Order {
   id: string;
@@ -569,4 +573,6 @@ export const ORDER_STATUS_KEY: Record<OrderStatus, TranslationKey> = {
   delivering: 'orders.statusDelivering',
   delivered: 'orders.statusDelivered',
   cancelled: 'orders.statusCancelled',
+  seller_no_response: 'orders.statusSellerNoResponse',
+  seller_rejected: 'orders.statusSellerRejected',
 };

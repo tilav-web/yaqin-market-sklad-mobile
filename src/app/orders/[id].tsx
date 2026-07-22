@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -25,13 +25,26 @@ import { api, extractErrorMessage } from '@/lib/api';
 import { endOrderActivity, updateOrderActivity } from '@/lib/useOrderLiveActivity';
 import { useOrderSocket } from '@/lib/useOrderSocket';
 import { useTranslation } from '@/i18n';
-import { ORDER_STATUS_KEY, Order, OrderStatus, PublicProductVariant } from '@/lib/types';
+import { ORDER_STATUS_KEY, Order, OrderStatus, ProductOffer, PublicProductVariant } from '@/lib/types';
 import { OrderActivityProps } from '@/widgets/order-activity';
 import { useCartStore } from '@/stores/cart';
+import { useEffectiveCoords } from '@/stores/location';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 const FLOW: OrderStatus[] = ['new', 'accepted', 'preparing', 'delivering', 'delivered'];
+
+// Terminal: nothing further will happen to this order. Covers both a
+// customer's own cancellation and the shop failing to accept it (which is a
+// distinct case, see isSellerDeclined below and the suggestion flow it drives).
+function isTerminalStatus(status: OrderStatus | undefined): boolean {
+  return (
+    status === 'delivered' ||
+    status === 'cancelled' ||
+    status === 'seller_no_response' ||
+    status === 'seller_rejected'
+  );
+}
 
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -57,11 +70,33 @@ export default function OrderDetailScreen() {
     refetchInterval: (query) => {
       const s = query.state.data?.status;
       // Stop polling once the order reaches a terminal state.
-      return s === 'delivered' || s === 'cancelled' ? false : 8000;
+      return isTerminalStatus(s) ? false : 8000;
     },
   });
 
   const order = orderQuery.data;
+  const isSellerDeclined = order?.status === 'seller_no_response' || order?.status === 'seller_rejected';
+  const coords = useEffectiveCoords();
+  const alternativesQueries = useQueries({
+    queries: (order?.items ?? []).map((it) => ({
+      queryKey: [
+        'family-offers',
+        it.productVariant?.globalProductId,
+        order?.shopId,
+        coords?.latitude,
+        coords?.longitude,
+      ],
+      queryFn: async () => {
+        const res = await api.get<ProductOffer[]>(
+          `/catalog/global-products/${it.productVariant!.globalProductId}/family-offers`,
+          { params: { lat: coords?.latitude, lng: coords?.longitude, excludeShopId: order!.shopId } },
+        );
+        return res.data;
+      },
+      enabled: isSellerDeclined && !!it.productVariant?.globalProductId,
+      staleTime: 60_000,
+    })),
+  });
   const mapRef = useRef<MapView | null>(null);
   const { courierLocation } = useOrderSocket(order?.status === 'delivering' ? id : undefined);
 
@@ -83,7 +118,7 @@ export default function OrderDetailScreen() {
       shopName: order.shop?.name ?? '',
       status: order.status as OrderActivityProps['status'],
     };
-    if (order.status === 'delivered' || order.status === 'cancelled') {
+    if (isTerminalStatus(order.status)) {
       void endOrderActivity(props);
     } else {
       void updateOrderActivity(props);
@@ -184,7 +219,9 @@ export default function OrderDetailScreen() {
     );
   }
 
-  const canReorder = order.status === 'delivered' || order.status === 'cancelled';
+  // Includes seller_no_response/seller_rejected — retrying the same shop is
+  // one of the suggested options when it didn't accept the order.
+  const canReorder = isTerminalStatus(order.status);
 
   const handleReorder = async () => {
     haptics.medium();
@@ -229,6 +266,10 @@ export default function OrderDetailScreen() {
   const pendingRatings = Object.values(ratingDraft).filter((s) => s > 0).length;
 
   const statusColor = colors.status[order.status];
+  // No further progress will happen and there's nothing to chat about or
+  // track on a timeline — covers a plain cancel as well as the shop
+  // declining/not responding (isSellerDeclined).
+  const isDeadOrder = order.status === 'cancelled' || isSellerDeclined;
 
   return (
     <View style={styles.root}>
@@ -265,7 +306,58 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
-        {order.status !== 'cancelled' && (
+        {/* Seller didn't accept — distinct from a plain cancel: not the
+            customer's fault, so offer a way forward instead of a dead end. */}
+        {isSellerDeclined && (
+          <View style={styles.declinedBanner}>
+            <AlertCircle size={18} color={colors.feedback.warning} strokeWidth={2.4} />
+            <Text style={styles.declinedBannerText}>
+              {tr(order.status === 'seller_no_response' ? 'orders.sellerNoResponseBanner' : 'orders.sellerRejectedBanner')}
+            </Text>
+          </View>
+        )}
+
+        {isSellerDeclined && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{tr('orders.findElsewhereTitle')}</Text>
+            {order.items.map((it, idx) => {
+              const offers = (alternativesQueries[idx]?.data ?? []).slice(0, 5);
+              if (offers.length === 0) return null;
+              return (
+                <View key={it.id} style={styles.altGroup}>
+                  <Text style={styles.altGroupTitle}>{it.productName}</Text>
+                  {offers.map((o) => (
+                    <Pressable
+                      key={o.variantId}
+                      style={styles.offerRow}
+                      onPress={() => {
+                        haptics.selection();
+                        router.push(`/product/${o.variantId}`);
+                      }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.offerShop} numberOfLines={1}>{o.shopName}</Text>
+                        <Text style={styles.offerMeta}>
+                          {o.isOpen ? "Ochiq" : "Yopiq"}
+                          {o.distanceKm != null
+                            ? ` · ${o.distanceKm < 1 ? `${Math.round(o.distanceKm * 1000)} m` : `${o.distanceKm.toFixed(1)} km`}`
+                            : ''}
+                        </Text>
+                      </View>
+                      <Text style={styles.offerPrice}>
+                        {(o.discountPrice ?? o.price).toLocaleString()} so'm
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              );
+            })}
+            {alternativesQueries.every((q) => !q.isLoading && (q.data?.length ?? 0) === 0) && (
+              <Text style={styles.altEmpty}>{tr('orders.findElsewhereEmpty')}</Text>
+            )}
+          </View>
+        )}
+
+        {!isDeadOrder && (
           <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${order.id}`)}>
             <MessageCircle size={18} color={colors.brand.primary} strokeWidth={2.4} />
             <Text style={styles.chatBtnText}>Sotuvchi bilan bog'lanish</Text>
@@ -273,7 +365,7 @@ export default function OrderDetailScreen() {
         )}
 
         {/* Timeline */}
-        {order.status !== 'cancelled' && (
+        {!isDeadOrder && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Bosqichlar</Text>
             {FLOW.map((s, idx) => {
@@ -634,7 +726,9 @@ export default function OrderDetailScreen() {
         {canReorder && (
           <Pressable style={styles.reorderBtn} onPress={handleReorder}>
             <RefreshCw size={16} color={colors.brand.primary} strokeWidth={2.4} />
-            <Text style={styles.reorderBtnText}>Qayta buyurtma berish</Text>
+            <Text style={styles.reorderBtnText}>
+              {isSellerDeclined ? "Shu do'kondan qayta urinish" : 'Qayta buyurtma berish'}
+            </Text>
           </Pressable>
         )}
       </ScrollView>
@@ -723,6 +817,33 @@ const styles = StyleSheet.create({
     borderColor: colors.feedback.success,
   },
   refundBannerText: { ...typography.bodySmall, fontWeight: '700', color: colors.feedback.success },
+  // seller-declined suggestion flow
+  declinedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.feedback.warningSurface,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.feedback.warning,
+  },
+  declinedBannerText: { ...typography.bodySmall, fontWeight: '700', color: colors.feedback.warning, flex: 1 },
+  altGroup: { gap: spacing.xs },
+  altGroupTitle: { ...typography.bodyStrong, fontSize: 13, color: colors.text.secondary },
+  offerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.subtle,
+  },
+  offerShop: { ...typography.bodyStrong, fontSize: 14 },
+  offerMeta: { ...typography.caption, color: colors.text.tertiary, marginTop: 2 },
+  offerPrice: { ...typography.bodyStrong, fontSize: 14, color: colors.brand.primary },
+  altEmpty: { ...typography.bodySmall, color: colors.text.tertiary, fontStyle: 'italic' },
   // complaint
   complaintCard: { borderColor: colors.feedback.danger, borderWidth: 1.5 },
   complaintHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },

@@ -52,7 +52,15 @@ export function Badge({ label, tone = 'neutral', size = 'sm', style }: Props) {
   );
 }
 
-export type OrderStatus = 'new' | 'accepted' | 'preparing' | 'delivering' | 'delivered' | 'cancelled';
+export type OrderStatus =
+  | 'new'
+  | 'accepted'
+  | 'preparing'
+  | 'delivering'
+  | 'delivered'
+  | 'cancelled'
+  | 'seller_no_response'
+  | 'seller_rejected';
 
 const STATUS_TONE: Record<OrderStatus, BadgeTone> = {
   new: 'warning',
@@ -61,6 +69,8 @@ const STATUS_TONE: Record<OrderStatus, BadgeTone> = {
   delivering: 'primary',
   delivered: 'success',
   cancelled: 'danger',
+  seller_no_response: 'warning',
+  seller_rejected: 'danger',
 };
 
 const STATUS_LABELS_UZ: Record<OrderStatus, string> = {
@@ -70,6 +80,8 @@ const STATUS_LABELS_UZ: Record<OrderStatus, string> = {
   delivering: 'Yo\'lda',
   delivered: 'Yetkazildi',
   cancelled: 'Bekor qilindi',
+  seller_no_response: "Do'kon javob bermadi",
+  seller_rejected: "Do'kon rad etdi",
 };
 
 export function StatusBadge({ status }: { status: OrderStatus }) {

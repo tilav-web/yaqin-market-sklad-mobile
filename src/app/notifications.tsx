@@ -15,6 +15,8 @@ const ICON: Record<string, typeof Bell> = {
   'order:updated': Package,
   'order:assigned': Package,
   'order:auto_cancelled': TriangleAlert,
+  'order:seller_no_response': TriangleAlert,
+  'order:seller_rejected': TriangleAlert,
   'order:returned': Package,
   chat: MessageCircle,
   'stock:low': TriangleAlert,

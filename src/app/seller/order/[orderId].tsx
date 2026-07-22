@@ -295,16 +295,33 @@ export default function SellerOrderDetailScreen() {
         {(cancellable || (order.user && isOwner !== false)) ? (
           <View style={styles.dangerZone}>
             {cancellable ? (
-              <Pressable
-                style={styles.cancelBtn}
-                onPress={() =>
-                  Alert.alert(tr('orders.cancel'), tr('orders.cancelConfirm'), [
-                    { text: tr('common.no'), style: 'cancel' },
-                    { text: tr('common.yes'), style: 'destructive', onPress: () => advance.mutate('cancelled') },
-                  ])
-                }>
-                <Text style={styles.cancelText}>Buyurtmani bekor qilish</Text>
-              </Pressable>
+              // A `new` order hasn't been accepted yet — declining it is a
+              // distinct outcome (seller_rejected) from cancelling an already
+              // accepted order: it triggers the customer's "try another
+              // store" suggestion flow instead of a plain dead end.
+              order.status === 'new' ? (
+                <Pressable
+                  style={styles.cancelBtn}
+                  onPress={() =>
+                    Alert.alert('Buyurtmani rad etish', 'Bu buyurtmani rad etasizmi?', [
+                      { text: tr('common.no'), style: 'cancel' },
+                      { text: tr('common.yes'), style: 'destructive', onPress: () => advance.mutate('seller_rejected') },
+                    ])
+                  }>
+                  <Text style={styles.cancelText}>Buyurtmani rad etish</Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  style={styles.cancelBtn}
+                  onPress={() =>
+                    Alert.alert(tr('orders.cancel'), tr('orders.cancelConfirm'), [
+                      { text: tr('common.no'), style: 'cancel' },
+                      { text: tr('common.yes'), style: 'destructive', onPress: () => advance.mutate('cancelled') },
+                    ])
+                  }>
+                  <Text style={styles.cancelText}>Buyurtmani bekor qilish</Text>
+                </Pressable>
+              )
             ) : null}
             {order.user && isOwner !== false ? (
               <Pressable
