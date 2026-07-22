@@ -88,6 +88,9 @@ export default function EditProfileScreen() {
   const previewSource = avatarSource(avatarId);
   const initial = (firstName?.[0] ?? user?.phone?.slice(-2) ?? 'Y').toUpperCase();
   const canSave = firstName.trim().length > 0;
+  // Once a gender is picked, only show avatars drawn for it — the full set
+  // (mixed) stays visible until then rather than guessing.
+  const visibleAvatars = gender ? AVATAR_OPTIONS.filter((a) => a.gender === gender) : AVATAR_OPTIONS;
 
   const pick = (id: string) => {
     haptics.selection();
@@ -190,7 +193,7 @@ export default function EditProfileScreen() {
         {/* Avatar picker */}
         <Text style={[styles.label, { marginTop: spacing.lg }]}>{tr('editProfile.chooseAvatar')}</Text>
         <View style={styles.grid}>
-          {AVATAR_OPTIONS.map((opt) => {
+          {visibleAvatars.map((opt) => {
             const active = avatarId === opt.id;
             return (
               <Pressable
