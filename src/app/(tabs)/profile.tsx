@@ -146,19 +146,42 @@ export default function ProfileTab() {
           </Pressable>
         ) : (
           <View style={styles.headerBanner}>
+            <View style={styles.topRow}>
+              <View style={styles.topRowSpacer} />
+              <Text style={styles.bannerTitle}>{tr('tab.profile')}</Text>
+              <Pressable
+                style={styles.gearBtn}
+                hitSlop={hitSlop}
+                onPress={() => {
+                  haptics.selection();
+                  router.push('/profile/edit');
+                }}>
+                <Settings size={20} color={colors.text.onPrimary} strokeWidth={2.2} />
+              </Pressable>
+            </View>
+
             <Pressable
               style={styles.headerRow}
               onPress={() => {
                 haptics.selection();
                 router.push('/profile/edit');
               }}>
-              <View style={[styles.avatar, avatarEmoji(me?.avatarUrl) ? styles.avatarEmojiBg : null]}>
-                {avatarEmoji(me?.avatarUrl) ? (
-                  <Text style={styles.avatarEmoji}>{avatarEmoji(me?.avatarUrl)}</Text>
-                ) : (
-                  <Text style={styles.avatarText}>
-                    {(me?.name?.[0] ?? me?.phone?.slice(-2) ?? 'Y').toUpperCase()}
-                  </Text>
+              <View style={styles.avatarWrap}>
+                <View style={[styles.avatar, avatarEmoji(me?.avatarUrl) ? styles.avatarEmojiBg : null]}>
+                  {avatarEmoji(me?.avatarUrl) ? (
+                    <Text style={styles.avatarEmoji}>{avatarEmoji(me?.avatarUrl)}</Text>
+                  ) : (
+                    <Text style={styles.avatarText}>
+                      {(me?.name?.[0] ?? me?.phone?.slice(-2) ?? 'Y').toUpperCase()}
+                    </Text>
+                  )}
+                </View>
+                {!me?.name && (
+                  <View style={styles.fixCaption}>
+                    <Text style={styles.fixCaptionText} numberOfLines={1}>
+                      {tr('profile.fixProfile')}
+                    </Text>
+                  </View>
                 )}
               </View>
               <View style={{ flex: 1 }}>
@@ -170,17 +193,6 @@ export default function ProfileTab() {
                 </View>
                 <Text style={styles.phone}>{me?.phone}</Text>
               </View>
-              <ChevronRight size={20} color="rgba(255,255,255,0.85)" strokeWidth={2.4} />
-            </Pressable>
-
-            <Pressable
-              style={styles.gearBtn}
-              hitSlop={hitSlop}
-              onPress={() => {
-                haptics.selection();
-                router.push('/profile/edit');
-              }}>
-              <Settings size={20} color={colors.text.onPrimary} strokeWidth={2.2} />
             </Pressable>
           </View>
         )}
@@ -474,16 +486,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand.primary,
     borderRadius: radius['2xl'],
     padding: spacing.lg,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: spacing.lg,
   },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  topRowSpacer: { width: 36 },
+  bannerTitle: { ...typography.h3, color: colors.text.onPrimary },
   gearBtn: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
     width: 36,
     height: 36,
     borderRadius: radius.full,
@@ -491,6 +503,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+  },
+  avatarWrap: { width: 64, height: 64, borderRadius: radius.full, overflow: 'hidden' },
+  fixCaption: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingVertical: 4,
+    alignItems: 'center',
+  },
+  fixCaptionText: { fontSize: 9, fontWeight: '700', color: colors.text.onPrimary },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   guestCard: {
     flexDirection: 'row',
