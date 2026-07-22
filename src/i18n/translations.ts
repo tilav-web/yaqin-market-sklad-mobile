@@ -145,6 +145,10 @@ export const translations = {
     'orders.sellerRejectedBanner': "Do'kon buyurtmani rad etdi. Sizning aybingiz yo'q — quyida boshqa takliflar bor.",
     'orders.findElsewhereTitle': "Boshqa do'konlarda mavjud",
     'orders.findElsewhereEmpty': "Yaqin atrofda taklif topilmadi",
+    'orders.paymentCash': 'Naqd pul',
+    'orders.paymentPaid': "✓ To'landi",
+    'orders.paymentPending': "To'lov kutilmoqda",
+    'orders.paymentFailed': "To'lov amalga oshmadi",
 
     // Shop
     'shop.products': 'Mahsulotlar',
@@ -468,6 +472,10 @@ export const translations = {
     'orders.sellerRejectedBanner': 'Дўкон буюртмани рад этди. Сизнинг айбингиз йўқ — қуйида бошқа таклифлар бор.',
     'orders.findElsewhereTitle': 'Бошқа дўконларда мавжуд',
     'orders.findElsewhereEmpty': 'Яқин атрофда таклиф топилмади',
+    'orders.paymentCash': 'Нақд пул',
+    'orders.paymentPaid': '✓ Тўланди',
+    'orders.paymentPending': 'Тўлов кутилмоқда',
+    'orders.paymentFailed': 'Тўлов амалга ошмади',
 
     // Shop
     'shop.products': 'Маҳсулотлар',
@@ -791,6 +799,10 @@ export const translations = {
     'orders.sellerRejectedBanner': 'Магазин отклонил заказ. Вы не виноваты — ниже другие варианты.',
     'orders.findElsewhereTitle': 'Есть в других магазинах',
     'orders.findElsewhereEmpty': 'Поблизости предложений не найдено',
+    'orders.paymentCash': 'Наличными',
+    'orders.paymentPaid': '✓ Оплачено',
+    'orders.paymentPending': 'Ожидает оплаты',
+    'orders.paymentFailed': 'Оплата не прошла',
 
     // Shop
     'shop.products': 'Товары',

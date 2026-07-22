@@ -2,11 +2,12 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import { useLocalSearchParams } from 'expo-router';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { AlertCircle, Check, CreditCard, MessageCircle, RefreshCw, RotateCcw, Star, X } from 'lucide-react-native';
+import { AlertCircle, Banknote, Check, CreditCard, MessageCircle, RefreshCw, RotateCcw, Star, X } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Platform,
   Pressable,
   RefreshControl,
@@ -21,7 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
 import { useToast } from '@/components/ui';
-import { api, extractErrorMessage } from '@/lib/api';
+import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { endOrderActivity, updateOrderActivity } from '@/lib/useOrderLiveActivity';
 import { useOrderSocket } from '@/lib/useOrderSocket';
 import { useTranslation } from '@/i18n';
@@ -128,7 +129,9 @@ export default function OrderDetailScreen() {
   const cardsQuery = useQuery({
     queryKey: ['saved-cards'],
     queryFn: async () => (await api.get<SavedCard[]>('/click/cards')).data,
-    enabled: order?.paymentMethod === 'click_online' && order?.paymentStatus === 'pending',
+    enabled:
+      order?.paymentMethod === 'click_online' &&
+      (order?.paymentStatus === 'pending' || order?.paymentStatus === 'failed'),
   });
 
   const payWithCard = useMutation({
@@ -139,6 +142,15 @@ export default function OrderDetailScreen() {
       qc.invalidateQueries({ queryKey: ['order', id] });
       toast.success("To'lov muvaffaqiyatli o'tdi");
     },
+    onError: (e) => toast.error(extractErrorMessage(e)),
+  });
+
+  const changePaymentMethod = useMutation({
+    mutationFn: async (method: 'cash' | 'click_online') => {
+      const res = await api.patch<Order>(`/orders/${id}/payment-method`, { paymentMethod: method });
+      return res.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['order', id] }),
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
@@ -267,7 +279,7 @@ export default function OrderDetailScreen() {
         productName: it.productName,
         unitPrice: live ? live.discountPrice ?? live.price : it.unitPrice,
         quantity: it.quantity,
-        photoUrl: live?.photos[0] ?? it.productVariant?.photos[0],
+        photoUrl: live?.photos[0] ?? it.productVariant?.globalProduct?.photos?.[0],
       });
     }
     router.push(`/shop/${shopId}`);
@@ -277,16 +289,23 @@ export default function OrderDetailScreen() {
   const canComplain = order.status === 'delivered' && !order.complaint;
   const canSubmitComplaint =
     complaintReason !== '' && (complaintReason !== 'Boshqa' || complaintCustomReason.trim() !== '');
-  const hasReturns = order.items.some((i) => i.returnedQuantity > 0);
-  const returnedTotal = order.items.reduce((sum, i) => sum + i.unitPrice * i.returnedQuantity, 0);
-  const unreviewed = canReview ? order.items.filter((i) => !reviewed.has(i.productVariantId)) : [];
-  const pendingRatings = Object.values(ratingDraft).filter((s) => s > 0).length;
-
   const statusColor = colors.status[order.status];
   // No further progress will happen and there's nothing to chat about or
   // track on a timeline — covers a plain cancel as well as the shop
   // declining/not responding (isSellerDeclined).
   const isDeadOrder = order.status === 'cancelled' || isSellerDeclined;
+  // Locked the instant Click confirms payment — there's no automated refund
+  // path, so this must never be switchable once money has actually moved.
+  const canChangePayment = order.paymentStatus !== 'paid' && !isTerminalStatus(order.status);
+  // A real courier return only happens mid-delivery (server: partialReturn
+  // requires status === 'delivering'). A dead order's items also carry
+  // returnedQuantity === quantity — the server reuses that field to put
+  // reserved stock back when an order never gets fulfilled at all — but
+  // that's not a customer return, so it must not show the return UI/prompt.
+  const hasReturns = !isDeadOrder && order.items.some((i) => i.returnedQuantity > 0);
+  const returnedTotal = order.items.reduce((sum, i) => sum + i.unitPrice * i.returnedQuantity, 0);
+  const unreviewed = canReview ? order.items.filter((i) => !reviewed.has(i.productVariantId)) : [];
+  const pendingRatings = Object.values(ratingDraft).filter((s) => s > 0).length;
 
   return (
     <View style={styles.root}>
@@ -421,20 +440,28 @@ export default function OrderDetailScreen() {
         {/* Items */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Mahsulotlar</Text>
-          {order.items.map((it) => (
-            <View key={it.id} style={styles.itemRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.itemName}>{it.productName}</Text>
-                <Text style={styles.itemQty}>
-                  {it.quantity} × {it.unitPrice.toLocaleString()} so'm
-                </Text>
-                {it.returnedQuantity > 0 && (
-                  <Text style={styles.returnedTag}>{it.returnedQuantity} ta qaytarilgan</Text>
+          {order.items.map((it) => {
+            const photo = it.productVariant?.globalProduct?.photos?.[0];
+            return (
+              <View key={it.id} style={styles.itemRow}>
+                {photo ? (
+                  <Image source={{ uri: resolveMedia(photo) }} style={styles.itemImage} />
+                ) : (
+                  <View style={styles.itemImage} />
                 )}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.itemName}>{it.productName}</Text>
+                  <Text style={styles.itemQty}>
+                    {it.quantity} × {it.unitPrice.toLocaleString()} so'm
+                  </Text>
+                  {hasReturns && it.returnedQuantity > 0 && (
+                    <Text style={styles.returnedTag}>{it.returnedQuantity} ta qaytarilgan</Text>
+                  )}
+                </View>
+                <Text style={styles.itemTotal}>{it.lineTotal.toLocaleString()}</Text>
               </View>
-              <Text style={styles.itemTotal}>{it.lineTotal.toLocaleString()}</Text>
-            </View>
-          ))}
+            );
+          })}
         </View>
 
         {/* Return reason — optional, prompted after the courier marks returns */}
@@ -693,6 +720,49 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
+        {/* Switch cash <-> card any time before payment actually succeeds. */}
+        {canChangePayment && (
+          <View style={styles.paymentSwitchRow}>
+            <Text style={styles.paymentSwitchLabel}>{tr('checkout.paymentTitle')}</Text>
+            <View style={styles.paymentSwitchOptions}>
+              <Pressable
+                style={[styles.paymentChip, order.paymentMethod === 'cash' && styles.paymentChipActive]}
+                disabled={changePaymentMethod.isPending || order.paymentMethod === 'cash'}
+                onPress={() => changePaymentMethod.mutate('cash')}>
+                <Banknote
+                  size={14}
+                  color={order.paymentMethod === 'cash' ? colors.text.onPrimary : colors.text.secondary}
+                  strokeWidth={2.2}
+                />
+                <Text
+                  style={[
+                    styles.paymentChipText,
+                    order.paymentMethod === 'cash' && styles.paymentChipTextActive,
+                  ]}>
+                  {tr('checkout.cash')}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.paymentChip, order.paymentMethod === 'click_online' && styles.paymentChipActive]}
+                disabled={changePaymentMethod.isPending || order.paymentMethod === 'click_online'}
+                onPress={() => changePaymentMethod.mutate('click_online')}>
+                <CreditCard
+                  size={14}
+                  color={order.paymentMethod === 'click_online' ? colors.text.onPrimary : colors.text.secondary}
+                  strokeWidth={2.2}
+                />
+                <Text
+                  style={[
+                    styles.paymentChipText,
+                    order.paymentMethod === 'click_online' && styles.paymentChipTextActive,
+                  ]}>
+                  {tr('checkout.cardPayment')}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
         {/* A failed charge must never be silently invisible — the customer has
             no other way to learn the payment didn't go through. */}
         {order.paymentMethod === 'click_online' && order.paymentStatus === 'failed' && (
@@ -719,7 +789,7 @@ export default function OrderDetailScreen() {
                 ) : (
                   <>
                     <CreditCard size={18} color={colors.text.onPrimary} strokeWidth={2.2} />
-                    <Text style={styles.clickBtnText}>
+                    <Text style={styles.clickBtnTextSmall} numberOfLines={1} ellipsizeMode="tail">
                       {card.cardNumberMasked ?? '••••'} {tr('checkout.payWithCard')}
                     </Text>
                   </>
@@ -985,7 +1055,8 @@ const styles = StyleSheet.create({
   tlLabelActive: { color: colors.text.primary, fontWeight: '700' },
   tlTime: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
   // items
-  itemRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.xs, gap: spacing.sm },
+  itemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs, gap: spacing.sm },
+  itemImage: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.bg.canvas },
   itemName: { ...typography.bodyStrong, fontSize: 14 },
   itemQty: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
   returnedTag: { ...typography.caption, color: colors.feedback.warning, fontWeight: '700', marginTop: 2 },
@@ -994,10 +1065,19 @@ const styles = StyleSheet.create({
   reasonSaved: { ...typography.body, color: colors.text.secondary, fontStyle: 'italic' },
   reasonHint: { ...typography.bodySmall, color: colors.text.secondary },
   // summary
-  row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
-  rowLabel: { ...typography.body, color: colors.text.secondary },
+  // A long label (e.g. "Yangi summa (qaytarishdan keyin)") next to a bold,
+  // larger-font value must never push the value off-screen — the label
+  // shrinks/wraps first, the value never does.
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: 3,
+    gap: spacing.sm,
+  },
+  rowLabel: { ...typography.body, color: colors.text.secondary, flexShrink: 1 },
   rowLabelBold: { color: colors.text.primary, fontWeight: '700' },
-  rowValue: { ...typography.body, fontWeight: '600' },
+  rowValue: { ...typography.body, fontWeight: '600', flexShrink: 0 },
   rowValueBold: { ...typography.h3, color: colors.brand.primary },
   divider: { height: 1, backgroundColor: colors.border.subtle, marginVertical: spacing.xs },
   // rating
@@ -1073,10 +1153,14 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     height: layout.buttonHeight.lg,
     borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
     backgroundColor: '#00B900',
     ...shadow.sm,
   },
   clickBtnText: { ...typography.button, color: colors.text.onPrimary },
+  // The saved-card button's label combines the masked card number with a
+  // full sentence — too long for the default button size on most screens.
+  clickBtnTextSmall: { ...typography.buttonSmall, fontSize: 13, color: colors.text.onPrimary, flexShrink: 1 },
   paidBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1101,4 +1185,29 @@ const styles = StyleSheet.create({
     borderColor: colors.feedback.danger,
   },
   failedBadgeText: { ...typography.bodyStrong, color: colors.feedback.danger },
+  paymentSwitchRow: {
+    backgroundColor: colors.bg.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  paymentSwitchLabel: { ...typography.caption, color: colors.text.secondary, fontWeight: '700' },
+  paymentSwitchOptions: { flexDirection: 'row', gap: spacing.sm },
+  paymentChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: layout.buttonHeight.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.bg.canvas,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  paymentChipActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
+  paymentChipText: { ...typography.buttonSmall, fontSize: 13, color: colors.text.secondary },
+  paymentChipTextActive: { color: colors.text.onPrimary },
 });

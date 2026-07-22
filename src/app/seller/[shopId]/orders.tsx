@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
 import { EmptyState, useToast } from '@/components/ui';
 import { useTranslation } from '@/i18n';
-import { api, extractErrorMessage } from '@/lib/api';
+import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { DeliveryRoute, DeliveryRouteStop, ORDER_STATUS_KEY, Order, OrderStatus } from '@/lib/types';
 import { useShopAccess } from '@/lib/useIsShopOwner';
 import { useShopRealtime } from '@/lib/useShopRealtime';
@@ -288,8 +288,11 @@ export default function SellerOrdersScreen() {
                   {item.items.map((it) => (
                     <View key={it.id} style={styles.itemRow}>
                       <View style={styles.itemImageWrap}>
-                        {it.productVariant?.photos?.[0] ? (
-                          <Image source={{ uri: it.productVariant.photos[0] }} style={styles.itemImage} />
+                        {it.productVariant?.globalProduct?.photos?.[0] ? (
+                          <Image
+                            source={{ uri: resolveMedia(it.productVariant.globalProduct.photos[0]) }}
+                            style={styles.itemImage}
+                          />
                         ) : (
                           <View style={[styles.itemImage, styles.itemPlaceholder]}>
                             <Package size={14} color={colors.brand.primary} strokeWidth={1.7} />

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ChevronRight, Navigation, Package, Store, WifiOff } from 'lucide-react-native';
+import { Banknote, ChevronRight, CreditCard, Navigation, Package, Store, WifiOff } from 'lucide-react-native';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,6 +11,25 @@ import { ORDER_STATUS_KEY, Order, OrderStatus } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 const ACTIVE_STATUSES: OrderStatus[] = ['new', 'accepted', 'preparing', 'delivering'];
+
+// Cash never needs a payment-status call-out (it's collected at the door).
+// For card orders, the outcome is exactly the thing a customer can't tell
+// from anywhere else in the list — so it's always shown, not just on failure.
+function paymentInfo(
+  order: Order,
+  tr: ReturnType<typeof useTranslation>['tr'],
+): { label: string; color: string; Icon: typeof CreditCard } {
+  if (order.paymentMethod === 'cash') {
+    return { label: tr('orders.paymentCash'), color: colors.text.tertiary, Icon: Banknote };
+  }
+  if (order.paymentStatus === 'paid') {
+    return { label: tr('orders.paymentPaid'), color: colors.feedback.success, Icon: CreditCard };
+  }
+  if (order.paymentStatus === 'failed') {
+    return { label: tr('orders.paymentFailed'), color: colors.feedback.danger, Icon: CreditCard };
+  }
+  return { label: tr('orders.paymentPending'), color: colors.feedback.warning, Icon: CreditCard };
+}
 
 export default function OrdersScreen() {
   const { tr } = useTranslation();
@@ -61,7 +80,9 @@ export default function OrdersScreen() {
             <EmptyState icon={Package} title={tr('orders.empty')} description={tr('orders.emptyDesc')} />
           )
         }
-        renderItem={({ item }) => (
+        renderItem={({ item }) => {
+          const payment = paymentInfo(item, tr);
+          return (
           <Pressable
             style={({ pressed }) => [styles.card, pressed && { opacity: 0.9 }]}
             onPress={() => router.push(`/orders/${item.id}`)}>
@@ -77,6 +98,10 @@ export default function OrdersScreen() {
                 {item.shop?.name ?? '…'}
               </Text>
             </View>
+            <View style={styles.paymentRow}>
+              <payment.Icon size={13} color={payment.color} strokeWidth={2.4} />
+              <Text style={[styles.paymentText, { color: payment.color }]}>{payment.label}</Text>
+            </View>
             <View style={styles.cardFooter}>
               <View>
                 <Text style={styles.itemCount}>{item.items.length} ta mahsulot</Text>
@@ -90,7 +115,8 @@ export default function OrdersScreen() {
               </View>
             </View>
           </Pressable>
-        )}
+          );
+        }}
       />
     </SafeAreaView>
   );
@@ -135,6 +161,8 @@ const styles = StyleSheet.create({
   statusText: { ...typography.caption, fontSize: 11, color: colors.text.onPrimary, fontWeight: '800' },
   shopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs },
   shopName: { ...typography.h4, flex: 1 },
+  paymentRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs },
+  paymentText: { ...typography.caption, fontWeight: '700' },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',

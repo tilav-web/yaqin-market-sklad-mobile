@@ -259,8 +259,11 @@ export default function SellerOrderDetailScreen() {
           {order.items.map((it) => (
             <View key={it.id} style={styles.itemRow}>
               <View style={styles.itemImageWrap}>
-                {it.productVariant?.photos?.[0] ? (
-                  <Image source={{ uri: resolveMedia(it.productVariant.photos[0]) }} style={styles.itemImage} />
+                {it.productVariant?.globalProduct?.photos?.[0] ? (
+                  <Image
+                    source={{ uri: resolveMedia(it.productVariant.globalProduct.photos[0]) }}
+                    style={styles.itemImage}
+                  />
                 ) : (
                   <View style={[styles.itemImage, styles.itemPlaceholder]}>
                     <Package size={18} color={colors.brand.primary} strokeWidth={1.7} />

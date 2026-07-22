@@ -150,8 +150,11 @@ export interface OrderItem {
   unitPrice: number;
   lineTotal: number;
   returnedQuantity: number;
-  /** Joined on seller order views — first photo shown in the card/detail; also carries globalProductId for the "find elsewhere" suggestion flow. */
-  productVariant?: { photos: string[]; globalProductId?: string } | null;
+  /** Joined on order views — globalProductId feeds the "find elsewhere" suggestion flow; photos live one level down on globalProduct (a shop's variant has no photos of its own). */
+  productVariant?: {
+    globalProductId?: string;
+    globalProduct?: { photos: string[] } | null;
+  } | null;
 }
 
 export type OrderStatus =
