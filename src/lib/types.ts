@@ -135,6 +135,10 @@ export interface UserAddress {
   latitude: number;
   longitude: number;
   notes: string | null;
+  entrance: string | null;
+  floor: string | null;
+  apartment: string | null;
+  intercom: string | null;
   isDefault: boolean;
 }
 
@@ -184,7 +188,19 @@ export interface Order {
   reviewedVariantIds?: string[];
   /** Seller-side: joined customer + address (present on /seller/shops/:id/orders). */
   user?: { id: string; name: string | null; phone: string } | null;
-  deliveryAddress?: { address: string; latitude: number; longitude: number } | null;
+  deliveryAddress?: {
+    address: string;
+    latitude: number;
+    longitude: number;
+    entrance?: string | null;
+    floor?: string | null;
+    apartment?: string | null;
+    intercom?: string | null;
+  } | null;
+  /** Snapshotted at order time — defaults to the customer's own phone but may be a different recipient. */
+  recipientPhone?: string | null;
+  /** Free-text note to the courier, entered at checkout. */
+  courierComment?: string | null;
   /** ShopStaff.id this order is assigned to (e.g. delivering courier). */
   assignedStaffId?: string | null;
   /** 'delivery' (app order) or 'in_store' (counter sale). */

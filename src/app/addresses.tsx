@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, MapPin, Star, Trash2 } from 'lucide-react-native';
+import { Check, MapPin, Pencil, Star, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   Alert,
@@ -30,8 +30,13 @@ export default function AddressesScreen() {
   const useCurrentLocation = useLocationStore((s) => s.useCurrentLocation);
 
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [label, setLabel] = useState('');
   const [address, setAddress] = useState('');
+  const [entrance, setEntrance] = useState('');
+  const [floor, setFloor] = useState('');
+  const [apartment, setApartment] = useState('');
+  const [intercom, setIntercom] = useState('');
   const [picked, setPicked] = useState<PickedLocation | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
 
@@ -46,8 +51,26 @@ export default function AddressesScreen() {
   const resetForm = () => {
     setLabel('');
     setAddress('');
+    setEntrance('');
+    setFloor('');
+    setApartment('');
+    setIntercom('');
     setPicked(null);
     setAdding(false);
+    setEditingId(null);
+  };
+
+  const startEdit = (item: UserAddress) => {
+    haptics.selection();
+    setEditingId(item.id);
+    setLabel(item.label);
+    setAddress(item.address);
+    setEntrance(item.entrance ?? '');
+    setFloor(item.floor ?? '');
+    setApartment(item.apartment ?? '');
+    setIntercom(item.intercom ?? '');
+    setPicked({ latitude: item.latitude, longitude: item.longitude, address: item.address });
+    setAdding(true);
   };
 
   const createMutation = useMutation({
@@ -59,6 +82,10 @@ export default function AddressesScreen() {
         address,
         latitude: point.latitude,
         longitude: point.longitude,
+        entrance: entrance.trim() || undefined,
+        floor: floor.trim() || undefined,
+        apartment: apartment.trim() || undefined,
+        intercom: intercom.trim() || undefined,
         isDefault: (addressesQuery.data?.length ?? 0) === 0,
       });
       return res.data;
@@ -67,6 +94,32 @@ export default function AddressesScreen() {
       qc.invalidateQueries({ queryKey: ['my-addresses'] });
       // Newly added address becomes the active location right away.
       setSelectedAddress(created);
+      resetForm();
+    },
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingId) return;
+      // Unlike create, an edit sends the trimmed value even when empty (not
+      // `|| undefined`) — otherwise clearing a previously-set field would be
+      // dropped by JSON serialization and silently leave the old value.
+      const res = await api.patch<UserAddress>(`/users/me/addresses/${editingId}`, {
+        label,
+        address,
+        ...(picked ? { latitude: picked.latitude, longitude: picked.longitude } : {}),
+        entrance: entrance.trim(),
+        floor: floor.trim(),
+        apartment: apartment.trim(),
+        intercom: intercom.trim(),
+      });
+      return res.data;
+    },
+    onSuccess: (updated) => {
+      qc.invalidateQueries({ queryKey: ['my-addresses'] });
+      // If the edited address is the currently-active one, refresh it too.
+      if (updated && selectedAddress?.id === updated.id) setSelectedAddress(updated);
       resetForm();
     },
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
@@ -109,7 +162,9 @@ export default function AddressesScreen() {
       { text: tr('addr.delete'), style: 'destructive', onPress: () => deleteMutation.mutate(item.id) },
     ]);
 
-  const canSave = !!label.trim() && !!address.trim() && !!(picked ?? coords);
+  // Editing an existing address already has coordinates on file — only a
+  // brand-new address requires a location to have been picked (or GPS).
+  const canSave = !!label.trim() && !!address.trim() && (!!editingId || !!(picked ?? coords));
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -150,6 +205,18 @@ export default function AddressesScreen() {
                 <Text style={styles.address} numberOfLines={2}>
                   {item.address}
                 </Text>
+                {(item.entrance || item.floor || item.apartment || item.intercom) && (
+                  <Text style={styles.addressDetails} numberOfLines={1}>
+                    {[
+                      item.entrance && `${tr('addr.entrance')} ${item.entrance}`,
+                      item.floor && `${tr('addr.floor')} ${item.floor}`,
+                      item.apartment && `${tr('addr.apartment')} ${item.apartment}`,
+                      item.intercom && `${tr('addr.intercom')} ${item.intercom}`,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </Text>
+                )}
                 <View style={styles.actions}>
                   {!item.isDefault && (
                     <Pressable
@@ -160,6 +227,10 @@ export default function AddressesScreen() {
                       <Text style={styles.actionText}>{tr('addr.makeDefault')}</Text>
                     </Pressable>
                   )}
+                  <Pressable hitSlop={6} onPress={() => startEdit(item)} style={styles.actionBtn}>
+                    <Pencil size={14} color={colors.text.tertiary} strokeWidth={2.2} />
+                    <Text style={styles.actionText}>{tr('addr.edit')}</Text>
+                  </Pressable>
                   <Pressable
                     hitSlop={6}
                     onPress={() => confirmDelete(item)}
@@ -175,7 +246,7 @@ export default function AddressesScreen() {
         ListFooterComponent={
           adding ? (
             <View style={styles.form}>
-              <Text style={styles.formTitle}>{tr('addr.new')}</Text>
+              <Text style={styles.formTitle}>{tr(editingId ? 'addr.editTitle' : 'addr.new')}</Text>
               <TextInput
                 style={styles.input}
                 placeholder={tr('addr.label')}
@@ -207,12 +278,43 @@ export default function AddressesScreen() {
                     : tr('home.locationLoading')}
               </Text>
 
+              <View style={styles.detailsGrid}>
+                <TextInput
+                  style={[styles.input, styles.detailsInput]}
+                  placeholder={tr('addr.entrance')}
+                  value={entrance}
+                  onChangeText={setEntrance}
+                  placeholderTextColor={colors.text.hint}
+                />
+                <TextInput
+                  style={[styles.input, styles.detailsInput]}
+                  placeholder={tr('addr.floor')}
+                  value={floor}
+                  onChangeText={setFloor}
+                  placeholderTextColor={colors.text.hint}
+                />
+                <TextInput
+                  style={[styles.input, styles.detailsInput]}
+                  placeholder={tr('addr.apartment')}
+                  value={apartment}
+                  onChangeText={setApartment}
+                  placeholderTextColor={colors.text.hint}
+                />
+                <TextInput
+                  style={[styles.input, styles.detailsInput]}
+                  placeholder={tr('addr.intercom')}
+                  value={intercom}
+                  onChangeText={setIntercom}
+                  placeholderTextColor={colors.text.hint}
+                />
+              </View>
+
               <Pressable
                 style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
-                disabled={!canSave || createMutation.isPending}
-                onPress={() => createMutation.mutate()}>
+                disabled={!canSave || createMutation.isPending || updateMutation.isPending}
+                onPress={() => (editingId ? updateMutation.mutate() : createMutation.mutate())}>
                 <Text style={styles.saveBtnText}>
-                  {createMutation.isPending ? tr('addr.saving') : tr('addr.save')}
+                  {createMutation.isPending || updateMutation.isPending ? tr('addr.saving') : tr('addr.save')}
                 </Text>
               </Pressable>
               <Pressable onPress={resetForm} style={styles.cancelBtn}>
@@ -284,6 +386,7 @@ const styles = StyleSheet.create({
   },
   activeTagText: { ...typography.caption, color: colors.text.onPrimary, fontWeight: '700' },
   address: { ...typography.bodySmall, color: colors.text.secondary, marginTop: 3 },
+  addressDetails: { ...typography.caption, color: colors.text.tertiary, marginTop: 3 },
   actions: { flexDirection: 'row', gap: spacing.lg, marginTop: spacing.md },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   actionText: { ...typography.caption, color: colors.text.tertiary, fontWeight: '600' },
@@ -318,6 +421,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border.subtle,
   },
   inputMultiline: { height: 76, textAlignVertical: 'top' },
+  detailsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  detailsInput: { flexBasis: '47%', flexGrow: 1 },
   mapBtn: {
     flexDirection: 'row',
     alignItems: 'center',

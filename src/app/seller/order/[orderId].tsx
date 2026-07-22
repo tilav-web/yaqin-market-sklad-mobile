@@ -209,6 +209,28 @@ export default function SellerOrderDetailScreen() {
                 <Text style={styles.infoText}>{order.deliveryAddress.address}</Text>
               </View>
             ) : null}
+            {order.deliveryAddress &&
+            (order.deliveryAddress.entrance || order.deliveryAddress.floor || order.deliveryAddress.apartment || order.deliveryAddress.intercom) ? (
+              <Text style={styles.infoText}>
+                {[
+                  order.deliveryAddress.entrance && `Podyezd ${order.deliveryAddress.entrance}`,
+                  order.deliveryAddress.floor && `Qavat ${order.deliveryAddress.floor}`,
+                  order.deliveryAddress.apartment && `Kv. ${order.deliveryAddress.apartment}`,
+                  order.deliveryAddress.intercom && `Domofon ${order.deliveryAddress.intercom}`,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </Text>
+            ) : null}
+            {order.recipientPhone && order.recipientPhone !== order.user?.phone ? (
+              <Pressable style={styles.infoRow} onPress={() => Linking.openURL(`tel:${order.recipientPhone}`)}>
+                <Phone size={15} color={colors.brand.primary} strokeWidth={2.2} />
+                <Text style={styles.infoLink}>Oluvchi: {order.recipientPhone}</Text>
+              </Pressable>
+            ) : null}
+            {order.courierComment ? (
+              <Text style={styles.infoText}>Kuryerga izoh: {order.courierComment}</Text>
+            ) : null}
           </View>
         ) : null}
 

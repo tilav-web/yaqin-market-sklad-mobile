@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { ChevronRight, CreditCard, MapPin, Minus, Plus, Wallet } from 'lucide-react-native';
-import { useState } from 'react';
+import { ChevronRight, CreditCard, MapPin, Minus, Phone, Plus, Wallet } from 'lucide-react-native';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -10,27 +10,42 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CheckoutAddressSheet } from '@/components/CheckoutAddressSheet';
 import { useToast } from '@/components/ui';
+import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { startOrderActivity } from '@/lib/useOrderLiveActivity';
 import { Order, PublicShop, UserAddress } from '@/lib/types';
+import { useAuthStore } from '@/stores/auth';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
-import { useEffectiveCoords } from '@/stores/location';
+import { useEffectiveCoords, useLocationStore } from '@/stores/location';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 
 export default function CheckoutScreen() {
   const { id: shopId } = useLocalSearchParams<{ id: string }>();
+  const { tr } = useTranslation();
   const qc = useQueryClient();
   const toast = useToast();
   const coords = useEffectiveCoords();
   const cartLines = useCartStore((s) => s.carts[shopId ?? ''] ?? EMPTY_CART);
   const clearShop = useCartStore((s) => s.clearShop);
   const updateQty = useCartStore((s) => s.updateQty);
-  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const lastUsedAddress = useLocationStore((s) => s.selectedAddress);
+  const setLastUsedAddress = useLocationStore((s) => s.setSelectedAddress);
+  const authPhone = useAuthStore((s) => s.user?.phone);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(lastUsedAddress?.id ?? null);
+  const [addressSheetVisible, setAddressSheetVisible] = useState(false);
+  const [entrance, setEntrance] = useState('');
+  const [floor, setFloor] = useState('');
+  const [apartment, setApartment] = useState('');
+  const [intercom, setIntercom] = useState('');
+  const [courierComment, setCourierComment] = useState('');
+  const [recipientPhone, setRecipientPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'click_online'>('cash');
 
   const addressesQuery = useQuery({
@@ -38,8 +53,11 @@ export default function CheckoutScreen() {
     queryFn: async () => {
       const res = await api.get<UserAddress[]>('/users/me/addresses');
       const list = res.data;
-      const def = list.find((a) => a.isDefault) ?? list[0];
-      if (def && !selectedAddressId) setSelectedAddressId(def.id);
+      // The last address used anywhere in the app (home tab's location
+      // switcher, or a previous checkout) wins over the account default —
+      // that's the "auto-select the last used location" behavior.
+      const preferred = list.find((a) => a.id === lastUsedAddress?.id) ?? list.find((a) => a.isDefault) ?? list[0];
+      if (preferred && !selectedAddressId) setSelectedAddressId(preferred.id);
       return list;
     },
   });
@@ -54,6 +72,34 @@ export default function CheckoutScreen() {
     ? { latitude: selectedAddress.latitude, longitude: selectedAddress.longitude }
     : coords;
 
+  // Prefill the apartment-detail fields from whichever address is selected —
+  // re-runs only when the SELECTED ADDRESS changes (not on every render), so
+  // it doesn't clobber the courier/details the user is actively editing.
+  useEffect(() => {
+    if (!selectedAddress) return;
+    setEntrance(selectedAddress.entrance ?? '');
+    setFloor(selectedAddress.floor ?? '');
+    setApartment(selectedAddress.apartment ?? '');
+    setIntercom(selectedAddress.intercom ?? '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAddress?.id]);
+
+  // One-time prefill from the account's own phone — the field stays editable
+  // afterwards (e.g. ordering for someone else) without being reset.
+  const phonePrefilled = useRef(false);
+  useEffect(() => {
+    if (!phonePrefilled.current && authPhone) {
+      setRecipientPhone(authPhone);
+      phonePrefilled.current = true;
+    }
+  }, [authPhone]);
+
+  const selectAddress = (addr: UserAddress) => {
+    setSelectedAddressId(addr.id);
+    setAddressSheetVisible(false);
+    setLastUsedAddress(addr);
+  };
+
   const shopQuery = useQuery({
     queryKey: ['shop', shopId, selectedAddressId, zoneCheckCoords?.latitude, zoneCheckCoords?.longitude],
     queryFn: async () => {
@@ -67,17 +113,42 @@ export default function CheckoutScreen() {
 
   const createOrder = useMutation({
     mutationFn: async () => {
+      // Apartment details are address-level (reused next time this address
+      // is picked) — best-effort save them if the customer changed anything
+      // at checkout, without blocking order placement if it fails.
+      if (
+        selectedAddress &&
+        (entrance.trim() !== (selectedAddress.entrance ?? '') ||
+          floor.trim() !== (selectedAddress.floor ?? '') ||
+          apartment.trim() !== (selectedAddress.apartment ?? '') ||
+          intercom.trim() !== (selectedAddress.intercom ?? ''))
+      ) {
+        try {
+          await api.patch(`/users/me/addresses/${selectedAddress.id}`, {
+            entrance: entrance.trim(),
+            floor: floor.trim(),
+            apartment: apartment.trim(),
+            intercom: intercom.trim(),
+          });
+          qc.invalidateQueries({ queryKey: ['my-addresses'] });
+        } catch {
+          // Non-fatal — the order still gets these values below.
+        }
+      }
       const res = await api.post<Order>('/orders', {
         shopId,
         deliveryAddressId: selectedAddressId,
         items: cartLines.map((l) => ({ productVariantId: l.variantId, quantity: l.quantity })),
         paymentMethod,
+        recipientPhone: recipientPhone.trim() || undefined,
+        courierComment: courierComment.trim() || undefined,
       });
       return res.data;
     },
     onSuccess: async (order) => {
       clearShop(shopId!);
       qc.invalidateQueries({ queryKey: ['orders'] });
+      if (selectedAddress) setLastUsedAddress(selectedAddress);
       void startOrderActivity({
         orderNumber: order.orderNumber,
         shopName: order.shop?.name ?? shop?.name ?? '',
@@ -120,31 +191,24 @@ export default function CheckoutScreen() {
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Address */}
+        {/* Qayerda */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Yetkazib berish manzili</Text>
+          <Text style={styles.sectionTitle}>{tr('checkout.where')}</Text>
           {addressesQuery.isLoading ? (
             <ActivityIndicator color={colors.brand.primary} />
-          ) : addressesQuery.data && addressesQuery.data.length > 0 ? (
-            addressesQuery.data.map((addr) => {
-              const active = selectedAddressId === addr.id;
-              return (
-                <Pressable
-                  key={addr.id}
-                  style={[styles.addressRow, active && styles.addressRowActive]}
-                  onPress={() => setSelectedAddressId(addr.id)}>
-                  <View style={[styles.radio, active && styles.radioActive]}>
-                    {active && <View style={styles.radioDot} />}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.addressLabel}>{addr.label}</Text>
-                    <Text style={styles.addressText} numberOfLines={1}>
-                      {addr.address}
-                    </Text>
-                  </View>
-                </Pressable>
-              );
-            })
+          ) : selectedAddress ? (
+            <Pressable style={styles.whereRow} onPress={() => setAddressSheetVisible(true)}>
+              <View style={styles.whereIcon}>
+                <MapPin size={18} color={colors.brand.primary} strokeWidth={2.4} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.addressLabel}>{selectedAddress.label}</Text>
+                <Text style={styles.addressText} numberOfLines={1}>
+                  {selectedAddress.address}
+                </Text>
+              </View>
+              <ChevronRight size={18} color={colors.text.tertiary} strokeWidth={2.4} />
+            </Pressable>
           ) : (
             <Pressable style={styles.addAddressBtn} onPress={() => router.push('/addresses')}>
               <MapPin size={16} color={colors.brand.primary} strokeWidth={2.4} />
@@ -152,6 +216,60 @@ export default function CheckoutScreen() {
             </Pressable>
           )}
         </View>
+
+        {/* Manzil detali + oluvchi */}
+        {selectedAddress && (
+          <View style={styles.section}>
+            <View style={styles.detailsGrid}>
+              <TextInput
+                style={[styles.input, styles.detailsInput]}
+                placeholder={tr('addr.entrance')}
+                value={entrance}
+                onChangeText={setEntrance}
+                placeholderTextColor={colors.text.hint}
+              />
+              <TextInput
+                style={[styles.input, styles.detailsInput]}
+                placeholder={tr('addr.floor')}
+                value={floor}
+                onChangeText={setFloor}
+                placeholderTextColor={colors.text.hint}
+              />
+              <TextInput
+                style={[styles.input, styles.detailsInput]}
+                placeholder={tr('addr.apartment')}
+                value={apartment}
+                onChangeText={setApartment}
+                placeholderTextColor={colors.text.hint}
+              />
+              <TextInput
+                style={[styles.input, styles.detailsInput]}
+                placeholder={tr('addr.intercom')}
+                value={intercom}
+                onChangeText={setIntercom}
+                placeholderTextColor={colors.text.hint}
+              />
+            </View>
+            <TextInput
+              style={styles.input}
+              placeholder={tr('checkout.courierComment')}
+              value={courierComment}
+              onChangeText={setCourierComment}
+              placeholderTextColor={colors.text.hint}
+            />
+            <View style={styles.phoneRow}>
+              <Phone size={16} color={colors.text.tertiary} strokeWidth={2.2} />
+              <TextInput
+                style={[styles.input, styles.phoneInput]}
+                placeholder={tr('checkout.recipientPhone')}
+                value={recipientPhone}
+                onChangeText={setRecipientPhone}
+                keyboardType="phone-pad"
+                placeholderTextColor={colors.text.hint}
+              />
+            </View>
+          </View>
+        )}
 
         {/* Items */}
         <View style={styles.section}>
@@ -257,6 +375,14 @@ export default function CheckoutScreen() {
           )}
         </Pressable>
       </SafeAreaView>
+
+      <CheckoutAddressSheet
+        visible={addressSheetVisible}
+        addresses={addressesQuery.data ?? []}
+        selectedId={selectedAddressId}
+        onSelect={selectAddress}
+        onClose={() => setAddressSheetVisible(false)}
+      />
     </View>
   );
 }
@@ -284,28 +410,31 @@ const styles = StyleSheet.create({
     borderColor: colors.border.subtle,
   },
   sectionTitle: { ...typography.overline, color: colors.text.tertiary, marginBottom: spacing.xs },
-  addressRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.md,
-    alignItems: 'center',
-  },
-  addressRowActive: { backgroundColor: colors.brand.primarySurface },
-  radio: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: colors.border.strong,
+  whereRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
+  whereIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    backgroundColor: colors.brand.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  radioActive: { borderColor: colors.brand.primary },
-  radioDot: { width: 11, height: 11, borderRadius: 6, backgroundColor: colors.brand.primary },
   addressLabel: { ...typography.bodyStrong },
   addressText: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
+  detailsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  detailsInput: { flexBasis: '47%', flexGrow: 1 },
+  input: {
+    backgroundColor: colors.bg.surfaceMuted,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    ...typography.body,
+    color: colors.text.primary,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  phoneRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  phoneInput: { flex: 1 },
   addAddressBtn: {
     flexDirection: 'row',
     alignItems: 'center',
