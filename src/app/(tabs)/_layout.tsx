@@ -1,44 +1,31 @@
-import {
-  createMaterialTopTabNavigator,
-  type MaterialTopTabNavigationOptions,
-} from '@react-navigation/material-top-tabs';
-import type { ParamListBase, TabNavigationState } from '@react-navigation/native';
-import { withLayoutContext } from 'expo-router';
+import { TopTabs } from 'expo-router/js-top-tabs';
 
 import { CustomTabBar } from '@/components/CustomTabBar';
 import { colors } from '@/theme';
 
-// Material top-tabs is the only React Navigation tab navigator that swipes
-// (it's built on react-native-tab-view/pager-view) — repositioned to the
-// bottom and skinned with our own CustomTabBar so it reads as an ordinary
-// bottom tab bar, not a top one. withLayoutContext keeps it wired into
-// expo-router's file-based routes (router.push('/map') etc. keep working).
-const { Navigator } = createMaterialTopTabNavigator();
-
-export const MaterialTopTabs = withLayoutContext<
-  MaterialTopTabNavigationOptions,
-  typeof Navigator,
-  TabNavigationState<ParamListBase>,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  any
->(Navigator);
+// As of Expo Router 56, `Tabs` (bottom-tabs) has no swipe support and
+// `@react-navigation/*` can no longer be imported directly (build-time
+// error). `TopTabs` is expo-router's own vendored material-top-tabs —
+// still swipeable, still wired into file-based routing — repositioned to
+// the bottom and skinned with our own CustomTabBar so it reads as an
+// ordinary bottom tab bar rather than a top one.
+const renderTabBar = (props: any) => <CustomTabBar {...props} />; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 export default function TabsLayout() {
   return (
-    <MaterialTopTabs
+    <TopTabs
       tabBarPosition="bottom"
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      tabBar={(props: any) => <CustomTabBar {...props} />}
+      tabBar={renderTabBar}
       screenOptions={{
         swipeEnabled: true,
         animationEnabled: true,
         sceneStyle: { backgroundColor: colors.bg.canvas },
       }}>
-      <MaterialTopTabs.Screen name="index" />
-      <MaterialTopTabs.Screen name="map" />
-      <MaterialTopTabs.Screen name="search" />
-      <MaterialTopTabs.Screen name="carts" />
-      <MaterialTopTabs.Screen name="profile" />
-    </MaterialTopTabs>
+      <TopTabs.Screen name="index" />
+      <TopTabs.Screen name="map" />
+      <TopTabs.Screen name="search" />
+      <TopTabs.Screen name="carts" />
+      <TopTabs.Screen name="profile" />
+    </TopTabs>
   );
 }

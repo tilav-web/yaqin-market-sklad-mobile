@@ -164,7 +164,6 @@ const styles = StyleSheet.create({
   // The visible bar below floats on top of whatever's actually behind it
   // rather than a second flat-colored strip.
   container: {
-    backgroundColor: colors.bg.canvas,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
   },

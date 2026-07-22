@@ -1,4 +1,4 @@
-import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
+import type { MaterialTopTabBarProps } from 'expo-router/js-top-tabs';
 import { Home, LucideIcon, MapPin, Search, ShoppingBag, User } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -39,11 +39,16 @@ const PRESS_SPRING = { damping: 15, stiffness: 350 };
 // live inside that padding), not the bar's full border-box width.
 const BAR_HPADDING = spacing.sm;
 
+interface TabRoute {
+  key: string;
+  name: string;
+}
+
 export function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
   const insets = useSafeAreaInsets();
   const [barWidth, setBarWidth] = useState(0);
 
-  const tabs = state.routes.filter((r) => ICONS[r.name]);
+  const tabs: TabRoute[] = state.routes.filter((r: TabRoute) => ICONS[r.name]);
   const count = tabs.length;
   const activeKey = state.routes[state.index]?.key;
   const activeIndex = Math.max(
@@ -85,7 +90,7 @@ export function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
           </Animated.View>
         )}
 
-        {tabs.map((route, index) => (
+        {tabs.map((route: TabRoute, index: number) => (
           <TabItem
             key={route.key}
             icon={ICONS[route.name]}
@@ -158,11 +163,8 @@ function TabItem({ icon: Icon, labelKey, focused, onPress }: TabItemProps) {
 }
 
 const styles = StyleSheet.create({
-  // Matches the page canvas so nothing shows through — the navigator's own
-  // tab-bar slot defaults to a gray theme background, which otherwise peeks
-  // through the margin around the floating bar below.
+  // Fully transparent — only the bar below (white + border) paints anything.
   container: {
-    backgroundColor: colors.bg.canvas,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
   },
