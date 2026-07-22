@@ -99,7 +99,11 @@ export default function EditProfileScreen() {
 
   const pickGender = (g: 'male' | 'female') => {
     haptics.selection();
-    setGender((prev) => (prev === g ? null : g));
+    const next = gender === g ? null : g;
+    setGender(next);
+    // The avatar follows the gender — auto-pick a default from the new set
+    // rather than leaving a (possibly now-hidden) mismatched selection.
+    setAvatarId(next ? (AVATAR_OPTIONS.find((a) => a.gender === next)?.id ?? null) : null);
   };
 
   return (
