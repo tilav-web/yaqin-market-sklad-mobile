@@ -11,9 +11,9 @@ import {
   LogIn,
   LogOut,
   MapPin,
-  Pencil,
   Plus,
   QrCode,
+  Settings,
   Store,
   XCircle,
 } from 'lucide-react-native';
@@ -145,30 +145,44 @@ export default function ProfileTab() {
             <ChevronRight size={18} color={colors.brand.primary} strokeWidth={2.4} />
           </Pressable>
         ) : (
-          <Pressable
-            style={styles.header}
-            onPress={() => {
-              haptics.selection();
-              router.push('/profile/edit');
-            }}>
-            <View style={[styles.avatar, avatarEmoji(me?.avatarUrl) ? styles.avatarEmojiBg : null]}>
-              {avatarEmoji(me?.avatarUrl) ? (
-                <Text style={styles.avatarEmoji}>{avatarEmoji(me?.avatarUrl)}</Text>
-              ) : (
-                <Text style={styles.avatarText}>
-                  {(me?.name?.[0] ?? me?.phone?.slice(-2) ?? 'Y').toUpperCase()}
-                </Text>
-              )}
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.name}>{me?.name ?? tr('profile.user')}</Text>
-              <Text style={styles.phone}>{me?.phone}</Text>
-            </View>
-            {me?.isAdmin && <Badge label="ADMIN" tone="info" />}
-            <View style={styles.editBtn}>
-              <Pencil size={16} color={colors.brand.primary} strokeWidth={2.4} />
-            </View>
-          </Pressable>
+          <View style={styles.headerBanner}>
+            <Pressable
+              style={styles.headerRow}
+              onPress={() => {
+                haptics.selection();
+                router.push('/profile/edit');
+              }}>
+              <View style={[styles.avatar, avatarEmoji(me?.avatarUrl) ? styles.avatarEmojiBg : null]}>
+                {avatarEmoji(me?.avatarUrl) ? (
+                  <Text style={styles.avatarEmoji}>{avatarEmoji(me?.avatarUrl)}</Text>
+                ) : (
+                  <Text style={styles.avatarText}>
+                    {(me?.name?.[0] ?? me?.phone?.slice(-2) ?? 'Y').toUpperCase()}
+                  </Text>
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.nameRow}>
+                  <Text style={styles.name} numberOfLines={1}>
+                    {me?.name || tr('profile.namePrompt')}
+                  </Text>
+                  {me?.isAdmin && <Badge label="ADMIN" tone="info" />}
+                </View>
+                <Text style={styles.phone}>{me?.phone}</Text>
+              </View>
+              <ChevronRight size={20} color="rgba(255,255,255,0.85)" strokeWidth={2.4} />
+            </Pressable>
+
+            <Pressable
+              style={styles.gearBtn}
+              hitSlop={hitSlop}
+              onPress={() => {
+                haptics.selection();
+                router.push('/profile/edit');
+              }}>
+              <Settings size={20} color={colors.text.onPrimary} strokeWidth={2.2} />
+            </Pressable>
+          </View>
         )}
 
         {/* Notifications — available to everyone (empty for guests). */}
@@ -456,14 +470,28 @@ function Row({ icon: Icon, iconBg, iconColor, title, subtitle, titleColor, badge
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg.canvas },
   scroll: { padding: layout.screenPadding, paddingBottom: spacing['4xl'], gap: spacing.lg },
-  header: {
+  headerBanner: {
+    backgroundColor: colors.brand.primary,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.lg,
-    backgroundColor: colors.bg.surface,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
   },
+  gearBtn: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   guestCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -488,25 +516,17 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: radius.full,
-    backgroundColor: colors.brand.primary,
-    borderWidth: 3,
-    borderColor: colors.brand.accent,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarEmojiBg: { backgroundColor: colors.brand.primarySurface, borderColor: colors.brand.primaryBorder },
+  avatarEmojiBg: { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.5)' },
   avatarEmoji: { fontSize: 34 },
-  avatarText: { color: colors.text.onPrimary, fontSize: 24, fontWeight: '800' },
-  editBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  name: { ...typography.h3 },
-  phone: { ...typography.bodySmall, color: colors.text.secondary, marginTop: 2 },
+  avatarText: { color: colors.brand.primary, fontSize: 24, fontWeight: '800' },
+  name: { ...typography.h3, color: colors.text.onPrimary, flexShrink: 1 },
+  phone: { ...typography.bodySmall, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
   section: { gap: spacing.sm },
   sectionTitle: {
     ...typography.overline,

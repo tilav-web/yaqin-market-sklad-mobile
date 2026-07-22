@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { Check, Lock } from 'lucide-react-native';
+import { Calendar, Check, Lock } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   Alert,
@@ -14,11 +14,21 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AVATAR_GROUPS, avatarEmoji } from '@/constants/avatars';
+import { DatePickerModal } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { MeUser } from '@/lib/types';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
+
+// Best-effort split for users who only ever had the old combined "name"
+// field — first word becomes the given name, the rest the surname. Purely a
+// starting point; the user can correct it like any other prefilled field.
+function splitLegacyName(name: string | null): { first: string; last: string } {
+  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { first: '', last: '' };
+  return { first: parts[0], last: parts.slice(1).join(' ') };
+}
 
 export default function EditProfileScreen() {
   const { tr } = useTranslation();
@@ -34,14 +44,24 @@ export default function EditProfileScreen() {
     initialData: me,
   });
   const user = meQuery.data;
+  const legacy = splitLegacyName(user?.name ?? null);
 
-  const [name, setName] = useState(user?.name ?? '');
+  const [firstName, setFirstName] = useState(user?.firstName ?? legacy.first);
+  const [lastName, setLastName] = useState(user?.lastName ?? legacy.last);
+  const [birthDate, setBirthDate] = useState<string | null>(user?.birthDate ?? null);
+  const [gender, setGender] = useState<'male' | 'female' | null>(user?.gender ?? null);
+  const [email, setEmail] = useState(user?.email ?? '');
   const [avatarId, setAvatarId] = useState<string | null>(user?.avatarUrl ?? null);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       const res = await api.patch<MeUser>('/users/me', {
-        name: name.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim() || undefined,
+        birthDate: birthDate ?? undefined,
+        gender: gender ?? undefined,
+        email: email.trim() || undefined,
         avatarUrl: avatarId ?? undefined,
       });
       return res.data;
@@ -56,12 +76,17 @@ export default function EditProfileScreen() {
   });
 
   const previewEmoji = avatarEmoji(avatarId);
-  const initial = (name?.[0] ?? user?.phone?.slice(-2) ?? 'Y').toUpperCase();
-  const canSave = name.trim().length > 0;
+  const initial = (firstName?.[0] ?? user?.phone?.slice(-2) ?? 'Y').toUpperCase();
+  const canSave = firstName.trim().length > 0;
 
   const pick = (id: string) => {
     haptics.selection();
     setAvatarId(id);
+  };
+
+  const pickGender = (g: 'male' | 'female') => {
+    haptics.selection();
+    setGender((prev) => (prev === g ? null : g));
   };
 
   return (
@@ -78,25 +103,79 @@ export default function EditProfileScreen() {
           </View>
         </View>
 
-        {/* Name */}
-        <Text style={styles.label}>{tr('editProfile.name')}</Text>
+        {/* Last name */}
+        <Text style={styles.label}>{tr('editProfile.lastName')}</Text>
         <TextInput
           style={styles.input}
-          value={name}
-          onChangeText={setName}
+          value={lastName}
+          onChangeText={setLastName}
+          placeholder={tr('editProfile.lastNamePlaceholder')}
+          placeholderTextColor={colors.text.hint}
+          maxLength={64}
+          returnKeyType="next"
+        />
+
+        {/* First name */}
+        <Text style={[styles.label, { marginTop: spacing.md }]}>{tr('editProfile.name')}</Text>
+        <TextInput
+          style={styles.input}
+          value={firstName}
+          onChangeText={setFirstName}
           placeholder={tr('editProfile.namePlaceholder')}
           placeholderTextColor={colors.text.hint}
-          maxLength={128}
+          maxLength={64}
           returnKeyType="done"
         />
 
+        {/* Birth date */}
+        <Text style={[styles.label, { marginTop: spacing.md }]}>{tr('editProfile.birthDate')}</Text>
+        <Pressable style={styles.dateBox} onPress={() => setDatePickerVisible(true)}>
+          <Text style={birthDate ? styles.dateText : styles.datePlaceholder}>
+            {birthDate ? new Date(`${birthDate}T00:00:00`).toLocaleDateString() : tr('editProfile.selectDate')}
+          </Text>
+          <Calendar size={18} color={colors.text.tertiary} strokeWidth={2.2} />
+        </Pressable>
+
+        {/* Gender */}
+        <Text style={[styles.label, { marginTop: spacing.md }]}>{tr('editProfile.gender')}</Text>
+        <View style={styles.genderRow}>
+          <Pressable
+            style={[styles.genderBtn, gender === 'male' && styles.genderBtnActive]}
+            onPress={() => pickGender('male')}>
+            <Text style={[styles.genderText, gender === 'male' && styles.genderTextActive]}>
+              {tr('editProfile.male')}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.genderBtn, gender === 'female' && styles.genderBtnActive]}
+            onPress={() => pickGender('female')}>
+            <Text style={[styles.genderText, gender === 'female' && styles.genderTextActive]}>
+              {tr('editProfile.female')}
+            </Text>
+          </Pressable>
+        </View>
+
         {/* Phone (read-only) */}
-        <Text style={styles.label}>{tr('editProfile.phone')}</Text>
+        <Text style={[styles.label, { marginTop: spacing.md }]}>{tr('editProfile.phone')}</Text>
         <View style={styles.phoneBox}>
           <Text style={styles.phoneText}>{user?.phone}</Text>
           <Lock size={15} color={colors.text.tertiary} strokeWidth={2.2} />
         </View>
         <Text style={styles.hint}>{tr('editProfile.phoneLocked')}</Text>
+
+        {/* Email */}
+        <Text style={[styles.label, { marginTop: spacing.md }]}>{tr('editProfile.email')}</Text>
+        <TextInput
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          placeholder={tr('editProfile.emailPlaceholder')}
+          placeholderTextColor={colors.text.hint}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          maxLength={255}
+          returnKeyType="done"
+        />
 
         {/* Avatar picker */}
         <Text style={[styles.label, { marginTop: spacing.lg }]}>{tr('editProfile.chooseAvatar')}</Text>
@@ -135,6 +214,17 @@ export default function EditProfileScreen() {
           </Text>
         </Pressable>
       </View>
+
+      <DatePickerModal
+        visible={datePickerVisible}
+        value={birthDate}
+        title={tr('editProfile.birthDate')}
+        onConfirm={(iso) => {
+          setBirthDate(iso);
+          setDatePickerVisible(false);
+        }}
+        onClose={() => setDatePickerVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -167,6 +257,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border.default,
   },
+  dateBox: {
+    backgroundColor: colors.bg.surface,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    height: layout.inputHeight,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dateText: { ...typography.body, color: colors.text.primary },
+  datePlaceholder: { ...typography.body, color: colors.text.hint },
+  genderRow: {
+    flexDirection: 'row',
+    backgroundColor: colors.bg.surfaceMuted,
+    borderRadius: radius.md,
+    padding: 4,
+    gap: 4,
+  },
+  genderBtn: {
+    flex: 1,
+    height: layout.inputHeight - 8,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genderBtnActive: { backgroundColor: colors.bg.surface, ...shadow.xs },
+  genderText: { ...typography.body, color: colors.text.secondary, fontWeight: '600' },
+  genderTextActive: { color: colors.brand.primary, fontWeight: '700' },
   phoneBox: {
     backgroundColor: colors.bg.surfaceMuted,
     borderRadius: radius.md,

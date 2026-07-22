@@ -470,6 +470,12 @@ export interface MeUser {
   id: string;
   phone: string;
   name: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  /** ISO 'YYYY-MM-DD', or null if not set. */
+  birthDate: string | null;
+  gender: 'male' | 'female' | null;
+  email: string | null;
   avatarUrl: string | null;
   isSellerApproved: boolean;
   isAdmin: boolean;
