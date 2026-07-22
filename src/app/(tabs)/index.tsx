@@ -1,18 +1,18 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { ChevronDown, Map as MapIcon, MapPin, Navigation, Search as SearchIcon, ShoppingBag, WifiOff } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
-  FlatList,
   Pressable,
   RefreshControl,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AddressPickerSheet } from '@/components/AddressPickerSheet';
 import { ProductCard } from '@/components/ProductCard';
@@ -22,8 +22,15 @@ import { EmptyState } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { FeedProduct, FeedResponse, PublicShop } from '@/lib/types';
+import { hideProgress } from '@/stores/scrollHide';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+
+// How far (in px) the list must scroll continuously in one direction before
+// the tab bar / sticky header commit to hiding or showing — small enough to
+// feel responsive, large enough to ignore bounce/rubber-band jitter.
+const HIDE_AFTER_PX = 40;
+const SHOW_AFTER_PX = 16;
 
 const SCREEN_W = Dimensions.get('window').width;
 const GUTTER = spacing.sm;
@@ -37,8 +44,79 @@ type Row =
   | { readonly kind: 'products'; readonly items: FeedProduct[] }
   | { readonly kind: 'store'; readonly shop: PublicShop };
 
+interface HomeHeaderCardProps {
+  readonly tr: ReturnType<typeof useTranslation>['tr'];
+  readonly usingManualAddress: boolean;
+  readonly locationLabel: string;
+  readonly onPressLocation: () => void;
+  readonly onPressSearch: () => void;
+  readonly onPressMap: () => void;
+}
+
+// Shared visual for both the header's natural place at the top of the feed
+// AND its floating "reveal on scroll up" copy — so the two read as the same
+// element sliding, not two different-looking headers swapping places.
+function HomeHeaderCard({
+  tr,
+  usingManualAddress,
+  locationLabel,
+  onPressLocation,
+  onPressSearch,
+  onPressMap,
+}: HomeHeaderCardProps) {
+  return (
+    <View style={styles.header}>
+      <View style={styles.headerTop}>
+        <View style={styles.brandRow}>
+          <Text style={styles.brand}>Yaqin Market</Text>
+        </View>
+        <Pressable
+          style={[styles.locationPill, usingManualAddress && styles.locationPillManual]}
+          onPress={onPressLocation}>
+          {usingManualAddress ? (
+            <MapPin
+              size={15}
+              color={colors.brand.primary}
+              strokeWidth={2.6}
+              fill={colors.brand.primarySurface}
+            />
+          ) : (
+            <Navigation size={13} color={colors.text.onPrimary} strokeWidth={2.4} />
+          )}
+          <View style={styles.locationTextWrap}>
+            <Text
+              style={[styles.locationText, usingManualAddress && styles.locationTextManual]}
+              numberOfLines={1}>
+              {locationLabel}
+            </Text>
+            {usingManualAddress && (
+              <Text style={styles.locationSub} numberOfLines={1}>
+                {tr('home.notCurrentLocation')}
+              </Text>
+            )}
+          </View>
+          <ChevronDown
+            size={14}
+            color={usingManualAddress ? colors.text.tertiary : 'rgba(255,255,255,0.85)'}
+            strokeWidth={2.4}
+          />
+        </Pressable>
+      </View>
+
+      <Pressable style={styles.searchBar} onPress={onPressSearch}>
+        <SearchIcon size={18} color={colors.text.tertiary} strokeWidth={2.4} />
+        <Text style={styles.searchPlaceholder}>{tr('search.placeholder')}</Text>
+        <Pressable style={styles.mapBtn} onPress={onPressMap}>
+          <MapIcon size={16} color={colors.brand.primary} strokeWidth={2.4} />
+        </Pressable>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function HomeScreen() {
   const { tr } = useTranslation();
+  const insets = useSafeAreaInsets();
   const coords = useEffectiveCoords();
   const selectedAddress = useLocationStore((s) => s.selectedAddress);
   const requestPermission = useLocationStore((s) => s.requestPermission);
@@ -46,6 +124,67 @@ export default function HomeScreen() {
   const permissionStatus = useLocationStore((s) => s.permissionStatus);
 
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+  // The header lives naturally at the top of the feed (scrolls away with it
+  // like any other content). `stickyProgress` drives a second, floating copy
+  // that slides down only once the natural header has scrolled out of view
+  // and the user scrolls back up — and slides away again near the very top,
+  // where the natural header is already back on screen.
+  const stickyProgress = useSharedValue(0);
+  const lastScrollY = useSharedValue(0);
+  const scrollDir = useSharedValue(0);
+  const scrollAccum = useSharedValue(0);
+  const onFeedScroll = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      const y = Math.max(0, event.contentOffset.y);
+      const delta = y - lastScrollY.value;
+      lastScrollY.value = y;
+
+      // The instant any sliver of the natural header is scrolling back into
+      // view, the floating copy must already be gone — otherwise the two
+      // visibly overlap for a moment.
+      if (y <= headerHeight + GUTTER) {
+        scrollAccum.value = 0;
+        scrollDir.value = 0;
+        hideProgress.value = withTiming(0, { duration: 200 });
+        stickyProgress.value = withTiming(0, { duration: 200 });
+        return;
+      }
+      if (Math.abs(delta) < 1) return;
+
+      const dir = delta > 0 ? 1 : -1;
+      if (dir !== scrollDir.value) {
+        scrollDir.value = dir;
+        scrollAccum.value = 0;
+      }
+      scrollAccum.value += Math.abs(delta);
+
+      if (dir === 1 && scrollAccum.value > HIDE_AFTER_PX) {
+        hideProgress.value = withTiming(1, { duration: 220 });
+        stickyProgress.value = withTiming(0, { duration: 220 });
+      } else if (dir === -1 && scrollAccum.value > SHOW_AFTER_PX) {
+        hideProgress.value = withTiming(0, { duration: 220 });
+        stickyProgress.value = withTiming(1, { duration: 220 });
+      }
+    },
+  });
+  const stickyHeaderStyle = useAnimatedStyle(() => {
+    const hiddenDistance = insets.top + layout.screenPadding + headerHeight + 16;
+    return { transform: [{ translateY: (stickyProgress.value - 1) * hiddenDistance }] };
+  });
+
+  // Leaving the home tab (e.g. via the Telegram-style tab swipe) must never
+  // strand the tab bar hidden, or the sticky header stuck visible, on
+  // another screen that doesn't scroll them back into their default state.
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        hideProgress.value = withTiming(0, { duration: 200 });
+        stickyProgress.value = withTiming(0, { duration: 200 });
+      };
+    }, [stickyProgress]),
+  );
 
   useEffect(() => {
     if (!permissionStatus) {
@@ -130,60 +269,26 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Red header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View style={styles.brandRow}>
-            <Text style={styles.brand}>Yaqin Market</Text>
-          </View>
-          <Pressable
-            style={[styles.locationPill, usingManualAddress && styles.locationPillManual]}
-            onPress={() => setPickerOpen(true)}>
-            {usingManualAddress ? (
-              <MapPin
-                size={15}
-                color={colors.brand.primary}
-                strokeWidth={2.6}
-                fill={colors.brand.primarySurface}
-              />
-            ) : (
-              <Navigation size={13} color={colors.text.onPrimary} strokeWidth={2.4} />
-            )}
-            <View style={styles.locationTextWrap}>
-              <Text
-                style={[styles.locationText, usingManualAddress && styles.locationTextManual]}
-                numberOfLines={1}>
-                {locationLabel}
-              </Text>
-              {usingManualAddress && (
-                <Text style={styles.locationSub} numberOfLines={1}>
-                  {tr('home.notCurrentLocation')}
-                </Text>
-              )}
-            </View>
-            <ChevronDown
-              size={14}
-              color={usingManualAddress ? colors.text.tertiary : 'rgba(255,255,255,0.85)'}
-              strokeWidth={2.4}
-            />
-          </Pressable>
-        </View>
-
-        <Pressable style={styles.searchBar} onPress={() => router.push('/search')}>
-          <SearchIcon size={18} color={colors.text.tertiary} strokeWidth={2.4} />
-          <Text style={styles.searchPlaceholder}>{tr('search.placeholder')}</Text>
-          <Pressable style={styles.mapBtn} onPress={() => router.push('/map')}>
-            <MapIcon size={16} color={colors.brand.primary} strokeWidth={2.4} />
-          </Pressable>
-        </Pressable>
-      </View>
-
-      <FlatList
+      <Animated.FlatList
         data={rows}
-        keyExtractor={(row, idx) => (row.kind === 'store' ? `s-${row.shop.id}` : `p-${idx}`)}
+        keyExtractor={(row: Row, idx: number) => (row.kind === 'store' ? `s-${row.shop.id}` : `p-${idx}`)}
         style={styles.scroll}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        onScroll={onFeedScroll}
+        scrollEventThrottle={16}
+        ListHeaderComponent={
+          <View style={styles.listHeaderWrap} onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
+            <HomeHeaderCard
+              tr={tr}
+              usingManualAddress={usingManualAddress}
+              locationLabel={locationLabel}
+              onPressLocation={() => setPickerOpen(true)}
+              onPressSearch={() => router.push('/search')}
+              onPressMap={() => router.push('/map')}
+            />
+          </View>
+        }
         ItemSeparatorComponent={() => <View style={{ height: GUTTER }} />}
         refreshControl={
           <RefreshControl
@@ -262,21 +367,57 @@ export default function HomeScreen() {
         }}
       />
 
+      <Animated.View
+        pointerEvents="box-none"
+        style={[
+          styles.stickyHeaderContainer,
+          { paddingTop: insets.top + layout.screenPadding },
+          stickyHeaderStyle,
+        ]}>
+        <HomeHeaderCard
+          tr={tr}
+          usingManualAddress={usingManualAddress}
+          locationLabel={locationLabel}
+          onPressLocation={() => setPickerOpen(true)}
+          onPressSearch={() => router.push('/search')}
+          onPressMap={() => router.push('/map')}
+        />
+      </Animated.View>
+
       <AddressPickerSheet visible={pickerOpen} onClose={() => setPickerOpen(false)} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.brand.primary },
+  safe: { flex: 1, backgroundColor: colors.bg.canvas },
+  // Wraps the header's natural place at the top of the feed — margin-bottom
+  // matches the gap between every other row so it reads as one consistent
+  // rhythm, not a specially-spaced banner.
+  listHeaderWrap: { marginBottom: GUTTER },
+  // The floating "reveal on scroll up" copy — transparent shell so sliding it
+  // away never leaves a colored gap; width/margins mirror the list's own
+  // horizontal padding so the card doesn't visibly resize between the two.
+  stickyHeaderContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    paddingHorizontal: layout.screenPadding,
+  },
+  // The floating card look: bordered and fully rounded like the tab bar, so
+  // it reads as one consistent floating-chrome language.
   header: {
     backgroundColor: colors.brand.primary,
+    borderRadius: radius['2xl'],
+    borderWidth: 1,
+    borderColor: colors.brand.primaryBorder,
     paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.lg,
-    borderBottomLeftRadius: radius['2xl'],
-    borderBottomRightRadius: radius['2xl'],
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
     gap: spacing.md,
+    ...shadow.lg,
   },
   headerTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },

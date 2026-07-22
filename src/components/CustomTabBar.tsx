@@ -12,6 +12,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTranslation } from '@/i18n';
+import { hideProgress } from '@/stores/scrollHide';
 import { colors, radius, shadow, spacing, typography } from '@/theme';
 
 const ICONS: Record<string, LucideIcon> = {
@@ -47,6 +48,15 @@ interface TabRoute {
 export function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
   const insets = useSafeAreaInsets();
   const [barWidth, setBarWidth] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(0);
+
+  // Slides the whole floating bar off-screen (downward) while the home feed
+  // is scrolling down, driven by the shared `hideProgress` value rather than
+  // local state — the bar is a sibling of the home screen in the navigator
+  // tree, not its child, so this is the only cheap way to react to its scroll.
+  const hideStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: hideProgress.value * (containerHeight + insets.bottom + spacing.lg) }],
+  }));
 
   const tabs: TabRoute[] = state.routes.filter((r: TabRoute) => ICONS[r.name]);
   const count = tabs.length;
@@ -78,7 +88,9 @@ export function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
   }));
 
   return (
-    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
+    <Animated.View
+      style={[styles.container, { paddingBottom: Math.max(insets.bottom, spacing.sm) }, hideStyle]}
+      onLayout={(e) => setContainerHeight(e.nativeEvent.layout.height)}>
       <View
         style={styles.bar}
         onLayout={(e) => setBarWidth(Math.max(0, e.nativeEvent.layout.width - BAR_HPADDING * 2))}>
@@ -109,7 +121,7 @@ export function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
           />
         ))}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
