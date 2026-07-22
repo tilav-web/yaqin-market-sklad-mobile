@@ -158,11 +158,10 @@ function TabItem({ icon: Icon, labelKey, focused, onPress }: TabItemProps) {
 }
 
 const styles = StyleSheet.create({
-  // Transparent gutter (matches the page canvas) that just reserves the
-  // safe-area inset — the visible bar below floats inside it with margin on
-  // every side rather than sitting flush against the screen edges.
+  // Fully transparent — just reserves the safe-area inset and side margins.
+  // The visible bar below floats on top of whatever's actually behind it
+  // rather than a second flat-colored strip.
   container: {
-    backgroundColor: colors.bg.canvas,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
   },
@@ -179,7 +178,10 @@ const styles = StyleSheet.create({
   indicator: {
     position: 'absolute',
     top: 4,
-    left: 0,
+    // Absolutely positioned children measure from the padding edge, not the
+    // content edge — offset by the bar's own horizontal padding so the pill
+    // lines up with the (padding-affected) flex tab items above it.
+    left: BAR_HPADDING,
     height: 34,
     alignItems: 'center',
     justifyContent: 'center',

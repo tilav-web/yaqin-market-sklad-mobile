@@ -33,6 +33,10 @@ const LABELS: Record<string, string> = {
 
 const SLIDE_SPRING = { damping: 18, stiffness: 220, mass: 0.7 };
 const PRESS_SPRING = { damping: 15, stiffness: 350 };
+// The floating bar's own horizontal padding — subtracted from the measured
+// layout width so the sliding indicator lines up with the tab items (which
+// live inside that padding), not the bar's full border-box width.
+const BAR_HPADDING = spacing.sm;
 
 interface Props extends BottomTabBarProps {
   /** Route names to omit from the bar — e.g. owner-only tabs for staff. */
@@ -71,7 +75,9 @@ export function SellerTabBar({ state, navigation, hiddenRoutes }: Props) {
 
   return (
     <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
-      <View style={styles.bar} onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}>
+      <View
+        style={styles.bar}
+        onLayout={(e) => setBarWidth(Math.max(0, e.nativeEvent.layout.width - BAR_HPADDING * 2))}>
         {itemWidth > 0 && (
           <Animated.View
             pointerEvents="none"
@@ -154,19 +160,30 @@ function TabItem({
 }
 
 const styles = StyleSheet.create({
+  // Fully transparent — just reserves the safe-area inset and side margins.
+  // The visible bar below floats on top of whatever's actually behind it
+  // rather than a second flat-colored strip.
   container: {
-    backgroundColor: colors.bg.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
-    ...shadow.md,
   },
-  bar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  bar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.bg.surface,
+    borderRadius: radius['2xl'],
+    paddingHorizontal: BAR_HPADDING,
+    marginBottom: spacing.xs,
+    ...shadow.lg,
+  },
   indicator: {
     position: 'absolute',
     top: 4,
-    left: 0,
+    // Absolutely positioned children measure from the padding edge, not the
+    // content edge — offset by the bar's own horizontal padding so the pill
+    // lines up with the (padding-affected) flex tab items above it.
+    left: BAR_HPADDING,
     height: 34,
     alignItems: 'center',
     justifyContent: 'center',
