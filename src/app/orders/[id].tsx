@@ -21,8 +21,10 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
-import { useToast } from '@/components/ui';
+import { CardVisual } from '@/components/CardVisual';
+import { Button, useToast } from '@/components/ui';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
+import { useCountdown } from '@/lib/useCountdown';
 import { endOrderActivity, updateOrderActivity } from '@/lib/useOrderLiveActivity';
 import { useOrderSocket } from '@/lib/useOrderSocket';
 import { useTranslation } from '@/i18n';
@@ -31,6 +33,7 @@ import { OrderActivityProps } from '@/widgets/order-activity';
 import { useCartStore } from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { detectCardBrand } from '@/utils/cardBrand';
 import { haptics } from '@/utils/haptics';
 
 const FLOW: OrderStatus[] = ['new', 'accepted', 'preparing', 'delivering', 'delivered'];
@@ -165,6 +168,32 @@ export default function OrderDetailScreen() {
     },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
+
+  const reRequest = useMutation({
+    mutationFn: async () => {
+      const res = await api.post<Order>(`/orders/${id}/re-request`);
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['order', id] });
+      toast.success(tr('orders.reRequestSent'));
+    },
+    onError: (e) => toast.error(extractErrorMessage(e)),
+  });
+
+  // A paid order the shop keeps ignoring: after the 5-min window (restarted
+  // by each re-request) the customer gets explicit options — re-ask the shop
+  // or cancel for an automatic card refund. Sentinel deadline (far future)
+  // keeps the hook unconditional while the order is loading / not applicable.
+  const paidStaleDeadline =
+    order &&
+    order.status === 'new' &&
+    order.paymentMethod === 'click_online' &&
+    order.paymentStatus === 'paid'
+      ? new Date(order.reRequestedAt ?? order.createdAt).getTime() + 5 * 60 * 1000
+      : Number.MAX_SAFE_INTEGER;
+  const paidStaleRemaining = useCountdown(paidStaleDeadline);
+  const showPaidStaleOptions = paidStaleRemaining === 0;
 
   const submitReason = useMutation({
     mutationFn: async () => {
@@ -339,6 +368,15 @@ export default function OrderDetailScreen() {
               Qaytarilgan: {order.refund.amount.toLocaleString()} so'm · sana:{' '}
               {new Date(order.refund.at).toLocaleDateString('uz-UZ')}
             </Text>
+          </View>
+        )}
+
+        {/* Click payment reversed back to the card (auto-refund on
+            cancel/no-response) — reassure the customer the money is on its way. */}
+        {order.refundedAt && (
+          <View style={[styles.refundBanner, styles.refundBannerRow]}>
+            <Check size={16} color={colors.feedback.success} strokeWidth={2.6} />
+            <Text style={styles.refundBannerText}>{tr('orders.refundedBadge')}</Text>
           </View>
         )}
 
@@ -725,40 +763,26 @@ export default function OrderDetailScreen() {
           <View style={styles.paymentSwitchRow}>
             <Text style={styles.paymentSwitchLabel}>{tr('checkout.paymentTitle')}</Text>
             <View style={styles.paymentSwitchOptions}>
-              <Pressable
-                style={[styles.paymentChip, order.paymentMethod === 'cash' && styles.paymentChipActive]}
-                disabled={changePaymentMethod.isPending || order.paymentMethod === 'cash'}
-                onPress={() => changePaymentMethod.mutate('cash')}>
-                <Banknote
-                  size={14}
-                  color={order.paymentMethod === 'cash' ? colors.text.onPrimary : colors.text.secondary}
-                  strokeWidth={2.2}
+              <View style={styles.paymentOption}>
+                <Button
+                  label={tr('checkout.cash')}
+                  leftIcon={Banknote}
+                  size="sm"
+                  variant={order.paymentMethod === 'cash' ? 'primary' : 'outline'}
+                  disabled={changePaymentMethod.isPending || order.paymentMethod === 'cash'}
+                  onPress={() => changePaymentMethod.mutate('cash')}
                 />
-                <Text
-                  style={[
-                    styles.paymentChipText,
-                    order.paymentMethod === 'cash' && styles.paymentChipTextActive,
-                  ]}>
-                  {tr('checkout.cash')}
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.paymentChip, order.paymentMethod === 'click_online' && styles.paymentChipActive]}
-                disabled={changePaymentMethod.isPending || order.paymentMethod === 'click_online'}
-                onPress={() => changePaymentMethod.mutate('click_online')}>
-                <CreditCard
-                  size={14}
-                  color={order.paymentMethod === 'click_online' ? colors.text.onPrimary : colors.text.secondary}
-                  strokeWidth={2.2}
+              </View>
+              <View style={styles.paymentOption}>
+                <Button
+                  label={tr('checkout.cardPayment')}
+                  leftIcon={CreditCard}
+                  size="sm"
+                  variant={order.paymentMethod === 'click_online' ? 'primary' : 'outline'}
+                  disabled={changePaymentMethod.isPending || order.paymentMethod === 'click_online'}
+                  onPress={() => changePaymentMethod.mutate('click_online')}
                 />
-                <Text
-                  style={[
-                    styles.paymentChipText,
-                    order.paymentMethod === 'click_online' && styles.paymentChipTextActive,
-                  ]}>
-                  {tr('checkout.cardPayment')}
-                </Text>
-              </Pressable>
+              </View>
             </View>
           </View>
         )}
@@ -767,34 +791,41 @@ export default function OrderDetailScreen() {
             no other way to learn the payment didn't go through. */}
         {order.paymentMethod === 'click_online' && order.paymentStatus === 'failed' && (
           <View style={styles.failedBadge}>
+            <AlertCircle size={16} color={colors.feedback.danger} strokeWidth={2.2} />
             <Text style={styles.failedBadgeText}>{tr('checkout.paymentFailedBadge')}</Text>
           </View>
         )}
 
         {/* Saved-card retry — one tap, no redirect, for a pending/failed
-            online payment on an order that can still be paid. */}
+            online payment on an order that can still be paid. Card identity
+            and the pay action are separate elements so the button label stays
+            short instead of cramming a masked PAN into it. */}
         {order.paymentMethod === 'click_online' &&
           (order.paymentStatus === 'pending' || order.paymentStatus === 'failed') &&
           !isTerminalStatus(order.status) &&
           (cardsQuery.data ?? [])
             .filter((c) => c.status === 'active')
             .map((card) => (
-              <Pressable
-                key={card.id}
-                style={styles.clickBtn}
-                disabled={payWithCard.isPending}
-                onPress={() => payWithCard.mutate(card.id)}>
-                {payWithCard.isPending ? (
-                  <ActivityIndicator color={colors.text.onPrimary} />
-                ) : (
-                  <>
-                    <CreditCard size={18} color={colors.text.onPrimary} strokeWidth={2.2} />
-                    <Text style={styles.clickBtnTextSmall} numberOfLines={1} ellipsizeMode="tail">
-                      {card.cardNumberMasked ?? '••••'} {tr('checkout.payWithCard')}
-                    </Text>
-                  </>
-                )}
-              </Pressable>
+              <View key={card.id} style={styles.savedCardRow}>
+                <View style={styles.savedCardInfo}>
+                  <CardVisual
+                    size="mini"
+                    brand={detectCardBrand(card.cardNumberMasked ?? '')}
+                    numberText={card.cardNumberMasked ?? '••••'}
+                    fallbackLabel={tr('cards.genericName')}
+                  />
+                  <Text style={styles.savedCardNumber} numberOfLines={1}>
+                    {card.cardNumberMasked ?? '••••'}
+                  </Text>
+                </View>
+                <Button
+                  label={tr('checkout.payAction')}
+                  size="sm"
+                  variant="primary"
+                  loading={payWithCard.isPending}
+                  onPress={() => payWithCard.mutate(card.id)}
+                />
+              </View>
             ))}
 
         {/* Click payment button — the redirect fallback; demoted to a ghost
@@ -805,8 +836,11 @@ export default function OrderDetailScreen() {
           (() => {
             const hasCards = (cardsQuery.data ?? []).some((c) => c.status === 'active');
             return (
-              <Pressable
-                style={hasCards ? styles.ghostBtn : styles.clickBtn}
+              <Button
+                label={hasCards ? tr('checkout.payWithRedirect') : tr('checkout.cardPayment')}
+                leftIcon={CreditCard}
+                size={hasCards ? 'sm' : 'md'}
+                variant={hasCards ? 'ghost' : 'primary'}
                 onPress={async () => {
                   try {
                     const { data } = await api.get<{ url: string }>(`/click/orders/${order.id}/url`);
@@ -815,26 +849,33 @@ export default function OrderDetailScreen() {
                   } catch (e) {
                     toast.error(extractErrorMessage(e));
                   }
-                }}>
-                <CreditCard
-                  size={18}
-                  color={hasCards ? colors.brand.primary : colors.text.onPrimary}
-                  strokeWidth={2.2}
-                />
-                <Text
-                  style={
-                    hasCards
-                      ? [styles.ghostBtnText, { color: colors.brand.primary }]
-                      : styles.clickBtnText
-                  }>
-                  {hasCards ? tr('checkout.payWithRedirect') : tr('checkout.cardPayment')}
-                </Text>
-              </Pressable>
+                }}
+              />
             );
           })()}
-        {order.paymentMethod === 'click_online' && order.paymentStatus === 'paid' && (
+        {order.paymentMethod === 'click_online' && order.paymentStatus === 'paid' && !order.refundedAt && (
           <View style={styles.paidBadge}>
             <Text style={styles.paidBadgeText}>{tr('checkout.paidBadge')}</Text>
+          </View>
+        )}
+
+        {/* Paid order the shop keeps ignoring — give the customer a way
+            forward: re-ask the same shop (new 5-min window) or cancel below
+            for an automatic refund to the card. */}
+        {showPaidStaleOptions && (
+          <View style={styles.noRespCard}>
+            <View style={styles.noRespHeader}>
+              <AlertCircle size={18} color={colors.feedback.warning} strokeWidth={2.4} />
+              <Text style={styles.noRespTitle}>{tr('orders.noResponseTitle')}</Text>
+            </View>
+            <Text style={styles.noRespHint}>{tr('orders.noResponseHint')}</Text>
+            <Pressable
+              style={styles.reRequestBtn}
+              onPress={() => reRequest.mutate()}
+              disabled={reRequest.isPending}>
+              <RefreshCw size={16} color={colors.brand.primary} strokeWidth={2.4} />
+              <Text style={styles.reRequestBtnText}>{tr('orders.reRequest')}</Text>
+            </Pressable>
           </View>
         )}
 
@@ -851,10 +892,16 @@ export default function OrderDetailScreen() {
           <Pressable
             style={styles.ghostBtn}
             onPress={() =>
-              Alert.alert(tr('orders.cancel'), tr('orders.cancelConfirm'), [
-                { text: tr('common.no'), style: 'cancel' },
-                { text: tr('common.yes'), style: 'destructive', onPress: () => setStatus.mutate('cancelled') },
-              ])
+              Alert.alert(
+                tr('orders.cancel'),
+                // A captured Click payment comes back automatically — say so,
+                // or the customer will fear cancelling swallows their money.
+                order.paymentStatus === 'paid' ? tr('orders.cancelPaidConfirm') : tr('orders.cancelConfirm'),
+                [
+                  { text: tr('common.no'), style: 'cancel' },
+                  { text: tr('common.yes'), style: 'destructive', onPress: () => setStatus.mutate('cancelled') },
+                ],
+              )
             }
             disabled={setStatus.isPending}>
             <X size={16} color={colors.feedback.danger} strokeWidth={2.6} />
@@ -955,7 +1002,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.feedback.success,
   },
-  refundBannerText: { ...typography.bodySmall, fontWeight: '700', color: colors.feedback.success },
+  refundBannerText: { ...typography.bodySmall, fontWeight: '700', color: colors.feedback.success, flex: 1 },
+  refundBannerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  // paid-but-ignored options card (re-request / cancel-for-refund)
+  noRespCard: {
+    backgroundColor: colors.feedback.warningSurface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.feedback.warning,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  noRespHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  noRespTitle: { ...typography.bodySmall, fontWeight: '700', color: colors.feedback.warning, flex: 1 },
+  noRespHint: { ...typography.bodySmall, color: colors.text.secondary },
+  reRequestBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    height: layout.buttonHeight.md,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.brand.primary,
+    backgroundColor: colors.brand.primarySurface,
+  },
+  reRequestBtnText: { ...typography.buttonSmall, color: colors.brand.primary },
   // seller-declined suggestion flow
   declinedBanner: {
     flexDirection: 'row',
@@ -1145,22 +1217,6 @@ const styles = StyleSheet.create({
   mapTitle: { ...typography.overline, color: colors.text.tertiary },
   mapEta: { ...typography.caption, fontWeight: '700', color: colors.brand.primary },
   map: { width: '100%', height: 220, borderRadius: radius.md },
-  // click payment
-  clickBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    height: layout.buttonHeight.lg,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    backgroundColor: '#00B900',
-    ...shadow.sm,
-  },
-  clickBtnText: { ...typography.button, color: colors.text.onPrimary },
-  // The saved-card button's label combines the masked card number with a
-  // full sentence — too long for the default button size on most screens.
-  clickBtnTextSmall: { ...typography.buttonSmall, fontSize: 13, color: colors.text.onPrimary, flexShrink: 1 },
   paidBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1177,6 +1233,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.xs,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.lg,
@@ -1184,7 +1241,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.feedback.danger,
   },
-  failedBadgeText: { ...typography.bodyStrong, color: colors.feedback.danger },
+  failedBadgeText: { ...typography.bodySmall, color: colors.feedback.danger, flexShrink: 1 },
   paymentSwitchRow: {
     backgroundColor: colors.bg.surface,
     borderRadius: radius.lg,
@@ -1195,19 +1252,20 @@ const styles = StyleSheet.create({
   },
   paymentSwitchLabel: { ...typography.caption, color: colors.text.secondary, fontWeight: '700' },
   paymentSwitchOptions: { flexDirection: 'row', gap: spacing.sm },
-  paymentChip: {
-    flex: 1,
+  paymentOption: { flex: 1 },
+  // Saved-card retry: card identity and the pay action live in separate
+  // elements so the button label stays short (see checkout.payAction).
+  savedCardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    height: layout.buttonHeight.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.bg.canvas,
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    backgroundColor: colors.bg.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border.subtle,
   },
-  paymentChipActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
-  paymentChipText: { ...typography.buttonSmall, fontSize: 13, color: colors.text.secondary },
-  paymentChipTextActive: { color: colors.text.onPrimary },
+  savedCardInfo: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1 },
+  savedCardNumber: { ...typography.bodyStrong, color: colors.text.primary, flexShrink: 1 },
 });

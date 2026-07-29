@@ -217,6 +217,10 @@ export interface Order {
   } | null;
   /** Admin force-refund applied to this order, if any (from GET /orders/:id). */
   refund?: { amount: number; at: string } | null;
+  /** Customer re-asked the silent shop — restarts the 5-min accept window from here. */
+  reRequestedAt?: string | null;
+  /** Click payment was reversed back to the customer's card. */
+  refundedAt?: string | null;
 }
 
 /** FIFO cost summary attached to seller inventory rows. */

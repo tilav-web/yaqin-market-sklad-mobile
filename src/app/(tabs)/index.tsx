@@ -11,7 +11,15 @@ import {
   Text,
   View,
 } from 'react-native';
-import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, {
+  Extrapolation,
+  SharedValue,
+  interpolate,
+  useAnimatedStyle,
+  useAnimatedScrollHandler,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AddressPickerSheet } from '@/components/AddressPickerSheet';
@@ -27,10 +35,16 @@ import { useEffectiveCoords, useLocationStore } from '@/stores/location';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 
 // How far (in px) the list must scroll continuously in one direction before
-// the tab bar / sticky header commit to hiding or showing — small enough to
-// feel responsive, large enough to ignore bounce/rubber-band jitter.
+// the tab bar commits to hiding or showing — small enough to feel
+// responsive, large enough to ignore bounce/rubber-band jitter.
 const HIDE_AFTER_PX = 40;
 const SHOW_AFTER_PX = 16;
+
+// The brand/address row collapses away over this many px of scroll — same
+// distance as its own natural height once measured (see expandedRowHeight),
+// this is just the pre-measurement fallback.
+const SEARCH_BAR_HEIGHT = 44;
+const HEADER_ROW_GAP = spacing.md;
 
 const SCREEN_W = Dimensions.get('window').width;
 const GUTTER = spacing.sm;
@@ -44,29 +58,63 @@ type Row =
   | { readonly kind: 'products'; readonly items: FeedProduct[] }
   | { readonly kind: 'store'; readonly shop: PublicShop };
 
-interface HomeHeaderCardProps {
+interface HomeHeaderProps {
   readonly tr: ReturnType<typeof useTranslation>['tr'];
   readonly usingManualAddress: boolean;
   readonly locationLabel: string;
   readonly onPressLocation: () => void;
   readonly onPressSearch: () => void;
   readonly onPressMap: () => void;
+  readonly insetsTop: number;
+  readonly collapseProgress: SharedValue<number>;
+  readonly expandedRowHeight: SharedValue<number>;
+  readonly onExpandedRowLayout: (height: number) => void;
 }
 
-// Shared visual for both the header's natural place at the top of the feed
-// AND its floating "reveal on scroll up" copy — so the two read as the same
-// element sliding, not two different-looking headers swapping places.
-function HomeHeaderCard({
+// A single fixed header, always mounted (no floating duplicate to keep in
+// sync). The brand title + full address pill collapse away continuously as
+// the feed scrolls, and a compact address button crossfades in next to the
+// search bar so the address stays reachable even once collapsed.
+function HomeHeader({
   tr,
   usingManualAddress,
   locationLabel,
   onPressLocation,
   onPressSearch,
   onPressMap,
-}: HomeHeaderCardProps) {
+  insetsTop,
+  collapseProgress,
+  expandedRowHeight,
+  onExpandedRowLayout,
+}: HomeHeaderProps) {
+  const expandedRowStyle = useAnimatedStyle(() => {
+    // Content fades out well before the row finishes collapsing (a "dissolve
+    // then close" feel) so the text/pill never look visibly squashed.
+    const fadeOpacity = interpolate(collapseProgress.value, [0, 0.6], [1, 0], Extrapolation.CLAMP);
+    return {
+      opacity: fadeOpacity,
+      height: expandedRowHeight.value > 0 ? expandedRowHeight.value * (1 - collapseProgress.value) : undefined,
+      marginBottom: HEADER_ROW_GAP * (1 - collapseProgress.value),
+      overflow: 'hidden',
+    };
+  });
+  const miniLocationStyle = useAnimatedStyle(() => {
+    // Held back until the expanded row is mostly gone, then pops in with a
+    // small scale flourish instead of just sliding open linearly.
+    const reveal = interpolate(collapseProgress.value, [0.35, 1], [0, 1], Extrapolation.CLAMP);
+    return {
+      opacity: reveal,
+      width: 36 * reveal,
+      marginRight: spacing.sm * reveal,
+      transform: [{ scale: interpolate(reveal, [0, 1], [0.5, 1], Extrapolation.CLAMP) }],
+    };
+  });
+
   return (
-    <View style={styles.header}>
-      <View style={styles.headerTop}>
+    <View style={[styles.header, { paddingTop: insetsTop + spacing.sm }]}>
+      <Animated.View
+        style={[styles.expandedRow, expandedRowStyle]}
+        onLayout={(e) => onExpandedRowLayout(e.nativeEvent.layout.height)}>
         <View style={styles.brandRow}>
           <Text style={styles.brand}>Yaqin Market</Text>
         </View>
@@ -101,15 +149,26 @@ function HomeHeaderCard({
             strokeWidth={2.4}
           />
         </Pressable>
-      </View>
+      </Animated.View>
 
-      <Pressable style={styles.searchBar} onPress={onPressSearch}>
-        <SearchIcon size={18} color={colors.text.tertiary} strokeWidth={2.4} />
-        <Text style={styles.searchPlaceholder}>{tr('search.placeholder')}</Text>
-        <Pressable style={styles.mapBtn} onPress={onPressMap}>
-          <MapIcon size={16} color={colors.brand.primary} strokeWidth={2.4} />
+      <View style={styles.searchRow}>
+        <Animated.View style={[styles.miniLocationBtn, miniLocationStyle]}>
+          <Pressable style={styles.miniLocationInner} onPress={onPressLocation} hitSlop={8}>
+            {usingManualAddress ? (
+              <MapPin size={16} color={colors.feedback.warning} strokeWidth={2.6} />
+            ) : (
+              <Navigation size={15} color={colors.text.onPrimary} strokeWidth={2.4} />
+            )}
+          </Pressable>
+        </Animated.View>
+        <Pressable style={styles.searchBar} onPress={onPressSearch}>
+          <SearchIcon size={18} color={colors.text.tertiary} strokeWidth={2.4} />
+          <Text style={styles.searchPlaceholder}>{tr('search.placeholder')}</Text>
+          <Pressable style={styles.mapBtn} onPress={onPressMap}>
+            <MapIcon size={16} color={colors.brand.primary} strokeWidth={2.4} />
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </View>
     </View>
   );
 }
@@ -124,14 +183,20 @@ export default function HomeScreen() {
   const permissionStatus = useLocationStore((s) => s.permissionStatus);
 
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [headerHeight, setHeaderHeight] = useState(0);
+  // The fixed header's total (expanded) height, once measured — used to pad
+  // the feed's top so content starts below it instead of underneath it.
+  // Seeded with a rough estimate so there's no visible jump before the real
+  // measurement lands on the first layout pass.
+  const [fullHeaderHeight, setFullHeaderHeight] = useState(
+    () => insets.top + spacing.sm + 40 + HEADER_ROW_GAP + SEARCH_BAR_HEIGHT + spacing.md,
+  );
 
-  // The header lives naturally at the top of the feed (scrolls away with it
-  // like any other content). `stickyProgress` drives a second, floating copy
-  // that slides down only once the natural header has scrolled out of view
-  // and the user scrolls back up — and slides away again near the very top,
-  // where the natural header is already back on screen.
-  const stickyProgress = useSharedValue(0);
+  // 0 = header fully expanded (brand + address row visible), 1 = fully
+  // collapsed (only the search row, with a compact address button). Tracks
+  // scroll position directly (not direction-based) for a native "pinned
+  // toolbar" feel — no separate floating copy to keep in sync with this one.
+  const collapseProgress = useSharedValue(0);
+  const expandedRowHeight = useSharedValue(0);
   const lastScrollY = useSharedValue(0);
   const scrollDir = useSharedValue(0);
   const scrollAccum = useSharedValue(0);
@@ -141,14 +206,13 @@ export default function HomeScreen() {
       const delta = y - lastScrollY.value;
       lastScrollY.value = y;
 
-      // The instant any sliver of the natural header is scrolling back into
-      // view, the floating copy must already be gone — otherwise the two
-      // visibly overlap for a moment.
-      if (y <= headerHeight + GUTTER) {
+      const collapseDistance = expandedRowHeight.value > 0 ? expandedRowHeight.value : 1;
+      collapseProgress.value = Math.min(1, Math.max(0, y / collapseDistance));
+
+      if (y <= 4) {
         scrollAccum.value = 0;
         scrollDir.value = 0;
         hideProgress.value = withTiming(0, { duration: 200 });
-        stickyProgress.value = withTiming(0, { duration: 200 });
         return;
       }
       if (Math.abs(delta) < 1) return;
@@ -162,28 +226,32 @@ export default function HomeScreen() {
 
       if (dir === 1 && scrollAccum.value > HIDE_AFTER_PX) {
         hideProgress.value = withTiming(1, { duration: 220 });
-        stickyProgress.value = withTiming(0, { duration: 220 });
       } else if (dir === -1 && scrollAccum.value > SHOW_AFTER_PX) {
         hideProgress.value = withTiming(0, { duration: 220 });
-        stickyProgress.value = withTiming(1, { duration: 220 });
       }
     },
   });
-  const stickyHeaderStyle = useAnimatedStyle(() => {
-    const hiddenDistance = insets.top + layout.screenPadding + headerHeight + 16;
-    return { transform: [{ translateY: (stickyProgress.value - 1) * hiddenDistance }] };
-  });
+
+  // Measured once (natural height, before any collapsing happens) — later
+  // onLayout firings as the row animates its own height are ignored.
+  const onExpandedRowLayout = useCallback(
+    (height: number) => {
+      if (expandedRowHeight.value !== 0) return;
+      expandedRowHeight.value = height;
+      setFullHeaderHeight(insets.top + spacing.sm + height + HEADER_ROW_GAP + SEARCH_BAR_HEIGHT + spacing.md);
+    },
+    [expandedRowHeight, insets.top],
+  );
 
   // Leaving the home tab (e.g. via the Telegram-style tab swipe) must never
-  // strand the tab bar hidden, or the sticky header stuck visible, on
-  // another screen that doesn't scroll them back into their default state.
+  // strand the tab bar hidden on another screen that doesn't scroll it back
+  // into view.
   useFocusEffect(
     useCallback(() => {
       return () => {
         hideProgress.value = withTiming(0, { duration: 200 });
-        stickyProgress.value = withTiming(0, { duration: 200 });
       };
-    }, [stickyProgress]),
+    }, []),
   );
 
   useEffect(() => {
@@ -273,22 +341,10 @@ export default function HomeScreen() {
         data={rows}
         keyExtractor={(row: Row, idx: number) => (row.kind === 'store' ? `s-${row.shop.id}` : `p-${idx}`)}
         style={styles.scroll}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingTop: fullHeaderHeight }]}
         showsVerticalScrollIndicator={false}
         onScroll={onFeedScroll}
         scrollEventThrottle={16}
-        ListHeaderComponent={
-          <View style={styles.listHeaderWrap} onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
-            <HomeHeaderCard
-              tr={tr}
-              usingManualAddress={usingManualAddress}
-              locationLabel={locationLabel}
-              onPressLocation={() => setPickerOpen(true)}
-              onPressSearch={() => router.push('/search')}
-              onPressMap={() => router.push('/map')}
-            />
-          </View>
-        }
         ItemSeparatorComponent={() => <View style={{ height: GUTTER }} />}
         refreshControl={
           <RefreshControl
@@ -367,22 +423,20 @@ export default function HomeScreen() {
         }}
       />
 
-      <Animated.View
-        pointerEvents="box-none"
-        style={[
-          styles.stickyHeaderContainer,
-          { paddingTop: insets.top + layout.screenPadding },
-          stickyHeaderStyle,
-        ]}>
-        <HomeHeaderCard
+      <View style={styles.fixedHeaderContainer} pointerEvents="box-none">
+        <HomeHeader
           tr={tr}
           usingManualAddress={usingManualAddress}
           locationLabel={locationLabel}
           onPressLocation={() => setPickerOpen(true)}
           onPressSearch={() => router.push('/search')}
           onPressMap={() => router.push('/map')}
+          insetsTop={insets.top}
+          collapseProgress={collapseProgress}
+          expandedRowHeight={expandedRowHeight}
+          onExpandedRowLayout={onExpandedRowLayout}
         />
-      </Animated.View>
+      </View>
 
       <AddressPickerSheet visible={pickerOpen} onClose={() => setPickerOpen(false)} />
     </SafeAreaView>
@@ -391,35 +445,26 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg.canvas },
-  // Wraps the header's natural place at the top of the feed — margin-bottom
-  // matches the gap between every other row so it reads as one consistent
-  // rhythm, not a specially-spaced banner.
-  listHeaderWrap: { marginBottom: GUTTER },
-  // The floating "reveal on scroll up" copy — transparent shell so sliding it
-  // away never leaves a colored gap; width/margins mirror the list's own
-  // horizontal padding so the card doesn't visibly resize between the two.
-  stickyHeaderContainer: {
+  // Always-mounted, edge-to-edge fixed header — no floating duplicate to
+  // keep in sync. Sits above the feed, which is padded (`fullHeaderHeight`)
+  // to start below it.
+  fixedHeaderContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     zIndex: 10,
-    paddingHorizontal: layout.screenPadding,
   },
-  // The floating card look: bordered and fully rounded like the tab bar, so
-  // it reads as one consistent floating-chrome language.
   header: {
     backgroundColor: colors.brand.primary,
-    borderRadius: radius['2xl'],
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
     paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.sm,
     paddingBottom: spacing.md,
-    gap: spacing.md,
-    ...shadow.lg,
+    borderBottomLeftRadius: radius['2xl'],
+    borderBottomRightRadius: radius['2xl'],
   },
-  headerTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  // Brand title + full address pill — collapses (height + opacity) away as
+  // the feed scrolls, see HomeHeader's expandedRowStyle.
+  expandedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   brand: { ...typography.h3, color: colors.text.onPrimary, flexShrink: 0 },
   locationPill: {
@@ -451,10 +496,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.feedback.warning,
   },
+  // Holds the always-visible search bar plus the compact address button that
+  // crossfades in (replacing the full address pill above) once collapsed.
+  searchRow: { flexDirection: 'row', alignItems: 'center' },
+  miniLocationBtn: { height: SEARCH_BAR_HEIGHT, overflow: 'hidden' },
+  miniLocationInner: {
+    width: 36,
+    height: SEARCH_BAR_HEIGHT,
+    borderRadius: radius.lg,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   searchBar: {
+    flex: 1,
     backgroundColor: colors.bg.surface,
     borderRadius: radius.lg,
-    height: 44,
+    height: SEARCH_BAR_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
