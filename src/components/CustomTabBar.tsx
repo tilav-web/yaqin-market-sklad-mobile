@@ -1,7 +1,7 @@
 import type { MaterialTopTabBarProps } from 'expo-router/js-top-tabs';
 import { Home, LucideIcon, MapPin, Search, ShoppingBag, User } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -12,6 +12,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTranslation } from '@/i18n';
+import { useCartStore } from '@/stores/cart';
 import { hideProgress } from '@/stores/scrollHide';
 import { colors, radius, shadow, spacing, typography } from '@/theme';
 
@@ -49,6 +50,9 @@ export function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
   const insets = useSafeAreaInsets();
   const [barWidth, setBarWidth] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
+  // Multi-vendor cart: the badge counts SHOPS with items, not total items —
+  // the carts tab itself is a list of per-shop carts.
+  const cartShopCount = useCartStore((s) => Object.keys(s.carts).length);
 
   // Slides the whole floating bar off-screen (downward) while the home feed
   // is scrolling down, driven by the shared `hideProgress` value rather than
@@ -107,6 +111,7 @@ export function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
             key={route.key}
             icon={ICONS[route.name]}
             labelKey={LABEL_KEYS[route.name]}
+            badgeCount={route.name === 'carts' ? cartShopCount : 0}
             focused={index === activeIndex}
             onPress={() => {
               const event = navigation.emit({
@@ -128,11 +133,13 @@ export function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
 interface TabItemProps {
   readonly icon: LucideIcon;
   readonly labelKey: LabelKey;
+  /** Small count bubble over the icon; hidden when 0. */
+  readonly badgeCount: number;
   readonly focused: boolean;
   readonly onPress: () => void;
 }
 
-function TabItem({ icon: Icon, labelKey, focused, onPress }: TabItemProps) {
+function TabItem({ icon: Icon, labelKey, badgeCount, focused, onPress }: TabItemProps) {
   const { tr } = useTranslation();
   const prog = useSharedValue(focused ? 1 : 0);
   const press = useSharedValue(1);
@@ -166,6 +173,11 @@ function TabItem({ icon: Icon, labelKey, focused, onPress }: TabItemProps) {
         <Animated.View style={[styles.iconOverlay, activeIconStyle]}>
           <Icon size={22} color={colors.brand.primary} strokeWidth={2.5} />
         </Animated.View>
+        {badgeCount > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{badgeCount > 9 ? '9+' : badgeCount}</Text>
+          </View>
+        )}
       </Animated.View>
       <Animated.Text style={[styles.label, labelStyle]} numberOfLines={1}>
         {tr(labelKey)}
@@ -241,5 +253,27 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontSize: 11,
     fontWeight: '700',
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: 2,
+    minWidth: 17,
+    height: 17,
+    borderRadius: radius.full,
+    paddingHorizontal: 4,
+    backgroundColor: colors.feedback.danger,
+    // White ring so the badge stays legible over both the gray and the
+    // brand-red (active) icon underneath.
+    borderWidth: 1.5,
+    borderColor: colors.bg.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: colors.text.onPrimary,
+    fontSize: 9.5,
+    fontWeight: '800',
+    lineHeight: 12,
   },
 });
