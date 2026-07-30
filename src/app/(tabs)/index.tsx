@@ -356,6 +356,10 @@ export default function HomeScreen() {
             }}
             tintColor={colors.brand.primary}
             colors={[colors.brand.primary]}
+            // The header is a fixed overlay and the list is only padded under
+            // it — without this offset the spinner renders at the list's real
+            // top edge, invisible behind the header.
+            progressViewOffset={fullHeaderHeight}
           />
         }
         onEndReachedThreshold={0.6}
