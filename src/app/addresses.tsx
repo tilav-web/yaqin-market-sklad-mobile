@@ -150,6 +150,7 @@ export default function AddressesScreen() {
       // If the deleted address was the active one, fall back to GPS.
       if (selectedAddress?.id === id) useCurrentLocation();
     },
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
   const onPickConfirm = (result: PickedLocation) => {
@@ -182,6 +183,7 @@ export default function AddressesScreen() {
       <FlatList
         data={addressesQuery.data ?? []}
         keyExtractor={(item) => item.id}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.list}
         ListHeaderComponent={<Text style={styles.hint}>{tr('addr.hint')}</Text>}
         renderItem={({ item }) => {

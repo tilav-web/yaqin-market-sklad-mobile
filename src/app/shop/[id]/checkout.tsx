@@ -227,7 +227,10 @@ export default function CheckoutScreen() {
 
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
         {/* Qayerda */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{tr('checkout.where')}</Text>
