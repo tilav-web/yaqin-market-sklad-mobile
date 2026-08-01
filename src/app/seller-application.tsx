@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { tr } from '@/i18n';
@@ -18,6 +18,8 @@ export default function SellerApplicationScreen() {
   const [firstName, setFirstName] = useState(nameParts[0] ?? '');
   const [lastName, setLastName] = useState(nameParts.slice(1).join(' ') ?? '');
   const [contactPhone, setContactPhone] = useState('');
+  const [stir, setStir] = useState('');
+  const [entityType, setEntityType] = useState('');
   const [note, setNote] = useState('');
 
   const submit = useMutation({
@@ -26,6 +28,8 @@ export default function SellerApplicationScreen() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         contactPhone: contactPhone.trim() || undefined,
+        stir: stir.trim() || undefined,
+        entityType: entityType || undefined,
         note: note.trim() || undefined,
       });
       return res.data;
@@ -85,6 +89,35 @@ export default function SellerApplicationScreen() {
             />
           </Field>
 
+          <Field label="Yuridik shakl (ixtiyoriy)">
+            <View style={styles.chipRow}>
+              {['YaTT', 'MChJ', 'Boshqa'].map((t) => (
+                <Pressable
+                  key={t}
+                  onPress={() => setEntityType(entityType === t ? '' : t)}
+                  style={[styles.chip, entityType === t && styles.chipActive]}
+                >
+                  <Text style={[styles.chipText, entityType === t && styles.chipTextActive]}>{t}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </Field>
+
+          <Field label="STIR / INN (ixtiyoriy)">
+            <TextInput
+              style={styles.input}
+              value={stir}
+              onChangeText={(v) => setStir(v.replace(/\D/g, ''))}
+              placeholder="123456789"
+              keyboardType="number-pad"
+              maxLength={9}
+              placeholderTextColor={Brand.gray400}
+            />
+            <Text style={styles.fieldHint}>
+              Soliq to&apos;lovchi raqamingiz — sotuvlaringiz uchun chek sizning nomingizdan chiqishi uchun kerak. Keyinroq admin bilan ham to&apos;ldirsa bo&apos;ladi.
+            </Text>
+          </Field>
+
           <Field label="Qisqacha izoh (ixtiyoriy)">
             <TextInput
               style={[styles.input, { height: 90 }]}
@@ -129,6 +162,19 @@ const styles = StyleSheet.create({
   form: { backgroundColor: Brand.white, borderRadius: Radius.lg, padding: Spacing.four, gap: Spacing.four },
   field: { gap: 6 },
   fieldLabel: { fontSize: 13, fontWeight: '600', color: Brand.gray800 },
+  fieldHint: { fontSize: 12, color: Brand.gray600, lineHeight: 16 },
+  chipRow: { flexDirection: 'row', gap: Spacing.two },
+  chip: {
+    paddingHorizontal: Spacing.four,
+    paddingVertical: 8,
+    borderRadius: Radius.md,
+    backgroundColor: Brand.gray50,
+    borderWidth: 1,
+    borderColor: Brand.gray200,
+  },
+  chipActive: { backgroundColor: Brand.blue, borderColor: Brand.blue },
+  chipText: { fontSize: 14, fontWeight: '600', color: Brand.gray800 },
+  chipTextActive: { color: Brand.white },
   input: {
     backgroundColor: Brand.gray50,
     borderRadius: Radius.md,
