@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useGlobalSearchParams } from 'expo-router';
-import { BarChart3, Bell, BookOpen, Check, ChevronRight, type LucideIcon, MessageSquare, Settings2, ShieldBan, Star, Store, Tag, Wallet } from 'lucide-react-native';
+import { BarChart3, Bell, BookOpen, Check, ChevronRight, Landmark, type LucideIcon, MessageSquare, Settings2, ShieldBan, Star, Store, Tag, Wallet } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -221,6 +221,12 @@ export default function SellerHubScreen() {
               title: 'Prime obuna',
               subtitle: 'Komissiyani kamaytirish uchun obuna',
               onPress: () => router.push(`/seller/${shopId}/prime`),
+            },
+            access.isOwner !== false && {
+              icon: Landmark,
+              title: "Soliq ma'lumotlari",
+              subtitle: 'STIR, QQS, komissioner holati',
+              onPress: () => router.push('/seller/tax-status' as Href),
             },
           ]
             .filter((row): row is Exclude<typeof row, false> => row !== false)

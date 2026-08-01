@@ -37,8 +37,8 @@ export default function SellerApplicationScreen() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['my-applications'] });
       Alert.alert(
-        'Yuborildi!',
-        'Arizangiz adminga yuborildi. Ko\'rib chiqilgach seller sifatida tasdiqlanasiz.',
+        tr('sellerApp.sentTitle'),
+        tr('sellerApp.sentBody'),
         [{ text: 'OK', onPress: () => router.back() }],
       );
     },
@@ -51,34 +51,32 @@ export default function SellerApplicationScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.header}>
-          <Text style={styles.title}>Sotuvchi bo&apos;lish</Text>
-          <Text style={styles.subtitle}>
-            Ariza yuboring — admin ko&apos;rib chiqib, seller huquqini beradi.
-          </Text>
+          <Text style={styles.title}>{tr('sellerApp.title')}</Text>
+          <Text style={styles.subtitle}>{tr('sellerApp.subtitle')}</Text>
         </View>
 
         <View style={styles.form}>
-          <Field label="Ism *">
+          <Field label={tr('sellerApp.firstName')}>
             <TextInput
               style={styles.input}
               value={firstName}
               onChangeText={setFirstName}
-              placeholder="Masalan: Jasur"
+              placeholder={tr('sellerApp.firstNamePh')}
               placeholderTextColor={Brand.gray400}
             />
           </Field>
 
-          <Field label="Familya *">
+          <Field label={tr('sellerApp.lastName')}>
             <TextInput
               style={styles.input}
               value={lastName}
               onChangeText={setLastName}
-              placeholder="Masalan: Karimov"
+              placeholder={tr('sellerApp.lastNamePh')}
               placeholderTextColor={Brand.gray400}
             />
           </Field>
 
-          <Field label="Qo'shimcha telefon (ixtiyoriy)">
+          <Field label={tr('sellerApp.contactPhone')}>
             <TextInput
               style={styles.input}
               value={contactPhone}
@@ -89,21 +87,26 @@ export default function SellerApplicationScreen() {
             />
           </Field>
 
-          <Field label="Yuridik shakl (ixtiyoriy)">
+          <Field label={tr('sellerApp.entityType')}>
             <View style={styles.chipRow}>
-              {['YaTT', 'MChJ', 'Boshqa'].map((t) => (
+              {/* value serverga o'zbekcha ketadi (admin shu qiymatni ko'radi), label joriy tilda */}
+              {[
+                { value: 'YaTT', label: 'YaTT' },
+                { value: 'MChJ', label: 'MChJ' },
+                { value: 'Boshqa', label: tr('sellerApp.entityOther') },
+              ].map((t) => (
                 <Pressable
-                  key={t}
-                  onPress={() => setEntityType(entityType === t ? '' : t)}
-                  style={[styles.chip, entityType === t && styles.chipActive]}
+                  key={t.value}
+                  onPress={() => setEntityType(entityType === t.value ? '' : t.value)}
+                  style={[styles.chip, entityType === t.value && styles.chipActive]}
                 >
-                  <Text style={[styles.chipText, entityType === t && styles.chipTextActive]}>{t}</Text>
+                  <Text style={[styles.chipText, entityType === t.value && styles.chipTextActive]}>{t.label}</Text>
                 </Pressable>
               ))}
             </View>
           </Field>
 
-          <Field label="STIR / INN (ixtiyoriy)">
+          <Field label={tr('sellerApp.stirOptional')}>
             <TextInput
               style={styles.input}
               value={stir}
@@ -113,17 +116,15 @@ export default function SellerApplicationScreen() {
               maxLength={9}
               placeholderTextColor={Brand.gray400}
             />
-            <Text style={styles.fieldHint}>
-              Soliq to&apos;lovchi raqamingiz — sotuvlaringiz uchun chek sizning nomingizdan chiqishi uchun kerak. Keyinroq admin bilan ham to&apos;ldirsa bo&apos;ladi.
-            </Text>
+            <Text style={styles.fieldHint}>{tr('sellerApp.stirHint')}</Text>
           </Field>
 
-          <Field label="Qisqacha izoh (ixtiyoriy)">
+          <Field label={tr('sellerApp.note')}>
             <TextInput
               style={[styles.input, { height: 90 }]}
               value={note}
               onChangeText={setNote}
-              placeholder="O'zingiz haqingizda qisqacha yozing"
+              placeholder={tr('sellerApp.notePh')}
               multiline
               placeholderTextColor={Brand.gray400}
             />
@@ -132,7 +133,7 @@ export default function SellerApplicationScreen() {
 
         <View style={styles.footer}>
           <BrandButton
-            label="Arizani yuborish"
+            label={tr('sellerApp.submit')}
             onPress={() => submit.mutate()}
             loading={submit.isPending}
             disabled={!canSubmit}

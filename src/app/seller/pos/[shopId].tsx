@@ -9,7 +9,7 @@ import { tr } from '@/i18n';
 import { BarcodeScannerModal } from '@/components/seller/BarcodeScannerModal';
 import { useToast } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
-import { SellerVariant } from '@/lib/types';
+import { Order, SellerVariant } from '@/lib/types';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -90,14 +90,31 @@ export default function PosScreen() {
   const sell = useMutation({
     mutationFn: async () => {
       const items = cartLines.map((l) => ({ productVariantId: l.variant.id, quantity: l.qty }));
-      await api.post(`/seller/shops/${shopId}/orders/instore`, { items });
+      const res = await api.post<Order>(`/seller/shops/${shopId}/orders/instore`, { items });
+      return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (order) => {
       qc.invalidateQueries({ queryKey: ['variants', shopId] });
       qc.invalidateQueries({ queryKey: ['seller-orders', shopId] });
       setCart({});
       haptics.success();
-      toast.show('Sotuv yakunlandi ✓', { variant: 'success' });
+      // Markirovkali (Asl belgisi) tovar sotilgan bo'lsa — chek to'liq bo'lishi
+      // uchun Data Matrix kodlarni skanerlash shart; skan UI buyurtma ekranida.
+      const needsMarking = order.items?.some(
+        (it) => it.productVariant?.globalProduct?.taxCategory?.markingRequired,
+      );
+      if (needsMarking) {
+        Alert.alert(
+          'Markirovkali tovar sotildi',
+          "Chek to'liq bo'lishi uchun mahsulotlardagi Asl belgisi (Data Matrix) kodlarini skanerlang.",
+          [
+            { text: 'Keyinroq', style: 'cancel' },
+            { text: 'Skanerlash', onPress: () => router.push(`/seller/order/${order.id}`) },
+          ],
+        );
+      } else {
+        toast.show('Sotuv yakunlandi ✓', { variant: 'success' });
+      }
     },
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
