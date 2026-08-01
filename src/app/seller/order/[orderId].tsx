@@ -1,18 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ban, Bike, Check, MapPin, MessageCircle, Navigation, Package, Phone, RotateCcw, X } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { Ban, Bike, Check, MapPin, MessageCircle, Navigation, Package, Phone, RotateCcw, ScanBarcode, X } from 'lucide-react-native';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
+import { BarcodeScannerModal } from '@/components/seller/BarcodeScannerModal';
 import { isTrackingOrder, startCourierTracking, stopCourierTracking } from '@/lib/courier-location-task';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { useIsShopOwner } from '@/lib/useIsShopOwner';
 import { useAlarmState } from '@/stores/alarmState';
 import { StaffMember } from '@/constants/staffPermissions';
-import { ORDER_STATUS_KEY, Order, OrderStatus } from '@/lib/types';
+import { ORDER_STATUS_KEY, Order, OrderItem, OrderStatus } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -113,6 +114,37 @@ export default function SellerOrderDetailScreen() {
   const order = orderQuery.data;
   // Blocking a customer is owner-only server-side.
   const isOwner = useIsShopOwner(order?.shopId);
+
+  // ── Markirovka (Asl belgisi) skanerlash ──
+  // Har bir dona uchun bitta Data Matrix kod; kodlar chekka kiradi (qonun
+  // talabi). Skaner ochiq qoladi — sotilgan donalar soni yig'ilguncha.
+  const [markingItem, setMarkingItem] = useState<OrderItem | null>(null);
+  const markingCodesRef = useRef<string[]>([]);
+  const saveMarking = useMutation({
+    mutationFn: (payload: { orderItemId: string; codes: string[] }) =>
+      api.put(`/orders/${orderId}/marking-codes`, { items: [payload] }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['order-detail', orderId] }),
+    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
+  });
+
+  const openMarkingScanner = (it: OrderItem) => {
+    markingCodesRef.current = [...(it.markingCodes ?? [])];
+    setMarkingItem(it);
+  };
+
+  const handleMarkingScan = (code: string) => {
+    const item = markingItem;
+    if (!item) return;
+    if (markingCodesRef.current.includes(code)) {
+      haptics.warning();
+      return;
+    }
+    haptics.success();
+    markingCodesRef.current = [...markingCodesRef.current, code];
+    saveMarking.mutate({ orderItemId: item.id, codes: markingCodesRef.current });
+    const needed = item.quantity - item.returnedQuantity;
+    if (markingCodesRef.current.length >= needed) setMarkingItem(null);
+  };
 
   const isTracking = useCourierTracking(orderId, order?.status);
 
@@ -278,6 +310,36 @@ export default function SellerOrderDetailScreen() {
                   {it.quantity} × {fmt(it.unitPrice)} so‘m
                   {it.returnedQuantity > 0 ? ` · ${it.returnedQuantity} qaytdi` : ''}
                 </Text>
+                {it.productVariant?.globalProduct?.taxCategory?.markingRequired ? (
+                  <Pressable
+                    style={styles.markingRow}
+                    onPress={() => openMarkingScanner(it)}
+                    disabled={saveMarking.isPending}
+                  >
+                    <ScanBarcode
+                      size={14}
+                      color={
+                        (it.markingCodes?.length ?? 0) >= it.quantity - it.returnedQuantity
+                          ? colors.feedback.success
+                          : colors.feedback.warning
+                      }
+                      strokeWidth={2.2}
+                    />
+                    <Text
+                      style={[
+                        styles.markingText,
+                        (it.markingCodes?.length ?? 0) >= it.quantity - it.returnedQuantity
+                          ? styles.markingDone
+                          : styles.markingPending,
+                      ]}
+                    >
+                      Markirovka {it.markingCodes?.length ?? 0}/{it.quantity - it.returnedQuantity}
+                      {(it.markingCodes?.length ?? 0) < it.quantity - it.returnedQuantity
+                        ? ' — skanerlash'
+                        : ''}
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
               <Text style={styles.itemTotal}>{fmt(it.lineTotal)}</Text>
             </View>
@@ -399,6 +461,20 @@ export default function SellerOrderDetailScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Markirovka (Data Matrix) skaneri — dona-dona ketma-ket skanerlanadi. */}
+      <BarcodeScannerModal
+        visible={!!markingItem}
+        onClose={() => setMarkingItem(null)}
+        onScanned={handleMarkingScan}
+        closeOnScan={false}
+        barcodeTypes={['datamatrix']}
+        title={
+          markingItem
+            ? `${markingItem.productName} — markirovka kodini skanlang (${markingCodesRef.current.length}/${markingItem.quantity - markingItem.returnedQuantity})`
+            : 'Markirovka kodini skanlang'
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -451,6 +527,10 @@ const styles = StyleSheet.create({
   itemPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   itemName: { ...typography.bodySmall, fontWeight: '600', color: colors.text.primary },
   itemMeta: { ...typography.caption, color: colors.text.secondary, marginTop: 1 },
+  markingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  markingText: { ...typography.caption, fontWeight: '700' },
+  markingDone: { color: colors.feedback.success },
+  markingPending: { color: colors.feedback.warning },
   itemTotal: { ...typography.bodySmall, fontWeight: '800', color: colors.text.primary },
   divider: { height: 1, backgroundColor: colors.border.subtle },
   totalsRow: { flexDirection: 'row', justifyContent: 'space-between' },

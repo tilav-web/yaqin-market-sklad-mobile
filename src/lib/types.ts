@@ -150,10 +150,16 @@ export interface OrderItem {
   unitPrice: number;
   lineTotal: number;
   returnedQuantity: number;
+  /** Asl belgisi (Data Matrix) kodlari — markirovkali tovarlarda yig'uvchi skanerlaydi. */
+  markingCodes?: string[];
   /** Joined on order views — globalProductId feeds the "find elsewhere" suggestion flow; photos live one level down on globalProduct (a shop's variant has no photos of its own). */
   productVariant?: {
     globalProductId?: string;
-    globalProduct?: { photos: string[] } | null;
+    globalProduct?: {
+      photos: string[];
+      /** Soliq toifasi — markirovka majburiyligini seller UI shu orqali biladi. */
+      taxCategory?: { markingRequired: boolean } | null;
+    } | null;
   } | null;
 }
 

@@ -6,6 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, radius, spacing, typography } from '@/theme';
 
+import type { BarcodeType } from 'expo-camera';
+
 interface Props {
   readonly visible: boolean;
   readonly onClose: () => void;
@@ -14,10 +16,23 @@ interface Props {
   /** Optional "barkodsiz" escape hatch (e.g. add a product with no barcode). */
   readonly onSkip?: () => void;
   readonly skipLabel?: string;
+  /** Default: mahsulot barkod turlari. Markirovka uchun ['datamatrix'] beriladi. */
+  readonly barcodeTypes?: BarcodeType[];
+  /** false — skan qilingandan keyin modal ochiq qoladi (ketma-ket skanerlash, masalan markirovka donalari). */
+  readonly closeOnScan?: boolean;
 }
 
 /** Reusable product-barcode scanner (reuses expo-camera, already in the build). */
-export function BarcodeScannerModal({ visible, onClose, onScanned, title, onSkip, skipLabel }: Props) {
+export function BarcodeScannerModal({
+  visible,
+  onClose,
+  onScanned,
+  title,
+  onSkip,
+  skipLabel,
+  barcodeTypes,
+  closeOnScan = true,
+}: Props) {
   const [permission, requestPermission] = useCameraPermissions();
   const handled = useRef(false);
 
@@ -25,11 +40,12 @@ export function BarcodeScannerModal({ visible, onClose, onScanned, title, onSkip
     if (handled.current) return;
     handled.current = true;
     onScanned(data.trim());
-    // Allow the next open to scan again.
+    // Allow the next open to scan again (and, in continuous mode, the next
+    // unit after a short cooldown so one physical code isn't read twice).
     setTimeout(() => {
       handled.current = false;
-    }, 800);
-    onClose();
+    }, 1200);
+    if (closeOnScan) onClose();
   };
 
   return (
@@ -69,7 +85,7 @@ export function BarcodeScannerModal({ visible, onClose, onScanned, title, onSkip
               style={StyleSheet.absoluteFill}
               facing="back"
               barcodeScannerSettings={{
-                barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39', 'qr'],
+                barcodeTypes: barcodeTypes ?? ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39', 'qr'],
               }}
               onBarcodeScanned={({ data }) => handle(data)}
             />
