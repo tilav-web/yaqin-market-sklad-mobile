@@ -263,8 +263,12 @@ function DeliveryMarker({
   // Re-track for a short while AFTER the text has measured, then stop. Keyed on
   // `text` so an auto-width pill never snapshots a half-laid-out (clipped) label.
   const [tracks, setTracks] = useState(true);
-  useEffect(() => {
+  const [trackedText, setTrackedText] = useState(text);
+  if (trackedText !== text) {
+    setTrackedText(text);
     setTracks(true);
+  }
+  useEffect(() => {
     const id = setTimeout(() => setTracks(false), 1200);
     return () => clearTimeout(id);
   }, [text]);

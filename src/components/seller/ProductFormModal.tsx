@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -78,24 +78,41 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
 
   // The modal stays mounted, so refresh every field each time it opens —
   // otherwise edit prefill and scanned-barcode prefill would be stale.
-  useEffect(() => {
-    if (!visible) return;
-    // Catalogue prefill applies only to NEW products (scanned known barcode).
-    const pf = editing ? null : prefill;
-    setName(editing?.name ?? pf?.name ?? '');
-    setBrand(pf?.brand ?? '');
-    setDescription(editing?.description ?? '');
-    setCategoryId(pf?.categoryId ?? null);
-    setUnitType(editing?.unitType ?? pf?.unitType ?? 'piece');
-    setUnitSize(editing ? String(editing.unitSize) : pf ? String(pf.unitSize) : '1');
-    setPrice(editing ? String(editing.price) : '');
-    setDiscountPrice(editing?.discountPrice != null ? String(editing.discountPrice) : '');
-    setStock(editing ? String(editing.stock) : '');
-    setCostPrice('');
-    setLowStock(editing ? String(editing.lowStockThreshold) : '5');
-    setBarcode(editing?.barcode ?? pf?.barcode ?? initialBarcode ?? '');
-    setPhotos(editing?.photos ?? pf?.photos ?? []);
-  }, [visible, editing, initialBarcode, prefill]);
+  // Applied during render rather than in an effect, so the form is already
+  // filled on the frame the modal appears instead of flashing the last
+  // product's values. Keyed on the same inputs the effect watched.
+  const [syncedFor, setSyncedFor] = useState<{
+    visible: boolean;
+    editing: typeof editing;
+    initialBarcode: typeof initialBarcode;
+    prefill: typeof prefill;
+  } | null>(null);
+  if (
+    !syncedFor ||
+    syncedFor.visible !== visible ||
+    syncedFor.editing !== editing ||
+    syncedFor.initialBarcode !== initialBarcode ||
+    syncedFor.prefill !== prefill
+  ) {
+    setSyncedFor({ visible, editing, initialBarcode, prefill });
+    if (visible) {
+      // Catalogue prefill applies only to NEW products (scanned known barcode).
+      const pf = editing ? null : prefill;
+      setName(editing?.name ?? pf?.name ?? '');
+      setBrand(pf?.brand ?? '');
+      setDescription(editing?.description ?? '');
+      setCategoryId(pf?.categoryId ?? null);
+      setUnitType(editing?.unitType ?? pf?.unitType ?? 'piece');
+      setUnitSize(editing ? String(editing.unitSize) : pf ? String(pf.unitSize) : '1');
+      setPrice(editing ? String(editing.price) : '');
+      setDiscountPrice(editing?.discountPrice != null ? String(editing.discountPrice) : '');
+      setStock(editing ? String(editing.stock) : '');
+      setCostPrice('');
+      setLowStock(editing ? String(editing.lowStockThreshold) : '5');
+      setBarcode(editing?.barcode ?? pf?.barcode ?? initialBarcode ?? '');
+      setPhotos(editing?.photos ?? pf?.photos ?? []);
+    }
+  }
 
   const save = useMutation({
     mutationFn: async () => {

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CalendarDays, Check, X } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -55,16 +55,22 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
   const isPreset = !!presetAccountId;
 
   // Re-sync when the modal opens (preset account, or default picker mode).
-  useEffect(() => {
-    if (!visible) return;
-    if (presetAccountId) {
-      setMode('existing');
-      setSelectedId(presetAccountId);
-    } else {
-      setMode(hasAccounts ? 'existing' : 'new');
-      setSelectedId(null);
+  // Done during render, not in an effect, so the picker is already in the
+  // right mode on the frame it appears.
+  const syncKey = `${visible}|${presetAccountId ?? ''}|${hasAccounts}`;
+  const [syncedKey, setSyncedKey] = useState<string | null>(null);
+  if (syncedKey !== syncKey) {
+    setSyncedKey(syncKey);
+    if (visible) {
+      if (presetAccountId) {
+        setMode('existing');
+        setSelectedId(presetAccountId);
+      } else {
+        setMode(hasAccounts ? 'existing' : 'new');
+        setSelectedId(null);
+      }
     }
-  }, [visible, presetAccountId, hasAccounts]);
+  }
 
   const reset = () => {
     setSelectedId(null);

@@ -84,8 +84,10 @@ export default function DeliveryZonesScreen() {
     staleTime: 60_000,
   });
 
-  useEffect(() => {
-    if (!shopQuery.data || initialized) return;
+  // Seed the editable polygons from the saved shop the first time it arrives.
+  // During render, not in an effect, so the map never draws one frame with
+  // empty zones before filling them in.
+  if (shopQuery.data && !initialized) {
     const s = shopQuery.data as PublicShop & {
       deliveryPolygon?: GeoJsonPolygon | null;
       freeDeliveryPolygon?: GeoJsonPolygon | null;
@@ -93,7 +95,7 @@ export default function DeliveryZonesScreen() {
     if (s.deliveryPolygon) { setDverts(fromGeoJson(s.deliveryPolygon)); setDclosed(true); }
     if (s.freeDeliveryPolygon) { setFverts(fromGeoJson(s.freeDeliveryPolygon)); setFclosed(true); }
     setInitialized(true);
-  }, [shopQuery.data, initialized]);
+  }
 
   const shopCoord = shopQuery.data
     ? { latitude: shopQuery.data.latitude, longitude: shopQuery.data.longitude }

@@ -224,17 +224,21 @@ function InviteSetupModal({
   const [saveAsPreset, setSaveAsPreset] = useState(false);
   const [presetName, setPresetName] = useState('');
 
-  // Fresh state every time the modal is (re)opened.
-  useEffect(() => {
-    if (!visible) return;
-    setRoleName('');
-    setPermissions([]);
-    setSelectedKey('none');
-    setManuallyEdited(false);
-    setShowPerms(false);
-    setSaveAsPreset(false);
-    setPresetName('');
-  }, [visible]);
+  // Fresh state every time the modal is (re)opened — during render, so the
+  // form is already blank on the frame it appears.
+  const [syncedVisible, setSyncedVisible] = useState<boolean | null>(null);
+  if (syncedVisible !== visible) {
+    setSyncedVisible(visible);
+    if (visible) {
+      setRoleName('');
+      setPermissions([]);
+      setSelectedKey('none');
+      setManuallyEdited(false);
+      setShowPerms(false);
+      setSaveAsPreset(false);
+      setPresetName('');
+    }
+  }
 
   const savePresetMutation = useMutation({
     mutationFn: async () => {

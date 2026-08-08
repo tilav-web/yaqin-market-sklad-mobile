@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radius, spacing, typography } from '@/theme';
@@ -59,15 +59,19 @@ export function DatePickerModal({ visible, value, onConfirm, onClose, title, max
   // Re-sync to the field's current value each time the picker opens. With no
   // value yet and a maxDate cap (birth date), start the view there instead of
   // "today" — today would just be a wall of disabled days otherwise.
-  useEffect(() => {
+  // Applied during render, not in an effect, so the calendar opens already
+  // showing the field's month instead of flashing the previous one.
+  const syncKey = `${visible}|${value ?? ''}`;
+  const [syncedKey, setSyncedKey] = useState<string | null>(null);
+  if (syncedKey !== syncKey) {
+    setSyncedKey(syncKey);
     if (visible) {
       const parsed = parseIso(value ?? '');
       setViewDate(parsed ?? maxParsed ?? new Date());
       setSelected(value ?? null);
       setMode('calendar');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, value]);
+  }
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();

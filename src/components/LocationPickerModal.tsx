@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import { Check, MapPin, Navigation, X } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -67,14 +67,16 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
   const mapRef = useRef<MapView>(null);
   const lift = useRef(new Animated.Value(0)).current;
 
-  // Reset to the starting point whenever the modal (re)opens.
-  useEffect(() => {
+  // Reset to the starting point whenever the modal (re)opens — during render,
+  // so the map never opens on the previously picked spot for a frame.
+  const [syncedVisible, setSyncedVisible] = useState<boolean | null>(null);
+  if (syncedVisible !== visible) {
+    setSyncedVisible(visible);
     if (visible) {
       setCenter(start);
       setAddressLabel('');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
+  }
 
   const reverseGeocode = (lat: number, lng: number) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);

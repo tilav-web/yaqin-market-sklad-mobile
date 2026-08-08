@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -44,12 +44,16 @@ export function BrakStockModal({ visible, shopId, variant, onClose }: Props) {
   const [reasonCode, setReasonCode] = useState<BrakReasonCode>('expired');
   const [note, setNote] = useState('');
 
-  useEffect(() => {
+  // Reset during render rather than in an effect, so the form is already blank
+  // on the frame the modal appears instead of briefly showing the last entry.
+  const [syncedVisible, setSyncedVisible] = useState<boolean | null>(null);
+  if (syncedVisible !== visible) {
+    setSyncedVisible(visible);
     if (visible) {
       setReasonCode('expired');
       setNote('');
     }
-  }, [visible]);
+  }
 
   const brak = useMutation({
     mutationFn: async () => {

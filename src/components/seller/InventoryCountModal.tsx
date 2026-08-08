@@ -39,21 +39,30 @@ export function InventoryCountModal({ visible, shopId, onClose }: Props) {
   const [stockById, setStockById] = useState<Record<string, number>>({});
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  /** The result array already folded into `stockById` — identity, not content. */
+  const [seededData, setSeededData] = useState<SellerVariant[] | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput.trim()), 350);
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  // Reset when reopened.
-  useEffect(() => {
+  // Reset when reopened, during render so the sheet opens already cleared.
+  const [syncedVisible, setSyncedVisible] = useState<boolean | null>(null);
+  if (syncedVisible !== visible) {
+    setSyncedVisible(visible);
     if (visible) {
       setCounts({});
       setStockById({});
       setSearchInput('');
       setSearch('');
+      // Forget which result page was folded into `stockById` too, so the
+      // cached list gets re-seeded below. Without this a reopen inside the
+      // query's staleTime left `stockById` empty — and with no system stock
+      // to compare against, nothing the user typed counted as a change.
+      setSeededData(null);
     }
-  }, [visible]);
+  }
 
   const listQuery = useQuery({
     queryKey: ['count-variants', shopId, search],
@@ -68,15 +77,16 @@ export function InventoryCountModal({ visible, shopId, onClose }: Props) {
 
   const results = listQuery.data ?? [];
   // Remember each loaded product's system stock so saved diffs stay correct
-  // even after the search changes.
-  useEffect(() => {
-    if (results.length === 0) return;
+  // even after the search changes. Folded in during render, keyed on the
+  // query result's identity so each loaded page is merged exactly once.
+  if (listQuery.data && listQuery.data !== seededData) {
+    setSeededData(listQuery.data);
     setStockById((prev) => {
       const next = { ...prev };
-      for (const v of results) next[v.id] = v.stock;
+      for (const v of listQuery.data) next[v.id] = v.stock;
       return next;
     });
-  }, [results]);
+  }
 
   const changedIds = useMemo(
     () =>

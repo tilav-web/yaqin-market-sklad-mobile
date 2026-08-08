@@ -7,7 +7,12 @@ import { useColorScheme as useRNColorScheme } from 'react-native';
 export function useColorScheme() {
   const [hasHydrated, setHasHydrated] = useState(false);
 
+  // Genuine exception to "no setState in an effect": the whole point is to
+  // detect that hydration has happened, and an effect running is precisely
+  // that signal. There is nothing to derive during render — on the server and
+  // on the first client render the answer must be the same.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasHydrated(true);
   }, []);
 
