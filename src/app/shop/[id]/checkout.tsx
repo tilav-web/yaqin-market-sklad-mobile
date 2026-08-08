@@ -1,7 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { ChevronRight, CreditCard, MapPin, Minus, Phone, Plus, Wallet } from 'lucide-react-native';
+import {
+  CreditCard,
+  MessageSquare,
+  Minus,
+  Phone,
+  Plus,
+  ShoppingBag,
+  Store,
+  Trash2,
+  Wallet,
+} from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -21,6 +31,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AddCardForm } from '@/components/AddCardForm';
 import { CardVisual } from '@/components/CardVisual';
 import { CheckoutAddressSheet } from '@/components/CheckoutAddressSheet';
+import { CheckoutDeliveryCard, ZoneState } from '@/components/CheckoutDeliveryCard';
 import { useToast } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
@@ -31,6 +42,7 @@ import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { detectCardBrand } from '@/utils/cardBrand';
+import { haptics } from '@/utils/haptics';
 
 export default function CheckoutScreen() {
   const { id: shopId } = useLocalSearchParams<{ id: string }>();
@@ -43,6 +55,11 @@ export default function CheckoutScreen() {
   const updateQty = useCartStore((s) => s.updateQty);
   const lastUsedAddress = useLocationStore((s) => s.selectedAddress);
   const setLastUsedAddress = useLocationStore((s) => s.setSelectedAddress);
+  // Raw device fix (not `useEffectiveCoords`, which substitutes the picked
+  // address) — the delivery card reports whether GPS itself resolved.
+  const deviceCoords = useLocationStore((s) => s.coords);
+  const gpsLoading = useLocationStore((s) => s.loading);
+  const refreshGps = useLocationStore((s) => s.refresh);
   const authPhone = useAuthStore((s) => s.user?.phone);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(lastUsedAddress?.id ?? null);
   const [addressSheetVisible, setAddressSheetVisible] = useState(false);
@@ -99,17 +116,19 @@ export default function CheckoutScreen() {
     ? { latitude: selectedAddress.latitude, longitude: selectedAddress.longitude }
     : coords;
 
-  // Prefill the apartment-detail fields from whichever address is selected —
-  // re-runs only when the SELECTED ADDRESS changes (not on every render), so
-  // it doesn't clobber the courier/details the user is actively editing.
-  useEffect(() => {
-    if (!selectedAddress) return;
+  // Prefill the apartment-detail fields from whichever address is selected.
+  // Done during render (not in an effect) so the fields never paint one frame
+  // of the previous address's values, and keyed on the address id so it only
+  // re-runs when the customer actually switches address — never clobbering
+  // details they are in the middle of editing.
+  const [detailsAddressId, setDetailsAddressId] = useState<string | null>(null);
+  if (selectedAddress && selectedAddress.id !== detailsAddressId) {
+    setDetailsAddressId(selectedAddress.id);
     setEntrance(selectedAddress.entrance ?? '');
     setFloor(selectedAddress.floor ?? '');
     setApartment(selectedAddress.apartment ?? '');
     setIntercom(selectedAddress.intercom ?? '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAddress?.id]);
+  }
 
   // One-time prefill from the account's own phone — the field stays editable
   // afterwards (e.g. ordering for someone else) without being reset.
@@ -217,9 +236,22 @@ export default function CheckoutScreen() {
   const outOfZone = shop ? shop.isWithinZone === false : false;
   const canOrder = !!selectedAddressId && cartLines.length > 0 && !belowMin && !outOfZone;
 
+  const zone: ZoneState = !selectedAddress
+    ? 'unknown'
+    : shopQuery.isFetching
+      ? 'checking'
+      : shop?.isWithinZone === false
+        ? 'out'
+        : shop?.isWithinZone === true
+          ? 'in'
+          : 'unknown';
+
   if (!cartLines.length) {
     return (
       <SafeAreaView style={styles.center}>
+        <View style={styles.emptyCartIcon}>
+          <ShoppingBag size={30} color={colors.text.hint} strokeWidth={2} />
+        </View>
         <Text style={styles.dim}>{tr('cart.empty.title')}</Text>
       </SafeAreaView>
     );
@@ -227,80 +259,45 @@ export default function CheckoutScreen() {
 
   return (
     <View style={styles.root}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled">
-        {/* Qayerda */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{tr('checkout.where')}</Text>
-          {addressesQuery.isLoading ? (
-            <ActivityIndicator color={colors.brand.primary} />
-          ) : selectedAddress ? (
-            <Pressable style={styles.whereRow} onPress={() => setAddressSheetVisible(true)}>
-              <View style={styles.whereIcon}>
-                <MapPin size={18} color={colors.brand.primary} strokeWidth={2.4} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.addressLabel}>{selectedAddress.label}</Text>
-                <Text style={styles.addressText} numberOfLines={1}>
-                  {selectedAddress.address}
-                </Text>
-              </View>
-              <ChevronRight size={18} color={colors.text.tertiary} strokeWidth={2.4} />
-            </Pressable>
-          ) : (
-            <Pressable style={styles.addAddressBtn} onPress={() => router.push('/addresses')}>
-              <MapPin size={16} color={colors.brand.primary} strokeWidth={2.4} />
-              <Text style={styles.addAddressText}>{tr('addr.add')}</Text>
-            </Pressable>
-          )}
-        </View>
+      <KeyboardAvoidingView
+        style={styles.root}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag">
+          <CheckoutDeliveryCard
+            address={selectedAddress}
+            loading={addressesQuery.isLoading}
+            hasSavedAddresses={(addressesQuery.data?.length ?? 0) > 0}
+            onChangeAddress={() => setAddressSheetVisible(true)}
+            onAddAddress={() => router.push('/addresses')}
+            zone={zone}
+            distanceKm={shop?.distanceKm}
+            gpsAvailable={!!deviceCoords}
+            gpsLoading={gpsLoading}
+            onEnableGps={() => void refreshGps()}
+            entrance={entrance}
+            floor={floor}
+            apartment={apartment}
+            intercom={intercom}
+            onEntrance={setEntrance}
+            onFloor={setFloor}
+            onApartment={setApartment}
+            onIntercom={setIntercom}
+          />
 
-        {/* Manzil detali + oluvchi */}
-        {selectedAddress && (
+          {/* Contact */}
           <View style={styles.section}>
-            <View style={styles.detailsGrid}>
+            <Text style={styles.sectionTitle}>{tr('checkout.contactTitle')}</Text>
+            <View style={styles.fieldRow}>
+              <View style={styles.fieldIcon}>
+                <Phone size={17} color={colors.text.tertiary} strokeWidth={2.2} />
+              </View>
               <TextInput
-                style={[styles.input, styles.detailsInput]}
-                placeholder={tr('addr.entrance')}
-                value={entrance}
-                onChangeText={setEntrance}
-                placeholderTextColor={colors.text.hint}
-              />
-              <TextInput
-                style={[styles.input, styles.detailsInput]}
-                placeholder={tr('addr.floor')}
-                value={floor}
-                onChangeText={setFloor}
-                placeholderTextColor={colors.text.hint}
-              />
-              <TextInput
-                style={[styles.input, styles.detailsInput]}
-                placeholder={tr('addr.apartment')}
-                value={apartment}
-                onChangeText={setApartment}
-                placeholderTextColor={colors.text.hint}
-              />
-              <TextInput
-                style={[styles.input, styles.detailsInput]}
-                placeholder={tr('addr.intercom')}
-                value={intercom}
-                onChangeText={setIntercom}
-                placeholderTextColor={colors.text.hint}
-              />
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder={tr('checkout.courierComment')}
-              value={courierComment}
-              onChangeText={setCourierComment}
-              placeholderTextColor={colors.text.hint}
-            />
-            <View style={styles.phoneRow}>
-              <Phone size={16} color={colors.text.tertiary} strokeWidth={2.2} />
-              <TextInput
-                style={[styles.input, styles.phoneInput]}
+                style={styles.fieldInput}
                 placeholder={tr('checkout.recipientPhone')}
                 value={recipientPhone}
                 onChangeText={setRecipientPhone}
@@ -308,154 +305,224 @@ export default function CheckoutScreen() {
                 placeholderTextColor={colors.text.hint}
               />
             </View>
+            <View style={styles.fieldDivider} />
+            <View style={styles.fieldRow}>
+              <View style={styles.fieldIcon}>
+                <MessageSquare size={17} color={colors.text.tertiary} strokeWidth={2.2} />
+              </View>
+              <TextInput
+                style={styles.fieldInput}
+                placeholder={tr('checkout.commentPlaceholder')}
+                value={courierComment}
+                onChangeText={setCourierComment}
+                placeholderTextColor={colors.text.hint}
+                multiline
+              />
+            </View>
           </View>
-        )}
 
-        {/* Items */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            {shop?.name ?? tr('cart.subtotal')} · {tr('cart.itemsCount', { n: cartLines.length })}
-          </Text>
-          {cartLines.map((line) => (
-            <View key={line.variantId} style={styles.cartItem}>
-              <View style={styles.itemThumb}>
-                {line.photoUrl ? (
-                  <Image source={{ uri: resolveMedia(line.photoUrl) }} style={styles.itemImg} />
-                ) : (
-                  <View style={[styles.itemImg, styles.itemImgPlaceholder]} />
-                )}
+          {/* Items */}
+          <View style={styles.section}>
+            <View style={styles.shopRow}>
+              <View style={styles.shopIcon}>
+                <Store size={16} color={colors.brand.primary} strokeWidth={2.4} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.itemName} numberOfLines={2}>
-                  {line.productName}
+                <Text style={styles.shopName} numberOfLines={1}>
+                  {shop?.name ?? tr('checkout.itemsTitle')}
                 </Text>
-                <Text style={styles.itemPrice}>
-                  {(line.unitPrice * line.quantity).toLocaleString()} {tr('common.som')}
-                </Text>
-              </View>
-              <View style={styles.qtyControls}>
-                <Pressable
-                  style={styles.qtyBtn}
-                  onPress={() => updateQty(shopId!, line.variantId, line.quantity - 1)}>
-                  <Minus size={16} color={colors.brand.primary} strokeWidth={3} />
-                </Pressable>
-                <Text style={styles.qty}>{line.quantity}</Text>
-                <Pressable
-                  style={styles.qtyBtn}
-                  onPress={() => updateQty(shopId!, line.variantId, line.quantity + 1)}>
-                  <Plus size={16} color={colors.brand.primary} strokeWidth={3} />
-                </Pressable>
+                <Text style={styles.shopMeta}>{tr('cart.itemsCount', { n: cartLines.length })}</Text>
               </View>
             </View>
-          ))}
-        </View>
 
-        {/* Payment */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{tr('checkout.paymentTitle')}</Text>
-          <Pressable
-            style={[styles.payRow, paymentMethod === 'cash' && styles.payRowActive]}
-            onPress={() => setPaymentMethod('cash')}>
-            <Wallet size={18} color={paymentMethod === 'cash' ? colors.brand.primary : colors.text.tertiary} strokeWidth={2.2} />
-            <Text style={[styles.payText, paymentMethod === 'cash' && { color: colors.brand.primary }]}>{tr('checkout.cash')}</Text>
-            {paymentMethod === 'cash' && <View style={styles.payCheck} />}
-          </Pressable>
-          <Pressable
-            style={[styles.payRow, paymentMethod === 'click_online' && styles.payRowActive]}
-            onPress={() => setPaymentMethod('click_online')}>
-            <CreditCard size={18} color={paymentMethod === 'click_online' ? colors.brand.primary : colors.text.tertiary} strokeWidth={2.2} />
-            <Text style={[styles.payText, paymentMethod === 'click_online' && { color: colors.brand.primary }]}>{tr('checkout.cardPayment')}</Text>
-            {paymentMethod === 'click_online' && <View style={styles.payCheck} />}
-          </Pressable>
-
-          {paymentMethod === 'click_online' && (
-            <View style={styles.cardSubList}>
-              {activeCards.map((card) => {
-                const active = selectedCardId === card.id;
-                const brand = detectCardBrand(card.cardNumberMasked ?? '');
-                return (
-                  <Pressable
-                    key={card.id}
-                    style={[styles.cardSubRow, active && styles.cardSubRowActive]}
-                    onPress={() => setSelectedCardId(card.id)}>
-                    <View style={[styles.radio, active && styles.radioActive]}>
-                      {active && <View style={styles.radioDot} />}
-                    </View>
-                    <CardVisual
-                      size="mini"
-                      brand={brand}
-                      numberText={card.cardNumberMasked ?? '••••'}
-                      fallbackLabel={tr('cards.genericName')}
-                    />
-                    <Text style={styles.cardSubText} numberOfLines={1}>
-                      {card.label || card.cardNumberMasked || '••••'}
-                    </Text>
-                    {card.isDefault && <Text style={styles.cardSubDefault}>{tr('cards.default')}</Text>}
-                  </Pressable>
-                );
-              })}
-              <Pressable
-                style={[styles.cardSubRow, !selectedCardId && styles.cardSubRowActive]}
-                onPress={() => setSelectedCardId(null)}>
-                <View style={[styles.radio, !selectedCardId && styles.radioActive]}>
-                  {!selectedCardId && <View style={styles.radioDot} />}
+            {cartLines.map((line, i) => (
+              <View key={line.variantId} style={[styles.cartItem, i > 0 && styles.cartItemBordered]}>
+                <View style={styles.itemThumb}>
+                  {line.photoUrl ? (
+                    <Image source={{ uri: resolveMedia(line.photoUrl) }} style={styles.itemImg} />
+                  ) : (
+                    <View style={[styles.itemImg, styles.itemImgPlaceholder]} />
+                  )}
                 </View>
-                <Text style={styles.cardSubText}>{tr('checkout.payWithRedirect')}</Text>
-              </Pressable>
-              <Pressable onPress={() => setAddCardSheetVisible(true)}>
-                <Text style={styles.addCardHint}>
-                  {activeCards.length === 0 ? tr('checkout.addCardHint') : tr('cards.add')}
-                </Text>
-              </Pressable>
-            </View>
-          )}
-        </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.itemName} numberOfLines={2}>
+                    {line.productName}
+                  </Text>
+                  <Text style={styles.itemUnit}>
+                    {line.quantity} × {line.unitPrice.toLocaleString()}
+                  </Text>
+                  <Text style={styles.itemPrice}>
+                    {(line.unitPrice * line.quantity).toLocaleString()} {tr('common.som')}
+                  </Text>
+                </View>
+                <View style={styles.qtyControls}>
+                  <Pressable
+                    style={styles.qtyBtn}
+                    hitSlop={4}
+                    onPress={() => {
+                      haptics.light();
+                      updateQty(shopId!, line.variantId, line.quantity - 1);
+                    }}>
+                    {line.quantity === 1 ? (
+                      <Trash2 size={15} color={colors.brand.primary} strokeWidth={2.4} />
+                    ) : (
+                      <Minus size={16} color={colors.brand.primary} strokeWidth={3} />
+                    )}
+                  </Pressable>
+                  <Text style={styles.qty}>{line.quantity}</Text>
+                  <Pressable
+                    style={styles.qtyBtn}
+                    hitSlop={4}
+                    onPress={() => {
+                      haptics.light();
+                      updateQty(shopId!, line.variantId, line.quantity + 1);
+                    }}>
+                    <Plus size={16} color={colors.brand.primary} strokeWidth={3} />
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+          </View>
 
-        {/* Summary */}
-        <View style={styles.section}>
-          <Row label={tr('cart.subtotal')} value={`${subTotal.toLocaleString()} ${tr('common.som')}`} />
-          <Row
-            label={tr('cart.deliveryFee')}
-            value={deliveryFee === 0 ? tr('shop.freeShort') : `${deliveryFee.toLocaleString()} ${tr('common.som')}`}
-          />
-          <View style={styles.divider} />
-          <Row label={tr('cart.total')} value={`${total.toLocaleString()} ${tr('common.som')}`} bold />
-        </View>
+          {/* Payment */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{tr('checkout.paymentTitle')}</Text>
+            <Pressable
+              style={[styles.payRow, paymentMethod === 'cash' && styles.payRowActive]}
+              onPress={() => {
+                haptics.selection();
+                setPaymentMethod('cash');
+              }}>
+              <Wallet
+                size={18}
+                color={paymentMethod === 'cash' ? colors.brand.primary : colors.text.tertiary}
+                strokeWidth={2.2}
+              />
+              <Text style={[styles.payText, paymentMethod === 'cash' && styles.payTextActive]}>
+                {tr('checkout.cash')}
+              </Text>
+              <View style={[styles.radio, paymentMethod === 'cash' && styles.radioActive]}>
+                {paymentMethod === 'cash' && <View style={styles.radioDot} />}
+              </View>
+            </Pressable>
+            <Pressable
+              style={[styles.payRow, paymentMethod === 'click_online' && styles.payRowActive]}
+              onPress={() => {
+                haptics.selection();
+                setPaymentMethod('click_online');
+              }}>
+              <CreditCard
+                size={18}
+                color={paymentMethod === 'click_online' ? colors.brand.primary : colors.text.tertiary}
+                strokeWidth={2.2}
+              />
+              <Text style={[styles.payText, paymentMethod === 'click_online' && styles.payTextActive]}>
+                {tr('checkout.cardPayment')}
+              </Text>
+              <View style={[styles.radio, paymentMethod === 'click_online' && styles.radioActive]}>
+                {paymentMethod === 'click_online' && <View style={styles.radioDot} />}
+              </View>
+            </Pressable>
 
-        {belowMin && (
-          <Text style={styles.warn}>
-            {tr('checkout.belowMinWarn', {
-              min: minOrder.toLocaleString(),
-              rest: (minOrder - subTotal).toLocaleString(),
-            })}
-          </Text>
-        )}
-        {outOfZone && <Text style={styles.warn}>{tr('checkout.outOfZoneWarn')}</Text>}
-      </ScrollView>
+            {paymentMethod === 'click_online' && (
+              <View style={styles.cardSubList}>
+                {activeCards.map((card) => {
+                  const active = selectedCardId === card.id;
+                  const brand = detectCardBrand(card.cardNumberMasked ?? '');
+                  return (
+                    <Pressable
+                      key={card.id}
+                      style={styles.cardSubRow}
+                      onPress={() => {
+                        haptics.selection();
+                        setSelectedCardId(card.id);
+                      }}>
+                      <View style={[styles.radio, active && styles.radioActive]}>
+                        {active && <View style={styles.radioDot} />}
+                      </View>
+                      <CardVisual
+                        size="mini"
+                        brand={brand}
+                        numberText={card.cardNumberMasked ?? '••••'}
+                        fallbackLabel={tr('cards.genericName')}
+                      />
+                      <Text style={styles.cardSubText} numberOfLines={1}>
+                        {card.label || card.cardNumberMasked || '••••'}
+                      </Text>
+                      {card.isDefault && <Text style={styles.cardSubDefault}>{tr('cards.default')}</Text>}
+                    </Pressable>
+                  );
+                })}
+                <Pressable style={styles.cardSubRow} onPress={() => setSelectedCardId(null)}>
+                  <View style={[styles.radio, !selectedCardId && styles.radioActive]}>
+                    {!selectedCardId && <View style={styles.radioDot} />}
+                  </View>
+                  <Text style={styles.cardSubText}>{tr('checkout.payWithRedirect')}</Text>
+                </Pressable>
+                <Pressable onPress={() => setAddCardSheetVisible(true)}>
+                  <Text style={styles.addCardHint}>
+                    {activeCards.length === 0 ? tr('checkout.addCardHint') : tr('cards.add')}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
 
-      <SafeAreaView edges={['bottom']} style={styles.footer}>
-        <View style={styles.footerTotal}>
-          <Text style={styles.footerTotalLabel}>{tr('cart.total')}</Text>
-          <Text style={styles.footerTotalValue}>{total.toLocaleString()} {tr('common.som')}</Text>
-        </View>
-        <Pressable
-          onPress={() => createOrder.mutate()}
-          disabled={!canOrder || createOrder.isPending}
-          style={[styles.orderBtn, (!canOrder || createOrder.isPending) && styles.orderBtnDisabled]}>
-          {createOrder.isPending ? (
-            <ActivityIndicator color={colors.text.onPrimary} />
-          ) : (
-            <Text style={styles.orderBtnText}>
-              {!selectedAddressId
-                ? tr('cart.selectAddress')
-                : belowMin
-                  ? tr('checkout.belowMinBtn')
-                  : outOfZone
-                    ? tr('checkout.outOfZoneBtn')
-                    : tr('cart.proceed')}
+          {/* Summary */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{tr('checkout.summaryTitle')}</Text>
+            <Row label={tr('cart.subtotal')} value={`${subTotal.toLocaleString()} ${tr('common.som')}`} />
+            <Row
+              label={tr('cart.deliveryFee')}
+              value={deliveryFee === 0 ? tr('shop.freeShort') : `${deliveryFee.toLocaleString()} ${tr('common.som')}`}
+              free={deliveryFee === 0}
+            />
+            <View style={styles.divider} />
+            <Row label={tr('cart.total')} value={`${total.toLocaleString()} ${tr('common.som')}`} bold />
+          </View>
+
+          {belowMin && (
+            <Text style={styles.warn}>
+              {tr('checkout.belowMinWarn', {
+                min: minOrder.toLocaleString(),
+                rest: (minOrder - subTotal).toLocaleString(),
+              })}
             </Text>
           )}
-        </Pressable>
+          {outOfZone && <Text style={styles.warn}>{tr('checkout.outOfZoneWarn')}</Text>}
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <SafeAreaView edges={['bottom']} style={styles.footer}>
+        <View style={styles.footerRow}>
+          <View style={styles.footerTotal}>
+            <Text style={styles.footerTotalLabel}>{tr('cart.total')}</Text>
+            <Text style={styles.footerTotalValue}>
+              {total.toLocaleString()} {tr('common.som')}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => {
+              haptics.medium();
+              createOrder.mutate();
+            }}
+            disabled={!canOrder || createOrder.isPending}
+            style={[styles.orderBtn, (!canOrder || createOrder.isPending) && styles.orderBtnDisabled]}>
+            {createOrder.isPending ? (
+              <ActivityIndicator color={colors.text.onPrimary} />
+            ) : (
+              <Text style={styles.orderBtnText}>
+                {!selectedAddressId
+                  ? tr('cart.selectAddress')
+                  : belowMin
+                    ? tr('checkout.belowMinBtn')
+                    : outOfZone
+                      ? tr('checkout.outOfZoneBtn')
+                      : tr('cart.proceed')}
+              </Text>
+            )}
+          </Pressable>
+        </View>
       </SafeAreaView>
 
       <CheckoutAddressSheet
@@ -495,71 +562,80 @@ export default function CheckoutScreen() {
   );
 }
 
-function Row({ label, value, bold }: { readonly label: string; readonly value: string; readonly bold?: boolean }) {
+function Row({
+  label,
+  value,
+  bold,
+  free,
+}: {
+  readonly label: string;
+  readonly value: string;
+  readonly bold?: boolean;
+  readonly free?: boolean;
+}) {
   return (
     <View style={styles.row}>
       <Text style={[styles.rowLabel, bold && styles.rowLabelBold]}>{label}</Text>
-      <Text style={[styles.rowValue, bold && styles.rowValueBold]}>{value}</Text>
+      <Text style={[styles.rowValue, bold && styles.rowValueBold, free && styles.rowValueFree]}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg.canvas },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg.canvas },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, backgroundColor: colors.bg.canvas },
+  emptyCartIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.full,
+    backgroundColor: colors.bg.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   dim: { ...typography.body, color: colors.text.secondary },
-  scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['4xl'] },
+  scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['5xl'] },
   section: {
     backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     padding: spacing.lg,
     gap: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border.subtle,
+    ...shadow.xs,
   },
   sectionTitle: { ...typography.overline, color: colors.text.tertiary, marginBottom: spacing.xs },
-  whereRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
-  whereIcon: {
-    width: 36,
-    height: 36,
+
+  fieldRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 44 },
+  fieldIcon: { width: 22, alignItems: 'center' },
+  fieldInput: { flex: 1, ...typography.body, color: colors.text.primary, paddingVertical: spacing.sm },
+  fieldDivider: { height: 1, backgroundColor: colors.border.subtle, marginLeft: 34 },
+
+  shopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
+  shopIcon: {
+    width: 32,
+    height: 32,
     borderRadius: radius.full,
     backgroundColor: colors.brand.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addressLabel: { ...typography.bodyStrong },
-  addressText: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
-  detailsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  detailsInput: { flexBasis: '47%', flexGrow: 1 },
-  input: {
+  shopName: { ...typography.h4, color: colors.text.primary },
+  shopMeta: { ...typography.caption, color: colors.text.tertiary },
+
+  cartItem: { flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md, alignItems: 'center' },
+  cartItemBordered: { borderTopWidth: 1, borderTopColor: colors.border.subtle },
+  itemThumb: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.md,
+    overflow: 'hidden',
     backgroundColor: colors.bg.surfaceMuted,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    ...typography.body,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
   },
-  phoneRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  phoneInput: { flex: 1 },
-  addAddressBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.brand.primary,
-  },
-  addAddressText: { ...typography.bodyStrong, color: colors.brand.primary },
-  cartItem: { flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.sm, alignItems: 'center' },
-  itemThumb: { width: 48, height: 48, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.bg.surfaceMuted },
   itemImg: { width: '100%', height: '100%' },
   itemImgPlaceholder: { backgroundColor: colors.brand.primarySurface },
   itemName: { ...typography.bodySmall, color: colors.text.primary, fontWeight: '600' },
-  itemPrice: { ...typography.priceSmall, marginTop: 2 },
+  itemUnit: { ...typography.caption, color: colors.text.tertiary, marginTop: 1 },
+  itemPrice: { ...typography.priceSmall, marginTop: 1 },
   qtyControls: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -568,57 +644,46 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     paddingHorizontal: 4,
   },
-  qtyBtn: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
+  qtyBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   qty: { ...typography.bodyStrong, color: colors.brand.primary, minWidth: 20, textAlign: 'center' },
+
   payRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.md,
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.lg,
     borderWidth: 1.5,
-    borderColor: 'transparent',
+    borderColor: colors.border.subtle,
     marginBottom: spacing.xs,
   },
-  payRowActive: {
-    borderColor: colors.brand.primary,
-    backgroundColor: `${colors.brand.primary}10`,
-  },
+  payRowActive: { borderColor: colors.brand.primary, backgroundColor: colors.brand.primarySurface },
   payText: { ...typography.body, fontWeight: '600', flex: 1 },
-  payCheck: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.brand.primary,
-  },
-  cardSubList: { gap: spacing.xs, paddingLeft: spacing.lg, marginTop: 2, marginBottom: spacing.xs },
-  cardSubRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  cardSubRowActive: {},
+  payTextActive: { color: colors.brand.primary },
+  cardSubList: { gap: spacing.sm, paddingLeft: spacing.md, marginTop: 2, marginBottom: spacing.xs },
+  cardSubRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs },
   radio: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
     borderColor: colors.border.strong,
     alignItems: 'center',
     justifyContent: 'center',
   },
   radioActive: { borderColor: colors.brand.primary },
-  radioDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.brand.primary },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.brand.primary },
   cardSubText: { ...typography.bodySmall, color: colors.text.primary, flex: 1 },
   cardSubDefault: { ...typography.caption, color: colors.brand.primary, fontWeight: '700' },
   addCardHint: { ...typography.caption, color: colors.brand.primary, fontWeight: '700', marginTop: spacing.xs },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2 },
   rowLabel: { ...typography.body, color: colors.text.secondary },
   rowLabelBold: { color: colors.text.primary, fontWeight: '700' },
   rowValue: { ...typography.body, fontWeight: '600' },
   rowValueBold: { ...typography.h3, color: colors.brand.primary },
+  rowValueFree: { color: colors.feedback.success, fontWeight: '700' },
   divider: { height: 1, backgroundColor: colors.border.subtle, marginVertical: spacing.xs },
   warn: {
     ...typography.bodySmall,
@@ -628,17 +693,20 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     fontWeight: '600',
   },
+
   footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
     backgroundColor: colors.bg.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border.subtle,
+    ...shadow.lg,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     paddingHorizontal: layout.screenPadding,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
-    ...shadow.lg,
   },
   footerTotal: {},
   footerTotalLabel: { ...typography.caption, color: colors.text.tertiary },
@@ -653,6 +721,7 @@ const styles = StyleSheet.create({
   },
   orderBtnDisabled: { backgroundColor: colors.text.hint },
   orderBtnText: { ...typography.button, color: colors.text.onPrimary },
+
   sheetBackdrop: { flex: 1, backgroundColor: colors.overlay.scrim },
   sheetWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   sheetCard: {
