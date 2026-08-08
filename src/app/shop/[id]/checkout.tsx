@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { CreditCard, Minus, Plus, ShoppingBag, Store, Trash2, Wallet } from 'lucide-react-native';
+import { AlertCircle, CreditCard, Minus, Plus, ShoppingBag, Store, Trash2, Wallet } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -223,6 +223,21 @@ export default function CheckoutScreen() {
   const outOfZone = shop ? shop.isWithinZone === false : false;
   const canOrder = !!selectedAddressId && cartLines.length > 0 && !belowMin && !outOfZone;
 
+  // The single reason the order can't be placed, shown as a slim band above
+  // the footer button. Min-order also carries a fill ratio so the customer
+  // sees how close they are instead of only being told "not enough".
+  const blocker = !selectedAddressId
+    ? { text: tr('checkout.noAddressTitle'), danger: false, progress: null }
+    : outOfZone
+      ? { text: tr('checkout.zoneOut'), danger: true, progress: null }
+      : belowMin
+        ? {
+            text: tr('checkout.addMore', { rest: (minOrder - subTotal).toLocaleString() }),
+            danger: false,
+            progress: Math.min(100, Math.round((subTotal / minOrder) * 100)),
+          }
+        : null;
+
   const zone: ZoneState = !selectedAddress
     ? 'unknown'
     : shopQuery.isFetching
@@ -433,19 +448,32 @@ export default function CheckoutScreen() {
             )}
           </View>
 
-          {belowMin && (
-            <Text style={styles.warn}>
-              {tr('checkout.belowMinWarn', {
-                min: minOrder.toLocaleString(),
-                rest: (minOrder - subTotal).toLocaleString(),
-              })}
-            </Text>
-          )}
-          {outOfZone && <Text style={styles.warn}>{tr('checkout.outOfZoneWarn')}</Text>}
         </ScrollView>
       </KeyboardAvoidingView>
 
       <SafeAreaView edges={['bottom']} style={styles.footer}>
+        {/* Why the button is off, stated once in a slim band — the button's
+            own label stays "place order" so it never turns into a wall of
+            text sitting where the primary action should be. */}
+        {blocker && (
+          <View style={[styles.blocker, blocker.danger && styles.blockerDanger]}>
+            <View style={styles.blockerRow}>
+              <AlertCircle
+                size={14}
+                color={blocker.danger ? colors.feedback.danger : colors.feedback.warning}
+                strokeWidth={2.6}
+              />
+              <Text style={[styles.blockerText, blocker.danger && styles.blockerTextDanger]}>
+                {blocker.text}
+              </Text>
+            </View>
+            {blocker.progress != null && (
+              <View style={styles.progressTrack}>
+                <View style={[styles.progressFill, { width: `${blocker.progress}%` }]} />
+              </View>
+            )}
+          </View>
+        )}
         <View style={styles.footerRow}>
           <View style={styles.footerTotal}>
             <Text style={styles.footerTotalLabel}>{tr('cart.total')}</Text>
@@ -463,15 +491,7 @@ export default function CheckoutScreen() {
             {createOrder.isPending ? (
               <ActivityIndicator color={colors.text.onPrimary} />
             ) : (
-              <Text style={styles.orderBtnText}>
-                {!selectedAddressId
-                  ? tr('cart.selectAddress')
-                  : belowMin
-                    ? tr('checkout.belowMinBtn')
-                    : outOfZone
-                      ? tr('checkout.outOfZoneBtn')
-                      : tr('cart.proceed')}
-              </Text>
+              <Text style={styles.orderBtnText}>{tr('cart.proceed')}</Text>
             )}
           </Pressable>
         </View>
@@ -605,14 +625,24 @@ const styles = StyleSheet.create({
   rowValue: { ...typography.body, fontWeight: '600' },
   rowValueFree: { color: colors.feedback.success, fontWeight: '700' },
   divider: { height: 1, backgroundColor: colors.border.subtle, marginTop: spacing.sm, marginBottom: spacing.md },
-  warn: {
-    ...typography.bodySmall,
-    color: colors.feedback.warning,
+
+  blocker: {
     backgroundColor: colors.feedback.warningSurface,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    fontWeight: '600',
+    paddingHorizontal: layout.screenPadding,
+    paddingVertical: spacing.sm,
+    gap: 6,
   },
+  blockerDanger: { backgroundColor: colors.feedback.dangerSurface },
+  blockerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  blockerText: { ...typography.caption, color: colors.feedback.warning, fontWeight: '700', flex: 1 },
+  blockerTextDanger: { color: colors.feedback.danger },
+  progressTrack: {
+    height: 4,
+    borderRadius: radius.full,
+    backgroundColor: colors.bg.surface,
+    overflow: 'hidden',
+  },
+  progressFill: { height: '100%', borderRadius: radius.full, backgroundColor: colors.feedback.warning },
 
   footer: {
     backgroundColor: colors.bg.surface,
