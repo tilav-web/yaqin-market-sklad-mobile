@@ -30,7 +30,9 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files — this repo is public, so the env file itself stays out of
+# it. Build-time values live in eas.json's per-profile `env`.
+.env
 .env*.local
 
 # typescript

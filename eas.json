@@ -22,6 +22,9 @@
     },
     "production": {
       "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.yaqin-market.uz"
+      },
       "android": {
         "buildType": "app-bundle"
       }

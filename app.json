@@ -16,7 +16,9 @@
         "NSLocationAlwaysUsageDescription": "Yetkazib berish jarayonida joylashuvingizni mijozga ko'rsatish uchun, hatto ilova fon rejimida bo'lganda ham",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Yetkazib berish jarayonida joylashuvingizni mijozga ko'rsatish uchun, hatto ilova fon rejimida bo'lganda ham",
         "NSCameraUsageDescription": "Shtrix-kod skanerlash va mahsulot rasmlari uchun kamera kerak",
-        "UIBackgroundModes": ["location"]
+        "UIBackgroundModes": [
+          "location"
+        ]
       },
       "config": {
         "googleMapsApiKey": "AIzaSyDyBFO5ucrm_p0mXcur2254b_jG0LJ88Zg"
@@ -38,10 +40,7 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_LOCATION",
         "android.permission.VIBRATE",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "android.permission.CAMERA"
       ],
       "predictiveBackGestureEnabled": false,
       "config": {
@@ -72,7 +71,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",
-          "color": "#0046AD",
+          "color": "#E8392E",
           "androidMode": "default"
         }
       ],
@@ -86,7 +85,6 @@
           }
         }
       ],
-      "expo-audio",
       [
         "expo-image-picker",
         {

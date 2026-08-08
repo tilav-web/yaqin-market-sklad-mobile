@@ -18,9 +18,19 @@ import { tokenStorage } from './storage';
 
 const ENV_API_URL = process.env.EXPO_PUBLIC_API_URL;
 
+/**
+ * Where a release build talks to when nothing else is configured. A shipped
+ * app has no Metro host to infer from, so without this the fallback chain
+ * ended at `10.0.2.2` / `localhost` — every request in the store build would
+ * fail silently against an address that only exists on a dev machine.
+ */
+const PRODUCTION_API_URL = 'https://api.yaqin-market.uz';
+
 function inferDevApiUrl(): string {
   // Prefer explicit env var
   if (ENV_API_URL) return ENV_API_URL;
+  // A release build never guesses a local address.
+  if (!__DEV__) return PRODUCTION_API_URL;
   // In dev client, infer host from Metro
   const hostUri = Constants.expoConfig?.hostUri ?? Constants.expoGoConfig?.debuggerHost;
   if (hostUri) {
