@@ -5,6 +5,8 @@ import {
   LocateFixed,
   MapPin,
   MapPinOff,
+  MessageSquare,
+  Phone,
 } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -36,17 +38,22 @@ interface Props {
   readonly floor: string;
   readonly apartment: string;
   readonly intercom: string;
+  readonly phone: string;
+  readonly comment: string;
   readonly onEntrance: (v: string) => void;
   readonly onFloor: (v: string) => void;
   readonly onApartment: (v: string) => void;
   readonly onIntercom: (v: string) => void;
+  readonly onPhone: (v: string) => void;
+  readonly onComment: (v: string) => void;
 }
 
 /**
  * Checkout's "where to" block: the picked address (with a static map preview
  * and an unmistakable selected/not-selected state) fused into one card with
- * the entrance/floor/apartment/intercom fields, since those details only mean
- * anything in the context of the address above them.
+ * everything the courier needs to reach the door — entrance/floor/apartment/
+ * intercom, phone and a note. They live in a single hairline-divided group
+ * because none of them mean anything apart from the address above them.
  */
 export function CheckoutDeliveryCard({
   address,
@@ -63,124 +70,37 @@ export function CheckoutDeliveryCard({
   floor,
   apartment,
   intercom,
+  phone,
+  comment,
   onEntrance,
   onFloor,
   onApartment,
   onIntercom,
+  onPhone,
+  onComment,
 }: Props) {
   const { tr } = useTranslation();
   const [focused, setFocused] = useState<string | null>(null);
 
-  return (
-    <View style={[styles.card, !address && styles.cardEmpty]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{tr('checkout.deliveryTitle')}</Text>
-        {address && (
-          <Pressable
-            hitSlop={8}
-            onPress={() => {
-              haptics.selection();
-              onChangeAddress();
-            }}>
-            <Text style={styles.headerAction}>{tr('checkout.change')}</Text>
-          </Pressable>
-        )}
-      </View>
-
-      {loading ? (
+  if (loading) {
+    return (
+      <View style={styles.card}>
         <View style={styles.loadingBox}>
           <ActivityIndicator color={colors.brand.primary} />
         </View>
-      ) : address ? (
-        <>
-          <Pressable
-            style={({ pressed }) => [styles.addressRow, pressed && styles.addressRowPressed]}
-            onPress={() => {
-              haptics.selection();
-              onChangeAddress();
-            }}>
-            <MapThumb latitude={address.latitude} longitude={address.longitude} />
-            <View style={styles.addressBody}>
-              <View style={styles.labelRow}>
-                <Text style={styles.addressLabel} numberOfLines={1}>
-                  {address.label}
-                </Text>
-                <View style={styles.selectedChip}>
-                  <Check size={10} color={colors.text.onPrimary} strokeWidth={3.4} />
-                  <Text style={styles.selectedChipText}>{tr('checkout.selectedBadge')}</Text>
-                </View>
-              </View>
-              <Text style={styles.addressText} numberOfLines={2}>
-                {address.address}
-              </Text>
-              <ZonePill zone={zone} distanceKm={distanceKm} />
-            </View>
-            <ChevronRight size={18} color={colors.text.tertiary} strokeWidth={2.4} />
-          </Pressable>
+      </View>
+    );
+  }
 
-          <View style={styles.detailsHeader}>
-            <Text style={styles.detailsHint}>{tr('checkout.detailsHint')}</Text>
-          </View>
-
-          {/* One bordered group split by hairlines — the four fields read as
-              part of the address above, not as four loose inputs. */}
-          <View style={styles.detailsGroup}>
-            <View style={styles.detailsRow}>
-              <DetailField
-                name="entrance"
-                label={tr('addr.entrance')}
-                value={entrance}
-                onChange={onEntrance}
-                focused={focused}
-                setFocused={setFocused}
-                keyboardType="number-pad"
-                maxLength={6}
-              />
-              <View style={styles.vDivider} />
-              <DetailField
-                name="floor"
-                label={tr('addr.floor')}
-                value={floor}
-                onChange={onFloor}
-                focused={focused}
-                setFocused={setFocused}
-                keyboardType="number-pad"
-                maxLength={4}
-              />
-            </View>
-            <View style={styles.hDivider} />
-            <View style={styles.detailsRow}>
-              <DetailField
-                name="apartment"
-                label={tr('addr.apartment')}
-                value={apartment}
-                onChange={onApartment}
-                focused={focused}
-                setFocused={setFocused}
-                maxLength={10}
-              />
-              <View style={styles.vDivider} />
-              <DetailField
-                name="intercom"
-                label={tr('addr.intercom')}
-                value={intercom}
-                onChange={onIntercom}
-                focused={focused}
-                setFocused={setFocused}
-                maxLength={12}
-              />
-            </View>
-          </View>
-        </>
-      ) : (
+  if (!address) {
+    return (
+      <View style={[styles.card, styles.cardEmpty]}>
         <View style={styles.emptyBox}>
           <View style={styles.emptyIcon}>
             <MapPinOff size={26} color={colors.feedback.warning} strokeWidth={2.2} />
           </View>
           <Text style={styles.emptyTitle}>{tr('checkout.noAddressTitle')}</Text>
-          <Text style={styles.emptyBody}>
-            {tr(hasSavedAddresses ? 'checkout.noAddressBody' : 'checkout.noAddressEmptyBody')}
-          </Text>
+          {!hasSavedAddresses && <Text style={styles.emptyBody}>{tr('checkout.noAddressEmptyBody')}</Text>}
           <Pressable
             style={styles.emptyBtn}
             onPress={() => {
@@ -214,7 +134,108 @@ export function CheckoutDeliveryCard({
             )}
           </View>
         </View>
-      )}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.card}>
+      <Pressable
+        style={({ pressed }) => [styles.addressRow, pressed && styles.addressRowPressed]}
+        onPress={() => {
+          haptics.selection();
+          onChangeAddress();
+        }}>
+        <MapThumb latitude={address.latitude} longitude={address.longitude} />
+        <View style={styles.addressBody}>
+          <View style={styles.labelRow}>
+            <Text style={styles.addressLabel} numberOfLines={1}>
+              {address.label}
+            </Text>
+            <View style={styles.selectedChip}>
+              <Check size={10} color={colors.text.onPrimary} strokeWidth={3.4} />
+              <Text style={styles.selectedChipText}>{tr('checkout.selectedBadge')}</Text>
+            </View>
+          </View>
+          <Text style={styles.addressText} numberOfLines={2}>
+            {address.address}
+          </Text>
+          <ZonePill zone={zone} distanceKm={distanceKm} />
+        </View>
+        <ChevronRight size={18} color={colors.text.tertiary} strokeWidth={2.4} />
+      </Pressable>
+
+      {/* One bordered group split by hairlines — door details, phone and note
+          read as part of the address above, not as loose inputs. */}
+      <View style={styles.group}>
+        <View style={styles.groupRow}>
+          <DetailField
+            name="entrance"
+            label={tr('addr.entrance')}
+            value={entrance}
+            onChange={onEntrance}
+            focused={focused}
+            setFocused={setFocused}
+            keyboardType="number-pad"
+            maxLength={6}
+          />
+          <View style={styles.vDivider} />
+          <DetailField
+            name="floor"
+            label={tr('addr.floor')}
+            value={floor}
+            onChange={onFloor}
+            focused={focused}
+            setFocused={setFocused}
+            keyboardType="number-pad"
+            maxLength={4}
+          />
+        </View>
+        <View style={styles.hDivider} />
+        <View style={styles.groupRow}>
+          <DetailField
+            name="apartment"
+            label={tr('addr.apartment')}
+            value={apartment}
+            onChange={onApartment}
+            focused={focused}
+            setFocused={setFocused}
+            maxLength={10}
+          />
+          <View style={styles.vDivider} />
+          <DetailField
+            name="intercom"
+            label={tr('addr.intercom')}
+            value={intercom}
+            onChange={onIntercom}
+            focused={focused}
+            setFocused={setFocused}
+            maxLength={12}
+          />
+        </View>
+        <View style={styles.hDivider} />
+        <IconField
+          name="phone"
+          icon={<Phone size={17} color={colors.text.tertiary} strokeWidth={2.2} />}
+          placeholder={tr('checkout.recipientPhone')}
+          value={phone}
+          onChange={onPhone}
+          focused={focused}
+          setFocused={setFocused}
+          keyboardType="phone-pad"
+        />
+        <View style={styles.hDivider} />
+        <IconField
+          name="comment"
+          icon={<MessageSquare size={17} color={colors.text.tertiary} strokeWidth={2.2} />}
+          placeholder={tr('checkout.courierComment')}
+          value={comment}
+          onChange={onComment}
+          focused={focused}
+          setFocused={setFocused}
+          multiline
+        />
+      </View>
     </View>
   );
 }
@@ -272,15 +293,15 @@ function ZonePill({ zone, distanceKm }: { readonly zone: ZoneState; readonly dis
 
 interface FieldProps {
   readonly name: string;
-  readonly label: string;
   readonly value: string;
   readonly onChange: (v: string) => void;
   readonly focused: string | null;
   readonly setFocused: (v: string | null) => void;
-  readonly keyboardType?: 'default' | 'number-pad';
+  readonly keyboardType?: 'default' | 'number-pad' | 'phone-pad';
   readonly maxLength?: number;
 }
 
+/** Half-width labelled cell — the four door details. */
 function DetailField({
   name,
   label,
@@ -290,13 +311,13 @@ function DetailField({
   setFocused,
   keyboardType = 'default',
   maxLength,
-}: FieldProps) {
+}: FieldProps & { readonly label: string }) {
   const active = focused === name;
   return (
-    <View style={[styles.field, active && styles.fieldActive]}>
-      <Text style={[styles.fieldLabel, active && styles.fieldLabelActive]}>{label}</Text>
+    <View style={[styles.cell, active && styles.cellActive]}>
+      <Text style={[styles.cellLabel, active && styles.cellLabelActive]}>{label}</Text>
       <TextInput
-        style={styles.fieldInput}
+        style={styles.cellInput}
         value={value}
         onChangeText={onChange}
         onFocus={() => setFocused(name)}
@@ -306,6 +327,44 @@ function DetailField({
         placeholder="—"
         placeholderTextColor={colors.text.hint}
         returnKeyType="done"
+      />
+    </View>
+  );
+}
+
+/** Full-width icon + input row — phone and courier note. */
+function IconField({
+  name,
+  icon,
+  placeholder,
+  value,
+  onChange,
+  focused,
+  setFocused,
+  keyboardType = 'default',
+  multiline,
+}: FieldProps & {
+  readonly icon: React.ReactNode;
+  readonly placeholder: string;
+  readonly multiline?: boolean;
+}) {
+  const active = focused === name;
+  return (
+    <View style={[styles.iconRow, multiline && styles.iconRowMultiline, active && styles.cellActive]}>
+      {icon}
+      <TextInput
+        style={styles.iconRowInput}
+        value={value}
+        onChangeText={onChange}
+        onFocus={() => setFocused(name)}
+        onBlur={() => setFocused(null)}
+        keyboardType={keyboardType}
+        placeholder={placeholder}
+        placeholderTextColor={colors.text.hint}
+        multiline={multiline}
+        // A wrapping note must not submit on Enter, but the single-line phone
+        // row should still close the keyboard.
+        returnKeyType={multiline ? undefined : 'done'}
       />
     </View>
   );
@@ -322,17 +381,9 @@ const styles = StyleSheet.create({
     ...shadow.xs,
   },
   cardEmpty: { borderColor: colors.feedback.warning, borderWidth: 1.5 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerTitle: { ...typography.overline, color: colors.text.tertiary },
-  headerAction: { ...typography.caption, color: colors.brand.primary, fontWeight: '700' },
   loadingBox: { paddingVertical: spacing.xl, alignItems: 'center' },
 
-  addressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    borderRadius: radius.lg,
-  },
+  addressRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   addressRowPressed: { opacity: 0.6 },
   addressBody: { flex: 1, gap: 3 },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -377,29 +428,30 @@ const styles = StyleSheet.create({
   pillNeutral: { backgroundColor: colors.bg.surfaceMuted },
   pillText: { ...typography.caption, fontWeight: '700' },
 
-  detailsHeader: { marginTop: spacing.xs },
-  detailsHint: { ...typography.caption, color: colors.text.tertiary },
-  detailsGroup: {
+  group: {
     borderWidth: 1,
     borderColor: colors.border.default,
     borderRadius: radius.lg,
     backgroundColor: colors.bg.surfaceMuted,
     overflow: 'hidden',
   },
-  detailsRow: { flexDirection: 'row', alignItems: 'stretch' },
+  groupRow: { flexDirection: 'row', alignItems: 'stretch' },
   vDivider: { width: 1, backgroundColor: colors.border.default },
   hDivider: { height: 1, backgroundColor: colors.border.default },
-  field: { flex: 1, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: 6 },
-  fieldActive: { backgroundColor: colors.bg.surface },
-  fieldLabel: { ...typography.caption, fontSize: 11, color: colors.text.tertiary, fontWeight: '600' },
-  fieldLabelActive: { color: colors.brand.primary },
-  fieldInput: {
-    ...typography.bodyStrong,
-    color: colors.text.primary,
-    padding: 0,
-    marginTop: 1,
-    minHeight: 24,
+  cell: { flex: 1, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: 6 },
+  cellActive: { backgroundColor: colors.bg.surface },
+  cellLabel: { ...typography.caption, fontSize: 11, color: colors.text.tertiary, fontWeight: '600' },
+  cellLabelActive: { color: colors.brand.primary },
+  cellInput: { ...typography.bodyStrong, color: colors.text.primary, padding: 0, marginTop: 1, minHeight: 24 },
+  iconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    minHeight: 48,
   },
+  iconRowMultiline: { alignItems: 'flex-start', paddingVertical: spacing.md },
+  iconRowInput: { flex: 1, ...typography.body, color: colors.text.primary, padding: 0 },
 
   emptyBox: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
   emptyIcon: {
@@ -411,12 +463,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyTitle: { ...typography.h4, color: colors.text.primary, marginTop: 2 },
-  emptyBody: {
-    ...typography.bodySmall,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    paddingHorizontal: spacing.md,
-  },
+  emptyBody: { ...typography.bodySmall, color: colors.text.secondary },
   emptyBtn: {
     flexDirection: 'row',
     alignItems: 'center',

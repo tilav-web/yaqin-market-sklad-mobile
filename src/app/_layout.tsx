@@ -149,6 +149,7 @@ function RootNavigator() {
       <Stack.Screen name="notification/[id]" options={{ title: tr('nav.notificationDetail') }} />
       <Stack.Screen name="addresses" options={{ title: tr('addr.title') }} />
       <Stack.Screen name="saved-cards" options={{ title: tr('cards.title') }} />
+      <Stack.Screen name="add-card" options={{ title: tr('cards.addTitle') }} />
       <Stack.Screen name="profile/edit" options={{ title: tr('editProfile.title') }} />
       <Stack.Screen name="staff-scan" options={{ headerShown: false }} />
       <Stack.Screen name="seller-application" options={{ title: tr('sellerApp.title') }} />

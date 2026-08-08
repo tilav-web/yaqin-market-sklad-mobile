@@ -1,34 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import {
-  CreditCard,
-  MessageSquare,
-  Minus,
-  Phone,
-  Plus,
-  ShoppingBag,
-  Store,
-  Trash2,
-  Wallet,
-} from 'lucide-react-native';
+import { CreditCard, Minus, Plus, ShoppingBag, Store, Trash2, Wallet } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AddCardForm } from '@/components/AddCardForm';
 import { CardVisual } from '@/components/CardVisual';
 import { CheckoutAddressSheet } from '@/components/CheckoutAddressSheet';
 import { CheckoutDeliveryCard, ZoneState } from '@/components/CheckoutDeliveryCard';
@@ -71,7 +58,6 @@ export default function CheckoutScreen() {
   const [recipientPhone, setRecipientPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'click_online'>('cash');
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
-  const [addCardSheetVisible, setAddCardSheetVisible] = useState(false);
 
   const cardsQuery = useQuery({
     queryKey: ['saved-cards'],
@@ -82,7 +68,8 @@ export default function CheckoutScreen() {
 
   // Pre-select the default saved card the first time the list loads — after
   // that the user's own tap (including explicitly picking "redirect" /
-  // deselecting) is never overridden again.
+  // deselecting) is never overridden again. A card added on /add-card comes
+  // back through the same path when it is the customer's first one.
   const cardsPrefilled = useRef(false);
   useEffect(() => {
     if (!cardsPrefilled.current && activeCards.length > 0) {
@@ -268,60 +255,9 @@ export default function CheckoutScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag">
-          <CheckoutDeliveryCard
-            address={selectedAddress}
-            loading={addressesQuery.isLoading}
-            hasSavedAddresses={(addressesQuery.data?.length ?? 0) > 0}
-            onChangeAddress={() => setAddressSheetVisible(true)}
-            onAddAddress={() => router.push('/addresses')}
-            zone={zone}
-            distanceKm={shop?.distanceKm}
-            gpsAvailable={!!deviceCoords}
-            gpsLoading={gpsLoading}
-            onEnableGps={() => void refreshGps()}
-            entrance={entrance}
-            floor={floor}
-            apartment={apartment}
-            intercom={intercom}
-            onEntrance={setEntrance}
-            onFloor={setFloor}
-            onApartment={setApartment}
-            onIntercom={setIntercom}
-          />
-
-          {/* Contact */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{tr('checkout.contactTitle')}</Text>
-            <View style={styles.fieldRow}>
-              <View style={styles.fieldIcon}>
-                <Phone size={17} color={colors.text.tertiary} strokeWidth={2.2} />
-              </View>
-              <TextInput
-                style={styles.fieldInput}
-                placeholder={tr('checkout.recipientPhone')}
-                value={recipientPhone}
-                onChangeText={setRecipientPhone}
-                keyboardType="phone-pad"
-                placeholderTextColor={colors.text.hint}
-              />
-            </View>
-            <View style={styles.fieldDivider} />
-            <View style={styles.fieldRow}>
-              <View style={styles.fieldIcon}>
-                <MessageSquare size={17} color={colors.text.tertiary} strokeWidth={2.2} />
-              </View>
-              <TextInput
-                style={styles.fieldInput}
-                placeholder={tr('checkout.commentPlaceholder')}
-                value={courierComment}
-                onChangeText={setCourierComment}
-                placeholderTextColor={colors.text.hint}
-                multiline
-              />
-            </View>
-          </View>
-
-          {/* Items */}
+          {/* What you're buying comes first — it's what the customer opens this
+              screen to check. The money rows live at the bottom of this same
+              card instead of a separate summary block. */}
           <View style={styles.section}>
             <View style={styles.shopRow}>
               <View style={styles.shopIcon}>
@@ -347,9 +283,6 @@ export default function CheckoutScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.itemName} numberOfLines={2}>
                     {line.productName}
-                  </Text>
-                  <Text style={styles.itemUnit}>
-                    {line.quantity} × {line.unitPrice.toLocaleString()}
                   </Text>
                   <Text style={styles.itemPrice}>
                     {(line.unitPrice * line.quantity).toLocaleString()} {tr('common.som')}
@@ -382,11 +315,43 @@ export default function CheckoutScreen() {
                 </View>
               </View>
             ))}
+
+            <View style={styles.divider} />
+            <Row label={tr('cart.subtotal')} value={`${subTotal.toLocaleString()} ${tr('common.som')}`} />
+            <Row
+              label={tr('cart.deliveryFee')}
+              value={deliveryFee === 0 ? tr('shop.freeShort') : `${deliveryFee.toLocaleString()} ${tr('common.som')}`}
+              free={deliveryFee === 0}
+            />
           </View>
+
+          <CheckoutDeliveryCard
+            address={selectedAddress}
+            loading={addressesQuery.isLoading}
+            hasSavedAddresses={(addressesQuery.data?.length ?? 0) > 0}
+            onChangeAddress={() => setAddressSheetVisible(true)}
+            onAddAddress={() => router.push('/addresses')}
+            zone={zone}
+            distanceKm={shop?.distanceKm}
+            gpsAvailable={!!deviceCoords}
+            gpsLoading={gpsLoading}
+            onEnableGps={() => void refreshGps()}
+            entrance={entrance}
+            floor={floor}
+            apartment={apartment}
+            intercom={intercom}
+            phone={recipientPhone}
+            comment={courierComment}
+            onEntrance={setEntrance}
+            onFloor={setFloor}
+            onApartment={setApartment}
+            onIntercom={setIntercom}
+            onPhone={setRecipientPhone}
+            onComment={setCourierComment}
+          />
 
           {/* Payment */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{tr('checkout.paymentTitle')}</Text>
             <Pressable
               style={[styles.payRow, paymentMethod === 'cash' && styles.payRowActive]}
               onPress={() => {
@@ -459,26 +424,13 @@ export default function CheckoutScreen() {
                   </View>
                   <Text style={styles.cardSubText}>{tr('checkout.payWithRedirect')}</Text>
                 </Pressable>
-                <Pressable onPress={() => setAddCardSheetVisible(true)}>
-                  <Text style={styles.addCardHint}>
-                    {activeCards.length === 0 ? tr('checkout.addCardHint') : tr('cards.add')}
-                  </Text>
+                {/* A pushed screen, not a sheet — the card mockup plus the
+                    SMS-verify step never fit in one. */}
+                <Pressable onPress={() => router.push('/add-card')}>
+                  <Text style={styles.addCardLink}>{tr('cards.add')}</Text>
                 </Pressable>
               </View>
             )}
-          </View>
-
-          {/* Summary */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{tr('checkout.summaryTitle')}</Text>
-            <Row label={tr('cart.subtotal')} value={`${subTotal.toLocaleString()} ${tr('common.som')}`} />
-            <Row
-              label={tr('cart.deliveryFee')}
-              value={deliveryFee === 0 ? tr('shop.freeShort') : `${deliveryFee.toLocaleString()} ${tr('common.som')}`}
-              free={deliveryFee === 0}
-            />
-            <View style={styles.divider} />
-            <Row label={tr('cart.total')} value={`${total.toLocaleString()} ${tr('common.som')}`} bold />
           </View>
 
           {belowMin && (
@@ -532,32 +484,6 @@ export default function CheckoutScreen() {
         onSelect={selectAddress}
         onClose={() => setAddressSheetVisible(false)}
       />
-
-      <Modal
-        visible={addCardSheetVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setAddCardSheetVisible(false)}>
-        <Pressable style={styles.sheetBackdrop} onPress={() => setAddCardSheetVisible(false)} />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.sheetWrap}
-          pointerEvents="box-none">
-          <SafeAreaView edges={['bottom']} style={styles.sheetCard}>
-            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.sheetScroll}>
-              <View style={styles.sheetHandle} />
-              <Text style={styles.sheetTitle}>{tr('cards.add')}</Text>
-              <AddCardForm
-                onDone={(card) => {
-                  setSelectedCardId(card.id);
-                  setAddCardSheetVisible(false);
-                }}
-                onCancel={() => setAddCardSheetVisible(false)}
-              />
-            </ScrollView>
-          </SafeAreaView>
-        </KeyboardAvoidingView>
-      </Modal>
     </View>
   );
 }
@@ -565,25 +491,29 @@ export default function CheckoutScreen() {
 function Row({
   label,
   value,
-  bold,
   free,
 }: {
   readonly label: string;
   readonly value: string;
-  readonly bold?: boolean;
   readonly free?: boolean;
 }) {
   return (
     <View style={styles.row}>
-      <Text style={[styles.rowLabel, bold && styles.rowLabelBold]}>{label}</Text>
-      <Text style={[styles.rowValue, bold && styles.rowValueBold, free && styles.rowValueFree]}>{value}</Text>
+      <Text style={styles.rowLabel}>{label}</Text>
+      <Text style={[styles.rowValue, free && styles.rowValueFree]}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg.canvas },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, backgroundColor: colors.bg.canvas },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.bg.canvas,
+  },
   emptyCartIcon: {
     width: 64,
     height: 64,
@@ -598,19 +528,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg.surface,
     borderRadius: radius.xl,
     padding: spacing.lg,
-    gap: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border.subtle,
     ...shadow.xs,
   },
-  sectionTitle: { ...typography.overline, color: colors.text.tertiary, marginBottom: spacing.xs },
 
-  fieldRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 44 },
-  fieldIcon: { width: 22, alignItems: 'center' },
-  fieldInput: { flex: 1, ...typography.body, color: colors.text.primary, paddingVertical: spacing.sm },
-  fieldDivider: { height: 1, backgroundColor: colors.border.subtle, marginLeft: 34 },
-
-  shopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
+  shopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   shopIcon: {
     width: 32,
     height: 32,
@@ -634,8 +557,7 @@ const styles = StyleSheet.create({
   itemImg: { width: '100%', height: '100%' },
   itemImgPlaceholder: { backgroundColor: colors.brand.primarySurface },
   itemName: { ...typography.bodySmall, color: colors.text.primary, fontWeight: '600' },
-  itemUnit: { ...typography.caption, color: colors.text.tertiary, marginTop: 1 },
-  itemPrice: { ...typography.priceSmall, marginTop: 1 },
+  itemPrice: { ...typography.priceSmall, marginTop: 2 },
   qtyControls: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -656,12 +578,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1.5,
     borderColor: colors.border.subtle,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   payRowActive: { borderColor: colors.brand.primary, backgroundColor: colors.brand.primarySurface },
   payText: { ...typography.body, fontWeight: '600', flex: 1 },
   payTextActive: { color: colors.brand.primary },
-  cardSubList: { gap: spacing.sm, paddingLeft: spacing.md, marginTop: 2, marginBottom: spacing.xs },
+  cardSubList: { gap: spacing.sm, paddingLeft: spacing.md, marginTop: spacing.xs },
   cardSubRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs },
   radio: {
     width: 20,
@@ -676,15 +598,13 @@ const styles = StyleSheet.create({
   radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.brand.primary },
   cardSubText: { ...typography.bodySmall, color: colors.text.primary, flex: 1 },
   cardSubDefault: { ...typography.caption, color: colors.brand.primary, fontWeight: '700' },
-  addCardHint: { ...typography.caption, color: colors.brand.primary, fontWeight: '700', marginTop: spacing.xs },
+  addCardLink: { ...typography.bodySmall, color: colors.brand.primary, fontWeight: '700', paddingVertical: spacing.xs },
 
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 3 },
   rowLabel: { ...typography.body, color: colors.text.secondary },
-  rowLabelBold: { color: colors.text.primary, fontWeight: '700' },
   rowValue: { ...typography.body, fontWeight: '600' },
-  rowValueBold: { ...typography.h3, color: colors.brand.primary },
   rowValueFree: { color: colors.feedback.success, fontWeight: '700' },
-  divider: { height: 1, backgroundColor: colors.border.subtle, marginVertical: spacing.xs },
+  divider: { height: 1, backgroundColor: colors.border.subtle, marginTop: spacing.sm, marginBottom: spacing.md },
   warn: {
     ...typography.bodySmall,
     color: colors.feedback.warning,
@@ -721,23 +641,4 @@ const styles = StyleSheet.create({
   },
   orderBtnDisabled: { backgroundColor: colors.text.hint },
   orderBtnText: { ...typography.button, color: colors.text.onPrimary },
-
-  sheetBackdrop: { flex: 1, backgroundColor: colors.overlay.scrim },
-  sheetWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
-  sheetCard: {
-    backgroundColor: colors.bg.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    maxHeight: '85%',
-  },
-  sheetScroll: { padding: layout.screenPadding, paddingBottom: spacing['3xl'] },
-  sheetHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.border.strong,
-    alignSelf: 'center',
-    marginBottom: spacing.md,
-  },
-  sheetTitle: { ...typography.h4, color: colors.text.primary, marginBottom: spacing.md },
 });
