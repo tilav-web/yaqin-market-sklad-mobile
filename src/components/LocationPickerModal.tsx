@@ -65,7 +65,7 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
   const [locating, setLocating] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mapRef = useRef<MapView>(null);
-  const lift = useRef(new Animated.Value(0)).current;
+  const [lift] = useState(() => new Animated.Value(0));
 
   // Reset to the starting point whenever the modal (re)opens — during render,
   // so the map never opens on the previously picked spot for a frame.

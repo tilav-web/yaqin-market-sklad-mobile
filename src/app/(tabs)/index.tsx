@@ -236,8 +236,11 @@ export default function HomeScreen() {
   // onLayout firings as the row animates its own height are ignored.
   const onExpandedRowLayout = useCallback(
     (height: number) => {
-      if (expandedRowHeight.value !== 0) return;
-      expandedRowHeight.value = height;
+      // `.get()`/`.set()` rather than `.value` here: this runs on the JS side
+      // inside a useCallback, where the compiler cannot tell that a shared
+      // value is meant to be mutated. Inside worklets `.value` stays fine.
+      if (expandedRowHeight.get() !== 0) return;
+      expandedRowHeight.set(height);
       setFullHeaderHeight(insets.top + spacing.sm + height + HEADER_ROW_GAP + SEARCH_BAR_HEIGHT + spacing.md);
     },
     [expandedRowHeight, insets.top],

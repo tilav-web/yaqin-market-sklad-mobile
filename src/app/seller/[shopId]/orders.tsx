@@ -38,6 +38,9 @@ const FILTERS: { key: Filter; label: string }[] = [
 
 // "Jarayonda" = accepted/preparing/delivering. "Yangi" = only awaiting accept.
 // "Yakunlangan" = fully closed (delivered or cancelled).
+// Stable identity for the "not loaded yet" case — a fresh `[]` on every render
+// would invalidate the count/filter memos each time.
+const NO_ORDERS: Order[] = [];
 const PROGRESS: OrderStatus[] = ['accepted', 'preparing', 'delivering'];
 const DONE: OrderStatus[] = ['delivered', 'cancelled', 'seller_no_response', 'seller_rejected'];
 
@@ -97,7 +100,7 @@ export default function SellerOrdersScreen() {
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
-  const all = ordersQuery.data ?? [];
+  const all = ordersQuery.data ?? NO_ORDERS;
   const counts = useMemo(
     () => ({
       new: all.filter((o) => o.status === 'new').length,

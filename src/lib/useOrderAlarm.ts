@@ -17,8 +17,13 @@ export type { PendingOrder } from '@/stores/alarmState';
  */
 export function useOrderAlarm(shopId: string | undefined) {
   const alarm = useShopAlarm(shopId);
+  // Latest-value ref so the socket callbacks below stay stable instead of
+  // re-subscribing whenever the alarm settings change. Mirrored in an effect,
+  // not during render — the callbacks only ever fire after commit.
   const alarmRef = useRef(alarm);
-  alarmRef.current = alarm;
+  useEffect(() => {
+    alarmRef.current = alarm;
+  }, [alarm]);
 
   const pending = useAlarmState((s) => s.pending);
   const setPending = useAlarmState((s) => s.setPending);

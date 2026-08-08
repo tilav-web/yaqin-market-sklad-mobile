@@ -33,8 +33,8 @@ export function useToast() {
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toast, setToast] = useState<Toast | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const translateY = useRef(new Animated.Value(-80)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+  const [translateY] = useState(() => new Animated.Value(-80));
+  const [opacity] = useState(() => new Animated.Value(0));
   const insets = useSafeAreaInsets();
 
   const dismiss = useCallback(() => {

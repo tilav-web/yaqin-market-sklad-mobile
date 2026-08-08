@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, ViewStyle } from 'react-native';
 
 import { colors, radius as radiusToken } from '@/theme';
@@ -11,7 +11,7 @@ interface Props {
 }
 
 export function Skeleton({ width = '100%', height = 16, radius = radiusToken.sm, style }: Props) {
-  const opacity = useRef(new Animated.Value(0.5)).current;
+  const [opacity] = useState(() => new Animated.Value(0.5));
 
   useEffect(() => {
     const loop = Animated.loop(

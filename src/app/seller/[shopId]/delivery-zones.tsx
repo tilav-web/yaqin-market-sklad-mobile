@@ -46,7 +46,13 @@ export default function DeliveryZonesScreen() {
   const mapRef = useRef<MapView>(null);
   const mapWrapRef = useRef<View>(null);
   // Map view page-absolute offset (for coordinateForPoint conversion)
+  // Kept as a ref because the PanResponder below is created once and its
+  // handlers must read the current offset, not the one captured at creation.
+  // `mapOrigin` mirrors it as state for the SVG preview line: that is drawn
+  // during render, and a ref read there never repaints when the offset
+  // changes (e.g. after a rotation or a re-layout).
   const mapOffset = useRef({ x: 0, y: 0 });
+  const [mapOrigin, setMapOrigin] = useState({ x: 0, y: 0 });
   // Screen position of the first vertex of the active zone (for snap-close)
   const firstPx = useRef<{ x: number; y: number } | null>(null);
 
@@ -112,8 +118,14 @@ export default function DeliveryZonesScreen() {
     }
   };
 
-  /* ── PanResponder (stable ref — reads mutable refs, uses stable setters) ── */
-  const panRef = useRef(
+  /* ── PanResponder (created once — reads mutable refs, uses stable setters) ── */
+  // The rule sees `pencilRef.current` & co. inside this initializer and reads
+  // them as render-time ref access. They are not: every one of them sits in a
+  // gesture handler that only runs on touch, long after mount — which is
+  // exactly what refs are for. The responder is deliberately built once so the
+  // gesture is not torn down and rebuilt on every vertex the seller draws.
+  // eslint-disable-next-line react-hooks/refs
+  const [panRef] = useState(() =>
     PanResponder.create({
       onStartShouldSetPanResponder: () =>
         pencilRef.current && !closedRef.current[zoneRef.current],
@@ -185,8 +197,8 @@ export default function DeliveryZonesScreen() {
         if (zoneRef.current === 'delivery') setDverts((p) => [...p, coord]);
         else setFverts((p) => [...p, coord]);
       },
-    })
-  ).current;
+    }),
+  );
 
   /* ── derived values ── */
   const verts = zone === 'delivery' ? dverts : fverts;
@@ -281,6 +293,7 @@ export default function DeliveryZonesScreen() {
         onLayout={() => {
           mapWrapRef.current?.measure((_x, _y, _w, _h, px, py) => {
             mapOffset.current = { x: px, y: py };
+            setMapOrigin({ x: px, y: py });
           });
         }}
       >
@@ -329,10 +342,10 @@ export default function DeliveryZonesScreen() {
         {pencilOn && svgLine && (
           <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
             <Line
-              x1={svgLine.x1 - mapOffset.current.x}
-              y1={svgLine.y1 - mapOffset.current.y}
-              x2={svgLine.x2 - mapOffset.current.x}
-              y2={svgLine.y2 - mapOffset.current.y}
+              x1={svgLine.x1 - mapOrigin.x}
+              y1={svgLine.y1 - mapOrigin.y}
+              x2={svgLine.x2 - mapOrigin.x}
+              y2={svgLine.y2 - mapOrigin.y}
               stroke={activeColor}
               strokeWidth={2.5}
               strokeDasharray="6,5"

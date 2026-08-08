@@ -119,7 +119,12 @@ export default function SellerOrderDetailScreen() {
   // Har bir dona uchun bitta Data Matrix kod; kodlar chekka kiradi (qonun
   // talabi). Skaner ochiq qoladi — sotilgan donalar soni yig'ilguncha.
   const [markingItem, setMarkingItem] = useState<OrderItem | null>(null);
+  // The ref stays the accumulator: scans can land back-to-back and each one
+  // must see the previous code, which a state read in the same tick would
+  // miss. `markingCount` mirrors its length purely so the scanner title
+  // re-renders — reading the ref during render never repainted the counter.
   const markingCodesRef = useRef<string[]>([]);
+  const [markingCount, setMarkingCount] = useState(0);
   const saveMarking = useMutation({
     mutationFn: (payload: { orderItemId: string; codes: string[] }) =>
       api.put(`/orders/${orderId}/marking-codes`, { items: [payload] }),
@@ -129,6 +134,7 @@ export default function SellerOrderDetailScreen() {
 
   const openMarkingScanner = (it: OrderItem) => {
     markingCodesRef.current = [...(it.markingCodes ?? [])];
+    setMarkingCount(markingCodesRef.current.length);
     setMarkingItem(it);
   };
 
@@ -141,6 +147,7 @@ export default function SellerOrderDetailScreen() {
     }
     haptics.success();
     markingCodesRef.current = [...markingCodesRef.current, code];
+    setMarkingCount(markingCodesRef.current.length);
     saveMarking.mutate({ orderItemId: item.id, codes: markingCodesRef.current });
     const needed = item.quantity - item.returnedQuantity;
     if (markingCodesRef.current.length >= needed) setMarkingItem(null);
@@ -471,7 +478,7 @@ export default function SellerOrderDetailScreen() {
         barcodeTypes={['datamatrix']}
         title={
           markingItem
-            ? `${markingItem.productName} — markirovka kodini skanlang (${markingCodesRef.current.length}/${markingItem.quantity - markingItem.returnedQuantity})`
+            ? `${markingItem.productName} — markirovka kodini skanlang (${markingCount}/${markingItem.quantity - markingItem.returnedQuantity})`
             : 'Markirovka kodini skanlang'
         }
       />

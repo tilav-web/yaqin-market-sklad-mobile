@@ -20,6 +20,9 @@ export function useMultiOrderSocket(orderIds: string[]): Record<string, CourierL
   useEffect(() => {
     if (orderIds.length === 0) return;
     let cancelled = false;
+    // Captured once: the cleanup must leave the rooms THIS run joined, and
+    // reading `joinedRef.current` at teardown time could see a later Set.
+    const joined = joinedRef.current;
 
     const onLocation = (data: CourierLocation) => {
       if (cancelled) return;
@@ -29,9 +32,9 @@ export function useMultiOrderSocket(orderIds: string[]): Record<string, CourierL
     void getSocket().then((socket) => {
       if (cancelled) return;
       for (const id of orderIds) {
-        if (!joinedRef.current.has(id)) {
+        if (!joined.has(id)) {
           socket.emit('join:order', id);
-          joinedRef.current.add(id);
+          joined.add(id);
         }
       }
       socket.on('courier:location', onLocation);
@@ -41,8 +44,8 @@ export function useMultiOrderSocket(orderIds: string[]): Record<string, CourierL
       cancelled = true;
       void getSocket().then((socket) => {
         socket.off('courier:location', onLocation);
-        for (const id of joinedRef.current) socket.emit('leave:order', id);
-        joinedRef.current.clear();
+        for (const id of joined) socket.emit('leave:order', id);
+        joined.clear();
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` is the intentional dep, orderIds itself changes identity every render

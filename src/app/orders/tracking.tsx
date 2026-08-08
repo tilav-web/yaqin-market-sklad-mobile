@@ -25,6 +25,10 @@ interface ActiveDelivery {
   courierLocation: { lat: number; lng: number; etaMinutes: number | null; updatedAt: string } | null;
 }
 
+// Stable identity for the "not loaded yet" case — a fresh `[]` on every render
+// would invalidate the memos below each time.
+const NO_DELIVERIES: ActiveDelivery[] = [];
+
 // Distinct marker colors so several couriers on one map stay tellable apart.
 const MARKER_COLORS = [colors.brand.primary, '#2563EB', '#059669', '#D97706', '#7C3AED', '#DB2777'];
 
@@ -39,7 +43,7 @@ export default function TrackingScreen() {
     refetchInterval: 15_000,
   });
 
-  const deliveries = deliveriesQuery.data ?? [];
+  const deliveries = deliveriesQuery.data ?? NO_DELIVERIES;
   const orderIds = useMemo(() => deliveries.map((d) => d.orderId), [deliveries]);
   const liveLocations = useMultiOrderSocket(orderIds);
 

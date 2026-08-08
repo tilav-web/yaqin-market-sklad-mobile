@@ -32,10 +32,6 @@ export default function BlockedUsersScreen() {
     },
   });
 
-  if (isOwner === false) {
-    return <OwnerOnlyNotice />;
-  }
-
   const unblock = useMutation({
     mutationFn: async (userId: string) => {
       await api.post(`/seller/shops/${shopId}/unblock-user`, { userId });
@@ -43,6 +39,14 @@ export default function BlockedUsersScreen() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['blocked', shopId] }),
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
+
+  // Must stay below every hook: `useIsShopOwner` reports `undefined` until the
+  // shops query resolves, so a staff member rendered this screen once with the
+  // mutation hook and then again without it — React sees the hook count drop
+  // and throws "Rendered fewer hooks than expected".
+  if (isOwner === false) {
+    return <OwnerOnlyNotice />;
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
