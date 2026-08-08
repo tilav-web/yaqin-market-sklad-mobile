@@ -245,6 +245,10 @@ function MapThumb({ latitude, longitude }: { readonly latitude: number; readonly
   return (
     <View style={styles.mapThumb} pointerEvents="none">
       <MapView
+        // Lite mode renders a static bitmap that does not follow later region
+        // changes — remount on the coordinates so switching address actually
+        // repaints the preview instead of keeping the previous address's map.
+        key={`${latitude},${longitude}`}
         style={StyleSheet.absoluteFill}
         provider={PROVIDER_GOOGLE}
         liteMode={Platform.OS === 'android'}

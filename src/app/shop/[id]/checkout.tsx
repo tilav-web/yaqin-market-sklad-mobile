@@ -226,17 +226,21 @@ export default function CheckoutScreen() {
   // The single reason the order can't be placed, shown as a slim band above
   // the footer button. Min-order also carries a fill ratio so the customer
   // sees how close they are instead of only being told "not enough".
-  const blocker = !selectedAddressId
-    ? { text: tr('checkout.noAddressTitle'), danger: false, progress: null }
-    : outOfZone
-      ? { text: tr('checkout.zoneOut'), danger: true, progress: null }
-      : belowMin
-        ? {
-            text: tr('checkout.addMore', { rest: (minOrder - subTotal).toLocaleString() }),
-            danger: false,
-            progress: Math.min(100, Math.round((subTotal / minOrder) * 100)),
-          }
-        : null;
+  // Stays silent while the saved addresses are still in flight — one of them
+  // is about to be auto-selected, so "no address" would be a false alarm.
+  const blocker = addressesQuery.isLoading
+    ? null
+    : !selectedAddressId
+      ? { text: tr('checkout.noAddressTitle'), danger: false, progress: null }
+      : outOfZone
+        ? { text: tr('checkout.zoneOut'), danger: true, progress: null }
+        : belowMin
+          ? {
+              text: tr('checkout.addMore', { rest: (minOrder - subTotal).toLocaleString() }),
+              danger: false,
+              progress: Math.min(100, Math.round((subTotal / minOrder) * 100)),
+            }
+          : null;
 
   const zone: ZoneState = !selectedAddress
     ? 'unknown'
@@ -333,10 +337,19 @@ export default function CheckoutScreen() {
 
             <View style={styles.divider} />
             <Row label={tr('cart.subtotal')} value={`${subTotal.toLocaleString()} ${tr('common.som')}`} />
+            {/* Until the shop (and with it the zone fee) has loaded the fee is
+                simply unknown — showing the 0 default would advertise free
+                delivery for a moment and then take it away. */}
             <Row
               label={tr('cart.deliveryFee')}
-              value={deliveryFee === 0 ? tr('shop.freeShort') : `${deliveryFee.toLocaleString()} ${tr('common.som')}`}
-              free={deliveryFee === 0}
+              value={
+                !shop
+                  ? '—'
+                  : deliveryFee === 0
+                    ? tr('shop.freeShort')
+                    : `${deliveryFee.toLocaleString()} ${tr('common.som')}`
+              }
+              free={!!shop && deliveryFee === 0}
             />
           </View>
 
