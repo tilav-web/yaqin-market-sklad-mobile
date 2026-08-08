@@ -34,7 +34,7 @@ export default function AddressesScreen() {
 
   const selectedAddress = useLocationStore((s) => s.selectedAddress);
   const setSelectedAddress = useLocationStore((s) => s.setSelectedAddress);
-  const useCurrentLocation = useLocationStore((s) => s.useCurrentLocation);
+  const switchToCurrentLocation = useLocationStore((s) => s.switchToCurrentLocation);
 
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -148,7 +148,7 @@ export default function AddressesScreen() {
     onSuccess: (id) => {
       qc.invalidateQueries({ queryKey: ['my-addresses'] });
       // If the deleted address was the active one, fall back to GPS.
-      if (selectedAddress?.id === id) useCurrentLocation();
+      if (selectedAddress?.id === id) switchToCurrentLocation();
     },
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });

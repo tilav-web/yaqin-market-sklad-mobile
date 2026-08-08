@@ -18,7 +18,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { tr } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
-import { PublicShop } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 interface DaySlot {

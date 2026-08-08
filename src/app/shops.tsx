@@ -11,7 +11,7 @@ import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { PublicShop } from '@/lib/types';
 import { useEffectiveCoords } from '@/stores/location';
-import { colors, layout, spacing } from '@/theme';
+import { colors, layout } from '@/theme';
 
 export default function ShopsListScreen() {
   const { tr } = useTranslation();

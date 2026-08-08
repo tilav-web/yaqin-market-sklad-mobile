@@ -17,7 +17,7 @@ import {
 import { tr } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { BrakReasonCode } from '@/lib/types';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography } from '@/theme';
 
 const REASONS: { key: BrakReasonCode; label: string }[] = [
   { key: 'expired', label: "Muddati o'tdi" },

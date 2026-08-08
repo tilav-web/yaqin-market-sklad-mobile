@@ -1,4 +1,13 @@
-import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
+// `create` and `isAxiosError` are imported by name rather than reached through
+// the default export — as `axios.create` / `axios.isAxiosError` they read as
+// members of the default instance, which is not what they are.
+import axios, {
+  AxiosError,
+  AxiosRequestConfig,
+  create as createAxios,
+  InternalAxiosRequestConfig,
+  isAxiosError,
+} from 'axios';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
@@ -24,7 +33,7 @@ function inferDevApiUrl(): string {
 
 export const API_URL = inferDevApiUrl();
 
-export const api = axios.create({
+export const api = createAxios({
   baseURL: `${API_URL}/api`,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
@@ -89,7 +98,7 @@ async function refreshAccess(): Promise<string | null> {
       // Only clear tokens when the server definitively rejects the refresh token
       // (401 = expired / revoked). Network errors or server 5xx must NOT log
       // the user out — the session is still valid, connectivity is the problem.
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
+      if (isAxiosError(err) && err.response?.status === 401) {
         await tokenStorage.clear();
         // Refresh token is dead — this is a forced logout. Drop cached queries
         // and tear down the socket so the next login never flashes stale data.
@@ -112,7 +121,7 @@ export interface ApiErrorBody {
 }
 
 export function extractErrorMessage(err: unknown): string {
-  if (axios.isAxiosError(err)) {
+  if (isAxiosError(err)) {
     const body = err.response?.data as ApiErrorBody | undefined;
     if (body?.message) {
       return Array.isArray(body.message) ? body.message.join(', ') : body.message;

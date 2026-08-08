@@ -99,17 +99,6 @@ export default function DeliveryZonesScreen() {
     ? { latitude: shopQuery.data.latitude, longitude: shopQuery.data.longitude }
     : QARSHI;
 
-  /* ── coordinate conversion helper (screen → map lat/lng) ── */
-  const toLatLng = async (pageX: number, pageY: number): Promise<LatLng | null> => {
-    try {
-      const lx = pageX - mapOffset.current.x;
-      const ly = pageY - mapOffset.current.y;
-      return await mapRef.current?.coordinateForPoint({ x: lx, y: ly }) ?? null;
-    } catch {
-      return null;
-    }
-  };
-
   /* Screen position of a LatLng on the map (for snap indicator) */
   const toScreen = async (coord: LatLng): Promise<{ x: number; y: number } | null> => {
     try {

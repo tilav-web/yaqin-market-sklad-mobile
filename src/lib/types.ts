@@ -17,13 +17,13 @@ export interface PublicShop {
   ratingAverage: number;
   ratingCount: number;
   isOpenManual: boolean;
-  workingHours: Array<{
+  workingHours: {
     dayOfWeek: number;
     openTime: string;
     closeTime: string;
     isOpen: boolean;
-  }>;
-  holidays?: Array<{ date: string; reason?: string }>;
+  }[];
+  holidays?: { date: string; reason?: string }[];
   deliveryZone: {
     maxKm: number;
     freeKm: number;
@@ -189,7 +189,7 @@ export interface Order {
   status: OrderStatus;
   paymentMethod: 'cash' | 'click_online';
   paymentStatus: 'not_required' | 'pending' | 'paid' | 'failed';
-  timeline: Array<{ status: OrderStatus; at: string; note?: string }>;
+  timeline: { status: OrderStatus; at: string; note?: string }[];
   createdAt: string;
   /** Optional free-text reason the customer added for returned items. */
   returnReason?: string | null;

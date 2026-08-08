@@ -9,7 +9,7 @@ import { colors } from '@/theme';
 // still swipeable, still wired into file-based routing — repositioned to
 // the bottom and skinned with our own CustomTabBar so it reads as an
 // ordinary bottom tab bar rather than a top one.
-const renderTabBar = (props: any) => <CustomTabBar {...props} />; // eslint-disable-line @typescript-eslint/no-explicit-any
+const renderTabBar = (props: any) => <CustomTabBar {...props} />;  
 
 export default function TabsLayout() {
   return (

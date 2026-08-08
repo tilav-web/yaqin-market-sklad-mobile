@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { ArrowLeft, BadgeCheck, CircleAlert, CircleHelp, Landmark } from 'lucide-react-native';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Pressable } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View , Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '@/lib/api';

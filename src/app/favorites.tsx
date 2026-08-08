@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { api, resolveMedia } from '@/lib/api';
+import { api } from '@/lib/api';
 import { PublicProductVariant, PublicShop } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';

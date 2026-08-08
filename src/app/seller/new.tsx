@@ -10,7 +10,7 @@ import { LocationPickerModal, PickedLocation } from '@/components/LocationPicker
 import { ImageUploader } from '@/components/seller/ImageUploader';
 import { api, extractErrorMessage } from '@/lib/api';
 import { useEffectiveCoords } from '@/stores/location';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { colors, layout, radius, spacing, typography } from '@/theme';
 
 export default function NewShopScreen() {
   const qc = useQueryClient();

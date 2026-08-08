@@ -4,7 +4,7 @@ import { createLiveActivity } from 'expo-widgets';
 import type { SFSymbols7_0 } from 'sf-symbols-typescript';
 
 // Lazy-import Image so it doesn't break on non-iOS at module-init time
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 let Img: any;
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports

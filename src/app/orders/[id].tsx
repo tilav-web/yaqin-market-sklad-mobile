@@ -1,6 +1,5 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useLocalSearchParams } from 'expo-router';
-import { router } from 'expo-router';
+import { useLocalSearchParams , router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { AlertCircle, Banknote, Check, CreditCard, MessageCircle, RefreshCw, RotateCcw, Star, X } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -18,7 +17,6 @@ import {
   View,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
 import { CardVisual } from '@/components/CardVisual';

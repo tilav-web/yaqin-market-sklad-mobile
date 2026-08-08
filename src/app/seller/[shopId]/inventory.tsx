@@ -31,7 +31,6 @@ import { useShopAccess } from '@/lib/useIsShopOwner';
 import {
   Category,
   ExpiringVariant,
-  GlobalProduct,
   LowStockVariant,
   PublicProductVariant,
   SellerVariant,
@@ -183,7 +182,7 @@ export default function SellerInventoryScreen() {
   });
 
   const openVariantMenu = (item: SellerVariant) => {
-    const options: Array<{ text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }> = [];
+    const options: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [];
     if (access.has('inventory.product.create')) {
       options.push({ text: 'Nusxa ko‘chir', onPress: () => duplicate.mutate(item.id) });
     }

@@ -26,7 +26,7 @@ export function AddressPickerSheet({ visible, onClose }: Props) {
   const { tr } = useTranslation();
   const selectedAddress = useLocationStore((s) => s.selectedAddress);
   const setSelectedAddress = useLocationStore((s) => s.setSelectedAddress);
-  const useCurrentLocation = useLocationStore((s) => s.useCurrentLocation);
+  const switchToCurrentLocation = useLocationStore((s) => s.switchToCurrentLocation);
 
   const addressesQuery = useQuery({
     queryKey: ['my-addresses'],
@@ -41,7 +41,7 @@ export function AddressPickerSheet({ visible, onClose }: Props) {
 
   const pickGps = () => {
     haptics.selection();
-    useCurrentLocation();
+    switchToCurrentLocation();
     onClose();
   };
 

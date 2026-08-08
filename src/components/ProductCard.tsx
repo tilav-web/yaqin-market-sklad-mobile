@@ -1,7 +1,6 @@
 import { Plus, ShoppingBag, Store } from 'lucide-react-native';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { useTranslation } from '@/i18n';
 import { trackAddToCart } from '@/lib/analyticsQueue';
 import { resolveMedia } from '@/lib/api';
 import { FeedProduct } from '@/lib/types';
@@ -24,7 +23,6 @@ interface Props {
  * The CTA collapses into a quantity counter once the variant is in the cart.
  */
 export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props) {
-  const { tr } = useTranslation();
   const addItem = useCartStore((s) => s.addItem);
   const lines = useCartStore((s) => s.carts[product.shopId] ?? EMPTY_CART);
   const updateQty = useCartStore((s) => s.updateQty);

@@ -17,8 +17,10 @@ interface LocationState {
   refresh: () => Promise<void>;
   /** Pick a saved address as the active location, or null to fall back to GPS. */
   setSelectedAddress: (address: UserAddress | null) => void;
-  /** Switch back to the device's live GPS location. */
-  useCurrentLocation: () => void;
+  /** Switch back to the device's live GPS location. Deliberately not named
+   *  `use…`: it is a plain store action, and a `use` prefix made the hooks
+   *  lint rule read every call site as a conditional hook call. */
+  switchToCurrentLocation: () => void;
   /** Drop the selected address on sign-out so the next user on this device
    *  doesn't inherit the previous account's saved delivery address. */
   reset: () => void;
@@ -69,7 +71,7 @@ export const useLocationStore = create<LocationState>()(
         set({ selectedAddress: address });
       },
 
-      useCurrentLocation() {
+      switchToCurrentLocation() {
         set({ selectedAddress: null });
         void get().refresh();
       },
