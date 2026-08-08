@@ -52,10 +52,8 @@ export default function OrdersScreen() {
             <Navigation size={16} color={colors.text.onPrimary} strokeWidth={2.4} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.trackingTitle}>Jonli kuzatuv</Text>
-            <Text style={styles.trackingSubtitle}>
-              {activeCount} ta faol buyurtma — barchasini bitta xaritada ko'ring
-            </Text>
+            <Text style={styles.trackingTitle}>{tr('tracking.title')}</Text>
+            <Text style={styles.trackingSubtitle}>{tr('tracking.bannerDesc', { n: activeCount })}</Text>
           </View>
           <ChevronRight size={18} color={colors.brand.primary} />
         </Pressable>

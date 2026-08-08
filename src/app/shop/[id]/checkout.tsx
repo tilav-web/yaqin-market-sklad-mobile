@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CardVisual } from '@/components/CardVisual';
 import { CheckoutAddressSheet } from '@/components/CheckoutAddressSheet';
-import { CheckoutDeliveryCard, ZoneState } from '@/components/CheckoutDeliveryCard';
+import { CheckoutDeliveryCard } from '@/components/CheckoutDeliveryCard';
 import { useToast } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
@@ -242,16 +242,6 @@ export default function CheckoutScreen() {
             }
           : null;
 
-  const zone: ZoneState = !selectedAddress
-    ? 'unknown'
-    : shopQuery.isFetching
-      ? 'checking'
-      : shop?.isWithinZone === false
-        ? 'out'
-        : shop?.isWithinZone === true
-          ? 'in'
-          : 'unknown';
-
   if (!cartLines.length) {
     return (
       <SafeAreaView style={styles.center}>
@@ -359,8 +349,6 @@ export default function CheckoutScreen() {
             hasSavedAddresses={(addressesQuery.data?.length ?? 0) > 0}
             onChangeAddress={() => setAddressSheetVisible(true)}
             onAddAddress={() => router.push('/addresses')}
-            zone={zone}
-            distanceKm={shop?.distanceKm}
             gpsAvailable={!!deviceCoords}
             gpsLoading={gpsLoading}
             onEnableGps={() => void refreshGps()}

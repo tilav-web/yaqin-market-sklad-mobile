@@ -1,5 +1,4 @@
 import {
-  Check,
   ChevronRight,
   Crosshair,
   LocateFixed,
@@ -17,9 +16,6 @@ import { UserAddress } from '@/lib/types';
 import { colors, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
-/** Delivery-zone verdict for the picked address, as reported by the shop query. */
-export type ZoneState = 'checking' | 'in' | 'out' | 'unknown';
-
 interface Props {
   readonly address: UserAddress | undefined;
   readonly loading: boolean;
@@ -28,8 +24,6 @@ interface Props {
   readonly hasSavedAddresses: boolean;
   readonly onChangeAddress: () => void;
   readonly onAddAddress: () => void;
-  readonly zone: ZoneState;
-  readonly distanceKm?: number;
   /** Device GPS — surfaced so an unresolved location is visible rather than silent. */
   readonly gpsAvailable: boolean;
   readonly gpsLoading: boolean;
@@ -49,11 +43,12 @@ interface Props {
 }
 
 /**
- * Checkout's "where to" block: the picked address (with a static map preview
- * and an unmistakable selected/not-selected state) fused into one card with
- * everything the courier needs to reach the door — entrance/floor/apartment/
- * intercom, phone and a note. They live in a single hairline-divided group
- * because none of them mean anything apart from the address above them.
+ * Checkout's "where to" block: the picked address (with a static map preview,
+ * and an unmissable empty state when nothing is picked yet) fused into one
+ * card with everything the courier needs to reach the door —
+ * entrance/floor/apartment/intercom, phone and a note. They live in a single
+ * hairline-divided group because none of them mean anything apart from the
+ * address above them.
  */
 export function CheckoutDeliveryCard({
   address,
@@ -61,8 +56,6 @@ export function CheckoutDeliveryCard({
   hasSavedAddresses,
   onChangeAddress,
   onAddAddress,
-  zone,
-  distanceKm,
   gpsAvailable,
   gpsLoading,
   onEnableGps,
@@ -148,19 +141,12 @@ export function CheckoutDeliveryCard({
         }}>
         <MapThumb latitude={address.latitude} longitude={address.longitude} />
         <View style={styles.addressBody}>
-          <View style={styles.labelRow}>
-            <Text style={styles.addressLabel} numberOfLines={1}>
-              {address.label}
-            </Text>
-            <View style={styles.selectedChip}>
-              <Check size={10} color={colors.text.onPrimary} strokeWidth={3.4} />
-              <Text style={styles.selectedChipText}>{tr('checkout.selectedBadge')}</Text>
-            </View>
-          </View>
+          <Text style={styles.addressLabel} numberOfLines={1}>
+            {address.label}
+          </Text>
           <Text style={styles.addressText} numberOfLines={2}>
             {address.address}
           </Text>
-          <ZonePill zone={zone} distanceKm={distanceKm} />
         </View>
         <ChevronRight size={18} color={colors.text.tertiary} strokeWidth={2.4} />
       </Pressable>
@@ -266,35 +252,6 @@ function MapThumb({ latitude, longitude }: { readonly latitude: number; readonly
   );
 }
 
-function ZonePill({ zone, distanceKm }: { readonly zone: ZoneState; readonly distanceKm?: number }) {
-  const { tr } = useTranslation();
-  if (zone === 'unknown') return null;
-
-  if (zone === 'checking') {
-    return (
-      <View style={[styles.pill, styles.pillNeutral]}>
-        <ActivityIndicator size="small" color={colors.text.tertiary} />
-        <Text style={[styles.pillText, { color: colors.text.tertiary }]}>{tr('checkout.zoneChecking')}</Text>
-      </View>
-    );
-  }
-
-  const out = zone === 'out';
-  return (
-    <View style={[styles.pill, out ? styles.pillDanger : styles.pillSuccess]}>
-      {out ? (
-        <MapPinOff size={12} color={colors.feedback.danger} strokeWidth={2.6} />
-      ) : (
-        <Check size={12} color={colors.feedback.success} strokeWidth={3} />
-      )}
-      <Text style={[styles.pillText, { color: out ? colors.feedback.danger : colors.feedback.success }]}>
-        {tr(out ? 'checkout.zoneOut' : 'checkout.zoneIn')}
-        {!out && distanceKm != null ? ` · ${tr('checkout.distance', { km: distanceKm.toFixed(1) })}` : ''}
-      </Text>
-    </View>
-  );
-}
-
 interface FieldProps {
   readonly name: string;
   readonly value: string;
@@ -390,18 +347,7 @@ const styles = StyleSheet.create({
   addressRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   addressRowPressed: { opacity: 0.6 },
   addressBody: { flex: 1, gap: 3 },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   addressLabel: { ...typography.h4, color: colors.text.primary, flexShrink: 1 },
-  selectedChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: colors.feedback.success,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-  },
-  selectedChipText: { ...typography.caption, fontSize: 10, color: colors.text.onPrimary, fontWeight: '800' },
   addressText: { ...typography.bodySmall, color: colors.text.secondary },
 
   mapThumb: {
@@ -417,20 +363,6 @@ const styles = StyleSheet.create({
   },
   mapPin: { marginBottom: 6 },
 
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: radius.full,
-    marginTop: 2,
-  },
-  pillSuccess: { backgroundColor: colors.feedback.successSurface },
-  pillDanger: { backgroundColor: colors.feedback.dangerSurface },
-  pillNeutral: { backgroundColor: colors.bg.surfaceMuted },
-  pillText: { ...typography.caption, fontWeight: '700' },
 
   group: {
     borderWidth: 1,

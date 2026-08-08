@@ -144,6 +144,7 @@ function RootNavigator() {
       <Stack.Screen name="shop/[id]/checkout" options={{ title: tr('cart.proceed') }} />
       <Stack.Screen name="orders/index" options={{ title: tr('orders.title') }} />
       <Stack.Screen name="orders/[id]" options={{ title: tr('nav.orderDetail') }} />
+      <Stack.Screen name="orders/tracking" options={{ title: tr('tracking.title') }} />
       <Stack.Screen name="chat/[orderId]" options={{ title: tr('nav.chat') }} />
       <Stack.Screen name="notifications" options={{ title: tr('notifications.title') }} />
       <Stack.Screen name="notification/[id]" options={{ title: tr('nav.notificationDetail') }} />
