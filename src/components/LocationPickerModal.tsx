@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import { Check, MapPin, Navigation, X } from 'lucide-react-native';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PILOT_CITY_CENTER } from '@/constants/geo';
 import { useTranslation } from '@/i18n';
+import { captureEvidence, LocationEvidencePayload, toEvidence } from '@/lib/location-evidence';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -22,6 +23,8 @@ export interface PickedLocation {
   latitude: number;
   longitude: number;
   address: string;
+  /** Device fix captured while the picker was open (anti-fraud) — best-effort, may be absent. */
+  evidence?: LocationEvidencePayload;
 }
 
 interface Props {
@@ -66,6 +69,10 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mapRef = useRef<MapView>(null);
   const [lift] = useState(() => new Animated.Value(0));
+  // Passive device-fix captured while the picker is open — surfaces even if
+  // the customer never taps "my location". Never blocks/warns; anti-fraud
+  // evidence only, see LocationPickerModal's caller for where it's sent.
+  const deviceFixRef = useRef<LocationEvidencePayload | null>(null);
 
   // Reset to the starting point whenever the modal (re)opens — during render,
   // so the map never opens on the previously picked spot for a frame.
@@ -77,6 +84,14 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
       setAddressLabel('');
     }
   }
+
+  useEffect(() => {
+    if (!visible) return;
+    deviceFixRef.current = null;
+    void captureEvidence({ source: 'map_pick' }).then((evidence) => {
+      if (evidence) deviceFixRef.current = evidence;
+    });
+  }, [visible]);
 
   const reverseGeocode = (lat: number, lng: number) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -110,6 +125,9 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return;
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      // A deliberate "use my location" tap is a stronger signal than the
+      // passive on-open capture — overwrite it.
+      deviceFixRef.current = toEvidence(pos, 'foreground');
       haptics.selection();
       mapRef.current?.animateToRegion(
         {
@@ -133,6 +151,7 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
       latitude: center.latitude,
       longitude: center.longitude,
       address: addressLabel,
+      evidence: deviceFixRef.current ?? undefined,
     });
   };
 

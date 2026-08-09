@@ -195,6 +195,13 @@ export interface Order {
   returnReason?: string | null;
   /** Variant IDs the current user has already reviewed for this order (from GET /orders/:id). */
   reviewedVariantIds?: string[];
+  /** Whether the customer already rated the courier/shop for this order (from GET /orders/:id). */
+  courierReviewed?: boolean;
+  shopReviewed?: boolean;
+  /** True only when the assigned courier has an admin-confirmed risk flag — see GET /orders/:id/handshake. */
+  requiresHandshake?: boolean;
+  /** User.id of whoever confirmed delivery on the shop side — null if the customer self-confirmed. Used to show/hide the courier rating block. */
+  deliveredByUserId?: string | null;
   /** Seller-side: joined customer + address (present on /seller/shops/:id/orders). */
   user?: { id: string; name: string | null; phone: string } | null;
   deliveryAddress?: {

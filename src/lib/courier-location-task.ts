@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 
 import { API_URL } from './api';
+import { getDeviceId } from './device-id';
 import { tokenStorage } from './storage';
 
 export const COURIER_LOCATION_TASK = 'courier-location-task';
@@ -43,15 +44,33 @@ TaskManager.defineTask(COURIER_LOCATION_TASK, async ({ data, error }) => {
   if (!location) return;
 
   try {
-    const [orderIds, token] = await Promise.all([getActiveOrderIds(), tokenStorage.getAccess()]);
+    const [orderIds, token, deviceId] = await Promise.all([
+      getActiveOrderIds(),
+      tokenStorage.getAccess(),
+      getDeviceId(),
+    ]);
     if (orderIds.length === 0 || !token) return;
 
-    const body = JSON.stringify({ lat: location.coords.latitude, lng: location.coords.longitude });
+    // Full anti-fraud evidence — this raw fetch bypasses lib/api.ts's request
+    // interceptor entirely (a headless TaskManager context can't reuse it),
+    // so accuracy/mocked/source/device-id are attached explicitly here too.
+    const body = JSON.stringify({
+      lat: location.coords.latitude,
+      lng: location.coords.longitude,
+      accuracy: location.coords.accuracy ?? undefined,
+      capturedAt: new Date(location.timestamp).toISOString(),
+      mocked: location.mocked,
+      source: 'background',
+    });
     await Promise.allSettled(
       orderIds.map((orderId) =>
         fetch(`${API_URL}/api/orders/${orderId}/courier-location`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            'X-Device-Id': deviceId,
+          },
           body,
         }),
       ),

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useGlobalSearchParams } from 'expo-router';
-import { BarChart3, Bell, BookOpen, Check, ChevronRight, Landmark, type LucideIcon, MessageSquare, Settings2, ShieldBan, Star, Store, Tag, Wallet } from 'lucide-react-native';
+import { AlertCircle, BarChart3, Bell, BookOpen, Check, ChevronRight, Landmark, type LucideIcon, MessageSquare, Settings2, ShieldBan, Star, Store, Tag, Wallet } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -199,6 +199,12 @@ export default function SellerHubScreen() {
               title: 'Sharhlar',
               subtitle: 'Mijozlar qoldirgan sharh va baholar',
               onPress: () => router.push(`/seller/${shopId}/reviews`),
+            },
+            access.isOwner !== false && {
+              icon: AlertCircle,
+              title: 'Shikoyatlar',
+              subtitle: 'Mijozlar yuborgan shikoyatlar',
+              onPress: () => router.push(`/seller/${shopId}/complaints` as Href),
             },
             {
               icon: Bell,

@@ -182,6 +182,16 @@ export default function SellerOrderDetailScreen() {
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
+  // QR handshake — only ever shown when order.requiresHandshake is true
+  // (an admin-confirmed risk flag on the assigned courier). Verification is
+  // best-effort and never blocks the delivery; see RiskHandshakeService.
+  const [handshakeScanOpen, setHandshakeScanOpen] = useState(false);
+  const verifyHandshake = useMutation({
+    mutationFn: async (token: string) => {
+      await api.post(`/orders/${orderId}/handshake/verify`, { token });
+    },
+  });
+
   const advance = useAdvanceOrderStatus({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['order-detail', orderId] });
@@ -189,6 +199,18 @@ export default function SellerOrderDetailScreen() {
     },
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
+
+  const proceedToDelivered = () => {
+    if (!order) return;
+    haptics.medium();
+    advance.mutate({ orderId: order.id, status: 'delivered', deliveryAddress: order.deliveryAddress });
+  };
+
+  const handleHandshakeScanned = (raw: string) => {
+    const token = /token=([a-zA-Z0-9]+)/.exec(raw)?.[1];
+    if (token) verifyHandshake.mutate(token);
+    proceedToDelivered();
+  };
 
   const block = useMutation({
     mutationFn: async () => {
@@ -404,6 +426,10 @@ export default function SellerOrderDetailScreen() {
           <Pressable
             style={styles.acceptBtn}
             onPress={() => {
+              if (next.next === 'delivered' && order.requiresHandshake) {
+                setHandshakeScanOpen(true);
+                return;
+              }
               haptics.medium();
               advance.mutate({ orderId: order.id, status: next.next, deliveryAddress: order.deliveryAddress });
             }}>
@@ -519,6 +545,17 @@ export default function SellerOrderDetailScreen() {
               })
             : tr('sellerOrder.markingScan')
         }
+      />
+
+      {/* QR handshake — only rendered when order.requiresHandshake is true. */}
+      <BarcodeScannerModal
+        visible={handshakeScanOpen}
+        onClose={() => setHandshakeScanOpen(false)}
+        onScanned={handleHandshakeScanned}
+        onSkip={proceedToDelivered}
+        skipLabel={tr('sellerOrder.handshakeSkip')}
+        barcodeTypes={['qr']}
+        title={tr('sellerOrder.handshakeScan')}
       />
     </SafeAreaView>
   );

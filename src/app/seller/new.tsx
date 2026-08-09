@@ -34,6 +34,7 @@ export default function NewShopScreen() {
         longitude: point.longitude,
         description: description.trim() || undefined,
         photos,
+        evidence: picked?.evidence,
       });
       return res.data;
     },

@@ -17,6 +17,7 @@ import {
   View,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import QRCode from 'react-native-qrcode-svg';
 
 import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
 import { CardVisual } from '@/components/CardVisual';
@@ -102,6 +103,18 @@ export default function OrderDetailScreen() {
   });
   const mapRef = useRef<MapView | null>(null);
   const { courierLocation } = useOrderSocket(order?.status === 'delivering' ? id : undefined);
+
+  // Almost always `required: false` — only true when the assigned courier
+  // already carries an admin-confirmed risk flag (see RiskHandshakeService).
+  const handshakeQuery = useQuery({
+    queryKey: ['order-handshake', id],
+    queryFn: async () => {
+      const res = await api.get<{ required: boolean; token?: string }>(`/orders/${id}/handshake`);
+      return res.data;
+    },
+    enabled: order?.status === 'delivering' && !!order?.requiresHandshake,
+    staleTime: 60_000,
+  });
 
   // Keep the camera centered on the courier as they move — `initialRegion`
   // only applies to the first render, so without this the pin quietly
@@ -231,6 +244,34 @@ export default function OrderDetailScreen() {
     onSuccess: () => {
       setRatingDraft({});
       setReviewText({});
+      qc.invalidateQueries({ queryKey: ['order', id] });
+      toast.success(tr('orderDet.reviewThanks'));
+    },
+    onError: (e) => toast.error(extractErrorMessage(e)),
+  });
+
+  const [courierStars, setCourierStars] = useState(0);
+  const submitCourierRating = useMutation({
+    mutationFn: async () => {
+      const res = await api.post(`/orders/${id}/review-courier`, { stars: courierStars });
+      return res.data;
+    },
+    onSuccess: () => {
+      setCourierStars(0);
+      qc.invalidateQueries({ queryKey: ['order', id] });
+      toast.success(tr('orderDet.reviewThanks'));
+    },
+    onError: (e) => toast.error(extractErrorMessage(e)),
+  });
+
+  const [shopStars, setShopStars] = useState(0);
+  const submitShopRating = useMutation({
+    mutationFn: async () => {
+      const res = await api.post(`/orders/${id}/review-shop`, { stars: shopStars });
+      return res.data;
+    },
+    onSuccess: () => {
+      setShopStars(0);
       qc.invalidateQueries({ queryKey: ['order', id] });
       toast.success(tr('orderDet.reviewThanks'));
     },
@@ -628,6 +669,60 @@ export default function OrderDetailScreen() {
           <Text style={styles.allReviewed}>{tr('orderDet.allReviewed')}</Text>
         )}
 
+        {/* Delivery/courier rating — separate from per-product reviews. Only
+            shown when a courier is actually attributed (deliveredByUserId is
+            null when the customer self-confirmed receipt). */}
+        {canReview && order.deliveredByUserId && !order.courierReviewed && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{tr('orderDet.rateCourier')}</Text>
+            <StarPicker
+              value={courierStars}
+              onChange={(v) => {
+                haptics.selection();
+                setCourierStars(v);
+              }}
+            />
+            {courierStars > 0 && (
+              <Pressable
+                style={styles.primaryBtn}
+                onPress={() => submitCourierRating.mutate()}
+                disabled={submitCourierRating.isPending}>
+                {submitCourierRating.isPending ? (
+                  <ActivityIndicator color={colors.text.onPrimary} />
+                ) : (
+                  <Text style={styles.primaryBtnText}>{tr('orderDet.submitRating')}</Text>
+                )}
+              </Pressable>
+            )}
+          </View>
+        )}
+
+        {/* Shop/delivery-experience rating — separate from product-quality reviews. */}
+        {canReview && !order.shopReviewed && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{tr('orderDet.rateShop')}</Text>
+            <StarPicker
+              value={shopStars}
+              onChange={(v) => {
+                haptics.selection();
+                setShopStars(v);
+              }}
+            />
+            {shopStars > 0 && (
+              <Pressable
+                style={styles.primaryBtn}
+                onPress={() => submitShopRating.mutate()}
+                disabled={submitShopRating.isPending}>
+                {submitShopRating.isPending ? (
+                  <ActivityIndicator color={colors.text.onPrimary} />
+                ) : (
+                  <Text style={styles.primaryBtnText}>{tr('orderDet.submitRating')}</Text>
+                )}
+              </Pressable>
+            )}
+          </View>
+        )}
+
         {/* Complaint — either its current status, or the filing form (only
             while delivered and within the server's dispute window; a closed
             window surfaces as the server's own rejection toast). */}
@@ -741,6 +836,18 @@ export default function OrderDetailScreen() {
                 </View>
               </>
             )}
+          </View>
+        )}
+
+        {/* QR handshake — only when the assigned courier already carries a
+            confirmed risk flag (almost never). Kuryer skanerlaydi. */}
+        {order.status === 'delivering' && handshakeQuery.data?.required && handshakeQuery.data.token && (
+          <View style={styles.handshakeCard}>
+            <Text style={styles.handshakeTitle}>{tr('orderDet.handshakeTitle')}</Text>
+            <Text style={styles.handshakeBody}>{tr('orderDet.handshakeBody')}</Text>
+            <View style={styles.handshakeQrWrap}>
+              <QRCode value={`yaqinmarket://order/receive?token=${handshakeQuery.data.token}`} size={180} />
+            </View>
           </View>
         )}
 
@@ -1239,6 +1346,18 @@ const styles = StyleSheet.create({
     borderColor: colors.border.subtle,
     overflow: 'hidden',
   },
+  handshakeCard: {
+    backgroundColor: colors.bg.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.brand.primaryBorder,
+    alignItems: 'center',
+  },
+  handshakeTitle: { ...typography.bodyStrong, color: colors.text.primary, textAlign: 'center' },
+  handshakeBody: { ...typography.bodySmall, color: colors.text.secondary, textAlign: 'center' },
+  handshakeQrWrap: { padding: spacing.md, backgroundColor: '#fff', borderRadius: radius.md, marginTop: spacing.xs },
   mapTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs },
   mapTitle: { ...typography.overline, color: colors.text.tertiary },
   mapEta: { ...typography.caption, fontWeight: '700', color: colors.brand.primary },

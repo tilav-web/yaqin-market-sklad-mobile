@@ -94,6 +94,7 @@ export default function AddressesScreen() {
         apartment: apartment.trim() || undefined,
         intercom: intercom.trim() || undefined,
         isDefault: (addressesQuery.data?.length ?? 0) === 0,
+        evidence: picked?.evidence,
       });
       return res.data;
     },
@@ -115,7 +116,7 @@ export default function AddressesScreen() {
       const res = await api.patch<UserAddress>(`/users/me/addresses/${editingId}`, {
         label: capitalizeLabel(label),
         address,
-        ...(picked ? { latitude: picked.latitude, longitude: picked.longitude } : {}),
+        ...(picked ? { latitude: picked.latitude, longitude: picked.longitude, evidence: picked.evidence } : {}),
         entrance: entrance.trim(),
         floor: floor.trim(),
         apartment: apartment.trim(),

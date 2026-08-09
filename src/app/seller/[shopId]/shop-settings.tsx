@@ -105,6 +105,9 @@ export default function ShopSettingsScreen() {
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  // Only set when the picker confirms a NEW pin — absent when `coords` is
+  // just the value loaded from the server (no fresh device fix for that).
+  const [coordsEvidence, setCoordsEvidence] = useState<PickedLocation['evidence']>(undefined);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [hoursOpen, setHoursOpen] = useState(false);
   const [minOrder, setMinOrder] = useState('');
@@ -147,7 +150,7 @@ export default function ShopSettingsScreen() {
         address: address.trim(),
         description: description.trim() || undefined,
         photos,
-        ...(coords ? { latitude: coords.latitude, longitude: coords.longitude } : {}),
+        ...(coords ? { latitude: coords.latitude, longitude: coords.longitude, evidence: coordsEvidence } : {}),
         minOrderPrice: Number(minOrder) || 0,
         deliveryZone: {
           maxKm: Number(maxKm) || 1,
@@ -356,6 +359,7 @@ export default function ShopSettingsScreen() {
         onCancel={() => setPickerVisible(false)}
         onConfirm={(result: PickedLocation) => {
           setCoords({ latitude: result.latitude, longitude: result.longitude });
+          setCoordsEvidence(result.evidence);
           if (result.address) setAddress(result.address);
           setPickerVisible(false);
         }}
