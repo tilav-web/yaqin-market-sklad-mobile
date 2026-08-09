@@ -13,6 +13,7 @@ import { Platform } from 'react-native';
 
 import { tr } from '@/i18n';
 
+import { getDeviceId } from './device-id';
 import { queryClient } from './queryClient';
 import { tokenStorage } from './storage';
 
@@ -56,6 +57,7 @@ api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  config.headers['X-Device-Id'] = await getDeviceId();
   return config;
 });
 

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useFocusEffect, useGlobalSearchParams } from 'expo-router';
 import { Check, ChevronDown, ChevronRight, ChevronUp, MapPin, MessageCircle, Navigation, Package, Phone, RotateCcw, ScanLine, Truck, X } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
 import { EmptyState, useToast } from '@/components/ui';
+import { useAdvanceOrderStatus } from '@/hooks/use-advance-order-status';
 import { TranslationKey, useTranslation } from '@/i18n';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { DeliveryRoute, DeliveryRouteStop, ORDER_STATUS_KEY, Order, OrderStatus } from '@/lib/types';
@@ -94,10 +95,7 @@ export default function SellerOrdersScreen() {
   }, [toast, qc, shopId]);
   useShopRealtime(shopId, onNewOrder);
 
-  const advance = useMutation({
-    mutationFn: async ({ orderId, status }: { orderId: string; status: OrderStatus }) => {
-      await api.patch(`/orders/${orderId}/status`, { status });
-    },
+  const advance = useAdvanceOrderStatus({
     onSuccess: () => qc.invalidateQueries({ queryKey: ['seller-orders', shopId] }),
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
@@ -333,7 +331,10 @@ export default function SellerOrdersScreen() {
               {next && (
                 <Pressable
                   style={[styles.actionBtn, item.status === 'new' && styles.acceptBtn]}
-                  onPress={() => { haptics.medium(); advance.mutate({ orderId: item.id, status: next.next }); }}>
+                  onPress={() => {
+                    haptics.medium();
+                    advance.mutate({ orderId: item.id, status: next.next, deliveryAddress: item.deliveryAddress });
+                  }}>
                   {item.status === 'new' && <Check size={17} color={colors.text.onPrimary} strokeWidth={2.8} />}
                   <Text style={styles.actionBtnText}>{tr(next.labelKey)}</Text>
                 </Pressable>

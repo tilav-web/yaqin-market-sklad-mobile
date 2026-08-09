@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
 import { BarcodeScannerModal } from '@/components/seller/BarcodeScannerModal';
+import { useAdvanceOrderStatus } from '@/hooks/use-advance-order-status';
 import { isTrackingOrder, startCourierTracking, stopCourierTracking } from '@/lib/courier-location-task';
 import { tr, useTranslation, type TranslationKey } from '@/i18n';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
@@ -18,14 +19,19 @@ import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 /**
- * Starts/stops live location reporting to match the order's status —
- * continues in the background (locked phone) once granted, via
- * startCourierTracking/expo-task-manager, not tied to this screen staying
- * mounted. Shows the store-required in-app disclosure before the OS
- * "Always Allow" location prompt.
+ * Mirrors (resumes) live location reporting to match the order's status —
+ * the actual START happens once, in useAdvanceOrderStatus, at the moment
+ * the seller taps "Kuryerga berish" (from EITHER this screen or the orders
+ * list). This hook no longer starts tracking or shows the disclosure Alert
+ * on its own — it only checks whether tracking is currently active and, if
+ * the order is `delivering` but tracking somehow isn't running (background
+ * task killed, permission revoked mid-delivery, or advanced from a build
+ * that predates this), exposes `enable()` for a banner to offer resuming it
+ * instead of silently doing nothing.
  */
-function useCourierTracking(orderId: string | undefined, status: OrderStatus | undefined): boolean {
+function useCourierTracking(orderId: string | undefined, status: OrderStatus | undefined) {
   const [isTracking, setIsTracking] = useState(false);
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
     if (!orderId || !status) return;
@@ -33,7 +39,9 @@ function useCourierTracking(orderId: string | undefined, status: OrderStatus | u
 
     if (status !== 'delivering') {
       void stopCourierTracking(orderId).then(() => {
-        if (!cancelled) setIsTracking(false);
+        if (cancelled) return;
+        setIsTracking(false);
+        setChecked(true);
       });
       return () => {
         cancelled = true;
@@ -42,34 +50,8 @@ function useCourierTracking(orderId: string | undefined, status: OrderStatus | u
 
     void isTrackingOrder(orderId).then((already) => {
       if (cancelled) return;
-      if (already) {
-        setIsTracking(true);
-        return;
-      }
-
-      Alert.alert(
-        tr('sellerOrder.locationShareTitle'),
-        tr('sellerOrder.locationShareBody'),
-        [
-          { text: tr('common.cancel'), style: 'cancel' },
-          {
-            text: tr('sellerOrder.agree'),
-            onPress: () => {
-              void startCourierTracking(orderId).then((result) => {
-                if (cancelled) return;
-                if (result.ok) {
-                  setIsTracking(true);
-                } else {
-                  Alert.alert(
-                    tr('sellerOrder.locationPermTitle'),
-                    tr('sellerOrder.locationPermBody'),
-                  );
-                }
-              });
-            },
-          },
-        ],
-      );
+      setIsTracking(already);
+      setChecked(true);
     });
 
     return () => {
@@ -77,7 +59,30 @@ function useCourierTracking(orderId: string | undefined, status: OrderStatus | u
     };
   }, [orderId, status]);
 
-  return isTracking;
+  const enable = () => {
+    if (!orderId) return;
+    Alert.alert(
+      tr('sellerOrder.locationShareTitle'),
+      tr('sellerOrder.locationShareBody'),
+      [
+        { text: tr('common.cancel'), style: 'cancel' },
+        {
+          text: tr('sellerOrder.agree'),
+          onPress: () => {
+            void startCourierTracking(orderId).then((result) => {
+              if (result.ok) {
+                setIsTracking(true);
+              } else {
+                Alert.alert(tr('sellerOrder.locationPermTitle'), tr('sellerOrder.locationPermBody'));
+              }
+            });
+          },
+        },
+      ],
+    );
+  };
+
+  return { isTracking, needsEnable: checked && status === 'delivering' && !isTracking, enable };
 }
 
 const NEXT_STATUS: Partial<Record<OrderStatus, { next: OrderStatus; label: TranslationKey }>> = {
@@ -153,7 +158,7 @@ export default function SellerOrderDetailScreen() {
     if (markingCodesRef.current.length >= needed) setMarkingItem(null);
   };
 
-  const isTracking = useCourierTracking(orderId, order?.status);
+  const { isTracking, needsEnable, enable: enableTracking } = useCourierTracking(orderId, order?.status);
 
   // Shop staff (to assign a delivering courier).
   const staffQuery = useQuery({
@@ -177,10 +182,7 @@ export default function SellerOrderDetailScreen() {
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
-  const advance = useMutation({
-    mutationFn: async (status: OrderStatus) => {
-      await api.patch(`/orders/${orderId}/status`, { status });
-    },
+  const advance = useAdvanceOrderStatus({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['order-detail', orderId] });
       qc.invalidateQueries({ queryKey: ['seller-orders', order?.shopId] });
@@ -228,6 +230,13 @@ export default function SellerOrderDetailScreen() {
             <Navigation size={13} color={colors.feedback.success} strokeWidth={2.4} />
             <Text style={styles.locationBadgeText}>{tr('sellerOrder.locationSharing')}</Text>
           </View>
+        )}
+        {needsEnable && (
+          <Pressable style={styles.trackingOffBanner} onPress={enableTracking}>
+            <Navigation size={13} color={colors.feedback.warning} strokeWidth={2.4} />
+            <Text style={styles.trackingOffText}>{tr('risk.trackingOffBanner')}</Text>
+            <Text style={styles.trackingOffAction}>{tr('risk.trackingEnable')}</Text>
+          </Pressable>
         )}
 
         {/* Customer */}
@@ -396,7 +405,7 @@ export default function SellerOrderDetailScreen() {
             style={styles.acceptBtn}
             onPress={() => {
               haptics.medium();
-              advance.mutate(next.next);
+              advance.mutate({ orderId: order.id, status: next.next, deliveryAddress: order.deliveryAddress });
             }}>
             <Text style={styles.acceptText}>{tr(next.label)} →</Text>
           </Pressable>
@@ -416,7 +425,7 @@ export default function SellerOrderDetailScreen() {
                   onPress={() =>
                     Alert.alert(tr('sellerOrder.rejectTitle'), tr('sellerOrder.rejectConfirm'), [
                       { text: tr('common.no'), style: 'cancel' },
-                      { text: tr('common.yes'), style: 'destructive', onPress: () => advance.mutate('seller_rejected') },
+                      { text: tr('common.yes'), style: 'destructive', onPress: () => advance.mutate({ orderId: order.id, status: 'seller_rejected' }) },
                     ])
                   }>
                   <Text style={styles.cancelText}>{tr('sellerOrder.rejectTitle')}</Text>
@@ -427,7 +436,7 @@ export default function SellerOrderDetailScreen() {
                   onPress={() =>
                     Alert.alert(tr('orders.cancel'), tr('orders.cancelConfirm'), [
                       { text: tr('common.no'), style: 'cancel' },
-                      { text: tr('common.yes'), style: 'destructive', onPress: () => advance.mutate('cancelled') },
+                      { text: tr('common.yes'), style: 'destructive', onPress: () => advance.mutate({ orderId: order.id, status: 'cancelled' }) },
                     ])
                   }>
                   <Text style={styles.cancelText}>{tr('sellerOrder.cancelOrder')}</Text>
@@ -641,4 +650,24 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   locationBadgeText: { ...typography.caption, color: colors.feedback.success, fontWeight: '700' },
+  trackingOffBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: 5,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.full,
+    backgroundColor: colors.feedback.warningSurface,
+    borderWidth: 1,
+    borderColor: colors.feedback.warning,
+    alignSelf: 'flex-start',
+  },
+  trackingOffText: { ...typography.caption, color: colors.feedback.warning, fontWeight: '700' },
+  trackingOffAction: {
+    ...typography.caption,
+    color: colors.feedback.warning,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+    marginLeft: 2,
+  },
 });

@@ -22,6 +22,7 @@ import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
 import { CardVisual } from '@/components/CardVisual';
 import { Button, useToast } from '@/components/ui';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
+import { captureEvidence } from '@/lib/location-evidence';
 import { useCountdown } from '@/lib/useCountdown';
 import { endOrderActivity, updateOrderActivity } from '@/lib/useOrderLiveActivity';
 import { useOrderSocket } from '@/lib/useOrderSocket';
@@ -157,7 +158,15 @@ export default function OrderDetailScreen() {
 
   const setStatus = useMutation({
     mutationFn: async (status: OrderStatus) => {
-      const res = await api.patch<Order>(`/orders/${id}/status`, { status });
+      // Best-effort evidence on self-confirm — never a warning dialog for the
+      // customer (only couriers get the far-from-address soft-warning, see
+      // useAdvanceOrderStatus). A denied/failed capture is sent as absent,
+      // not withheld — the server records "no evidence" rather than nothing.
+      const evidence = status === 'delivered' ? await captureEvidence() : null;
+      const res = await api.patch<Order>(`/orders/${id}/status`, {
+        status,
+        evidence: evidence ?? undefined,
+      });
       return res.data;
     },
     onSuccess: () => {
