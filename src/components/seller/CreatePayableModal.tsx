@@ -15,11 +15,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { tr } from '@/i18n';
+import { useTranslation } from '@/i18n';
 import { DatePickerModal } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
-import { PAYABLE_CATEGORY_LABELS, PAYABLE_CATEGORY_LIST } from '@/lib/payableCategories';
+import { PAYABLE_CATEGORY_LABEL_KEYS, PAYABLE_CATEGORY_LIST } from '@/lib/payableCategories';
 import { PayableAccount, PayableCategory } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -40,6 +40,7 @@ function fmt(n: number): string {
 
 export function CreatePayableModal({ visible, shopId, accounts, presetAccountId, presetAccountName, onClose }: Props) {
   const qc = useQueryClient();
+  const { tr } = useTranslation();
   const hasAccounts = accounts.length > 0;
   const [mode, setMode] = useState<'existing' | 'new'>(hasAccounts ? 'existing' : 'new');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -118,7 +119,7 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.header}>
-          <Text style={styles.title}>Yangi majburiyat</Text>
+          <Text style={styles.title}>{tr('payable.title')}</Text>
           <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
             <X size={20} color={colors.text.secondary} />
           </Pressable>
@@ -127,7 +128,7 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
             {isPreset ? (
-              <Field label="Kreditor">
+              <Field label={tr('payable.creditor')}>
                 <View style={styles.presetBox}>
                   <Text style={styles.presetName}>{presetAccountName}</Text>
                 </View>
@@ -140,21 +141,21 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
                       style={[styles.modeChip, mode === 'existing' && styles.modeChipActive]}
                       onPress={() => setMode('existing')}>
                       <Text style={[styles.modeChipText, mode === 'existing' && styles.modeChipTextActive]}>
-                        Mavjud kreditor
+                        {tr('payable.existing')}
                       </Text>
                     </Pressable>
                     <Pressable
                       style={[styles.modeChip, mode === 'new' && styles.modeChipActive]}
                       onPress={() => setMode('new')}>
                       <Text style={[styles.modeChipText, mode === 'new' && styles.modeChipTextActive]}>
-                        Yangi kreditor
+                        {tr('payable.new')}
                       </Text>
                     </Pressable>
                   </View>
                 ) : null}
 
                 {mode === 'existing' ? (
-                  <Field label="Kreditorni tanlang *">
+                  <Field label={tr('payable.selectCreditor')}>
                     <View style={styles.accountList}>
                       {accounts.map((a) => (
                         <Pressable
@@ -165,7 +166,7 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
                             <Text style={styles.accountName} numberOfLines={1}>
                               {a.name}
                             </Text>
-                            <Text style={styles.accountMeta}>{PAYABLE_CATEGORY_LABELS[a.category]}</Text>
+                            <Text style={styles.accountMeta}>{tr(PAYABLE_CATEGORY_LABEL_KEYS[a.category])}</Text>
                           </View>
                           {selectedId === a.id ? (
                             <Check size={18} color={colors.brand.primary} strokeWidth={2.6} />
@@ -176,16 +177,16 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
                   </Field>
                 ) : (
                   <>
-                    <Field label="Kreditor nomi *">
+                    <Field label={tr('payable.creditorName')}>
                       <TextInput
                         style={styles.input}
                         value={newName}
                         onChangeText={setNewName}
-                        placeholder="Masalan: Optom baza"
+                        placeholder={tr('payable.creditorNamePlaceholder')}
                         placeholderTextColor={colors.text.hint}
                       />
                     </Field>
-                    <Field label="Turkumi *">
+                    <Field label={tr('payable.category')}>
                       <View style={styles.categoryRow}>
                         {PAYABLE_CATEGORY_LIST.map((c) => (
                           <Pressable
@@ -197,13 +198,13 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
                                 styles.categoryChipText,
                                 newCategory === c && styles.categoryChipTextActive,
                               ]}>
-                              {PAYABLE_CATEGORY_LABELS[c]}
+                              {tr(PAYABLE_CATEGORY_LABEL_KEYS[c])}
                             </Text>
                           </Pressable>
                         ))}
                       </View>
                     </Field>
-                    <Field label="Telefon raqami (ixtiyoriy)">
+                    <Field label={tr('payable.phone')}>
                       <TextInput
                         style={styles.input}
                         value={newPhone}
@@ -218,39 +219,39 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
               </>
             )}
 
-            <Field label="Summa (so'm) *">
+            <Field label={tr('payable.amount')}>
               <TextInput
                 style={styles.input}
                 value={amount}
                 onChangeText={setAmount}
                 keyboardType="number-pad"
-                placeholder="500 000"
+                placeholder={tr('payable.amountPlaceholder')}
                 placeholderTextColor={colors.text.hint}
               />
             </Field>
-            <Field label="Tavsif (ixtiyoriy)">
+            <Field label={tr('payable.description')}>
               <TextInput
                 style={styles.input}
                 value={description}
                 onChangeText={setDescription}
-                placeholder="Masalan: Guruch 50kg"
+                placeholder={tr('payable.descPlaceholder')}
                 placeholderTextColor={colors.text.hint}
               />
             </Field>
-            <Field label="To'lash muddati (ixtiyoriy)">
+            <Field label={tr('payable.dueDateOptional')}>
               <Pressable style={styles.dateInput} onPress={() => setDatePickerOpen(true)}>
                 <CalendarDays size={16} color={colors.brand.primary} strokeWidth={2.2} />
                 <Text style={[styles.dateInputText, !dueDate && styles.dateInputPlaceholder]}>
-                  {dueDate || 'Sanani tanlang'}
+                  {dueDate || tr('payable.pickDate')}
                 </Text>
               </Pressable>
             </Field>
-            <Field label="Izoh">
+            <Field label={tr('payable.note')}>
               <TextInput
                 style={[styles.input, styles.multiline]}
                 value={note}
                 onChangeText={setNote}
-                placeholder="Qo'shimcha izoh"
+                placeholder={tr('payable.notePlaceholder')}
                 placeholderTextColor={colors.text.hint}
                 multiline
               />
@@ -260,14 +261,16 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
 
         <View style={styles.footer}>
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Jami qarz</Text>
-            <Text style={styles.totalValue}>{fmt(parseAmount(amount))} so&apos;m</Text>
+            <Text style={styles.totalLabel}>{tr('payable.totalDebt')}</Text>
+            <Text style={styles.totalValue}>
+              {fmt(parseAmount(amount))} {tr('common.som')}
+            </Text>
           </View>
           <Pressable
             style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
             disabled={!canSave || save.isPending}
             onPress={() => save.mutate()}>
-            <Text style={styles.saveText}>{save.isPending ? 'Saqlanmoqda…' : 'Qarzga yozish'}</Text>
+            <Text style={styles.saveText}>{save.isPending ? tr('payable.saving') : tr('payable.submit')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -275,7 +278,7 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
       <DatePickerModal
         visible={datePickerOpen}
         value={dueDate}
-        title="To'lash muddati"
+        title={tr('payable.dueDate')}
         onClose={() => setDatePickerOpen(false)}
         onConfirm={(iso) => {
           setDueDate(iso);

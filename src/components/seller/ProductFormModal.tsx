@@ -16,18 +16,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ImageUploader } from '@/components/seller/ImageUploader';
-import { useTranslation } from '@/i18n';
+import { TranslationKey, useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
 import { Category, PublicProductVariant } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
-const UNITS: { key: 'piece' | 'kg' | 'liter' | 'gram' | 'pack'; label: string }[] = [
-  { key: 'piece', label: 'Dona' },
-  { key: 'kg', label: 'Kg' },
-  { key: 'liter', label: 'Litr' },
-  { key: 'gram', label: 'Gramm' },
-  { key: 'pack', label: 'Paket' },
+const UNITS: { key: 'piece' | 'kg' | 'liter' | 'gram' | 'pack'; labelKey: TranslationKey }[] = [
+  { key: 'piece', labelKey: 'prodForm.unitPiece' },
+  { key: 'kg', labelKey: 'prodForm.unitKg' },
+  { key: 'liter', labelKey: 'prodForm.unitLiter' },
+  { key: 'gram', labelKey: 'prodForm.unitGram' },
+  { key: 'pack', labelKey: 'prodForm.unitPack' },
 ];
 
 /** Catalogue data used to pre-fill a NEW product (from a scanned barcode). */
@@ -163,7 +163,7 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.header}>
-          <Text style={styles.title}>{isEdit ? 'Mahsulotni tahrirlash' : 'Yangi mahsulot'}</Text>
+          <Text style={styles.title}>{isEdit ? tr('prodForm.editTitle') : tr('prodForm.newTitle')}</Text>
           <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
             <X size={20} color={colors.text.secondary} />
           </Pressable>
@@ -175,25 +175,23 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
           <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
             {!isEdit && prefill ? (
               <View style={styles.prefillBanner}>
-                <Text style={styles.prefillText}>
-                  ✅ Katalogdan to&apos;ldirildi — faqat narx, qoldiq va tannarxni kiriting
-                </Text>
+                <Text style={styles.prefillText}>{tr('prodForm.prefillBanner')}</Text>
               </View>
             ) : null}
 
-            <Field label="Nomi *">
+            <Field label={tr('prodForm.name')}>
               <TextInput
                 style={styles.input}
                 value={name}
                 onChangeText={setName}
-                placeholder="Masalan: Coca-Cola 1L"
+                placeholder={tr('prodForm.namePlaceholder')}
                 placeholderTextColor={colors.text.hint}
               />
             </Field>
 
             <ImageUploader
-              label="Mahsulot rasmlari"
-              hint="Birinchi rasm asosiy rasm bo‘ladi"
+              label={tr('prodForm.photos')}
+              hint={tr('prodForm.photosHint')}
               value={photos}
               onChange={setPhotos}
               max={5}
@@ -201,7 +199,7 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
 
             {!isEdit ? (
               <>
-                <Field label="Kategoriya">
+                <Field label={tr('prodForm.category')}>
                   <View style={styles.wrap}>
                     {categories.map((c) => (
                       <Chip
@@ -214,16 +212,16 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
                   </View>
                 </Field>
 
-                <Field label="Birlik">
+                <Field label={tr('prodForm.unit')}>
                   <View style={styles.wrap}>
                     {UNITS.map((u) => (
-                      <Chip key={u.key} label={u.label} active={unitType === u.key} onPress={() => setUnitType(u.key)} />
+                      <Chip key={u.key} label={tr(u.labelKey)} active={unitType === u.key} onPress={() => setUnitType(u.key)} />
                     ))}
                   </View>
                 </Field>
 
                 <Row>
-                  <Field label="Birlik hajmi" flex>
+                  <Field label={tr('prodForm.unitSize')} flex>
                     <TextInput
                       style={styles.input}
                       value={unitSize}
@@ -233,12 +231,12 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
                       placeholderTextColor={colors.text.hint}
                     />
                   </Field>
-                  <Field label="Brend" flex>
+                  <Field label={tr('prodForm.brand')} flex>
                     <TextInput
                       style={styles.input}
                       value={brand}
                       onChangeText={setBrand}
-                      placeholder="Ixtiyoriy"
+                      placeholder={tr('prodForm.optional')}
                       placeholderTextColor={colors.text.hint}
                     />
                   </Field>
@@ -247,7 +245,7 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
             ) : null}
 
             <Row>
-              <Field label="Narx (so'm) *" flex>
+              <Field label={tr('prodForm.price')} flex>
                 <TextInput
                   style={styles.input}
                   value={price}
@@ -257,13 +255,13 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
                   placeholderTextColor={colors.text.hint}
                 />
               </Field>
-              <Field label="Chegirma narxi" flex>
+              <Field label={tr('prodForm.discountPrice')} flex>
                 <TextInput
                   style={styles.input}
                   value={discountPrice}
                   onChangeText={setDiscountPrice}
                   keyboardType="number-pad"
-                  placeholder="Ixtiyoriy"
+                  placeholder={tr('prodForm.optional')}
                   placeholderTextColor={colors.text.hint}
                 />
               </Field>
@@ -271,7 +269,7 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
 
             {!isEdit ? (
               <Row>
-                <Field label="Boshlang'ich qoldiq *" flex>
+                <Field label={tr('prodForm.initialStock')} flex>
                   <TextInput
                     style={styles.input}
                     value={stock}
@@ -281,13 +279,13 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
                     placeholderTextColor={colors.text.hint}
                   />
                 </Field>
-                <Field label="Tannarx (dona, so'm)" flex>
+                <Field label={tr('prodForm.costPrice')} flex>
                   <TextInput
                     style={styles.input}
                     value={costPrice}
                     onChangeText={setCostPrice}
                     keyboardType="number-pad"
-                    placeholder="kirim narxi"
+                    placeholder={tr('prodForm.costPlaceholder')}
                     placeholderTextColor={colors.text.hint}
                   />
                 </Field>
@@ -295,7 +293,7 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
             ) : null}
 
             <Row>
-              <Field label="Kam qoldi chegarasi" flex>
+              <Field label={tr('prodForm.lowStock')} flex>
                 <TextInput
                   style={styles.input}
                   value={lowStock}
@@ -308,23 +306,23 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
             </Row>
 
             {!isEdit ? (
-              <Field label="Barkod">
+              <Field label={tr('prodForm.barcode')}>
                 <TextInput
                   style={styles.input}
                   value={barcode}
                   onChangeText={setBarcode}
-                  placeholder="Ixtiyoriy"
+                  placeholder={tr('prodForm.optional')}
                   placeholderTextColor={colors.text.hint}
                 />
               </Field>
             ) : null}
 
-            <Field label="Tavsif">
+            <Field label={tr('prodForm.description')}>
               <TextInput
                 style={[styles.input, styles.multiline]}
                 value={description}
                 onChangeText={setDescription}
-                placeholder="Mahsulot haqida (ixtiyoriy)"
+                placeholder={tr('prodForm.descPlaceholder')}
                 placeholderTextColor={colors.text.hint}
                 multiline
               />
@@ -338,7 +336,7 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
             disabled={!canSave || save.isPending}
             onPress={() => save.mutate()}>
             <Text style={styles.saveText}>
-              {save.isPending ? 'Saqlanmoqda…' : isEdit ? 'Saqlash' : 'Mahsulot qo‘shish'}
+              {save.isPending ? tr('prodForm.saving') : isEdit ? tr('common.save') : tr('prodForm.add')}
             </Text>
           </Pressable>
         </View>

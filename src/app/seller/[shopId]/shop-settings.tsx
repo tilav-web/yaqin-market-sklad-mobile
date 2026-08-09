@@ -47,28 +47,35 @@ function calcFee(distanceKm: number, freeKm: number, type: Pricing, pricePerStep
   }
 }
 
-const PRICING_META: Record<Pricing, { label: string; priceLabel: string; hint: string }> = {
-  per_km: {
-    label: 'Har 1 km',
-    priceLabel: 'Har 1 km uchun narx (so\'m)',
-    hint: 'Bepul radiusdan keyin har boshlangan 1 km uchun shu narx qo\'shiladi (yuqoriga yaxlitlanadi).',
-  },
-  per_500m: {
-    label: 'Har 500 m',
-    priceLabel: 'Har 500 m uchun narx (so\'m)',
-    hint: 'Bepul radiusdan keyin har boshlangan 500 m uchun shu narx qo\'shiladi (yuqoriga yaxlitlanadi).',
-  },
-  per_100m: {
-    label: 'Har 100 m',
-    priceLabel: 'Har 100 m uchun narx (so\'m)',
-    hint: 'Bepul radiusdan keyin har boshlangan 100 m uchun shu narx qo\'shiladi (yuqoriga yaxlitlanadi).',
-  },
-  flat: {
-    label: 'Bir martalik',
-    priceLabel: 'Yetkazib berish narxi (so\'m)',
-    hint: 'Bepul radiusdan tashqaridagi har bir mijoz masofadan qat\'iy nazar shu narxni to\'laydi.',
-  },
-};
+function pricingMeta(type: Pricing): { label: string; priceLabel: string; hint: string } {
+  switch (type) {
+    case 'per_km':
+      return {
+        label: tr('shopSet.perKm'),
+        priceLabel: tr('shopSet.perKmPrice'),
+        hint: tr('shopSet.perKmHint'),
+      };
+    case 'per_500m':
+      return {
+        label: tr('shopSet.per500m'),
+        priceLabel: tr('shopSet.per500mPrice'),
+        hint: tr('shopSet.per500mHint'),
+      };
+    case 'per_100m':
+      return {
+        label: tr('shopSet.per100m'),
+        priceLabel: tr('shopSet.per100mPrice'),
+        hint: tr('shopSet.per100mHint'),
+      };
+    case 'flat':
+    default:
+      return {
+        label: tr('shopSet.flat'),
+        priceLabel: tr('shopSet.flatPrice'),
+        hint: tr('shopSet.flatHint'),
+      };
+  }
+}
 
 function fmtSom(n: number): string {
   return n.toLocaleString('ru-RU').replace(/,/g, ' ');
@@ -151,7 +158,7 @@ export default function ShopSettingsScreen() {
       });
     },
     onSuccess: () => {
-      Alert.alert(tr('common.saved'), 'Sozlamalar yangilandi');
+      Alert.alert(tr('common.saved'), tr('shopSet.savedMsg'));
       qc.invalidateQueries({ queryKey: ['seller-shop', shopId] });
       qc.invalidateQueries({ queryKey: ['shops', 'mine'] });
     },
@@ -176,12 +183,12 @@ export default function ShopSettingsScreen() {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Shop status */}
-        <Section title="Do'kon holati" icon={Store}>
+        <Section title={tr('shopSet.statusSection')} icon={Store}>
           <View style={styles.toggleRow}>
             <View>
-              <Text style={styles.toggleLabel}>{isOpen ? 'Ochiq' : 'Yopiq'}</Text>
+              <Text style={styles.toggleLabel}>{isOpen ? tr('shopSet.open') : tr('shopSet.closed')}</Text>
               <Text style={styles.toggleSub}>
-                {isOpen ? 'Mijozlar buyurtma bera oladi' : 'Mahsulotlaringiz ko‘rinmaydi'}
+                {isOpen ? tr('shopSet.openSub') : tr('shopSet.closedSub')}
               </Text>
             </View>
             <Switch
@@ -194,18 +201,18 @@ export default function ShopSettingsScreen() {
         </Section>
 
         {/* Shop info */}
-        <Section title="Do'kon ma'lumotlari" icon={Store}>
+        <Section title={tr('shopSet.infoSection')} icon={Store}>
           <ImageUploader
-            label="Do'kon rasmlari"
-            hint="Birinchi rasm do'kon muqovasi sifatida ishlatiladi"
+            label={tr('shopSet.photosLabel')}
+            hint={tr('shopSet.photosHint')}
             value={photos}
             onChange={setPhotos}
             max={5}
           />
-          <Field label="Nomi">
+          <Field label={tr('shopSet.nameLabel')}>
             <TextInput style={styles.input} value={name} onChangeText={setName} placeholderTextColor={colors.text.hint} />
           </Field>
-          <Field label="Manzil">
+          <Field label={tr('shopSet.addressLabel')}>
             <TextInput
               style={[styles.input, styles.multiline]}
               value={address}
@@ -214,21 +221,21 @@ export default function ShopSettingsScreen() {
               placeholderTextColor={colors.text.hint}
             />
           </Field>
-          <Field label="Do'kon tavsifi">
+          <Field label={tr('shopSet.descLabel')}>
             <TextInput
               style={[styles.input, styles.multiline]}
               value={description}
               onChangeText={setDescription}
               multiline
-              placeholder="Do'koningiz haqida qisqacha (mijozlarga ko'rinadi)"
+              placeholder={tr('shopSet.descPlaceholder')}
               placeholderTextColor={colors.text.hint}
             />
-            <Text style={styles.hint}>Do'kon profili to'liqligiga ball qo'shadi</Text>
+            <Text style={styles.hint}>{tr('shopSet.descHint')}</Text>
           </Field>
-          <Field label="Joylashuv (xaritada)">
+          <Field label={tr('shopSet.locationLabel')}>
             <Pressable style={styles.mapBtn} onPress={() => setPickerVisible(true)}>
               <MapPin size={18} color={colors.brand.primary} strokeWidth={2.4} />
-              <Text style={styles.mapBtnText}>Joylashuvni xaritadan o‘zgartirish</Text>
+              <Text style={styles.mapBtnText}>{tr('shopSet.changeOnMap')}</Text>
             </Pressable>
             {coords ? (
               <Text style={styles.coordHint}>
@@ -236,19 +243,19 @@ export default function ShopSettingsScreen() {
               </Text>
             ) : null}
           </Field>
-          <Field label="Ish vaqti">
+          <Field label={tr('shopSet.workingHours')}>
             <Pressable style={styles.mapBtn} onPress={() => setHoursOpen(true)}>
               <Clock size={18} color={colors.brand.primary} strokeWidth={2.4} />
-              <Text style={styles.mapBtnText}>Ish vaqti va bayramlarni sozlash</Text>
+              <Text style={styles.mapBtnText}>{tr('shopSet.workingHoursBtn')}</Text>
             </Pressable>
-            <Text style={styles.hint}>Do‘kon jadval bo‘yicha avtomatik ochilib-yopiladi</Text>
+            <Text style={styles.hint}>{tr('shopSet.workingHoursHint')}</Text>
           </Field>
         </Section>
 
         {/* Order alarm */}
-        <Section title="Buyurtma signali" icon={Bell}>
+        <Section title={tr('shopSet.alarmSection')} icon={Bell}>
           <View style={styles.toggleRow}>
-            <Text style={styles.toggleLabel}>{alarm.enabled ? '🔔 Yoqilgan' : '🔕 O‘chiq'}</Text>
+            <Text style={styles.toggleLabel}>{alarm.enabled ? tr('shopSet.alarmOn') : tr('shopSet.alarmOff')}</Text>
             <Switch
               value={alarm.enabled}
               onValueChange={(v) => setAlarmEnabled(shopId, v)}
@@ -265,49 +272,49 @@ export default function ShopSettingsScreen() {
                     onPress={() => setAlarmMode(shopId, m)}
                     style={[styles.chip, alarm.mode === m && styles.chipActive]}>
                     <Text style={[styles.chipText, alarm.mode === m && styles.chipTextActive]}>
-                      {m === 'short' ? 'Qisqa' : 'Uzun (to‘xtamaydi)'}
+                      {m === 'short' ? tr('shopSet.alarmShort') : tr('shopSet.alarmLong')}
                     </Text>
                   </Pressable>
                 ))}
               </View>
               <Text style={styles.hint}>
                 {alarm.mode === 'long'
-                  ? 'Buyurtma kelsa “Ko‘rdim” bosguningizcha jiringlaydi.'
-                  : 'Buyurtma kelsa bir marta qisqa signal beradi.'}
+                  ? tr('shopSet.alarmLongHint')
+                  : tr('shopSet.alarmShortHint')}
               </Text>
               <Pressable style={styles.testBtn} onPress={testAlarm}>
-                <Text style={styles.testText}>▶ Sinab ko‘rish</Text>
+                <Text style={styles.testText}>{tr('shopSet.alarmTest')}</Text>
               </Pressable>
             </>
           ) : null}
         </Section>
 
         {/* Delivery */}
-        <Section title="Yetkazib berish" icon={Truck}>
+        <Section title={tr('shopSet.deliverySection')} icon={Truck}>
           <Pressable
             style={styles.mapZoneBtn}
             onPress={() => router.push({ pathname: '/seller/[shopId]/delivery-zones', params: { shopId } } as never)}>
             <Map size={18} color={colors.brand.primary} strokeWidth={2} />
-            <Text style={styles.mapZoneBtnText}>Xaritada chegara belgilash</Text>
+            <Text style={styles.mapZoneBtnText}>{tr('shopSet.drawZone')}</Text>
             <ChevronRight size={16} color={colors.text.tertiary} />
           </Pressable>
 
-          <Field label="Minimal buyurtma summasi (so'm)">
+          <Field label={tr('shopSet.minOrder')}>
             <TextInput style={styles.input} value={minOrder} onChangeText={setMinOrder} keyboardType="number-pad" />
-            <Text style={styles.hint}>Bundan kam summaga buyurtma berib bo'lmaydi</Text>
+            <Text style={styles.hint}>{tr('shopSet.minOrderHint')}</Text>
           </Field>
 
-          <Field label="Yetkazib berish radiusi (km)">
+          <Field label={tr('shopSet.maxKm')}>
             <TextInput style={styles.input} value={maxKm} onChangeText={setMaxKm} keyboardType="numeric" />
-            <Text style={styles.hint}>Shu masofadan uzoqdagi mijozlarga yetkazib bermaysiz</Text>
+            <Text style={styles.hint}>{tr('shopSet.maxKmHint')}</Text>
           </Field>
 
-          <Field label="Bepul yetkazish radiusi (km)">
+          <Field label={tr('shopSet.freeKm')}>
             <TextInput style={styles.input} value={freeKm} onChangeText={setFreeKm} keyboardType="numeric" />
-            <Text style={styles.hint}>Shu masofagacha yetkazish mijoz uchun mutlaqo bepul</Text>
+            <Text style={styles.hint}>{tr('shopSet.freeKmHint')}</Text>
           </Field>
 
-          <Field label="Bepul radiusdan keyin narx qanday olinadi?">
+          <Field label={tr('shopSet.pricingLabel')}>
             <View style={styles.chipRow}>
               {(['per_km', 'per_500m', 'per_100m', 'flat'] as Pricing[]).map((t) => (
                 <Pressable
@@ -315,15 +322,15 @@ export default function ShopSettingsScreen() {
                   onPress={() => setPricingType(t)}
                   style={[styles.chip, pricingType === t && styles.chipActive]}>
                   <Text style={[styles.chipText, pricingType === t && styles.chipTextActive]}>
-                    {PRICING_META[t].label}
+                    {pricingMeta(t).label}
                   </Text>
                 </Pressable>
               ))}
             </View>
-            <Text style={styles.hint}>{PRICING_META[pricingType].hint}</Text>
+            <Text style={styles.hint}>{pricingMeta(pricingType).hint}</Text>
           </Field>
 
-          <Field label={PRICING_META[pricingType].priceLabel}>
+          <Field label={pricingMeta(pricingType).priceLabel}>
             <TextInput style={styles.input} value={price} onChangeText={setPrice} keyboardType="number-pad" />
           </Field>
 
@@ -339,7 +346,7 @@ export default function ShopSettingsScreen() {
           style={[styles.saveBtn, !name.trim() && styles.saveBtnDisabled]}
           disabled={!name.trim() || save.isPending}
           onPress={() => save.mutate()}>
-          <Text style={styles.saveText}>{save.isPending ? 'Saqlanmoqda…' : 'Saqlash'}</Text>
+          <Text style={styles.saveText}>{save.isPending ? tr('shopSet.saving') : tr('common.save')}</Text>
         </Pressable>
       </ScrollView>
 
@@ -407,12 +414,12 @@ function DeliveryExample({
 
   return (
     <View style={styles.exampleBox}>
-      <Text style={styles.exampleTitle}>📦 Mijoz qancha to'laydi?</Text>
+      <Text style={styles.exampleTitle}>{tr('shopSet.exampleTitle')}</Text>
 
       {freeKm > 0 ? (
         <View style={styles.exampleRow}>
           <Text style={styles.exampleDist}>0 – {freeKm} km</Text>
-          <Text style={styles.exampleFree}>Bepul</Text>
+          <Text style={styles.exampleFree}>{tr('shopSet.free')}</Text>
         </View>
       ) : null}
 
@@ -420,15 +427,15 @@ function DeliveryExample({
         <>
           <View style={styles.exampleRow}>
             <Text style={styles.exampleDist}>{midDist.toFixed(1)} km</Text>
-            <Text style={styles.exampleFee}>{fmtSom(midFee)} so'm</Text>
+            <Text style={styles.exampleFee}>{fmtSom(midFee)} {tr('common.som')}</Text>
           </View>
           <View style={styles.exampleRow}>
-            <Text style={styles.exampleDist}>{maxKm} km (eng chekka)</Text>
-            <Text style={styles.exampleFee}>{fmtSom(edgeFee)} so'm</Text>
+            <Text style={styles.exampleDist}>{tr('shopSet.edgeDist', { km: maxKm })}</Text>
+            <Text style={styles.exampleFee}>{fmtSom(edgeFee)} {tr('common.som')}</Text>
           </View>
         </>
       ) : (
-        <Text style={styles.hint}>Butun radius bepul.</Text>
+        <Text style={styles.hint}>{tr('shopSet.allFree')}</Text>
       )}
     </View>
   );

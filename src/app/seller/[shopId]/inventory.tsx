@@ -37,13 +37,22 @@ import {
 } from '@/lib/types';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 
-const UNIT_LABEL: Record<string, string> = {
-  piece: 'dona',
-  kg: 'kg',
-  liter: 'litr',
-  gram: 'g',
-  pack: 'paket',
-};
+function unitLabel(unitType: string): string {
+  switch (unitType) {
+    case 'piece':
+      return tr('inv.unitPiece');
+    case 'kg':
+      return tr('inv.unitKg');
+    case 'liter':
+      return tr('inv.unitLiter');
+    case 'gram':
+      return tr('inv.unitGram');
+    case 'pack':
+      return tr('inv.unitPack');
+    default:
+      return unitType;
+  }
+}
 
 function fmt(n: number): string {
   return n.toLocaleString('ru-RU').replace(/,/g, ' ');
@@ -184,9 +193,9 @@ export default function SellerInventoryScreen() {
   const openVariantMenu = (item: SellerVariant) => {
     const options: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [];
     if (access.has('inventory.product.create')) {
-      options.push({ text: 'Nusxa ko‘chir', onPress: () => duplicate.mutate(item.id) });
+      options.push({ text: tr('inv.duplicate'), onPress: () => duplicate.mutate(item.id) });
     }
-    options.push({ text: 'Bekor', style: 'cancel' });
+    options.push({ text: tr('common.cancel'), style: 'cancel' });
     Alert.alert(item.name, undefined, options);
   };
 
@@ -248,11 +257,11 @@ export default function SellerInventoryScreen() {
       <View style={styles.tabRow}>
         <Pressable style={[styles.tabBtn, tab === 'all' && styles.tabBtnActive]} onPress={() => setTab('all')}>
           <Package size={15} color={tab === 'all' ? colors.text.onPrimary : colors.text.secondary} strokeWidth={2.2} />
-          <Text style={[styles.tabBtnText, tab === 'all' && styles.tabBtnTextActive]}>Barchasi</Text>
+          <Text style={[styles.tabBtnText, tab === 'all' && styles.tabBtnTextActive]}>{tr('inv.tabAll')}</Text>
         </Pressable>
         <Pressable style={[styles.tabBtn, tab === 'expiring' && styles.tabBtnActive]} onPress={() => setTab('expiring')}>
           <AlertTriangle size={15} color={tab === 'expiring' ? colors.text.onPrimary : colors.feedback.warning} strokeWidth={2.2} />
-          <Text style={[styles.tabBtnText, tab === 'expiring' && styles.tabBtnTextActive]}>Muddatlar</Text>
+          <Text style={[styles.tabBtnText, tab === 'expiring' && styles.tabBtnTextActive]}>{tr('inv.tabExpiring')}</Text>
           {expiringCount > 0 && (
             <View style={[styles.tabBadge, expiringUrgent && styles.tabBadgeUrgent]}>
               <Text style={styles.tabBadgeText}>{expiringCount}</Text>
@@ -261,7 +270,7 @@ export default function SellerInventoryScreen() {
         </Pressable>
         <Pressable style={[styles.tabBtn, tab === 'lowStock' && styles.tabBtnActive]} onPress={() => setTab('lowStock')}>
           <TrendingDown size={15} color={tab === 'lowStock' ? colors.text.onPrimary : colors.feedback.warning} strokeWidth={2.2} />
-          <Text style={[styles.tabBtnText, tab === 'lowStock' && styles.tabBtnTextActive]}>Kam qoldiq</Text>
+          <Text style={[styles.tabBtnText, tab === 'lowStock' && styles.tabBtnTextActive]}>{tr('inv.tabLowStock')}</Text>
           {lowStockCount > 0 && (
             <View style={styles.tabBadge}>
               <Text style={styles.tabBadgeText}>{lowStockCount}</Text>
@@ -297,7 +306,7 @@ export default function SellerInventoryScreen() {
             style={styles.searchInput}
             value={searchInput}
             onChangeText={setSearchInput}
-            placeholder="Mahsulot nomi yoki barkod"
+            placeholder={tr('inv.searchPlaceholder')}
             placeholderTextColor={colors.text.hint}
             returnKeyType="search"
           />
@@ -311,7 +320,7 @@ export default function SellerInventoryScreen() {
           <Pressable
             onPress={() => setLowOnly((v) => !v)}
             style={[styles.lowChip, lowOnly && styles.lowChipActive]}>
-            <Text style={[styles.lowChipText, lowOnly && styles.lowChipTextActive]}>Kam qolgan</Text>
+            <Text style={[styles.lowChipText, lowOnly && styles.lowChipTextActive]}>{tr('inv.lowOnlyChip')}</Text>
           </Pressable>
           <Pressable onPress={() => setBulkPriceOpen(true)} style={styles.iconBtn}>
             <Tag size={18} color={colors.brand.primary} strokeWidth={2.2} />
@@ -365,10 +374,10 @@ export default function SellerInventoryScreen() {
                 <Package size={28} color={colors.brand.primary} strokeWidth={1.8} />
               </View>
               <Text style={styles.emptyTitle}>
-                {search ? 'Topilmadi' : "Mahsulot yo'q"}
+                {search ? tr('inv.notFound') : tr('inv.emptyTitle')}
               </Text>
               <Text style={styles.dim}>
-                {search ? 'Boshqa nom yoki barkod bilan qidiring' : "Pastdagi tugma orqali birinchi mahsulotni qo'shing"}
+                {search ? tr('inv.notFoundHint') : tr('inv.emptyHint')}
               </Text>
             </View>
           )
@@ -399,10 +408,10 @@ export default function SellerInventoryScreen() {
                     {hasDiscount ? (
                       <Text style={styles.oldPrice}>{item.price.toLocaleString()}</Text>
                     ) : null}
-                    <Text style={styles.price}>{sellPrice.toLocaleString()} so&apos;m</Text>
+                    <Text style={styles.price}>{sellPrice.toLocaleString()} {tr('common.som')}</Text>
                   </View>
                   <Text style={styles.unit}>
-                    {item.unitSize} {UNIT_LABEL[item.unitType] ?? item.unitType}
+                    {item.unitSize} {unitLabel(item.unitType)}
                   </Text>
                 </View>
                 <View style={styles.cardTopActions}>
@@ -416,16 +425,17 @@ export default function SellerInventoryScreen() {
               {/* Cost / profit strip */}
               <View style={styles.costStrip}>
                 <Text style={styles.costText}>
-                  Tannarx <Text style={styles.costVal}>{avgCost > 0 ? fmt(avgCost) : '—'}</Text>
+                  {tr('inv.cost')} <Text style={styles.costVal}>{avgCost > 0 ? fmt(avgCost) : '—'}</Text>
                 </Text>
                 <Text style={styles.costText}>
-                  Foyda/dona <Text style={[styles.costVal, { color: colors.feedback.success }]}>{fmt(profit)}</Text>
+                  {tr('inv.profitPerUnit')} <Text style={[styles.costVal, { color: colors.feedback.success }]}>{fmt(profit)}</Text>
                 </Text>
               </View>
 
               <View style={styles.cardFooter}>
                 <Text style={[styles.stock, low && styles.stockLow]}>
-                  Qoldiq: {item.stock} ta{low ? ' · kam!' : ''}
+                  {tr('inv.stockLine', { count: item.stock })}
+                  {low ? tr('inv.stockLowSuffix') : ''}
                 </Text>
                 <View style={styles.stockControls}>
                   <Pressable
@@ -445,9 +455,9 @@ export default function SellerInventoryScreen() {
                     <Pressable
                       style={styles.delBtn}
                       onPress={() =>
-                        Alert.alert("O'chirish", `"${item.name}" ni o'chirasizmi?`, [
-                          { text: 'Bekor', style: 'cancel' },
-                          { text: "O'chirish", style: 'destructive', onPress: () => remove.mutate(item.id) },
+                        Alert.alert(tr('common.delete'), tr('inv.deleteConfirm', { name: item.name }), [
+                          { text: tr('common.cancel'), style: 'cancel' },
+                          { text: tr('common.delete'), style: 'destructive', onPress: () => remove.mutate(item.id) },
                         ])
                       }>
                       <Trash2 size={15} color={colors.text.danger} strokeWidth={2.2} />
@@ -459,7 +469,7 @@ export default function SellerInventoryScreen() {
               {/* Primary warehouse action */}
               <Pressable style={styles.kirimBtn} onPress={() => setKirimFor(item)}>
                 <PackagePlus size={16} color={colors.brand.primary} strokeWidth={2.3} />
-                <Text style={styles.kirimText}>Kirim — tovar keldi</Text>
+                <Text style={styles.kirimText}>{tr('inv.kirimBtn')}</Text>
               </Pressable>
             </View>
           );
@@ -468,7 +478,7 @@ export default function SellerInventoryScreen() {
 
       <Pressable style={styles.fab} onPress={() => setScanOpen(true)}>
         <Plus size={22} color={colors.text.onPrimary} strokeWidth={2.8} />
-        <Text style={styles.fabText}>Mahsulot</Text>
+        <Text style={styles.fabText}>{tr('inv.fabProduct')}</Text>
       </Pressable>
       </>
       )}
@@ -495,7 +505,7 @@ export default function SellerInventoryScreen() {
         onClose={() => setScanOpen(false)}
         onScanned={onScanned}
         onSkip={openCreateBlank}
-        title="Mahsulot qo'shish — barkodni skanlang"
+        title={tr('inv.scanTitle')}
       />
 
       <InventoryCountModal
@@ -544,12 +554,18 @@ export default function SellerInventoryScreen() {
 // emoji/label instead of a third distinct color (SPEC.md §26.2).
 const EXPIRY_TIER_META: Record<
   ExpiringVariant['tier'],
-  { emoji: string; label: string; color: string; surface: string }
+  { emoji: string; color: string; surface: string }
 > = {
-  expired: { emoji: '🔴', label: "Muddati o'tgan", color: colors.feedback.danger, surface: colors.feedback.dangerSurface },
-  critical: { emoji: '🟠', label: 'Kritik', color: colors.feedback.warning, surface: colors.feedback.warningSurface },
-  warning: { emoji: '🟡', label: 'Ogohlantirish', color: colors.feedback.warning, surface: colors.feedback.warningSurface },
+  expired: { emoji: '🔴', color: colors.feedback.danger, surface: colors.feedback.dangerSurface },
+  critical: { emoji: '🟠', color: colors.feedback.warning, surface: colors.feedback.warningSurface },
+  warning: { emoji: '🟡', color: colors.feedback.warning, surface: colors.feedback.warningSurface },
 };
+
+function expiryTierLabel(tier: ExpiringVariant['tier']): string {
+  if (tier === 'expired') return tr('inv.tierExpired');
+  if (tier === 'critical') return tr('inv.tierCritical');
+  return tr('inv.tierWarning');
+}
 
 function ExpiringList({
   data,
@@ -569,8 +585,8 @@ function ExpiringList({
         <View style={styles.emptyIcon}>
           <AlertTriangle size={28} color={colors.feedback.warning} strokeWidth={1.8} />
         </View>
-        <Text style={styles.emptyTitle}>Muddatli tovar yo'q</Text>
-        <Text style={styles.dim}>Muddati o'tayotgan yoki tugagan tovarlar bu yerda ko'rinadi</Text>
+        <Text style={styles.emptyTitle}>{tr('inv.expiringEmptyTitle')}</Text>
+        <Text style={styles.dim}>{tr('inv.expiringEmptyHint')}</Text>
       </View>
     );
   }
@@ -586,7 +602,7 @@ function ExpiringList({
         return (
           <View key={tier} style={styles.tierGroup}>
             <Text style={[styles.tierGroupTitle, { color: meta.color }]}>
-              {meta.emoji} {meta.label} ({items.length})
+              {meta.emoji} {expiryTierLabel(tier)} ({items.length})
             </Text>
             {items.map((item) => (
               <View key={item.id} style={[styles.card, { borderColor: meta.color }]}>
@@ -595,24 +611,27 @@ function ExpiringList({
                     <Text style={[styles.expiryDaysNum, { color: meta.color }]}>
                       {Math.max(item.daysToExpiry, 0)}
                     </Text>
-                    <Text style={[styles.expiryDaysLabel, { color: meta.color }]}>kun</Text>
+                    <Text style={[styles.expiryDaysLabel, { color: meta.color }]}>{tr('inv.days')}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
                     <Text style={styles.unit}>
-                      Qoldiq: {item.stock} {UNIT_LABEL[item.unitType] ?? item.unitType} · Muddat:{' '}
-                      {new Date(item.expiryDate).toLocaleDateString('uz-UZ')}
+                      {tr('inv.expiryLine', {
+                        stock: item.stock,
+                        unit: unitLabel(item.unitType),
+                        date: new Date(item.expiryDate).toLocaleDateString('uz-UZ'),
+                      })}
                     </Text>
                   </View>
                 </View>
                 <View style={styles.tierActions}>
                   <Pressable style={styles.tierActionBtnDanger} onPress={() => onBrak(item)}>
                     <Ban size={14} color={colors.feedback.danger} strokeWidth={2.2} />
-                    <Text style={styles.tierActionBtnDangerText}>Brak qil</Text>
+                    <Text style={styles.tierActionBtnDangerText}>{tr('inv.brak')}</Text>
                   </Pressable>
                   <Pressable style={styles.tierActionBtn} onPress={() => onDiscount(item)}>
                     <Percent size={14} color={colors.brand.primary} strokeWidth={2.2} />
-                    <Text style={styles.tierActionBtnText}>Chegirma qo'y</Text>
+                    <Text style={styles.tierActionBtnText}>{tr('inv.setDiscount')}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -626,11 +645,15 @@ function ExpiringList({
 
 const LOW_STOCK_TIER_META: Record<
   LowStockVariant['tier'],
-  { emoji: string; label: string; color: string; surface: string }
+  { emoji: string; color: string; surface: string }
 > = {
-  critical: { emoji: '🟠', label: 'Kritik', color: colors.feedback.danger, surface: colors.feedback.dangerSurface },
-  warning: { emoji: '🟡', label: 'Kam qoldi', color: colors.feedback.warning, surface: colors.feedback.warningSurface },
+  critical: { emoji: '🟠', color: colors.feedback.danger, surface: colors.feedback.dangerSurface },
+  warning: { emoji: '🟡', color: colors.feedback.warning, surface: colors.feedback.warningSurface },
 };
+
+function lowStockTierLabel(tier: LowStockVariant['tier']): string {
+  return tier === 'critical' ? tr('inv.tierCritical') : tr('inv.tierLow');
+}
 
 function LowStockList({
   data,
@@ -648,8 +671,8 @@ function LowStockList({
         <View style={styles.emptyIcon}>
           <TrendingDown size={28} color={colors.feedback.warning} strokeWidth={1.8} />
         </View>
-        <Text style={styles.emptyTitle}>Kam qolgan tovar yo'q</Text>
-        <Text style={styles.dim}>Qoldig'i kam bo'lgan tovarlar bu yerda ko'rinadi</Text>
+        <Text style={styles.emptyTitle}>{tr('inv.lowEmptyTitle')}</Text>
+        <Text style={styles.dim}>{tr('inv.lowEmptyHint')}</Text>
       </View>
     );
   }
@@ -665,26 +688,29 @@ function LowStockList({
         return (
           <View key={tier} style={styles.tierGroup}>
             <Text style={[styles.tierGroupTitle, { color: meta.color }]}>
-              {meta.emoji} {meta.label} ({items.length})
+              {meta.emoji} {lowStockTierLabel(tier)} ({items.length})
             </Text>
             {items.map((item) => (
               <View key={item.id} style={[styles.card, { borderColor: meta.color }]}>
                 <View style={styles.cardMain}>
                   <View style={[styles.expiryDaysBox, { backgroundColor: meta.surface }]}>
                     <Text style={[styles.expiryDaysNum, { color: meta.color }]}>{item.stock}</Text>
-                    <Text style={[styles.expiryDaysLabel, { color: meta.color }]}>ta</Text>
+                    <Text style={[styles.expiryDaysLabel, { color: meta.color }]}>{tr('inv.pcs')}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
                     <Text style={styles.unit}>
-                      Chegara: {item.lowStockThreshold} {UNIT_LABEL[item.unitType] ?? item.unitType}
+                      {tr('inv.thresholdLine', {
+                        value: item.lowStockThreshold,
+                        unit: unitLabel(item.unitType),
+                      })}
                     </Text>
                   </View>
                 </View>
                 <View style={styles.tierActions}>
                   <Pressable style={styles.tierActionBtn} onPress={() => onKirim(item)}>
                     <PackagePlus size={14} color={colors.brand.primary} strokeWidth={2.2} />
-                    <Text style={styles.tierActionBtnText}>Kirim qilish</Text>
+                    <Text style={styles.tierActionBtnText}>{tr('inv.doKirim')}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -732,16 +758,16 @@ function BulkPriceModal({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
-          <Text style={styles.sheetTitle}>Narxni ommaviy yangilash</Text>
-          <Text style={styles.sheetSub}>Kategoriya bo'yicha barcha mahsulot narxini foiz yoki miqdorda o'zgartirish</Text>
+          <Text style={styles.sheetTitle}>{tr('inv.bulkTitle')}</Text>
+          <Text style={styles.sheetSub}>{tr('inv.bulkSub')}</Text>
 
-          <Text style={styles.fieldLabel}>Kategoriya (bo'sh = barchasi)</Text>
+          <Text style={styles.fieldLabel}>{tr('inv.bulkCategory')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
             <View style={{ flexDirection: 'row', gap: spacing.xs }}>
               <Pressable
                 style={[styles.catChip, !categoryId && styles.catChipActive]}
                 onPress={() => setCategoryId('')}>
-                <Text style={[styles.catChipText, !categoryId && styles.catChipTextActive]}>Barchasi</Text>
+                <Text style={[styles.catChipText, !categoryId && styles.catChipTextActive]}>{tr('inv.tabAll')}</Text>
               </Pressable>
               {categories.map((c) => (
                 <Pressable
@@ -756,7 +782,7 @@ function BulkPriceModal({
             </View>
           </ScrollView>
 
-          <Text style={styles.fieldLabel}>O'zgartirish turi</Text>
+          <Text style={styles.fieldLabel}>{tr('inv.bulkAdjustType')}</Text>
           <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}>
             {(['percent', 'fixed'] as const).map((t) => (
               <Pressable
@@ -764,7 +790,7 @@ function BulkPriceModal({
                 style={[styles.catChip, adjustType === t && styles.catChipActive, { flex: 1, alignItems: 'center' }]}
                 onPress={() => setAdjustType(t)}>
                 <Text style={[styles.catChipText, adjustType === t && styles.catChipTextActive]}>
-                  {t === 'percent' ? 'Foiz (%)' : "Miqdor (so'm)"}
+                  {t === 'percent' ? tr('inv.bulkPercent') : tr('inv.bulkFixed')}
                 </Text>
               </Pressable>
             ))}
@@ -775,7 +801,7 @@ function BulkPriceModal({
             value={value}
             onChangeText={setValue}
             keyboardType="numeric"
-            placeholder={adjustType === 'percent' ? '10 (10% ga oshirish)' : "5000 (5000 so'm qo'shish)"}
+            placeholder={adjustType === 'percent' ? tr('inv.bulkPercentPh') : tr('inv.bulkFixedPh')}
             placeholderTextColor={colors.text.hint}
           />
 
@@ -786,11 +812,11 @@ function BulkPriceModal({
             {bulk.isPending ? (
               <ActivityIndicator color={colors.text.onPrimary} />
             ) : (
-              <Text style={styles.confirmBtnText}>Yangilash</Text>
+              <Text style={styles.confirmBtnText}>{tr('inv.bulkSubmit')}</Text>
             )}
           </Pressable>
           <Pressable style={styles.cancelBtn} onPress={handleClose}>
-            <Text style={styles.cancelBtnText}>Bekor qilish</Text>
+            <Text style={styles.cancelBtnText}>{tr('common.cancel')}</Text>
           </Pressable>
         </View>
       </View>

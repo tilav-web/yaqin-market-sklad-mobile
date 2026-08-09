@@ -29,7 +29,7 @@ interface ActiveSub {
 }
 
 function fmt(v: string): string {
-  return Number(v).toLocaleString('ru-RU') + " so'm";
+  return Number(v).toLocaleString('ru-RU') + ' ' + tr('common.som');
 }
 
 export default function SellerPrimeScreen() {
@@ -64,10 +64,10 @@ export default function SellerPrimeScreen() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['prime-sub'] });
       qc.invalidateQueries({ queryKey: ['seller-balance'] });
-      Alert.alert('Muvaffaqiyat', 'Prime obuna faollashtirildi!');
+      Alert.alert(tr('common.success'), tr('prime.activated'));
     },
     onError: (e: unknown) => {
-      const msg = (e as any)?.response?.data?.message ?? 'Xatolik yuz berdi';
+      const msg = (e as any)?.response?.data?.message ?? tr('prime.errorFallback');
       Alert.alert(tr('common.error'), msg);
     },
   });
@@ -91,9 +91,9 @@ export default function SellerPrimeScreen() {
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <EmptyState
           icon={AlertTriangle}
-          title="Obuna holati yuklanmadi"
-          description="Xavfsizlik uchun holat aniq bo'lmaguncha obuna bo'lish taklif etilmaydi. Internetni tekshirib, qayta urinib ko'ring."
-          actionLabel="Qayta urinish"
+          title={tr('prime.loadFailed')}
+          description={tr('prime.loadFailedDesc')}
+          actionLabel={tr('common.retry')}
           onAction={() => {
             void subQ.refetch();
             void plansQ.refetch();
@@ -111,10 +111,15 @@ export default function SellerPrimeScreen() {
           <View style={styles.activeCard}>
             <View style={styles.activeHeader}>
               <CheckCircle size={20} color={colors.feedback.success} />
-              <Text style={styles.activeTitle}>Faol obuna: {activeSub.plan?.name}</Text>
+              <Text style={styles.activeTitle}>
+                {tr('prime.activeSub', { name: activeSub.plan?.name ?? '' })}
+              </Text>
             </View>
             <Text style={styles.activeSub}>
-              Komissiya: {activeSub.commissionRateSnapshot}%  ·  Muddat: {activeSub.endDate}
+              {tr('prime.subMeta', {
+                rate: activeSub.commissionRateSnapshot,
+                date: activeSub.endDate,
+              })}
             </Text>
           </View>
         )}
@@ -124,12 +129,16 @@ export default function SellerPrimeScreen() {
           <Pressable
             style={[styles.toggleBtn, !yearly && styles.toggleActive]}
             onPress={() => setYearly(false)}>
-            <Text style={[styles.toggleText, !yearly && styles.toggleActiveText]}>Oylik</Text>
+            <Text style={[styles.toggleText, !yearly && styles.toggleActiveText]}>
+              {tr('prime.monthly')}
+            </Text>
           </Pressable>
           <Pressable
             style={[styles.toggleBtn, yearly && styles.toggleActive]}
             onPress={() => setYearly(true)}>
-            <Text style={[styles.toggleText, yearly && styles.toggleActiveText]}>Yillik</Text>
+            <Text style={[styles.toggleText, yearly && styles.toggleActiveText]}>
+              {tr('prime.yearly')}
+            </Text>
           </Pressable>
         </View>
 
@@ -143,6 +152,7 @@ export default function SellerPrimeScreen() {
           const effectiveYearly = yearly && yearlyAvailable;
           const price = effectiveYearly ? plan.yearlyPrice! : plan.monthlyPrice;
           const isCurrent = activeSub?.planId === plan.id;
+          const periodLabel = effectiveYearly ? tr('prime.year') : tr('prime.month');
           return (
             <View key={plan.id} style={[styles.planCard, isCurrent && styles.planCardActive]}>
               <View style={styles.planHeader}>
@@ -150,15 +160,15 @@ export default function SellerPrimeScreen() {
                 <Text style={styles.planName}>{plan.name}</Text>
                 {isCurrent && (
                   <View style={styles.currentBadge}>
-                    <Text style={styles.currentBadgeText}>Joriy</Text>
+                    <Text style={styles.currentBadgeText}>{tr('prime.current')}</Text>
                   </View>
                 )}
               </View>
-              <Text style={styles.planPrice}>{fmt(price)} / {effectiveYearly ? 'yil' : 'oy'}</Text>
+              <Text style={styles.planPrice}>{fmt(price)} / {periodLabel}</Text>
               {yearly && !yearlyAvailable && (
-                <Text style={styles.planDesc}>Bu tarifda yillik variant yo'q — oylik narxda davom etadi</Text>
+                <Text style={styles.planDesc}>{tr('prime.noYearly')}</Text>
               )}
-              <Text style={styles.planComm}>Komissiya: {plan.commissionRate}%</Text>
+              <Text style={styles.planComm}>{tr('prime.commission', { rate: plan.commissionRate })}</Text>
               {plan.description && (
                 <Text style={styles.planDesc}>{plan.description}</Text>
               )}
@@ -168,16 +178,20 @@ export default function SellerPrimeScreen() {
                   disabled={subscribe.isPending}
                   onPress={() =>
                     Alert.alert(
-                      'Obuna bo\'lish',
-                      `${plan.name} tarifiga ${fmt(price)} / ${effectiveYearly ? 'yil' : 'oy'} to'laysiz. Davom etasizmi?`,
+                      tr('prime.subscribe'),
+                      tr('prime.confirmMsg', {
+                        plan: plan.name,
+                        price: fmt(price),
+                        period: periodLabel,
+                      }),
                       [
-                        { text: 'Bekor', style: 'cancel' },
-                        { text: 'Ha', onPress: () => subscribe.mutate({ planId: plan.id }) },
+                        { text: tr('common.cancel'), style: 'cancel' },
+                        { text: tr('common.yes'), onPress: () => subscribe.mutate({ planId: plan.id }) },
                       ],
                     )
                   }
                 >
-                  <Text style={styles.subBtnText}>Obuna bo'lish</Text>
+                  <Text style={styles.subBtnText}>{tr('prime.subscribe')}</Text>
                 </Pressable>
               )}
             </View>

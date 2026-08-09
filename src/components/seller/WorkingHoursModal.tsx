@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { tr } from '@/i18n';
+import { tr, type TranslationKey } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -40,10 +40,10 @@ interface Props {
 }
 
 // dayOfWeek matches JS getDay(): 0 = Sunday.
-const DAY_LABELS = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
+const DAY_LABEL_KEYS: TranslationKey[] = ['day.sun', 'day.mon', 'day.tue', 'day.wed', 'day.thu', 'day.fri', 'day.sat'];
 
 function defaultHours(): DaySlot[] {
-  return DAY_LABELS.map((_, dayOfWeek) => ({ dayOfWeek, openTime: '09:00', closeTime: '21:00', isOpen: true }));
+  return DAY_LABEL_KEYS.map((_, dayOfWeek) => ({ dayOfWeek, openTime: '09:00', closeTime: '21:00', isOpen: true }));
 }
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -65,7 +65,7 @@ export function WorkingHoursModal({ visible, shopId, initialHours, initialHolida
   const addHoliday = () => {
     const d = newHoliday.trim();
     if (!DATE_RE.test(d)) {
-      Alert.alert('Xato', 'Sana YYYY-MM-DD ko‘rinishida bo‘lsin');
+      Alert.alert(tr('common.error'), tr('workHours.badDate'));
       return;
     }
     if (!holidays.some((h) => h.date === d)) setHolidays((hs) => [...hs, { date: d }]);
@@ -76,14 +76,14 @@ export function WorkingHoursModal({ visible, shopId, initialHours, initialHolida
     mutationFn: async () => {
       for (const d of hours) {
         if (d.isOpen && (!TIME_RE.test(d.openTime) || !TIME_RE.test(d.closeTime))) {
-          throw new Error(`${DAY_LABELS[d.dayOfWeek]}: vaqt HH:MM bo‘lsin`);
+          throw new Error(tr('workHours.badTime', { day: tr(DAY_LABEL_KEYS[d.dayOfWeek]) }));
         }
       }
       await api.patch(`/seller/shops/${shopId}`, { workingHours: hours, holidays });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['seller-shop', shopId] });
-      Alert.alert(tr('common.saved'), 'Ish vaqti yangilandi');
+      Alert.alert(tr('common.saved'), tr('workHours.updated'));
       onClose();
     },
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
@@ -93,7 +93,7 @@ export function WorkingHoursModal({ visible, shopId, initialHours, initialHolida
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.header}>
-          <Text style={styles.title}>Ish vaqti</Text>
+          <Text style={styles.title}>{tr('workHours.title')}</Text>
           <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
             <X size={20} color={colors.text.secondary} />
           </Pressable>
@@ -104,7 +104,7 @@ export function WorkingHoursModal({ visible, shopId, initialHours, initialHolida
             {hours.map((d, i) => (
               <View key={d.dayOfWeek} style={styles.dayRow}>
                 <View style={styles.dayHead}>
-                  <Text style={styles.dayName}>{DAY_LABELS[d.dayOfWeek]}</Text>
+                  <Text style={styles.dayName}>{tr(DAY_LABEL_KEYS[d.dayOfWeek])}</Text>
                   <Switch
                     value={d.isOpen}
                     onValueChange={(v) => setDay(i, { isOpen: v })}
@@ -133,12 +133,12 @@ export function WorkingHoursModal({ visible, shopId, initialHours, initialHolida
                     />
                   </View>
                 ) : (
-                  <Text style={styles.closedLabel}>Dam olish kuni</Text>
+                  <Text style={styles.closedLabel}>{tr('workHours.dayOff')}</Text>
                 )}
               </View>
             ))}
 
-            <Text style={styles.sectionTitle}>Bayram / yopiq kunlar</Text>
+            <Text style={styles.sectionTitle}>{tr('workHours.holidays')}</Text>
             <View style={styles.holidayAdd}>
               <TextInput
                 style={styles.holidayInput}

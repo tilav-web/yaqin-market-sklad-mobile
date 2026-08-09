@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CreateDebtModal } from '@/components/seller/CreateDebtModal';
 import { DebtAccountModal } from '@/components/seller/DebtAccountModal';
 import { EmptyState } from '@/components/ui';
+import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { DebtAccount, DebtSummary } from '@/lib/types';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
@@ -17,6 +18,7 @@ function fmt(n: number): string {
 }
 
 export default function SellerDebtScreen() {
+  const { tr } = useTranslation();
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
   const [createOpen, setCreateOpen] = useState(false);
   const [preset, setPreset] = useState<{ name: string; phone: string } | null>(null);
@@ -70,20 +72,20 @@ export default function SellerDebtScreen() {
         }
         ListHeaderComponent={
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Umumiy qarz (olinishi kerak)</Text>
+            <Text style={styles.summaryLabel}>{tr('debtBook.totalOwed')}</Text>
             {summaryQuery.isLoading ? (
               <ActivityIndicator color={colors.text.onPrimary} style={{ alignSelf: 'flex-start', marginTop: 4 }} />
             ) : summaryQuery.isError ? (
               <>
-                <Text style={styles.summaryError}>Yuklanmadi — qayta urinib ko&apos;ring</Text>
+                <Text style={styles.summaryError}>{tr('debtBook.summaryFailed')}</Text>
                 <Pressable onPress={() => void summaryQuery.refetch()} hitSlop={8}>
-                  <Text style={styles.summaryRetry}>Qayta urinish</Text>
+                  <Text style={styles.summaryRetry}>{tr('common.retry')}</Text>
                 </Pressable>
               </>
             ) : (
               <>
                 <Text style={styles.summaryValue}>{fmt(summary?.outstanding ?? 0)} so&apos;m</Text>
-                <Text style={styles.summarySub}>{summary?.customers ?? 0} ta mijozda qarz bor</Text>
+                <Text style={styles.summarySub}>{tr('debtBook.customersCount', { n: summary?.customers ?? 0 })}</Text>
               </>
             )}
           </View>
@@ -94,16 +96,16 @@ export default function SellerDebtScreen() {
           ) : accountsQuery.isError ? (
             <EmptyState
               icon={WifiOff}
-              title="Qarz daftari yuklanmadi"
-              description="Internetni tekshirib, qayta urinib ko'ring"
-              actionLabel="Qayta urinish"
+              title={tr('debtBook.loadFailed')}
+              description={tr('common.error.desc')}
+              actionLabel={tr('common.retry')}
               onAction={() => void accountsQuery.refetch()}
             />
           ) : (
             <EmptyState
               icon={NotebookText}
-              title="Qarz daftari bo‘sh"
-              description="Tanishlaringizga qarzga sotgan tovarlaringizni shu yerda yuriting"
+              title={tr('debtBook.empty')}
+              description={tr('debtBook.emptyDesc')}
             />
           )
         }
@@ -133,7 +135,7 @@ export default function SellerDebtScreen() {
 
       <Pressable style={styles.fab} onPress={() => openCreate()}>
         <Plus size={22} color={colors.text.onPrimary} strokeWidth={2.8} />
-        <Text style={styles.fabText}>Yangi qarz</Text>
+        <Text style={styles.fabText}>{tr('debtBook.newDebt')}</Text>
       </Pressable>
 
       <CreateDebtModal

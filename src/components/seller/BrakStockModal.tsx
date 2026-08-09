@@ -14,16 +14,16 @@ import {
   View,
 } from 'react-native';
 
-import { tr } from '@/i18n';
+import { tr, type TranslationKey } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { BrakReasonCode } from '@/lib/types';
 import { colors, radius, spacing, typography } from '@/theme';
 
-const REASONS: { key: BrakReasonCode; label: string }[] = [
-  { key: 'expired', label: "Muddati o'tdi" },
-  { key: 'damaged', label: 'Shikastlangan / singan' },
-  { key: 'stolen', label: "Yo'qolgan / o'g'irlangan" },
-  { key: 'other', label: 'Boshqa' },
+const REASONS: { key: BrakReasonCode; labelKey: TranslationKey }[] = [
+  { key: 'expired', labelKey: 'brak.expired' },
+  { key: 'damaged', labelKey: 'brak.damaged' },
+  { key: 'stolen', labelKey: 'brak.stolen' },
+  { key: 'other', labelKey: 'brak.other' },
 ];
 
 interface Props {
@@ -83,14 +83,14 @@ export function BrakStockModal({ visible, shopId, variant, onClose }: Props) {
         <View style={styles.sheet}>
           <View style={styles.titleRow}>
             <AlertTriangle size={18} color={colors.feedback.danger} strokeWidth={2.2} />
-            <Text style={styles.sheetTitle}>Brak qilish</Text>
+            <Text style={styles.sheetTitle}>{tr('brak.title')}</Text>
           </View>
           <Text style={styles.sheetSub}>
             "{variant?.name}" ning butun qoldig'i ({variant?.stock ?? 0} ta) nolga tushiriladi. Bu
             amalni qaytarib bo'lmaydi.
           </Text>
 
-          <Text style={styles.fieldLabel}>Sabab</Text>
+          <Text style={styles.fieldLabel}>{tr('brak.reason')}</Text>
           <View style={styles.reasonWrap}>
             {REASONS.map((r) => (
               <Pressable
@@ -102,7 +102,7 @@ export function BrakStockModal({ visible, shopId, variant, onClose }: Props) {
                     styles.reasonChipText,
                     reasonCode === r.key && styles.reasonChipTextActive,
                   ]}>
-                  {r.label}
+                  {tr(r.labelKey)}
                 </Text>
               </Pressable>
             ))}
@@ -110,12 +110,12 @@ export function BrakStockModal({ visible, shopId, variant, onClose }: Props) {
 
           {reasonCode === 'other' && (
             <>
-              <Text style={styles.fieldLabel}>Izoh (shart)</Text>
+              <Text style={styles.fieldLabel}>{tr('brak.noteRequired')}</Text>
               <TextInput
                 style={styles.noteInput}
                 value={note}
                 onChangeText={setNote}
-                placeholder="Sababni yozing"
+                placeholder={tr('brak.reasonPlaceholder')}
                 placeholderTextColor={colors.text.hint}
                 multiline
               />
@@ -129,11 +129,11 @@ export function BrakStockModal({ visible, shopId, variant, onClose }: Props) {
             {brak.isPending ? (
               <ActivityIndicator color={colors.text.onPrimary} />
             ) : (
-              <Text style={styles.confirmBtnText}>Brak qilish</Text>
+              <Text style={styles.confirmBtnText}>{tr('brak.title')}</Text>
             )}
           </Pressable>
           <Pressable style={styles.cancelBtn} onPress={onClose}>
-            <Text style={styles.cancelBtnText}>Bekor qilish</Text>
+            <Text style={styles.cancelBtnText}>{tr('common.cancel')}</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>

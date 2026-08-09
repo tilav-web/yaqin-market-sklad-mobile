@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { ActivityIndicator, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useTranslation } from '@/i18n';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import type { BarcodeType } from 'expo-camera';
@@ -33,6 +34,7 @@ export function BarcodeScannerModal({
   barcodeTypes,
   closeOnScan = true,
 }: Props) {
+  const { tr } = useTranslation();
   const [permission, requestPermission] = useCameraPermissions();
   const handled = useRef(false);
 
@@ -57,26 +59,26 @@ export function BarcodeScannerModal({
           </View>
         ) : !permission.granted ? (
           <SafeAreaView style={styles.center}>
-            <Text style={styles.permTitle}>Kameraga ruxsat kerak</Text>
+            <Text style={styles.permTitle}>{tr('scanner.permTitle')}</Text>
             {permission.canAskAgain ? (
               <>
-                <Text style={styles.permDesc}>Barkodni skanlash uchun kameradan foydalanamiz.</Text>
+                <Text style={styles.permDesc}>{tr('scanner.permBody')}</Text>
                 <Pressable style={styles.permBtn} onPress={requestPermission}>
-                  <Text style={styles.permBtnText}>Ruxsat berish</Text>
+                  <Text style={styles.permBtnText}>{tr('scanner.grant')}</Text>
                 </Pressable>
               </>
             ) : (
               <>
                 <Text style={styles.permDesc}>
-                  Kameraga ruxsat butunlay o'chirilgan. Skanerlash uchun uni Sozlamalardan yoqing.
+                  {tr('scanner.permBlocked')}
                 </Text>
                 <Pressable style={styles.permBtn} onPress={() => void Linking.openSettings()}>
-                  <Text style={styles.permBtnText}>Sozlamalarni ochish</Text>
+                  <Text style={styles.permBtnText}>{tr('scanner.openSettings')}</Text>
                 </Pressable>
               </>
             )}
             <Pressable onPress={onClose} style={{ padding: spacing.md }}>
-              <Text style={styles.cancel}>Bekor qilish</Text>
+              <Text style={styles.cancel}>{tr('common.cancel')}</Text>
             </Pressable>
           </SafeAreaView>
         ) : (
@@ -105,7 +107,7 @@ export function BarcodeScannerModal({
                 ) : null}
                 <Pressable style={styles.closeBtn} onPress={onClose}>
                   <X size={18} color={colors.text.onPrimary} strokeWidth={2.4} />
-                  <Text style={styles.closeText}>Yopish</Text>
+                  <Text style={styles.closeText}>{tr('common.close')}</Text>
                 </Pressable>
               </View>
             </SafeAreaView>

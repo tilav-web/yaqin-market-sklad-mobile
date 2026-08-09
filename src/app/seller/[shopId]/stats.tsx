@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useTranslation, type TranslationKey } from '@/i18n';
 import { EmptyState } from '@/components/ui';
 import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { api } from '@/lib/api';
@@ -16,14 +17,15 @@ function fmt(n: number): string {
   return n.toLocaleString('ru-RU').replace(/,/g, ' ');
 }
 
-const PERIODS: { key: StatsPeriod; label: string }[] = [
-  { key: 'today', label: 'Bugun' },
-  { key: '7d', label: '7 kun' },
-  { key: '30d', label: '30 kun' },
+const PERIODS: { key: StatsPeriod; label: TranslationKey }[] = [
+  { key: 'today', label: 'stats.periodToday' },
+  { key: '7d', label: 'stats.period7d' },
+  { key: '30d', label: 'stats.period30d' },
 ];
 
 export default function SellerStatsScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
+  const { tr } = useTranslation();
   const [period, setPeriod] = useState<StatsPeriod>('7d');
   // Revenue analytics are owner-only server-side — skip the calls once
   // confirmed non-owner and explain why instead of a raw 403.
@@ -92,7 +94,7 @@ export default function SellerStatsScreen() {
               key={p.key}
               onPress={() => setPeriod(p.key)}
               style={[styles.periodChip, period === p.key && styles.periodChipActive]}>
-              {p.label}
+              {tr(p.label)}
             </Text>
           ))}
         </View>
@@ -102,30 +104,30 @@ export default function SellerStatsScreen() {
         ) : statsQuery.isError || !s ? (
           <EmptyState
             icon={AlertTriangle}
-            title="Hisobot yuklanmadi"
-            description="Internetni tekshirib, qayta urinib ko'ring"
-            actionLabel="Qayta urinish"
+            title={tr('stats.loadErrorTitle')}
+            description={tr('stats.loadErrorDesc')}
+            actionLabel={tr('common.retry')}
             onAction={() => void statsQuery.refetch()}
           />
         ) : (
           <>
             {/* KPI cards */}
             <View style={styles.kpiGrid}>
-              <Kpi icon={Wallet} label="Tushum" value={`${fmt(s.revenue)}`} unit="so'm" tone="primary" />
-              <Kpi icon={TrendingUp} label="Foyda" value={`${fmt(s.profit)}`} unit="so'm" tone="success" />
-              <Kpi icon={ShoppingBag} label="Buyurtmalar" value={`${s.orderCount}`} unit="ta" />
-              <Kpi icon={Package} label="Sotilgan" value={`${s.itemsSold}`} unit="dona" />
+              <Kpi icon={Wallet} label={tr('stats.revenue')} value={`${fmt(s.revenue)}`} unit={tr('common.som')} tone="primary" />
+              <Kpi icon={TrendingUp} label={tr('stats.profit')} value={`${fmt(s.profit)}`} unit={tr('common.som')} tone="success" />
+              <Kpi icon={ShoppingBag} label={tr('stats.orders')} value={`${s.orderCount}`} unit={tr('stats.unitPcs')} />
+              <Kpi icon={Package} label={tr('stats.sold')} value={`${s.itemsSold}`} unit={tr('stats.unitItems')} />
             </View>
 
             <View style={styles.invCard}>
-              <Text style={styles.invLabel}>Ombor qiymati (tannarxda)</Text>
-              <Text style={styles.invValue}>{fmt(s.inventoryValue)} so&apos;m</Text>
+              <Text style={styles.invLabel}>{tr('stats.inventoryValue')}</Text>
+              <Text style={styles.invValue}>{fmt(s.inventoryValue)} {tr('common.som')}</Text>
             </View>
 
             {/* Top products */}
-            <Section title="Eng ko'p sotilganlar">
+            <Section title={tr('stats.topProducts')}>
               {s.topProducts.length === 0 ? (
-                <Text style={styles.dim}>Bu davrda sotuv yo&apos;q</Text>
+                <Text style={styles.dim}>{tr('stats.noSales')}</Text>
               ) : (
                 s.topProducts.map((t, i) => (
                   <View key={t.name} style={styles.topRow}>
@@ -134,8 +136,8 @@ export default function SellerStatsScreen() {
                       {t.name}
                     </Text>
                     <View style={styles.topRight}>
-                      <Text style={styles.topQty}>{t.qty} dona</Text>
-                      <Text style={styles.topRevenue}>{fmt(t.revenue)} so&apos;m</Text>
+                      <Text style={styles.topQty}>{t.qty} {tr('stats.unitItems')}</Text>
+                      <Text style={styles.topRevenue}>{fmt(t.revenue)} {tr('common.som')}</Text>
                     </View>
                   </View>
                 ))
@@ -145,11 +147,11 @@ export default function SellerStatsScreen() {
         )}
 
         {/* Reorder suggestions */}
-        <Section title="🛒 Olib kelish kerak" hint="Sotuv tezligi va kam qoldiq asosida">
+        <Section title={tr('stats.reorderTitle')} hint={tr('stats.reorderHint')}>
           {reorderQuery.isLoading ? (
             <ActivityIndicator color={colors.brand.primary} style={{ marginVertical: 12 }} />
           ) : (reorderQuery.data ?? []).length === 0 ? (
-            <Text style={styles.dim}>Hammasi yetarli — olib kelish shart emas 👍</Text>
+            <Text style={styles.dim}>{tr('stats.reorderEmpty')}</Text>
           ) : (
             (reorderQuery.data ?? []).map((r) => (
               <View key={r.variantId} style={styles.reorderRow}>
@@ -158,14 +160,16 @@ export default function SellerStatsScreen() {
                     {r.name}
                   </Text>
                   <Text style={styles.reorderMeta}>
-                    Qoldiq {r.stock} ta
-                    {r.daysLeft !== null ? ` · ~${r.daysLeft} kunga yetadi` : ' · sekin sotiladi'}
-                    {r.perDay > 0 ? ` · kuniga ${r.perDay}` : ''}
+                    {tr('stats.stockLeft', { n: r.stock })}
+                    {r.daysLeft !== null
+                      ? ` · ${tr('stats.daysEnough', { d: r.daysLeft })}`
+                      : ` · ${tr('stats.slowSelling')}`}
+                    {r.perDay > 0 ? ` · ${tr('stats.perDay', { n: r.perDay })}` : ''}
                   </Text>
                 </View>
                 <View style={styles.suggestBadge}>
                   <Text style={styles.suggestQty}>+{r.suggestedQty}</Text>
-                  <Text style={styles.suggestLabel}>tavsiya</Text>
+                  <Text style={styles.suggestLabel}>{tr('stats.suggested')}</Text>
                 </View>
               </View>
             ))
@@ -173,11 +177,11 @@ export default function SellerStatsScreen() {
         </Section>
 
         {/* Expiring */}
-        <Section title="📅 Muddati tugayotganlar" hint="30 kun ichida">
+        <Section title={tr('stats.expiringTitle')} hint={tr('stats.expiringHint')}>
           {expiringQuery.isLoading ? (
             <ActivityIndicator color={colors.brand.primary} style={{ marginVertical: 12 }} />
           ) : (expiringQuery.data ?? []).length === 0 ? (
-            <Text style={styles.dim}>Yaqin orada muddati tugaydigan tovar yo&apos;q</Text>
+            <Text style={styles.dim}>{tr('stats.expiringEmpty')}</Text>
           ) : (
             (expiringQuery.data ?? []).map((e) => {
               const expired = e.daysToExpiry < 0;
@@ -196,7 +200,7 @@ export default function SellerStatsScreen() {
                       {e.name}
                     </Text>
                     <Text style={styles.expMeta}>
-                      {e.quantityRemaining} ta · {e.expiryDate}
+                      {e.quantityRemaining} {tr('stats.unitPcs')} · {e.expiryDate}
                     </Text>
                   </View>
                   <Text
@@ -204,7 +208,9 @@ export default function SellerStatsScreen() {
                       styles.expDays,
                       expired ? styles.expDaysDanger : urgent ? styles.expDaysWarn : null,
                     ]}>
-                    {expired ? `${-e.daysToExpiry} kun o'tdi` : `${e.daysToExpiry} kun`}
+                    {expired
+                      ? tr('stats.daysPassed', { n: -e.daysToExpiry })
+                      : tr('stats.daysLeft', { n: e.daysToExpiry })}
                   </Text>
                 </View>
               );

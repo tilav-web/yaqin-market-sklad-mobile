@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { tr } from '@/i18n';
+import { tr, useTranslation, type TranslationKey } from '@/i18n';
 import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
@@ -37,24 +37,25 @@ interface SellerTx {
   createdAt: string;
 }
 
-const TX_LABEL: Record<string, string> = {
-  cash_order_commission: 'Naqd buyurtma',
-  online_order_pending: 'Online buyurtma (kutilmoqda)',
-  pending_settled: 'Mablag chiqarildi',
-  debt_repaid: 'Qarz to\'landi',
-  withdrawal_requested: 'Yechish so\'rovi',
-  withdrawal_completed: 'Yechildi',
-  prime_payment: 'Prime obuna',
-  admin_adjustment: 'Admin sozlash',
-  refund_debit: 'Qaytarilgan mablag',
+const TX_LABEL: Record<string, TranslationKey> = {
+  cash_order_commission: 'balance.txCashCommission',
+  online_order_pending: 'balance.txOnlinePending',
+  pending_settled: 'balance.txPendingSettled',
+  debt_repaid: 'balance.txDebtRepaid',
+  withdrawal_requested: 'balance.txWithdrawalRequested',
+  withdrawal_completed: 'balance.txWithdrawalCompleted',
+  prime_payment: 'balance.txPrimePayment',
+  admin_adjustment: 'balance.txAdminAdjustment',
+  refund_debit: 'balance.txRefundDebit',
 };
 
 function fmt(v: string): string {
-  return Number(v).toLocaleString('ru-RU') + " so'm";
+  return Number(v).toLocaleString('ru-RU') + ' ' + tr('common.som');
 }
 
 export default function SellerBalanceScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
+  const { tr } = useTranslation();
   const qc = useQueryClient();
   const [amount, setAmount] = useState('');
   const [cardNum, setCardNum] = useState('');
@@ -91,7 +92,7 @@ export default function SellerBalanceScreen() {
       setAmount('');
       setCardNum('');
       setCardName('');
-      Alert.alert('So\'rov yuborildi', 'Admin ko\'rib chiqadi va kartangizga o\'tkazadi.');
+      Alert.alert(tr('balance.requestSent'), tr('balance.requestSentDesc'));
     },
     onError: (e: unknown) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
@@ -121,28 +122,28 @@ export default function SellerBalanceScreen() {
           <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 24 }} />
         ) : balQ.isError ? (
           <Text style={{ color: colors.feedback.danger, textAlign: 'center', marginTop: 24 }}>
-            Balans ma'lumotlarini yuklashda xatolik
+            {tr('balance.loadError')}
           </Text>
         ) : bal ? (
           <>
             <View style={styles.cards}>
               <View style={[styles.card, styles.cardAvailable]}>
-                <Text style={styles.cardLabel}>Mavjud</Text>
+                <Text style={styles.cardLabel}>{tr('balance.available')}</Text>
                 <Text style={[styles.cardValue, { color: colors.feedback.success }]}>{fmt(bal.availableBalance)}</Text>
-                <Text style={styles.cardSub}>Yechish mumkin</Text>
+                <Text style={styles.cardSub}>{tr('balance.availableSub')}</Text>
               </View>
               <View style={[styles.card, styles.cardPending]}>
-                <Text style={styles.cardLabel}>Kutilmoqda</Text>
+                <Text style={styles.cardLabel}>{tr('balance.pending')}</Text>
                 <Text style={[styles.cardValue, { color: '#F59E0B' }]}>{fmt(bal.pendingBalance)}</Text>
-                <Text style={styles.cardSub}>24 soat ushlanadi</Text>
+                <Text style={styles.cardSub}>{tr('balance.pendingSub')}</Text>
               </View>
             </View>
 
             {parseFloat(bal.debtBalance) > 0 && (
               <View style={styles.debtCard}>
-                <Text style={styles.debtTitle}>Qarz: {fmt(bal.debtBalance)}</Text>
+                <Text style={styles.debtTitle}>{tr('balance.debt', { amount: fmt(bal.debtBalance) })}</Text>
                 {bal.debtDueDate && (
-                  <Text style={styles.debtSub}>To'lov muddati: {bal.debtDueDate}</Text>
+                  <Text style={styles.debtSub}>{tr('balance.debtDue', { date: bal.debtDueDate })}</Text>
                 )}
               </View>
             )}
@@ -153,7 +154,7 @@ export default function SellerBalanceScreen() {
                 style={styles.actionBtn}
                 onPress={() => setShowWithdraw((v) => !v)}>
                 <ArrowDownCircle size={20} color={colors.brand.primary} />
-                <Text style={styles.actionText}>Yechish</Text>
+                <Text style={styles.actionText}>{tr('balance.withdraw')}</Text>
               </Pressable>
               <Pressable
                 style={styles.actionBtn}
@@ -166,10 +167,10 @@ export default function SellerBalanceScreen() {
             {/* Withdrawal form */}
             {showWithdraw && (
               <View style={styles.withdrawForm}>
-                <Text style={styles.sectionTitle}>Mablag' yechish</Text>
+                <Text style={styles.sectionTitle}>{tr('balance.withdrawTitle')}</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Summa (so'm)"
+                  placeholder={tr('balance.amountPlaceholder')}
                   keyboardType="numeric"
                   value={amount}
                   onChangeText={setAmount}
@@ -177,7 +178,7 @@ export default function SellerBalanceScreen() {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="Karta raqami"
+                  placeholder={tr('balance.cardNumber')}
                   keyboardType="numeric"
                   value={cardNum}
                   onChangeText={setCardNum}
@@ -185,7 +186,7 @@ export default function SellerBalanceScreen() {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="Karta egasining ismi"
+                  placeholder={tr('balance.cardHolder')}
                   value={cardName}
                   onChangeText={setCardName}
                   placeholderTextColor={colors.text.tertiary}
@@ -196,7 +197,7 @@ export default function SellerBalanceScreen() {
                   onPress={() => withdraw.mutate()}
                 >
                   <CreditCard size={18} color="#fff" />
-                  <Text style={styles.submitText}>So'rov yuborish</Text>
+                  <Text style={styles.submitText}>{tr('balance.submitRequest')}</Text>
                 </Pressable>
               </View>
             )}
@@ -204,12 +205,12 @@ export default function SellerBalanceScreen() {
         ) : null}
 
         {/* Transaction history */}
-        <Text style={styles.sectionTitle}>Tranzaksiyalar</Text>
+        <Text style={styles.sectionTitle}>{tr('balance.transactions')}</Text>
         {txQ.isLoading ? (
           <ActivityIndicator color={colors.brand.primary} />
         ) : txQ.isError ? (
           <Text style={{ color: colors.feedback.danger, textAlign: 'center' }}>
-            Tarix yuklanmadi
+            {tr('balance.historyError')}
           </Text>
         ) : (
           (txQ.data ?? []).map((tx) => {
@@ -217,7 +218,7 @@ export default function SellerBalanceScreen() {
             return (
               <View key={tx.id} style={styles.txRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.txType}>{TX_LABEL[tx.type] ?? tx.type}</Text>
+                  <Text style={styles.txType}>{TX_LABEL[tx.type] ? tr(TX_LABEL[tx.type]) : tx.type}</Text>
                   {tx.description && (
                     <Text style={styles.txDesc} numberOfLines={2}>{tx.description}</Text>
                   )}
@@ -233,7 +234,7 @@ export default function SellerBalanceScreen() {
           })
         )}
         {!txQ.isLoading && (txQ.data ?? []).length === 0 && (
-          <Text style={styles.empty}>Tranzaksiyalar yo'q</Text>
+          <Text style={styles.empty}>{tr('balance.noTransactions')}</Text>
         )}
       </ScrollView>
     </SafeAreaView>

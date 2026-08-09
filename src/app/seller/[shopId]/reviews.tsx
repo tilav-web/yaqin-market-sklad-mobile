@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui';
 import { NoPermissionNotice } from '@/components/seller/OwnerOnlyNotice';
 import { api } from '@/lib/api';
 import { useShopAccess } from '@/lib/useIsShopOwner';
+import { useTranslation } from '@/i18n';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 interface ShopReview {
@@ -36,6 +37,7 @@ function Stars({ value }: { value: number }) {
 }
 
 export default function SellerReviewsScreen() {
+  const { tr } = useTranslation();
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
   // Gated by `reviews.view` server-side (products.service.ts#listShopReviews)
   // — owners always pass. Skip the call once resolved and confirmed absent.
@@ -88,7 +90,7 @@ export default function SellerReviewsScreen() {
           reviewsQuery.isLoading ? (
             <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />
           ) : (
-            <EmptyState icon={Star} title="Sharh yo‘q" description="Mijozlar sharhlari shu yerda ko‘rinadi" />
+            <EmptyState icon={Star} title={tr('reviews.empty')} description={tr('reviews.emptyDesc')} />
           )
         }
         renderItem={({ item }) => (

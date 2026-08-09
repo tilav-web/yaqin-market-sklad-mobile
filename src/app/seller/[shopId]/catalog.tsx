@@ -16,19 +16,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { tr } from '@/i18n';
+import { tr, type TranslationKey } from '@/i18n';
 import { BarcodeScannerModal } from '@/components/seller/BarcodeScannerModal';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
 import { GlobalCatalogProduct } from '@/lib/types';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 
-const UNIT_LABEL: Record<string, string> = {
-  piece: 'dona',
-  kg: 'kg',
-  liter: 'litr',
-  gram: 'g',
-  pack: 'paket',
+const UNIT_LABEL_KEY: Record<string, TranslationKey> = {
+  piece: 'catalog.unitPiece',
+  kg: 'catalog.unitKg',
+  liter: 'catalog.unitLiter',
+  gram: 'catalog.unitGram',
+  pack: 'catalog.unitPack',
 };
 
 export default function SellerCatalogScreen() {
@@ -67,7 +67,7 @@ export default function SellerCatalogScreen() {
       setCloneTarget(null);
       setPrice('');
       setStock('');
-      Alert.alert("Qo'shildi", "Mahsulot do'koningizga qo'shildi.");
+      Alert.alert(tr('catalog.added'), tr('catalog.addedDesc'));
     },
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
@@ -76,7 +76,7 @@ export default function SellerCatalogScreen() {
     const p = parseAmount(price);
     const s = parseAmount(stock);
     if (!cloneTarget || p <= 0) {
-      Alert.alert(tr('common.error'), "Narxni to'g'ri kiriting");
+      Alert.alert(tr('common.error'), tr('catalog.invalidPrice'));
       return;
     }
     cloneMutation.mutate({ globalProductId: cloneTarget.id, price: p, stock: s });
@@ -99,7 +99,7 @@ export default function SellerCatalogScreen() {
             style={styles.searchInput}
             value={searchInput}
             onChangeText={setSearchInput}
-            placeholder="Mahsulot nomi yoki barkod"
+            placeholder={tr('catalog.searchPlaceholder')}
             placeholderTextColor={colors.text.hint}
             returnKeyType="search"
           />
@@ -119,18 +119,15 @@ export default function SellerCatalogScreen() {
           <View style={styles.hintIcon}>
             <BookOpen size={28} color={colors.brand.primary} strokeWidth={1.8} />
           </View>
-          <Text style={styles.hintTitle}>Global katalog</Text>
-          <Text style={styles.hintSub}>
-            Yuqoridagi qidiruvga mahsulot nomini yoki barkodni kiriting.{'\n'}
-            Topilgan mahsulotni do'koningizga narx qo'yib nusxalang.
-          </Text>
+          <Text style={styles.hintTitle}>{tr('catalog.globalTitle')}</Text>
+          <Text style={styles.hintSub}>{tr('catalog.globalHint')}</Text>
         </View>
       ) : catalogQuery.isLoading ? (
         <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />
       ) : items.length === 0 ? (
         <View style={styles.hint}>
-          <Text style={styles.hintTitle}>Topilmadi</Text>
-          <Text style={styles.hintSub}>Bu mahsulot global katalogda yo'q</Text>
+          <Text style={styles.hintTitle}>{tr('catalog.notFound')}</Text>
+          <Text style={styles.hintSub}>{tr('catalog.notFoundDesc')}</Text>
         </View>
       ) : (
         <FlatList
@@ -152,13 +149,14 @@ export default function SellerCatalogScreen() {
                 <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
                 {item.brand ? <Text style={styles.brand}>{item.brand}</Text> : null}
                 <Text style={styles.unit}>
-                  {item.unitSize} {UNIT_LABEL[item.unitType] ?? item.unitType}
+                  {item.unitSize}{' '}
+                  {UNIT_LABEL_KEY[item.unitType] ? tr(UNIT_LABEL_KEY[item.unitType]) : item.unitType}
                   {item.barcode ? ` · ${item.barcode}` : ''}
                 </Text>
-                <Text style={styles.usage}>{item.usageCount} do'konda ishlatilmoqda</Text>
+                <Text style={styles.usage}>{tr('catalog.usedInShops', { n: item.usageCount })}</Text>
               </View>
               <Pressable style={styles.cloneBtn} onPress={() => { setCloneTarget(item); setPrice(''); }}>
-                <Text style={styles.cloneBtnText}>Qo'sh</Text>
+                <Text style={styles.cloneBtnText}>{tr('catalog.add')}</Text>
               </Pressable>
             </View>
           )}
@@ -170,7 +168,7 @@ export default function SellerCatalogScreen() {
         onClose={() => setScanOpen(false)}
         onScanned={onScanned}
         onSkip={() => setScanOpen(false)}
-        title="Barkodni skanlang"
+        title={tr('catalog.scanBarcode')}
       />
 
       <Modal visible={!!cloneTarget} transparent animationType="slide" onRequestClose={() => { setCloneTarget(null); }}>
@@ -178,17 +176,17 @@ export default function SellerCatalogScreen() {
           <View style={styles.sheet}>
             <Text style={styles.sheetTitle}>{cloneTarget?.name}</Text>
             {cloneTarget?.brand ? <Text style={styles.sheetSub}>{cloneTarget.brand}</Text> : null}
-            <Text style={styles.fieldLabel}>Narx (so'm) *</Text>
+            <Text style={styles.fieldLabel}>{tr('catalog.priceLabel')}</Text>
             <TextInput
               style={styles.priceInput}
               value={price}
               onChangeText={setPrice}
               keyboardType="numeric"
-              placeholder="Masalan: 15000"
+              placeholder={tr('catalog.pricePlaceholder')}
               placeholderTextColor={colors.text.hint}
               autoFocus
             />
-            <Text style={styles.fieldLabel}>Boshlang'ich qoldiq (dona)</Text>
+            <Text style={styles.fieldLabel}>{tr('catalog.initialStock')}</Text>
             <TextInput
               style={styles.priceInput}
               value={stock}
@@ -204,11 +202,11 @@ export default function SellerCatalogScreen() {
               {cloneMutation.isPending ? (
                 <ActivityIndicator color={colors.text.onPrimary} />
               ) : (
-                <Text style={styles.confirmBtnText}>Do'konga qo'shish</Text>
+                <Text style={styles.confirmBtnText}>{tr('catalog.addToShop')}</Text>
               )}
             </Pressable>
             <Pressable style={styles.cancelBtn} onPress={() => { setCloneTarget(null); setPrice(''); setStock(''); }}>
-              <Text style={styles.cancelBtnText}>Bekor qilish</Text>
+              <Text style={styles.cancelBtnText}>{tr('common.cancel')}</Text>
             </Pressable>
           </View>
         </View>

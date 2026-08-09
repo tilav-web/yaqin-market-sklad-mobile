@@ -106,7 +106,7 @@ export function InventoryCountModal({ visible, shopId, onClose }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['variants', shopId] });
-      Alert.alert(tr('common.saved'), `${changedIds.length} ta mahsulot qoldig'i yangilandi`);
+      Alert.alert(tr('common.saved'), tr('invCount.updatedN', { n: changedIds.length }));
       onClose();
     },
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
@@ -118,13 +118,13 @@ export function InventoryCountModal({ visible, shopId, onClose }: Props) {
         <View style={styles.header}>
           <View style={styles.titleRow}>
             <ClipboardCheck size={20} color={colors.brand.primary} strokeWidth={2.2} />
-            <Text style={styles.title}>Inventarizatsiya</Text>
+            <Text style={styles.title}>{tr('invCount.title')}</Text>
           </View>
           <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
             <X size={20} color={colors.text.secondary} />
           </Pressable>
         </View>
-        <Text style={styles.sub}>Mahsulotni qidiring, real sanagan qoldiqni kiriting. Kiritilganlar eslab qolinadi.</Text>
+        <Text style={styles.sub}>{tr('invCount.sub')}</Text>
 
         <View style={styles.searchBox}>
           <Search size={16} color={colors.text.tertiary} />
@@ -132,7 +132,7 @@ export function InventoryCountModal({ visible, shopId, onClose }: Props) {
             style={styles.searchInput}
             value={searchInput}
             onChangeText={setSearchInput}
-            placeholder="Mahsulot nomi yoki barkod"
+            placeholder={tr('invCount.searchPlaceholder')}
             placeholderTextColor={colors.text.hint}
           />
         </View>
@@ -142,7 +142,7 @@ export function InventoryCountModal({ visible, shopId, onClose }: Props) {
             {listQuery.isLoading ? (
               <ActivityIndicator color={colors.brand.primary} style={{ marginTop: spacing.lg }} />
             ) : results.length === 0 ? (
-              <Text style={styles.empty}>{search ? 'Topilmadi' : 'Mahsulot yo‘q'}</Text>
+              <Text style={styles.empty}>{tr(search ? 'invCount.notFound' : 'invCount.noProducts')}</Text>
             ) : (
               results.map((v) => {
                 const raw = counts[v.id] ?? '';
@@ -154,11 +154,11 @@ export function InventoryCountModal({ visible, shopId, onClose }: Props) {
                         {v.name}
                       </Text>
                       <Text style={styles.sysStock}>
-                        Tizimda: {v.stock} ta
+                        {tr('invCount.inSystem', { n: v.stock })}
                         {raw !== '' && diff !== 0 ? (
                           <Text style={diff > 0 ? styles.diffPlus : styles.diffMinus}>
                             {'  '}
-                            {diff > 0 ? `+${diff} ortiqcha` : `${diff} kamomad`}
+                            {diff > 0 ? tr('invCount.surplus', { n: diff }) : tr('invCount.shortage', { n: diff })}
                           </Text>
                         ) : null}
                       </Text>
@@ -184,7 +184,7 @@ export function InventoryCountModal({ visible, shopId, onClose }: Props) {
             disabled={changedIds.length === 0 || save.isPending}
             onPress={() => save.mutate()}>
             <Text style={styles.saveText}>
-              {save.isPending ? 'Saqlanmoqda…' : `Saqlash${changedIds.length ? ` (${changedIds.length})` : ''}`}
+              {save.isPending ? tr('invCount.saving') : `${tr('common.save')}${changedIds.length ? ` (${changedIds.length})` : ''}`}
             </Text>
           </Pressable>
         </View>

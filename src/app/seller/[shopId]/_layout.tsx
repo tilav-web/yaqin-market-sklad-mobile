@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SellerTabBar } from '@/components/SellerTabBar';
 import type { StaffPermission } from '@/constants/staffPermissions';
+import { useTranslation } from '@/i18n';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import { AlarmMode } from '@/stores/alarmSettings';
 import { PendingOrder, useOrderAlarm } from '@/lib/useOrderAlarm';
@@ -161,6 +162,7 @@ function NewOrderBanner({
   onAck: () => void;
   onOpen: () => void;
 }>) {
+  const { tr } = useTranslation();
   return (
     <SafeAreaView edges={['top']} style={styles.bannerWrap} pointerEvents="box-none">
       <Pressable style={styles.banner} onPress={onOpen}>
@@ -168,7 +170,7 @@ function NewOrderBanner({
           <Bell size={22} color={Brand.white} strokeWidth={2.4} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.bannerTitle}>Yangi buyurtma!</Text>
+          <Text style={styles.bannerTitle}>{tr('sellerOrders.newOrderBanner')}</Text>
           <Text style={styles.bannerSub}>
             #{order.orderNumber} —{' '}
             {mode === "long" ? "buyurtmani ochish uchun bosing" : "ko’rish uchun bosing"}
@@ -178,7 +180,7 @@ function NewOrderBanner({
             the seller actually opens the order detail. */}
         {mode === 'short' && (
           <Pressable style={styles.ackBtn} onPress={onAck} hitSlop={8}>
-            <Text style={styles.ackText}>Ko&apos;rdim</Text>
+            <Text style={styles.ackText}>{tr('sellerOrders.seen')}</Text>
           </Pressable>
         )}
       </Pressable>

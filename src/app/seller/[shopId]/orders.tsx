@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
 import { EmptyState, useToast } from '@/components/ui';
-import { useTranslation } from '@/i18n';
+import { TranslationKey, useTranslation } from '@/i18n';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { DeliveryRoute, DeliveryRouteStop, ORDER_STATUS_KEY, Order, OrderStatus } from '@/lib/types';
 import { useShopAccess } from '@/lib/useIsShopOwner';
@@ -22,18 +22,20 @@ function openDirections(lat: number, lng: number) {
   Linking.openURL(`https://maps.google.com/?daddr=${lat},${lng}&dirflg=d`).catch(() => {});
 }
 
-const NEXT_STATUS: Partial<Record<OrderStatus, { next: OrderStatus; label: string }>> = {
-  new: { next: 'accepted', label: 'Qabul qilish' },
-  accepted: { next: 'preparing', label: "Yig'ishni boshlash" },
-  preparing: { next: 'delivering', label: 'Yetkazishga uzatish' },
-  delivering: { next: 'delivered', label: 'Yetkazib berdim' },
+// Labels are stored as translation keys, not text — the button is rendered
+// with tr() so it follows the language the seller picked.
+const NEXT_STATUS: Partial<Record<OrderStatus, { next: OrderStatus; labelKey: TranslationKey }>> = {
+  new: { next: 'accepted', labelKey: 'sellerOrders.accept' },
+  accepted: { next: 'preparing', labelKey: 'sellerOrders.startPicking' },
+  preparing: { next: 'delivering', labelKey: 'sellerOrders.handToCourier' },
+  delivering: { next: 'delivered', labelKey: 'sellerOrders.markDelivered' },
 };
 
 type Filter = 'new' | 'progress' | 'done';
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: 'new', label: 'Yangi' },
-  { key: 'progress', label: 'Jarayonda' },
-  { key: 'done', label: 'Yakunlangan' },
+const FILTERS: { key: Filter; labelKey: TranslationKey }[] = [
+  { key: 'new', labelKey: 'sellerOrders.filterNew' },
+  { key: 'progress', labelKey: 'sellerOrders.filterProgress' },
+  { key: 'done', labelKey: 'sellerOrders.filterDone' },
 ];
 
 // "Jarayonda" = accepted/preparing/delivering. "Yangi" = only awaiting accept.
@@ -87,7 +89,7 @@ export default function SellerOrdersScreen() {
 
   const onNewOrder = useCallback(() => {
     haptics.success();
-    toast.show('Yangi buyurtma keldi!', { variant: 'success' });
+    toast.show(tr('sellerOrders.newArrived'), { variant: 'success' });
     qc.invalidateQueries({ queryKey: ['seller-orders', shopId] });
   }, [toast, qc, shopId]);
   useShopRealtime(shopId, onNewOrder);
@@ -147,9 +149,9 @@ export default function SellerOrdersScreen() {
   }, [routeOpen, routeQuery.data]);
 
   const EMPTY_MSG: Record<Filter, { title: string; desc: string }> = {
-    new: { title: "Yangi buyurtma yo'q", desc: "Mijozlar buyurtma berganda shu yerda ko'rinadi" },
-    progress: { title: "Jarayondagi buyurtma yo'q", desc: "Qabul qilingan buyurtmalar shu yerda ko'rinadi" },
-    done: { title: "Yakunlangan buyurtma yo'q", desc: "Yetkazilgan va bekor buyurtmalar shu yerda ko'rinadi" },
+    new: { title: tr('sellerOrders.emptyNew'), desc: tr('sellerOrders.emptyNewDesc') },
+    progress: { title: tr('sellerOrders.emptyProgress'), desc: tr('sellerOrders.emptyProgressDesc') },
+    done: { title: tr('sellerOrders.emptyDone'), desc: tr('sellerOrders.emptyDoneDesc') },
   };
 
   return (
@@ -165,7 +167,7 @@ export default function SellerOrdersScreen() {
               onPress={() => setFilter(f.key)}
               style={[styles.segment, isActive && styles.segmentActive]}>
               <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>
-                {f.label}
+                {tr(f.labelKey)}
               </Text>
               {cnt > 0 && (
                 <View style={[styles.badge, isActive ? styles.badgeActive : f.key === 'new' ? styles.badgeNew : styles.badgeMuted]}>
@@ -317,14 +319,14 @@ export default function SellerOrdersScreen() {
                 <Text style={styles.total}>{fmt(item.total)} so'm</Text>
                 <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${item.id}?shopId=${shopId}`)}>
                   <MessageCircle size={14} color={colors.brand.primary} strokeWidth={2.4} />
-                  <Text style={styles.chatBtnText}>Chat</Text>
+                  <Text style={styles.chatBtnText}>{tr('nav.chat')}</Text>
                 </Pressable>
               </View>
 
               {item.status === 'delivering' && (
                 <Pressable style={styles.returnBtn} onPress={() => router.push(`/seller/return/${item.id}`)}>
                   <RotateCcw size={14} color={colors.feedback.warning} strokeWidth={2.4} />
-                  <Text style={styles.returnBtnText}>Qaytarilgan mahsulotni belgilash</Text>
+                  <Text style={styles.returnBtnText}>{tr('sellerOrders.markReturn')}</Text>
                 </Pressable>
               )}
 
@@ -333,7 +335,7 @@ export default function SellerOrdersScreen() {
                   style={[styles.actionBtn, item.status === 'new' && styles.acceptBtn]}
                   onPress={() => { haptics.medium(); advance.mutate({ orderId: item.id, status: next.next }); }}>
                   {item.status === 'new' && <Check size={17} color={colors.text.onPrimary} strokeWidth={2.8} />}
-                  <Text style={styles.actionBtnText}>{next.label}</Text>
+                  <Text style={styles.actionBtnText}>{tr(next.labelKey)}</Text>
                 </Pressable>
               )}
             </View>
@@ -344,14 +346,14 @@ export default function SellerOrdersScreen() {
       {/* In-store sale (POS) — bottom-right, like the inventory add button */}
       <Pressable style={styles.fab} onPress={() => router.push(`/seller/pos/${shopId}`)}>
         <ScanLine size={20} color={colors.text.onPrimary} strokeWidth={2.5} />
-        <Text style={styles.fabText}>Sotish</Text>
+        <Text style={styles.fabText}>{tr('sellerOrders.sell')}</Text>
       </Pressable>
 
       <Modal visible={routeOpen} transparent animationType="slide" onRequestClose={() => setRouteOpen(false)}>
         <View style={styles.routeOverlay}>
           <View style={styles.routeSheet}>
             <View style={styles.routeHeader}>
-              <Text style={styles.routeTitle}>Yetkazib berish marshruti</Text>
+              <Text style={styles.routeTitle}>{tr('sellerOrders.route')}</Text>
               <Pressable onPress={() => setRouteOpen(false)} hitSlop={8}>
                 <X size={22} color={colors.text.primary} strokeWidth={2.4} />
               </Pressable>
@@ -361,7 +363,7 @@ export default function SellerOrdersScreen() {
             ) : !routeQuery.data?.stops.length ? (
               <View style={styles.routeEmpty}>
                 <MapPin size={28} color={colors.text.tertiary} strokeWidth={1.8} />
-                <Text style={styles.routeEmptyText}>Hozir yetkazilayotgan buyurtma yo'q</Text>
+                <Text style={styles.routeEmptyText}>{tr('sellerOrders.routeEmpty')}</Text>
               </View>
             ) : (
               <>
@@ -382,8 +384,8 @@ export default function SellerOrdersScreen() {
                       longitude: routeQuery.data.shopLocation.lng,
                     }}
                     pinColor="green"
-                    title="Do'kon"
-                    description="Marshrut boshlanish nuqtasi"
+                    title={tr('nav.shop')}
+                    description={tr('sellerOrders.routeStart')}
                   />
                   {routeQuery.data.stops.map((stop, i) => (
                     <RouteStopMarker key={stop.orderId} stop={stop} sequence={i + 1} />
@@ -410,7 +412,7 @@ export default function SellerOrdersScreen() {
                         style={styles.directionsBtn}
                         onPress={() => openDirections(stop.lat, stop.lng)}>
                         <Navigation size={14} color={colors.brand.primary} strokeWidth={2.4} />
-                        <Text style={styles.directionsBtnText}>Yo'l ko'rsat</Text>
+                        <Text style={styles.directionsBtnText}>{tr('sellerOrders.navigate')}</Text>
                       </Pressable>
                     </View>
                   ))}

@@ -4,6 +4,7 @@ import { ArrowLeft, BadgeCheck, CircleAlert, CircleHelp, Landmark } from 'lucide
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View , Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -24,6 +25,7 @@ interface MySellerProfile {
  * "vositachi" sifatida qo'shishi shart.
  */
 export default function SellerTaxStatusScreen() {
+  const { tr } = useTranslation();
   const profileQ = useQuery({
     queryKey: ['my-seller-profile'],
     queryFn: async () => (await api.get<MySellerProfile | null>('/sellers/my-profile')).data,
@@ -37,7 +39,7 @@ export default function SellerTaxStatusScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
           <ArrowLeft size={22} color={colors.text.primary} strokeWidth={2.4} />
         </Pressable>
-        <Text style={styles.title}>Soliq ma'lumotlari</Text>
+        <Text style={styles.title}>{tr('tax.title')}</Text>
         <View style={{ width: 22 }} />
       </View>
 
@@ -48,17 +50,17 @@ export default function SellerTaxStatusScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={styles.card}>
-            <StatusRow label="F.I.O. / Tashkilot" value={p?.fullName ?? '—'} />
+            <StatusRow label={tr('tax.fullName')} value={p?.fullName ?? '—'} />
             <StatusRow
-              label="STIR / INN"
-              value={p?.stir ?? 'Kiritilmagan'}
+              label={tr('tax.stir')}
+              value={p?.stir ?? tr('tax.notSet')}
               ok={!!p?.stir}
-              warnText={!p?.stir ? 'STIRsiz sotuvlaringizga chek chiqarib bo\'lmaydi' : undefined}
+              warnText={!p?.stir ? tr('tax.stirWarn') : undefined}
             />
-            <StatusRow label="Yuridik shakl" value={p?.entityType ?? '—'} />
+            <StatusRow label={tr('tax.entityType')} value={p?.entityType ?? '—'} />
             <StatusRow
-              label="QQS"
-              value={p?.vatPayer ? "To'lovchi (cheklar QQS bilan)" : "To'lovchi emas"}
+              label={tr('tax.vat')}
+              value={tr(p?.vatPayer ? 'tax.vatPayer' : 'tax.vatNonPayer')}
               ok
             />
           </View>
@@ -67,15 +69,14 @@ export default function SellerTaxStatusScreen() {
           <View style={styles.card}>
             <View style={styles.komissionerHeader}>
               <Landmark size={18} color={colors.brand.primary} strokeWidth={2.2} />
-              <Text style={styles.cardTitle}>Komissioner ro'yxati (my.soliq.uz)</Text>
+              <Text style={styles.cardTitle}>{tr('tax.komissionerList')}</Text>
             </View>
 
             {p?.komissionerStatus === 'confirmed' ? (
               <View style={styles.statusBanner}>
                 <BadgeCheck size={18} color={colors.feedback.success} strokeWidth={2.2} />
                 <Text style={[styles.statusText, { color: colors.feedback.success }]}>
-                  Tasdiqlangan — sotuvlaringizga cheklar sizning STIRingiz bilan chiqadi va soliq
-                  hisobotingizda avtomatik aks etadi.
+                  {tr('tax.confirmed')}
                 </Text>
               </View>
             ) : p?.komissionerStatus === 'pending' ? (
@@ -83,23 +84,21 @@ export default function SellerTaxStatusScreen() {
                 <View style={styles.statusBanner}>
                   <CircleAlert size={18} color={colors.feedback.warning} strokeWidth={2.2} />
                   <Text style={[styles.statusText, { color: colors.feedback.warning }]}>
-                    Kutilmoqda — quyidagi qadamni bajaring, so'ng admin tasdiqlaydi.
+                    {tr('tax.pending')}
                   </Text>
                 </View>
                 <Text style={styles.steps}>
-                  1. my.soliq.uz shaxsiy kabinetingizga kiring{'\n'}
-                  2. "Vositachilar / komissionerlar" bo'limini oching{'\n'}
-                  3. Yaqin Market platformasini (STIRi admin tomonidan beriladi) komissioner
-                  sifatida qo'shing{'\n'}
-                  4. Bo'ldi — admin tekshirib tasdiqlaydi
+                  {tr('tax.step1')}{'\n'}
+                  {tr('tax.step2')}{'\n'}
+                  {tr('tax.step3')}{'\n'}
+                  {tr('tax.step4')}
                 </Text>
               </View>
             ) : (
               <View style={styles.statusBanner}>
                 <CircleHelp size={18} color={colors.text.secondary} strokeWidth={2.2} />
                 <Text style={[styles.statusText, { color: colors.text.secondary }]}>
-                  Avval STIR kiritilishi kerak — admin bilan bog'laning yoki profil
-                  ma'lumotlaringizni yangilatib oling.
+                  {tr('tax.needStir')}
                 </Text>
               </View>
             )}

@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { tr } from '@/i18n';
+import { useTranslation, type TranslationKey } from '@/i18n';
 import { NoPermissionNotice } from '@/components/seller/OwnerOnlyNotice';
 import { DatePickerModal } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
@@ -29,10 +29,10 @@ import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 type PromType = 'product_discount' | 'category_discount' | 'free_delivery';
 type DiscountType = 'percent' | 'fixed';
 
-const TYPE_LABELS: Record<PromType, string> = {
-  product_discount: 'Mahsulot chegirmasi',
-  category_discount: 'Kategoriya chegirmasi',
-  free_delivery: 'Bepul yetkazib berish',
+const TYPE_LABELS: Record<PromType, TranslationKey> = {
+  product_discount: 'promo.typeProductDiscount',
+  category_discount: 'promo.typeCategoryDiscount',
+  free_delivery: 'promo.typeFreeDelivery',
 };
 
 function fmt(n: number) {
@@ -45,6 +45,7 @@ function dateLabel(iso: string) {
 
 export default function PromotionsScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
+  const { tr } = useTranslation();
   const qc = useQueryClient();
   const [filter, setFilter] = useState<'active' | 'scheduled' | 'ended'>('active');
   const [createOpen, setCreateOpen] = useState(false);
@@ -85,9 +86,9 @@ export default function PromotionsScreen() {
 
   const items = promoQuery.data ?? [];
   const FILTERS = [
-    { key: 'active' as const, label: 'Aktiv' },
-    { key: 'scheduled' as const, label: 'Rejalashtirilgan' },
-    { key: 'ended' as const, label: 'Tugagan' },
+    { key: 'active' as const, label: tr('promo.filterActive') },
+    { key: 'scheduled' as const, label: tr('promo.filterScheduled') },
+    { key: 'ended' as const, label: tr('promo.filterEnded') },
   ];
 
   if (access.isResolved && !canView) {
@@ -121,8 +122,8 @@ export default function PromotionsScreen() {
               <View style={styles.emptyIcon}>
                 <Tag size={28} color={colors.brand.primary} strokeWidth={1.8} />
               </View>
-              <Text style={styles.emptyTitle}>Aksiya yo'q</Text>
-              <Text style={styles.emptyDesc}>Pastdagi tugma orqali aksiya yarating</Text>
+              <Text style={styles.emptyTitle}>{tr('promo.emptyTitle')}</Text>
+              <Text style={styles.emptyDesc}>{tr('promo.emptyDesc')}</Text>
             </View>
           }
           renderItem={({ item }) => {
@@ -130,36 +131,36 @@ export default function PromotionsScreen() {
               item.discountType === 'percent'
                 ? `${item.discountValue}%`
                 : item.discountType === 'fixed'
-                ? `${fmt(item.discountValue ?? 0)} so'm`
+                ? `${fmt(item.discountValue ?? 0)} ${tr('common.som')}`
                 : null;
             return (
               <View style={styles.card}>
                 <View style={styles.cardTop}>
                   <Text style={styles.cardName}>{item.name}</Text>
                   <View style={[styles.typeBadge, !item.isActive && styles.typeBadgeInactive]}>
-                    <Text style={styles.typeBadgeText}>{TYPE_LABELS[item.type]}</Text>
+                    <Text style={styles.typeBadgeText}>{tr(TYPE_LABELS[item.type])}</Text>
                   </View>
                 </View>
                 {discount ? (
-                  <Text style={styles.discountText}>Chegirma: {discount}</Text>
+                  <Text style={styles.discountText}>{tr('promo.discountLabel', { value: discount })}</Text>
                 ) : item.freeDeliveryMinAmount ? (
                   <Text style={styles.discountText}>
-                    {fmt(item.freeDeliveryMinAmount)} so'mdan bepul yetkazish
+                    {tr('promo.freeDeliveryFrom', { amount: fmt(item.freeDeliveryMinAmount) })}
                   </Text>
                 ) : null}
                 <Text style={styles.dateText}>
-                  {dateLabel(item.startAt)} — {item.endAt ? dateLabel(item.endAt) : 'Muddatsiz'}
+                  {dateLabel(item.startAt)} — {item.endAt ? dateLabel(item.endAt) : tr('promo.noEndDate')}
                 </Text>
                 {item.isActive && canManage && (
                   <Pressable
                     style={styles.stopBtn}
                     onPress={() =>
-                      Alert.alert("Aksiyani to'xtatish", "Aksiya to'xtatilsinmi?", [
-                        { text: "Yo'q", style: 'cancel' },
-                        { text: "To'xtatish", style: 'destructive', onPress: () => stop.mutate(item.id) },
+                      Alert.alert(tr('promo.stopTitle'), tr('promo.stopConfirm'), [
+                        { text: tr('common.no'), style: 'cancel' },
+                        { text: tr('promo.stop'), style: 'destructive', onPress: () => stop.mutate(item.id) },
                       ])
                     }>
-                    <Text style={styles.stopBtnText}>To'xtatish</Text>
+                    <Text style={styles.stopBtnText}>{tr('promo.stop')}</Text>
                   </Pressable>
                 )}
               </View>
@@ -171,7 +172,7 @@ export default function PromotionsScreen() {
       {canManage && (
         <Pressable style={styles.fab} onPress={() => setCreateOpen(true)}>
           <Plus size={20} color={colors.text.onPrimary} strokeWidth={2.8} />
-          <Text style={styles.fabText}>Aksiya</Text>
+          <Text style={styles.fabText}>{tr('promo.fab')}</Text>
         </Pressable>
       )}
 
@@ -202,6 +203,7 @@ function CreatePromotionModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const { tr } = useTranslation();
   const [name, setName] = useState('');
   const [type, setType] = useState<PromType>('product_discount');
   const [discountType, setDiscountType] = useState<DiscountType>('percent');
@@ -244,27 +246,27 @@ function CreatePromotionModal({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
-          <Text style={styles.sheetTitle}>Yangi aksiya</Text>
+          <Text style={styles.sheetTitle}>{tr('promo.newTitle')}</Text>
           <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={styles.fieldLabel}>Nomi</Text>
-            <TextInput style={styles.textField} value={name} onChangeText={setName} placeholder="Masalan: Yozgi chegirma" placeholderTextColor={colors.text.hint} />
+            <Text style={styles.fieldLabel}>{tr('promo.nameLabel')}</Text>
+            <TextInput style={styles.textField} value={name} onChangeText={setName} placeholder={tr('promo.namePlaceholder')} placeholderTextColor={colors.text.hint} />
 
-            <Text style={styles.fieldLabel}>Turi</Text>
+            <Text style={styles.fieldLabel}>{tr('promo.typeLabel')}</Text>
             {(['product_discount', 'category_discount', 'free_delivery'] as PromType[]).map((t) => (
               <Pressable key={t} style={[styles.radioRow, type === t && styles.radioRowActive]} onPress={() => setType(t)}>
                 <View style={[styles.radio, type === t && styles.radioActive]} />
-                <Text style={styles.radioLabel}>{TYPE_LABELS[t]}</Text>
+                <Text style={styles.radioLabel}>{tr(TYPE_LABELS[t])}</Text>
               </Pressable>
             ))}
 
             {type !== 'free_delivery' && (
               <>
-                <Text style={styles.fieldLabel}>Chegirma turi</Text>
+                <Text style={styles.fieldLabel}>{tr('promo.discountTypeLabel')}</Text>
                 <View style={styles.row2}>
                   {(['percent', 'fixed'] as DiscountType[]).map((dt) => (
                     <Pressable key={dt} style={[styles.chip, discountType === dt && styles.chipActive]} onPress={() => setDiscountType(dt)}>
                       <Text style={[styles.chipText, discountType === dt && styles.chipTextActive]}>
-                        {dt === 'percent' ? 'Foiz (%)' : "Miqdor (so'm)"}
+                        {dt === 'percent' ? tr('promo.discountPercent') : tr('promo.discountFixed')}
                       </Text>
                     </Pressable>
                   ))}
@@ -282,28 +284,28 @@ function CreatePromotionModal({
 
             {type === 'free_delivery' && (
               <>
-                <Text style={styles.fieldLabel}>Minimal buyurtma (so'm)</Text>
+                <Text style={styles.fieldLabel}>{tr('promo.minOrderLabel')}</Text>
                 <TextInput style={styles.textField} value={freeMinAmount} onChangeText={setFreeMinAmount} keyboardType="numeric" placeholder="50000" placeholderTextColor={colors.text.hint} />
               </>
             )}
 
-            <Text style={styles.fieldLabel}>Boshlanish sanasi</Text>
+            <Text style={styles.fieldLabel}>{tr('promo.startDate')}</Text>
             <Pressable style={styles.dateField} onPress={() => setPickingDate('start')}>
               <CalendarDays size={16} color={colors.brand.primary} strokeWidth={2.2} />
               <Text style={[styles.dateFieldText, !startAt && styles.dateFieldPlaceholder]}>
-                {startAt || 'Sanani tanlang'}
+                {startAt || tr('promo.pickDate')}
               </Text>
             </Pressable>
 
             <View style={styles.switchRow}>
-              <Text style={styles.fieldLabel}>Tugash sanasi bor</Text>
+              <Text style={styles.fieldLabel}>{tr('promo.hasEndDate')}</Text>
               <Switch value={hasEndDate} onValueChange={setHasEndDate} trackColor={{ true: colors.brand.primary }} />
             </View>
             {hasEndDate && (
               <Pressable style={styles.dateField} onPress={() => setPickingDate('end')}>
                 <CalendarDays size={16} color={colors.brand.primary} strokeWidth={2.2} />
                 <Text style={[styles.dateFieldText, !endAt && styles.dateFieldPlaceholder]}>
-                  {endAt || 'Sanani tanlang'}
+                  {endAt || tr('promo.pickDate')}
                 </Text>
               </Pressable>
             )}
@@ -315,11 +317,11 @@ function CreatePromotionModal({
               {create.isPending ? (
                 <ActivityIndicator color={colors.text.onPrimary} />
               ) : (
-                <Text style={styles.confirmBtnText}>Yaratish</Text>
+                <Text style={styles.confirmBtnText}>{tr('promo.create')}</Text>
               )}
             </Pressable>
             <Pressable style={styles.cancelBtn} onPress={handleClose}>
-              <Text style={styles.cancelBtnText}>Bekor qilish</Text>
+              <Text style={styles.cancelBtnText}>{tr('common.cancel')}</Text>
             </Pressable>
           </ScrollView>
         </View>
@@ -328,7 +330,7 @@ function CreatePromotionModal({
       <DatePickerModal
         visible={pickingDate !== null}
         value={pickingDate === 'start' ? startAt : endAt}
-        title={pickingDate === 'start' ? 'Boshlanish sanasi' : 'Tugash sanasi'}
+        title={pickingDate === 'start' ? tr('promo.startDate') : tr('promo.endDate')}
         onClose={() => setPickingDate(null)}
         onConfirm={(iso) => {
           if (pickingDate === 'start') setStartAt(iso);

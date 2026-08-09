@@ -81,9 +81,9 @@ export default function PosScreen() {
       });
       const match = res.data.find((v) => v.barcode === code);
       if (match) add(match);
-      else toast.error('Bu barkodli mahsulot topilmadi');
+      else toast.error(tr('pos.barcodeNotFound'));
     } catch {
-      toast.error('Bu barkodli mahsulot topilmadi');
+      toast.error(tr('pos.barcodeNotFound'));
     }
   };
 
@@ -105,15 +105,15 @@ export default function PosScreen() {
       );
       if (needsMarking) {
         Alert.alert(
-          'Markirovkali tovar sotildi',
-          "Chek to'liq bo'lishi uchun mahsulotlardagi Asl belgisi (Data Matrix) kodlarini skanerlang.",
+          tr('pos.markingSoldTitle'),
+          tr('pos.markingSoldBody'),
           [
-            { text: 'Keyinroq', style: 'cancel' },
-            { text: 'Skanerlash', onPress: () => router.push(`/seller/order/${order.id}`) },
+            { text: tr('pos.later'), style: 'cancel' },
+            { text: tr('pos.scan'), onPress: () => router.push(`/seller/order/${order.id}`) },
           ],
         );
       } else {
-        toast.show('Sotuv yakunlandi ✓', { variant: 'success' });
+        toast.show(tr('pos.saleDone'), { variant: 'success' });
       }
     },
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
@@ -125,7 +125,7 @@ export default function PosScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
           <ArrowLeft size={22} color={colors.text.primary} strokeWidth={2.4} />
         </Pressable>
-        <Text style={styles.title}>Do‘konda sotish</Text>
+        <Text style={styles.title}>{tr('pos.inStoreSale')}</Text>
         <Pressable onPress={() => setScanOpen(true)} style={styles.scanBtn}>
           <ScanLine size={20} color={colors.text.onPrimary} strokeWidth={2.3} />
         </Pressable>
@@ -137,7 +137,7 @@ export default function PosScreen() {
           style={styles.searchInput}
           value={searchInput}
           onChangeText={setSearchInput}
-          placeholder="Mahsulot qidirish yoki skanlash"
+          placeholder={tr('pos.searchPlaceholder')}
           placeholderTextColor={colors.text.hint}
         />
       </View>
@@ -191,8 +191,8 @@ export default function PosScreen() {
             <Pressable
               style={styles.clearBtn}
               onPress={() =>
-                Alert.alert('Savatni tozalash', 'Savatdagi barcha mahsulotlar o‘chirilsinmi?', [
-                  { text: 'Bekor', style: 'cancel' },
+                Alert.alert(tr('pos.clearCart'), tr('pos.clearCartConfirm'), [
+                  { text: tr('common.cancel'), style: 'cancel' },
                   { text: 'Tozalash', style: 'destructive', onPress: () => setCart({}) },
                 ])
               }
@@ -217,7 +217,7 @@ export default function PosScreen() {
         visible={scanOpen}
         onClose={() => setScanOpen(false)}
         onScanned={onScanned}
-        title="Sotish uchun barkodni skanlang"
+        title={tr('pos.scanToSell')}
       />
     </SafeAreaView>
   );

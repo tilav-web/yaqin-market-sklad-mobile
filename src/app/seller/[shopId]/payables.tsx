@@ -5,11 +5,12 @@ import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useTranslation } from '@/i18n';
 import { CreatePayableModal } from '@/components/seller/CreatePayableModal';
 import { PayableAccountModal } from '@/components/seller/PayableAccountModal';
 import { EmptyState } from '@/components/ui';
 import { api } from '@/lib/api';
-import { PAYABLE_CATEGORY_ICONS, PAYABLE_CATEGORY_LABELS } from '@/lib/payableCategories';
+import { PAYABLE_CATEGORY_ICONS, PAYABLE_CATEGORY_LABEL_KEYS } from '@/lib/payableCategories';
 import { PayableAccount, PayableSummary } from '@/lib/types';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 
@@ -23,6 +24,7 @@ function isOverdue(dueDate: string | null): boolean {
 }
 
 export default function SellerPayablesScreen() {
+  const { tr } = useTranslation();
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
   const [createOpen, setCreateOpen] = useState(false);
   const [presetAccount, setPresetAccount] = useState<{ id: string; name: string } | null>(null);
@@ -76,22 +78,26 @@ export default function SellerPayablesScreen() {
         }
         ListHeaderComponent={
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Umumiy majburiyat (to&apos;lanishi kerak)</Text>
+            <Text style={styles.summaryLabel}>{tr('payables.totalLabel')}</Text>
             {summaryQuery.isLoading ? (
               <ActivityIndicator color={colors.text.onPrimary} style={{ alignSelf: 'flex-start', marginTop: 4 }} />
             ) : summaryQuery.isError ? (
               <>
-                <Text style={styles.summaryError}>Yuklanmadi — qayta urinib ko&apos;ring</Text>
+                <Text style={styles.summaryError}>{tr('payables.loadFailedShort')}</Text>
                 <Pressable onPress={() => void summaryQuery.refetch()} hitSlop={8}>
-                  <Text style={styles.summaryRetry}>Qayta urinish</Text>
+                  <Text style={styles.summaryRetry}>{tr('common.retry')}</Text>
                 </Pressable>
               </>
             ) : (
               <>
-                <Text style={styles.summaryValue}>{fmt(summary?.outstanding ?? 0)} so&apos;m</Text>
+                <Text style={styles.summaryValue}>
+                  {fmt(summary?.outstanding ?? 0)} {tr('common.som')}
+                </Text>
                 <Text style={styles.summarySub}>
-                  {summary?.creditors ?? 0} ta kreditorga qarz bor
-                  {summary && summary.overdue > 0 ? ` · ${summary.overdue} tasi muddati o'tgan` : ''}
+                  {tr('payables.creditorsCount', { n: summary?.creditors ?? 0 })}
+                  {summary && summary.overdue > 0
+                    ? ` · ${tr('payables.overdueSuffix', { n: summary.overdue })}`
+                    : ''}
                 </Text>
               </>
             )}
@@ -103,16 +109,16 @@ export default function SellerPayablesScreen() {
           ) : accountsQuery.isError ? (
             <EmptyState
               icon={WifiOff}
-              title="Majburiyatlar yuklanmadi"
-              description="Internetni tekshirib, qayta urinib ko'ring"
-              actionLabel="Qayta urinish"
+              title={tr('payables.accountsLoadFailed')}
+              description={tr('payables.accountsLoadFailedDesc')}
+              actionLabel={tr('common.retry')}
               onAction={() => void accountsQuery.refetch()}
             />
           ) : (
             <EmptyState
               icon={HandCoins}
-              title="Majburiyatlar bo‘sh"
-              description="Ta'minotchi, ijara, kommunal va boshqa tashqi qarzlaringizni shu yerda yuriting"
+              title={tr('payables.emptyTitle')}
+              description={tr('payables.emptyDesc')}
             />
           )
         }
@@ -130,8 +136,8 @@ export default function SellerPayablesScreen() {
                   {item.name}
                 </Text>
                 <Text style={styles.meta}>
-                  {PAYABLE_CATEGORY_LABELS[item.category]}
-                  {overdue ? " · muddati o'tgan" : ''}
+                  {tr(PAYABLE_CATEGORY_LABEL_KEYS[item.category])}
+                  {overdue ? ` · ${tr('payables.overdueTag')}` : ''}
                 </Text>
               </View>
               <View style={styles.balanceWrap}>
@@ -142,7 +148,9 @@ export default function SellerPayablesScreen() {
                   ]}>
                   {fmt(item.balance)}
                 </Text>
-                <Text style={styles.balanceUnit}>{due ? 'qarz' : 'yopiq'}</Text>
+                <Text style={styles.balanceUnit}>
+                  {due ? tr('payables.debt') : tr('payables.closed')}
+                </Text>
               </View>
             </Pressable>
           );
@@ -151,7 +159,7 @@ export default function SellerPayablesScreen() {
 
       <Pressable style={styles.fab} onPress={() => openCreate()}>
         <Plus size={22} color={colors.text.onPrimary} strokeWidth={2.8} />
-        <Text style={styles.fabText}>Yangi majburiyat</Text>
+        <Text style={styles.fabText}>{tr('payables.newPayable')}</Text>
       </Pressable>
 
       <CreatePayableModal

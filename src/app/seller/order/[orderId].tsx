@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
 import { BarcodeScannerModal } from '@/components/seller/BarcodeScannerModal';
 import { isTrackingOrder, startCourierTracking, stopCourierTracking } from '@/lib/courier-location-task';
-import { useTranslation } from '@/i18n';
+import { tr, useTranslation, type TranslationKey } from '@/i18n';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { useIsShopOwner } from '@/lib/useIsShopOwner';
 import { useAlarmState } from '@/stores/alarmState';
@@ -48,12 +48,12 @@ function useCourierTracking(orderId: string | undefined, status: OrderStatus | u
       }
 
       Alert.alert(
-        'Joylashuvni ulashish',
-        "Yetkazib berish davomida joylashuvingiz mijozga ko'rsatiladi — ilova fon rejimida yoki telefon qulflangan bo'lsa ham. Bu faqat shu buyurtma yetkazilguncha ishlaydi.",
+        tr('sellerOrder.locationShareTitle'),
+        tr('sellerOrder.locationShareBody'),
         [
-          { text: 'Bekor qilish', style: 'cancel' },
+          { text: tr('common.cancel'), style: 'cancel' },
           {
-            text: 'Roziman',
+            text: tr('sellerOrder.agree'),
             onPress: () => {
               void startCourierTracking(orderId).then((result) => {
                 if (cancelled) return;
@@ -61,8 +61,8 @@ function useCourierTracking(orderId: string | undefined, status: OrderStatus | u
                   setIsTracking(true);
                 } else {
                   Alert.alert(
-                    'Joylashuv ruxsati kerak',
-                    'Mijozga jonli joylashuvni ko\'rsatish uchun telefon sozlamalaridan Yaqin Market ilovasiga "Doim ruxsat berish" joylashuv huquqini bering.',
+                    tr('sellerOrder.locationPermTitle'),
+                    tr('sellerOrder.locationPermBody'),
                   );
                 }
               });
@@ -80,11 +80,11 @@ function useCourierTracking(orderId: string | undefined, status: OrderStatus | u
   return isTracking;
 }
 
-const NEXT_STATUS: Partial<Record<OrderStatus, { next: OrderStatus; label: string }>> = {
-  new: { next: 'accepted', label: 'Qabul qilish' },
-  accepted: { next: 'preparing', label: 'Yig‘ishni boshlash' },
-  preparing: { next: 'delivering', label: 'Yetkazishga uzatish' },
-  delivering: { next: 'delivered', label: 'Yetkazib berdim' },
+const NEXT_STATUS: Partial<Record<OrderStatus, { next: OrderStatus; label: TranslationKey }>> = {
+  new: { next: 'accepted', label: 'sellerOrder.actionAccept' },
+  accepted: { next: 'preparing', label: 'sellerOrder.actionStartPicking' },
+  preparing: { next: 'delivering', label: 'sellerOrder.actionHandToCourier' },
+  delivering: { next: 'delivered', label: 'sellerOrder.actionDelivered' },
 };
 
 function fmt(n: number): string {
@@ -194,7 +194,7 @@ export default function SellerOrderDetailScreen() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['blocked', order?.shopId] });
-      Alert.alert('Bloklandi', 'Bu mijoz endi bu do‘kondan buyurtma bera olmaydi');
+      Alert.alert(tr('sellerOrder.blockedTitle'), tr('sellerOrder.blockedBody'));
     },
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
@@ -226,19 +226,19 @@ export default function SellerOrderDetailScreen() {
         {isTracking && (
           <View style={styles.locationBadge}>
             <Navigation size={13} color={colors.feedback.success} strokeWidth={2.4} />
-            <Text style={styles.locationBadgeText}>Lokatsiya mijozga uzatilmoqda</Text>
+            <Text style={styles.locationBadgeText}>{tr('sellerOrder.locationSharing')}</Text>
           </View>
         )}
 
         {/* Customer */}
         {order.user || order.deliveryAddress ? (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Mijoz</Text>
+            <Text style={styles.cardTitle}>{tr('sellerOrder.customer')}</Text>
             {order.user?.phone ? (
               <Pressable style={styles.infoRow} onPress={() => Linking.openURL(`tel:${order.user?.phone}`)}>
                 <Phone size={15} color={colors.brand.primary} strokeWidth={2.2} />
                 <Text style={styles.infoLink}>
-                  {order.user?.name ?? 'Mijoz'} · {order.user?.phone}
+                  {order.user?.name ?? tr('sellerOrder.customer')} · {order.user?.phone}
                 </Text>
               </Pressable>
             ) : null}
@@ -252,10 +252,14 @@ export default function SellerOrderDetailScreen() {
             (order.deliveryAddress.entrance || order.deliveryAddress.floor || order.deliveryAddress.apartment || order.deliveryAddress.intercom) ? (
               <Text style={styles.infoText}>
                 {[
-                  order.deliveryAddress.entrance && `Podyezd ${order.deliveryAddress.entrance}`,
-                  order.deliveryAddress.floor && `Qavat ${order.deliveryAddress.floor}`,
-                  order.deliveryAddress.apartment && `Kv. ${order.deliveryAddress.apartment}`,
-                  order.deliveryAddress.intercom && `Domofon ${order.deliveryAddress.intercom}`,
+                  order.deliveryAddress.entrance &&
+                    tr('sellerOrder.entrance', { n: order.deliveryAddress.entrance }),
+                  order.deliveryAddress.floor &&
+                    tr('sellerOrder.floor', { n: order.deliveryAddress.floor }),
+                  order.deliveryAddress.apartment &&
+                    tr('sellerOrder.apartment', { n: order.deliveryAddress.apartment }),
+                  order.deliveryAddress.intercom &&
+                    tr('sellerOrder.intercom', { n: order.deliveryAddress.intercom }),
                 ]
                   .filter(Boolean)
                   .join(' · ')}
@@ -264,11 +268,15 @@ export default function SellerOrderDetailScreen() {
             {order.recipientPhone && order.recipientPhone !== order.user?.phone ? (
               <Pressable style={styles.infoRow} onPress={() => Linking.openURL(`tel:${order.recipientPhone}`)}>
                 <Phone size={15} color={colors.brand.primary} strokeWidth={2.2} />
-                <Text style={styles.infoLink}>Oluvchi: {order.recipientPhone}</Text>
+                <Text style={styles.infoLink}>
+                  {tr('sellerOrder.recipient', { phone: order.recipientPhone })}
+                </Text>
               </Pressable>
             ) : null}
             {order.courierComment ? (
-              <Text style={styles.infoText}>Kuryerga izoh: {order.courierComment}</Text>
+              <Text style={styles.infoText}>
+                {tr('sellerOrder.courierComment', { text: order.courierComment })}
+              </Text>
             ) : null}
           </View>
         ) : null}
@@ -276,17 +284,19 @@ export default function SellerOrderDetailScreen() {
         {/* Courier assignment (delivery orders) */}
         {order.channel !== 'in_store' ? (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Yetkazuvchi</Text>
+            <Text style={styles.cardTitle}>{tr('sellerOrder.courier')}</Text>
             <View style={styles.assignRow}>
               <Bike size={16} color={colors.brand.primary} strokeWidth={2.2} />
               <Text style={styles.assignName}>
                 {(() => {
                   const m = (staffQuery.data ?? []).find((s) => s.id === order.assignedStaffId);
-                  return m ? `${m.name ?? m.phone} (${m.customRoleName})` : 'Biriktirilmagan';
+                  return m ? `${m.name ?? m.phone} (${m.customRoleName})` : tr('sellerOrder.unassigned');
                 })()}
               </Text>
               <Pressable style={styles.assignBtn} onPress={() => setAssignOpen(true)}>
-                <Text style={styles.assignBtnText}>{order.assignedStaffId ? 'O‘zgartirish' : 'Biriktirish'}</Text>
+                <Text style={styles.assignBtnText}>
+                  {order.assignedStaffId ? tr('common.edit') : tr('sellerOrder.assign')}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -294,7 +304,7 @@ export default function SellerOrderDetailScreen() {
 
         {/* Items with images */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Mahsulotlar</Text>
+          <Text style={styles.cardTitle}>{tr('shop.products')}</Text>
           {order.items.map((it) => (
             <View key={it.id} style={styles.itemRow}>
               <View style={styles.itemImageWrap}>
@@ -314,8 +324,10 @@ export default function SellerOrderDetailScreen() {
                   {it.productName}
                 </Text>
                 <Text style={styles.itemMeta}>
-                  {it.quantity} × {fmt(it.unitPrice)} so‘m
-                  {it.returnedQuantity > 0 ? ` · ${it.returnedQuantity} qaytdi` : ''}
+                  {it.quantity} × {fmt(it.unitPrice)} {tr('common.som')}
+                  {it.returnedQuantity > 0
+                    ? ` · ${tr('sellerOrder.returnedCount', { n: it.returnedQuantity })}`
+                    : ''}
                 </Text>
                 {it.productVariant?.globalProduct?.taxCategory?.markingRequired ? (
                   <Pressable
@@ -340,9 +352,12 @@ export default function SellerOrderDetailScreen() {
                           : styles.markingPending,
                       ]}
                     >
-                      Markirovka {it.markingCodes?.length ?? 0}/{it.quantity - it.returnedQuantity}
+                      {tr('sellerOrder.marking', {
+                        done: it.markingCodes?.length ?? 0,
+                        total: it.quantity - it.returnedQuantity,
+                      })}
                       {(it.markingCodes?.length ?? 0) < it.quantity - it.returnedQuantity
-                        ? ' — skanerlash'
+                        ? ` — ${tr('sellerOrder.scanAction')}`
                         : ''}
                     </Text>
                   </Pressable>
@@ -355,22 +370,24 @@ export default function SellerOrderDetailScreen() {
 
         {/* Totals */}
         <View style={styles.card}>
-          <Totals label="Mahsulotlar" value={order.subTotal} />
-          {order.deliveryFee > 0 ? <Totals label="Yetkazib berish" value={order.deliveryFee} /> : null}
+          <Totals label={tr('cart.subtotal')} value={order.subTotal} />
+          {order.deliveryFee > 0 ? (
+            <Totals label={tr('cart.deliveryFee')} value={order.deliveryFee} />
+          ) : null}
           <View style={styles.divider} />
-          <Totals label="Jami" value={order.total} bold />
+          <Totals label={tr('cart.total')} value={order.total} bold />
         </View>
 
         {/* Actions */}
         <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${order.id}`)}>
           <MessageCircle size={18} color={colors.brand.primary} strokeWidth={2.4} />
-          <Text style={styles.chatText}>Mijoz bilan chat</Text>
+          <Text style={styles.chatText}>{tr('sellerOrder.chatWithCustomer')}</Text>
         </Pressable>
 
         {order.status === 'delivering' ? (
           <Pressable style={styles.returnBtn} onPress={() => router.push(`/seller/return/${order.id}`)}>
             <RotateCcw size={16} color={colors.feedback.warning} strokeWidth={2.4} />
-            <Text style={styles.returnText}>Qaytarilgan mahsulotni belgilash</Text>
+            <Text style={styles.returnText}>{tr('sellerOrder.markReturn')}</Text>
           </Pressable>
         ) : null}
 
@@ -381,7 +398,7 @@ export default function SellerOrderDetailScreen() {
               haptics.medium();
               advance.mutate(next.next);
             }}>
-            <Text style={styles.acceptText}>{next.label} →</Text>
+            <Text style={styles.acceptText}>{tr(next.label)} →</Text>
           </Pressable>
         ) : null}
 
@@ -397,12 +414,12 @@ export default function SellerOrderDetailScreen() {
                 <Pressable
                   style={styles.cancelBtn}
                   onPress={() =>
-                    Alert.alert('Buyurtmani rad etish', 'Bu buyurtmani rad etasizmi?', [
+                    Alert.alert(tr('sellerOrder.rejectTitle'), tr('sellerOrder.rejectConfirm'), [
                       { text: tr('common.no'), style: 'cancel' },
                       { text: tr('common.yes'), style: 'destructive', onPress: () => advance.mutate('seller_rejected') },
                     ])
                   }>
-                  <Text style={styles.cancelText}>Buyurtmani rad etish</Text>
+                  <Text style={styles.cancelText}>{tr('sellerOrder.rejectTitle')}</Text>
                 </Pressable>
               ) : (
                 <Pressable
@@ -413,7 +430,7 @@ export default function SellerOrderDetailScreen() {
                       { text: tr('common.yes'), style: 'destructive', onPress: () => advance.mutate('cancelled') },
                     ])
                   }>
-                  <Text style={styles.cancelText}>Buyurtmani bekor qilish</Text>
+                  <Text style={styles.cancelText}>{tr('sellerOrder.cancelOrder')}</Text>
                 </Pressable>
               )
             ) : null}
@@ -422,16 +439,22 @@ export default function SellerOrderDetailScreen() {
                 style={styles.blockBtn}
                 onPress={() =>
                   Alert.alert(
-                    'Mijozni bloklash',
-                    `${order.user?.name ?? order.user?.phone} bu do‘kondan buyurtma bera olmaydi. Davom etilsinmi?`,
+                    tr('sellerOrder.blockTitle'),
+                    tr('sellerOrder.blockConfirm', {
+                      name: order.user?.name ?? order.user?.phone ?? '',
+                    }),
                     [
-                      { text: 'Yo‘q', style: 'cancel' },
-                      { text: 'Bloklash', style: 'destructive', onPress: () => block.mutate() },
+                      { text: tr('common.no'), style: 'cancel' },
+                      {
+                        text: tr('sellerOrder.blockAction'),
+                        style: 'destructive',
+                        onPress: () => block.mutate(),
+                      },
                     ],
                   )
                 }>
                 <Ban size={15} color={colors.text.danger} strokeWidth={2.3} />
-                <Text style={styles.blockText}>Mijozni bu do‘kon uchun bloklash</Text>
+                <Text style={styles.blockText}>{tr('sellerOrder.blockCustomer')}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -443,14 +466,16 @@ export default function SellerOrderDetailScreen() {
         <Pressable style={styles.backdrop} onPress={() => setAssignOpen(false)}>
           <Pressable style={styles.sheet}>
             <View style={styles.sheetHead}>
-              <Text style={styles.sheetTitle}>Yetkazuvchini tanlang</Text>
+              <Text style={styles.sheetTitle}>{tr('sellerOrder.pickCourier')}</Text>
               <Pressable onPress={() => setAssignOpen(false)} hitSlop={8}>
                 <X size={20} color={colors.text.secondary} />
               </Pressable>
             </View>
             {order.assignedStaffId ? (
               <Pressable style={styles.staffRow} onPress={() => assign.mutate(null)}>
-                <Text style={[styles.staffName, { color: colors.text.danger }]}>Biriktirishni bekor qilish</Text>
+                <Text style={[styles.staffName, { color: colors.text.danger }]}>
+                  {tr('sellerOrder.unassign')}
+                </Text>
               </Pressable>
             ) : null}
             {(staffQuery.data ?? []).filter((s) => s.isActive).map((s) => (
@@ -463,7 +488,7 @@ export default function SellerOrderDetailScreen() {
               </Pressable>
             ))}
             {(staffQuery.data ?? []).length === 0 ? (
-              <Text style={styles.staffEmpty}>Xodim yo‘q — avval Xodimlar bo‘limida qo‘shing</Text>
+              <Text style={styles.staffEmpty}>{tr('sellerOrder.noStaff')}</Text>
             ) : null}
           </Pressable>
         </Pressable>
@@ -478,8 +503,12 @@ export default function SellerOrderDetailScreen() {
         barcodeTypes={['datamatrix']}
         title={
           markingItem
-            ? `${markingItem.productName} — markirovka kodini skanlang (${markingCount}/${markingItem.quantity - markingItem.returnedQuantity})`
-            : 'Markirovka kodini skanlang'
+            ? tr('sellerOrder.markingScanFor', {
+                name: markingItem.productName,
+                done: markingCount,
+                total: markingItem.quantity - markingItem.returnedQuantity,
+              })
+            : tr('sellerOrder.markingScan')
         }
       />
     </SafeAreaView>
@@ -490,7 +519,9 @@ function Totals({ label, value, bold }: { label: string; value: number; bold?: b
   return (
     <View style={styles.totalsRow}>
       <Text style={[styles.totalsLabel, bold && styles.totalsBold]}>{label}</Text>
-      <Text style={[styles.totalsValue, bold && styles.totalsBold]}>{fmt(value)} so‘m</Text>
+      <Text style={[styles.totalsValue, bold && styles.totalsBold]}>
+        {fmt(value)} {tr('common.som')}
+      </Text>
     </View>
   );
 }

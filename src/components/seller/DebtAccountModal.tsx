@@ -77,7 +77,7 @@ export function DebtAccountModal({ visible, shopId, phone, onClose, onAddDebt }:
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={styles.title} numberOfLines={1}>
-              {a?.customerName ?? 'Mijoz'}
+              {a?.customerName ?? tr('debtAcc.customer')}
             </Text>
             <Text style={styles.phone}>{phone}</Text>
           </View>
@@ -91,21 +91,21 @@ export function DebtAccountModal({ visible, shopId, phone, onClose, onAddDebt }:
         ) : accountQuery.isError || !a ? (
           <EmptyState
             icon={WifiOff}
-            title="Hisob yuklanmadi"
-            description="Internetni tekshirib, qayta urinib ko'ring"
-            actionLabel="Qayta urinish"
+            title={tr('debtAcc.loadFailed')}
+            description={tr('common.error.desc')}
+            actionLabel={tr('common.retry')}
             onAction={() => void accountQuery.refetch()}
           />
         ) : (
           <ScrollView contentContainerStyle={styles.scroll}>
             {/* Balance */}
             <View style={[styles.balanceCard, a.balance > 0 ? styles.balanceDue : styles.balanceClear]}>
-              <Text style={styles.balanceLabel}>Qolgan qarz</Text>
+              <Text style={styles.balanceLabel}>{tr('debtAcc.remaining')}</Text>
               <Text style={[styles.balanceValue, { color: a.balance > 0 ? colors.text.danger : colors.feedback.success }]}>
-                {fmt(a.balance)} so&apos;m
+                {fmt(a.balance)} {tr('common.som')}
               </Text>
               <Text style={styles.balanceMeta}>
-                Jami olingan {fmt(a.totalDebt)} · to&apos;langan {fmt(a.totalPaid)}
+                {tr('debtAcc.totalsMeta', { taken: fmt(a.totalDebt), paid: fmt(a.totalPaid) })}
               </Text>
             </View>
 
@@ -113,13 +113,13 @@ export function DebtAccountModal({ visible, shopId, phone, onClose, onAddDebt }:
             <View style={styles.actions}>
               <Pressable style={styles.payBtn} onPress={() => setPayOpen((v) => !v)}>
                 <ArrowDownCircle size={18} color={colors.feedback.success} strokeWidth={2.3} />
-                <Text style={styles.payText}>To&apos;lov qabul qilish</Text>
+                <Text style={styles.payText}>{tr('debtAcc.acceptPayment')}</Text>
               </Pressable>
               <Pressable
                 style={styles.addDebtBtn}
                 onPress={() => onAddDebt(a.customerName, a.customerPhone)}>
                 <Plus size={18} color={colors.text.onPrimary} strokeWidth={2.6} />
-                <Text style={styles.addDebtText}>Qarz qo&apos;shish</Text>
+                <Text style={styles.addDebtText}>{tr('debtAcc.addDebt')}</Text>
               </Pressable>
             </View>
 
@@ -130,7 +130,7 @@ export function DebtAccountModal({ visible, shopId, phone, onClose, onAddDebt }:
                   value={payAmount}
                   onChangeText={setPayAmount}
                   keyboardType="number-pad"
-                  placeholder="To'lov summasi (so'm)"
+                  placeholder={tr('debtAcc.amountPh')}
                   placeholderTextColor={colors.text.hint}
                   autoFocus
                 />
@@ -138,20 +138,22 @@ export function DebtAccountModal({ visible, shopId, phone, onClose, onAddDebt }:
                   style={[styles.payConfirm, !parseAmount(payAmount) && styles.payConfirmDisabled]}
                   disabled={!parseAmount(payAmount) || pay.isPending}
                   onPress={() => pay.mutate()}>
-                  <Text style={styles.payConfirmText}>{pay.isPending ? '…' : 'Qabul'}</Text>
+                  <Text style={styles.payConfirmText}>{pay.isPending ? '…' : tr('debtAcc.accept')}</Text>
                 </Pressable>
               </View>
             ) : null}
 
             {/* Timeline */}
-            <Text style={styles.sectionTitle}>Qarzlar</Text>
+            <Text style={styles.sectionTitle}>{tr('debtAcc.debts')}</Text>
             {a.debts.length === 0 ? (
-              <Text style={styles.dim}>Qarz yo&apos;q</Text>
+              <Text style={styles.dim}>{tr('debtAcc.noDebts')}</Text>
             ) : (
               a.debts.map((d) => (
                 <View key={d.id} style={styles.entry}>
                   <View style={styles.entryHead}>
-                    <Text style={styles.entryTotal}>−{fmt(d.total)} so&apos;m</Text>
+                    <Text style={styles.entryTotal}>
+                      −{fmt(d.total)} {tr('common.som')}
+                    </Text>
                     <Text style={styles.entryDate}>{fmtDate(d.createdAt)}</Text>
                   </View>
                   {d.lines.map((l, i) => (
@@ -160,23 +162,25 @@ export function DebtAccountModal({ visible, shopId, phone, onClose, onAddDebt }:
                     </Text>
                   ))}
                   {d.extraCharge > 0 ? (
-                    <Text style={styles.entryLine}>• Qo&apos;shimcha: {fmt(d.extraCharge)} so&apos;m</Text>
+                    <Text style={styles.entryLine}>• {tr('debtAcc.extraCharge', { amount: fmt(d.extraCharge) })}</Text>
                   ) : null}
                   {d.note ? <Text style={styles.entryNote}>{d.note}</Text> : null}
                   {!d.stockDecremented ? (
-                    <Text style={styles.entryFlag}>Qoldiqdan kamaytirilmagan</Text>
+                    <Text style={styles.entryFlag}>{tr('debtAcc.notDecremented')}</Text>
                   ) : null}
                 </View>
               ))
             )}
 
-            <Text style={styles.sectionTitle}>To&apos;lovlar</Text>
+            <Text style={styles.sectionTitle}>{tr('debtAcc.payments')}</Text>
             {a.payments.length === 0 ? (
-              <Text style={styles.dim}>To&apos;lov yo&apos;q</Text>
+              <Text style={styles.dim}>{tr('debtAcc.noPayments')}</Text>
             ) : (
               a.payments.map((p) => (
                 <View key={p.id} style={styles.payRow}>
-                  <Text style={styles.payRowAmount}>+{fmt(p.amount)} so&apos;m</Text>
+                  <Text style={styles.payRowAmount}>
+                    +{fmt(p.amount)} {tr('common.som')}
+                  </Text>
                   <Text style={styles.entryDate}>{fmtDate(p.createdAt)}</Text>
                 </View>
               ))

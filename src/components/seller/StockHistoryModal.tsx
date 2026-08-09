@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useTranslation, type TranslationKey } from '@/i18n';
 import { api } from '@/lib/api';
 import { InventoryMovement, MovementType, SellerVariant, StockBatch } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -31,17 +32,18 @@ function fmtDate(iso: string): string {
   return iso.slice(0, 16).replace('T', ' ');
 }
 
-const MOVE_META: Record<MovementType, { label: string; color: string; icon: typeof ArrowUpRight; sign: string }> = {
-  in: { label: 'Kirim', color: colors.feedback.success, icon: ArrowDownLeft, sign: '+' },
-  sold: { label: 'Sotildi', color: colors.brand.primary, icon: ArrowUpRight, sign: '−' },
-  returned: { label: 'Qaytdi', color: colors.feedback.warning, icon: RotateCcw, sign: '+' },
-  expired: { label: 'Muddati o\'tdi', color: colors.text.danger, icon: ArrowUpRight, sign: '−' },
-  adjusted: { label: 'Tuzatish', color: colors.text.secondary, icon: Settings2, sign: '±' },
-  damaged: { label: 'Brak (shikastlangan)', color: colors.text.danger, icon: ArrowUpRight, sign: '−' },
+const MOVE_META: Record<MovementType, { labelKey: TranslationKey; color: string; icon: typeof ArrowUpRight; sign: string }> = {
+  in: { labelKey: 'move.in', color: colors.feedback.success, icon: ArrowDownLeft, sign: '+' },
+  sold: { labelKey: 'move.sold', color: colors.brand.primary, icon: ArrowUpRight, sign: '−' },
+  returned: { labelKey: 'move.returned', color: colors.feedback.warning, icon: RotateCcw, sign: '+' },
+  expired: { labelKey: 'move.expired', color: colors.text.danger, icon: ArrowUpRight, sign: '−' },
+  adjusted: { labelKey: 'move.adjusted', color: colors.text.secondary, icon: Settings2, sign: '±' },
+  damaged: { labelKey: 'move.damaged', color: colors.text.danger, icon: ArrowUpRight, sign: '−' },
 };
 
 /** Read-only view of a variant's FIFO lots + recent stock movements. */
 export function StockHistoryModal({ visible, shopId, variant, onClose }: Props) {
+  const { tr } = useTranslation();
   const variantId = variant?.id;
 
   const batchesQuery = useQuery({
@@ -69,7 +71,7 @@ export function StockHistoryModal({ visible, shopId, variant, onClose }: Props) 
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <Text style={styles.title} numberOfLines={1}>
-            {variant?.name ?? 'Sklad jurnali'}
+            {variant?.name ?? tr('stockHist.title')}
           </Text>
           <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
             <X size={20} color={colors.text.secondary} />
@@ -80,21 +82,21 @@ export function StockHistoryModal({ visible, shopId, variant, onClose }: Props) 
           {/* Cost summary */}
           {variant ? (
             <View style={styles.summary}>
-              <Cell k="Qoldiq" v={`${variant.stock} ta`} />
-              <Cell k="O'rtacha tannarx" v={`${fmt(variant.cost.avgCost)}`} />
-              <Cell k="Ombor qiymati" v={`${fmt(variant.cost.stockValue)}`} />
+              <Cell k={tr('stockHist.remaining')} v={tr('stockHist.pcs', { n: variant.stock })} />
+              <Cell k={tr('stockHist.avgCost')} v={`${fmt(variant.cost.avgCost)}`} />
+              <Cell k={tr('stockHist.stockValue')} v={`${fmt(variant.cost.stockValue)}`} />
             </View>
           ) : null}
 
           {/* FIFO lots */}
           <View style={styles.sectionHead}>
             <Layers size={15} color={colors.brand.primary} strokeWidth={2.2} />
-            <Text style={styles.sectionTitle}>Partiyalar (qolgan)</Text>
+            <Text style={styles.sectionTitle}>{tr('stockHist.batches')}</Text>
           </View>
           {batchesQuery.isLoading ? (
             <ActivityIndicator color={colors.brand.primary} style={{ marginVertical: 16 }} />
           ) : activeBatches.length === 0 ? (
-            <Text style={styles.dim}>Qolgan partiya yo&apos;q</Text>
+            <Text style={styles.dim}>{tr('stockHist.noBatches')}</Text>
           ) : (
             activeBatches.map((b) => (
               <View key={b.id} style={styles.batchRow}>
@@ -116,12 +118,12 @@ export function StockHistoryModal({ visible, shopId, variant, onClose }: Props) 
           {/* Movement ledger */}
           <View style={[styles.sectionHead, { marginTop: spacing.lg }]}>
             <ArrowUpRight size={15} color={colors.brand.primary} strokeWidth={2.2} />
-            <Text style={styles.sectionTitle}>Harakatlar tarixi</Text>
+            <Text style={styles.sectionTitle}>{tr('stockHist.movements')}</Text>
           </View>
           {movementsQuery.isLoading ? (
             <ActivityIndicator color={colors.brand.primary} style={{ marginVertical: 16 }} />
           ) : (movementsQuery.data ?? []).length === 0 ? (
-            <Text style={styles.dim}>Harakat yo&apos;q</Text>
+            <Text style={styles.dim}>{tr('stockHist.noMovements')}</Text>
           ) : (
             (movementsQuery.data ?? []).map((m) => {
               const meta = MOVE_META[m.type];
@@ -133,7 +135,7 @@ export function StockHistoryModal({ visible, shopId, variant, onClose }: Props) 
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.moveLabel}>
-                      {meta.label}
+                      {tr(meta.labelKey)}
                       {m.reason ? <Text style={styles.moveReason}> · {m.reason}</Text> : null}
                     </Text>
                     <Text style={styles.moveMeta}>

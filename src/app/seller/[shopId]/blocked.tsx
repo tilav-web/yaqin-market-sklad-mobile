@@ -60,8 +60,8 @@ export default function BlockedUsersScreen() {
           ) : (
             <EmptyState
               icon={ShieldCheck}
-              title="Bloklangan mijoz yo‘q"
-              description="Buyurtma ichidan istalgan mijozni bu do‘kon uchun bloklashingiz mumkin"
+              title={tr('blocked.empty')}
+              description={tr('blocked.emptyDesc')}
             />
           )
         }
@@ -71,18 +71,18 @@ export default function BlockedUsersScreen() {
               <ShieldBan size={20} color={colors.text.danger} strokeWidth={2} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.name}>{item.name || 'Mijoz'}</Text>
+              <Text style={styles.name}>{item.name || tr('blocked.customer')}</Text>
               <Text style={styles.phone}>{item.phone}</Text>
             </View>
             <Pressable
               style={styles.unblockBtn}
               onPress={() =>
-                Alert.alert('Blokdan chiqarish', `${item.name || item.phone} blokdan chiqarilsinmi?`, [
-                  { text: 'Yo‘q', style: 'cancel' },
-                  { text: 'Ha', onPress: () => unblock.mutate(item.id) },
+                Alert.alert(tr('blocked.unblock'), tr('blocked.unblockConfirm', { name: item.name || item.phone }), [
+                  { text: tr('common.no'), style: 'cancel' },
+                  { text: tr('common.yes'), onPress: () => unblock.mutate(item.id) },
                 ])
               }>
-              <Text style={styles.unblockText}>Chiqarish</Text>
+              <Text style={styles.unblockText}>{tr('blocked.unblockShort')}</Text>
             </Pressable>
           </View>
         )}

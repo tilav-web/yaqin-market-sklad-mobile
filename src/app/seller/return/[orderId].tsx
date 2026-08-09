@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useToast } from '@/components/ui';
+import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { Order } from '@/lib/types';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
@@ -17,6 +18,7 @@ import { haptics } from '@/utils/haptics';
  * shop side reaches this screen (server authorizes via orders.update_status).
  */
 export default function SellerReturnScreen() {
+  const { tr } = useTranslation();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const qc = useQueryClient();
   const toast = useToast();
@@ -43,7 +45,7 @@ export default function SellerReturnScreen() {
       qc.setQueryData?.(['order', orderId], o);
       qc.invalidateQueries({ queryKey: ['order', orderId] });
       qc.invalidateQueries({ queryKey: ['seller-orders'] });
-      toast.success('Qaytarish belgilandi');
+      toast.success(tr('ret.marked'));
       router.back();
     },
     onError: (e) => toast.error(extractErrorMessage(e)),
@@ -71,7 +73,7 @@ export default function SellerReturnScreen() {
         <View style={styles.banner}>
           <RotateCcw size={18} color={colors.feedback.warning} strokeWidth={2.4} />
           <Text style={styles.bannerText}>
-            Mijoz qaytaradigan mahsulotlarni belgilang. Mijoz faqat qolganига to‘laydi.
+            {tr('ret.hint')}
           </Text>
         </View>
 
@@ -110,7 +112,7 @@ export default function SellerReturnScreen() {
                     </Pressable>
                   </View>
                 ) : (
-                  <Text style={styles.allReturned}>Hammasi qaytarilgan</Text>
+                  <Text style={styles.allReturned}>{tr('ret.allReturned')}</Text>
                 )}
               </View>
             );
@@ -119,12 +121,12 @@ export default function SellerReturnScreen() {
 
         <View style={styles.section}>
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>Qaytariladi</Text>
+            <Text style={styles.rowLabel}>{tr('ret.willReturn')}</Text>
             <Text style={styles.rowValue}>−{returnTotal.toLocaleString()} so‘m</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.row}>
-            <Text style={styles.rowLabelBold}>Mijoz to‘laydi</Text>
+            <Text style={styles.rowLabelBold}>{tr('ret.customerPays')}</Text>
             <Text style={styles.rowValueBold}>{newTotal.toLocaleString()} so‘m</Text>
           </View>
         </View>
@@ -139,7 +141,7 @@ export default function SellerReturnScreen() {
             <ActivityIndicator color={colors.text.onPrimary} />
           ) : (
             <Text style={styles.confirmBtnText}>
-              {returnTotal === 0 ? 'Mahsulot tanlang' : 'Qaytarishni tasdiqlash'}
+              {tr(returnTotal === 0 ? 'ret.pickItems' : 'ret.confirm')}
             </Text>
           )}
         </Pressable>

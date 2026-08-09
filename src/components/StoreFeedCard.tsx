@@ -3,6 +3,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { resolveMedia } from '@/lib/api';
 import { PublicShop } from '@/lib/types';
+import { useTranslation } from '@/i18n';
 import { colors, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -21,6 +22,7 @@ interface Props {
  * be promoted here instead.
  */
 export function StoreFeedCard({ shop, onPress }: Props) {
+  const { tr } = useTranslation();
   const banner = shop.photos?.[0];
   return (
     <Pressable
@@ -41,7 +43,7 @@ export function StoreFeedCard({ shop, onPress }: Props) {
       <View style={styles.topRow}>
         <View style={styles.tagChip}>
           <Store size={11} color={colors.brand.primary} strokeWidth={2.6} />
-          <Text style={styles.tagText}>Do‘kon</Text>
+          <Text style={styles.tagText}>{tr('nav.shop')}</Text>
         </View>
         {shop.ratingCount > 0 && (
           <View style={styles.ratingChip}>

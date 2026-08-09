@@ -18,7 +18,7 @@ import { tr } from '@/i18n';
 import { EmptyState } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
-import { PAYABLE_CATEGORY_LABELS } from '@/lib/payableCategories';
+import { PAYABLE_CATEGORY_LABEL_KEYS } from '@/lib/payableCategories';
 import { PayableAccountDetail } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -76,9 +76,9 @@ export function PayableAccountModal({ visible, shopId, accountId, onClose, onAdd
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={styles.title} numberOfLines={1}>
-              {d?.account.name ?? 'Kreditor'}
+              {d?.account.name ?? tr('payableAcc.creditor')}
             </Text>
-            <Text style={styles.category}>{d ? PAYABLE_CATEGORY_LABELS[d.account.category] : ''}</Text>
+            <Text style={styles.category}>{d ? tr(PAYABLE_CATEGORY_LABEL_KEYS[d.account.category]) : ''}</Text>
           </View>
           <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
             <X size={20} color={colors.text.secondary} />
@@ -90,25 +90,25 @@ export function PayableAccountModal({ visible, shopId, accountId, onClose, onAdd
         ) : accountQuery.isError || !d ? (
           <EmptyState
             icon={WifiOff}
-            title="Hisob yuklanmadi"
-            description="Internetni tekshirib, qayta urinib ko'ring"
-            actionLabel="Qayta urinish"
+            title={tr('payableAcc.loadFailed')}
+            description={tr('common.error.desc')}
+            actionLabel={tr('common.retry')}
             onAction={() => void accountQuery.refetch()}
           />
         ) : (
           <ScrollView contentContainerStyle={styles.scroll}>
             {/* Balance */}
             <View style={[styles.balanceCard, d.balance > 0 ? styles.balanceDue : styles.balanceClear]}>
-              <Text style={styles.balanceLabel}>Qolgan qarzim</Text>
+              <Text style={styles.balanceLabel}>{tr('payableAcc.remaining')}</Text>
               <Text
                 style={[
                   styles.balanceValue,
                   { color: d.balance > 0 ? colors.text.danger : colors.feedback.success },
                 ]}>
-                {fmt(d.balance)} so&apos;m
+                {fmt(d.balance)} {tr('common.som')}
               </Text>
               <Text style={styles.balanceMeta}>
-                Jami olingan {fmt(d.totalCharged)} · to&apos;langan {fmt(d.totalPaid)}
+                {tr('payableAcc.totalsMeta', { taken: fmt(d.totalCharged), paid: fmt(d.totalPaid) })}
               </Text>
             </View>
 
@@ -116,13 +116,13 @@ export function PayableAccountModal({ visible, shopId, accountId, onClose, onAdd
             <View style={styles.actions}>
               <Pressable style={styles.payBtn} onPress={() => setPayOpen((v) => !v)}>
                 <ArrowUpCircle size={18} color={colors.feedback.success} strokeWidth={2.3} />
-                <Text style={styles.payText}>To&apos;lov qilish</Text>
+                <Text style={styles.payText}>{tr('payableAcc.makePayment')}</Text>
               </Pressable>
               <Pressable
                 style={styles.addChargeBtn}
                 onPress={() => onAddCharge(d.account.id, d.account.name)}>
                 <Plus size={18} color={colors.text.onPrimary} strokeWidth={2.6} />
-                <Text style={styles.addChargeText}>Majburiyat qo&apos;shish</Text>
+                <Text style={styles.addChargeText}>{tr('payableAcc.addCharge')}</Text>
               </Pressable>
             </View>
 
@@ -133,7 +133,7 @@ export function PayableAccountModal({ visible, shopId, accountId, onClose, onAdd
                   value={payAmount}
                   onChangeText={setPayAmount}
                   keyboardType="number-pad"
-                  placeholder="To'lov summasi (so'm)"
+                  placeholder={tr('payableAcc.amountPh')}
                   placeholderTextColor={colors.text.hint}
                   autoFocus
                 />
@@ -141,36 +141,42 @@ export function PayableAccountModal({ visible, shopId, accountId, onClose, onAdd
                   style={[styles.payConfirm, !parseAmount(payAmount) && styles.payConfirmDisabled]}
                   disabled={!parseAmount(payAmount) || pay.isPending}
                   onPress={() => pay.mutate()}>
-                  <Text style={styles.payConfirmText}>{pay.isPending ? '…' : "To'lash"}</Text>
+                  <Text style={styles.payConfirmText}>{pay.isPending ? '…' : tr('payableAcc.pay')}</Text>
                 </Pressable>
               </View>
             ) : null}
 
             {/* Timeline */}
-            <Text style={styles.sectionTitle}>Majburiyatlar</Text>
+            <Text style={styles.sectionTitle}>{tr('payableAcc.charges')}</Text>
             {d.charges.length === 0 ? (
-              <Text style={styles.dim}>Majburiyat yo&apos;q</Text>
+              <Text style={styles.dim}>{tr('payableAcc.noCharges')}</Text>
             ) : (
               d.charges.map((c) => (
                 <View key={c.id} style={styles.entry}>
                   <View style={styles.entryHead}>
-                    <Text style={styles.entryTotal}>−{fmt(c.amount)} so&apos;m</Text>
+                    <Text style={styles.entryTotal}>
+                      −{fmt(c.amount)} {tr('common.som')}
+                    </Text>
                     <Text style={styles.entryDate}>{fmtDate(c.createdAt)}</Text>
                   </View>
                   {c.description ? <Text style={styles.entryLine}>{c.description}</Text> : null}
-                  {c.dueDate ? <Text style={styles.entryDue}>To&apos;lash muddati: {c.dueDate}</Text> : null}
+                  {c.dueDate ? (
+                    <Text style={styles.entryDue}>{tr('payableAcc.dueDate', { date: c.dueDate })}</Text>
+                  ) : null}
                   {c.note ? <Text style={styles.entryNote}>{c.note}</Text> : null}
                 </View>
               ))
             )}
 
-            <Text style={styles.sectionTitle}>To&apos;lovlar</Text>
+            <Text style={styles.sectionTitle}>{tr('payableAcc.payments')}</Text>
             {d.payments.length === 0 ? (
-              <Text style={styles.dim}>To&apos;lov yo&apos;q</Text>
+              <Text style={styles.dim}>{tr('payableAcc.noPayments')}</Text>
             ) : (
               d.payments.map((p) => (
                 <View key={p.id} style={styles.payRow}>
-                  <Text style={styles.payRowAmount}>+{fmt(p.amount)} so&apos;m</Text>
+                  <Text style={styles.payRowAmount}>
+                    +{fmt(p.amount)} {tr('common.som')}
+                  </Text>
                   <Text style={styles.entryDate}>{fmtDate(p.createdAt)}</Text>
                 </View>
               ))

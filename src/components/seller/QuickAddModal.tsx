@@ -18,13 +18,18 @@ import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { GlobalProduct } from '@/lib/types';
 import { colors, radius, spacing, typography } from '@/theme';
 
-const UNIT_LABEL: Record<string, string> = {
-  piece: 'dona',
-  kg: 'kg',
-  liter: 'litr',
-  gram: 'g',
-  pack: 'paket',
-};
+const UNIT_KEYS = {
+  piece: 'quickAdd.unitPiece',
+  kg: 'quickAdd.unitKg',
+  liter: 'quickAdd.unitLiter',
+  gram: 'quickAdd.unitGram',
+  pack: 'quickAdd.unitPack',
+} as const;
+
+function unitLabel(unitType: string): string {
+  const key = UNIT_KEYS[unitType as keyof typeof UNIT_KEYS];
+  return key ? tr(key) : unitType;
+}
 
 interface Props {
   visible: boolean;
@@ -49,7 +54,7 @@ export function QuickAddModal({ visible, shopId, globalProduct, onClose }: Props
     mutationFn: async () => {
       const p = parseFloat(price.replace(/\s/g, ''));
       const s = parseInt(stock, 10);
-      if (!globalProduct || isNaN(p) || p <= 0) throw new Error("Narxni to'g'ri kiriting");
+      if (!globalProduct || isNaN(p) || p <= 0) throw new Error(tr('quickAdd.invalidPrice'));
       await api.post(`/seller/shops/${shopId}/catalog/clone`, {
         globalProductId: globalProduct.id,
         price: p,
@@ -61,7 +66,7 @@ export function QuickAddModal({ visible, shopId, globalProduct, onClose }: Props
       qc.invalidateQueries({ queryKey: ['variants', shopId] });
       reset();
       onClose();
-      Alert.alert("Qo'shildi", "Mahsulot do'koningizga qo'shildi.");
+      Alert.alert(tr('quickAdd.addedTitle'), tr('quickAdd.addedMsg'));
     },
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
@@ -73,7 +78,7 @@ export function QuickAddModal({ visible, shopId, globalProduct, onClose }: Props
 
   if (!globalProduct) return null;
 
-  const unitStr = `${globalProduct.unitSize} ${UNIT_LABEL[globalProduct.unitType] ?? globalProduct.unitType}`;
+  const unitStr = `${globalProduct.unitSize} ${unitLabel(globalProduct.unitType)}`;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
@@ -103,18 +108,18 @@ export function QuickAddModal({ visible, shopId, globalProduct, onClose }: Props
             </View>
           </View>
 
-          <Text style={styles.label}>Narx (so'm) *</Text>
+          <Text style={styles.label}>{tr('quickAdd.priceLabel')}</Text>
           <TextInput
             style={styles.input}
             value={price}
             onChangeText={setPrice}
             keyboardType="numeric"
-            placeholder="Masalan: 15 000"
+            placeholder={tr('quickAdd.pricePh')}
             placeholderTextColor={colors.text.hint}
             autoFocus
           />
 
-          <Text style={styles.label}>Boshlang'ich qoldiq (dona)</Text>
+          <Text style={styles.label}>{tr('quickAdd.stockLabel')}</Text>
           <TextInput
             style={styles.input}
             value={stock}
@@ -124,13 +129,13 @@ export function QuickAddModal({ visible, shopId, globalProduct, onClose }: Props
             placeholderTextColor={colors.text.hint}
           />
 
-          <Text style={styles.label}>Tannarx (so'm, ixtiyoriy)</Text>
+          <Text style={styles.label}>{tr('quickAdd.costLabel')}</Text>
           <TextInput
             style={styles.input}
             value={costPrice}
             onChangeText={setCostPrice}
             keyboardType="numeric"
-            placeholder="Kirim narxi"
+            placeholder={tr('quickAdd.costPh')}
             placeholderTextColor={colors.text.hint}
           />
 
@@ -141,12 +146,12 @@ export function QuickAddModal({ visible, shopId, globalProduct, onClose }: Props
             {add.isPending ? (
               <ActivityIndicator color={colors.text.onPrimary} />
             ) : (
-              <Text style={styles.confirmBtnText}>Do'konga qo'shish</Text>
+              <Text style={styles.confirmBtnText}>{tr('quickAdd.submit')}</Text>
             )}
           </Pressable>
 
           <Pressable style={styles.cancelBtn} onPress={handleClose}>
-            <Text style={styles.cancelBtnText}>Bekor qilish</Text>
+            <Text style={styles.cancelBtnText}>{tr('common.cancel')}</Text>
           </Pressable>
         </View>
       </View>

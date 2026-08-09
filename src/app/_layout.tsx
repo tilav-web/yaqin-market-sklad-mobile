@@ -42,15 +42,16 @@ function OfflineBanner() {
 /** Shown when push notification permission is denied — otherwise the user has
  * no idea push is off and no path back to Settings to re-enable it. */
 function PushPermissionBanner() {
+  const { tr } = useTranslation();
   const dismiss = usePushPermissionStore((s) => s.dismiss);
   return (
     <View style={styles.bannerCard}>
       <BellOff size={16} color={colors.feedback.warning} strokeWidth={2.4} />
       <Text style={styles.bannerText}>
-        Bildirishnomalar o&apos;chirilgan — muhim yangilanishlarni o&apos;tkazib yuborishingiz mumkin
+        {tr('push.disabled')}
       </Text>
       <Pressable onPress={() => void Linking.openSettings()} hitSlop={8}>
-        <Text style={styles.bannerAction}>Sozlamalar</Text>
+        <Text style={styles.bannerAction}>{tr('imgUp.openSettings')}</Text>
       </Pressable>
       <Pressable onPress={dismiss} hitSlop={8}>
         <X size={16} color={colors.feedback.warning} strokeWidth={2.4} />

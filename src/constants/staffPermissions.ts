@@ -1,3 +1,5 @@
+import type { TranslationKey } from '@/i18n/translations';
+
 export type StaffPreset = 'kassir' | 'menejer' | 'sklad' | 'yetkazib_beruvchi' | 'custom';
 
 /**
@@ -116,77 +118,80 @@ export interface StaffMember {
   isActive: boolean;
 }
 
-export const PRESETS: { key: Exclude<StaffPreset, 'custom'>; label: string }[] = [
-  { key: 'kassir', label: 'Kassir' },
-  { key: 'menejer', label: 'Menejer' },
-  { key: 'sklad', label: 'Sklad' },
-  { key: 'yetkazib_beruvchi', label: 'Yetkazuvchi' },
+export const PRESETS: { key: Exclude<StaffPreset, 'custom'>; labelKey: TranslationKey }[] = [
+  { key: 'kassir', labelKey: 'perm.preset.kassir' },
+  { key: 'menejer', labelKey: 'perm.preset.menejer' },
+  { key: 'sklad', labelKey: 'perm.preset.sklad' },
+  { key: 'yetkazib_beruvchi', labelKey: 'perm.preset.yetkazibBeruvchi' },
 ];
 
-export const PRESET_LABELS: Record<StaffPreset, string> = {
-  kassir: 'Kassir',
-  menejer: 'Menejer',
-  sklad: 'Sklad',
-  yetkazib_beruvchi: 'Yetkazuvchi',
-  custom: 'Maxsus',
+export const PRESET_LABEL_KEYS: Record<StaffPreset, TranslationKey> = {
+  kassir: 'perm.preset.kassir',
+  menejer: 'perm.preset.menejer',
+  sklad: 'perm.preset.sklad',
+  yetkazib_beruvchi: 'perm.preset.yetkazibBeruvchi',
+  custom: 'perm.preset.custom',
 };
 
-export const PERMISSION_GROUPS: { title: string; items: { key: string; label: string }[] }[] = [
+export const PERMISSION_GROUPS: {
+  titleKey: TranslationKey;
+  items: { key: string; labelKey: TranslationKey }[];
+}[] = [
   {
-    title: 'Buyurtmalar',
+    titleKey: 'perm.group.orders',
     items: [
-      { key: 'orders.view_all', label: 'Barcha buyurtmalarni ko‘rish' },
-      { key: 'orders.view_assigned', label: 'Faqat o‘ziga tegishlini ko‘rish' },
-      { key: 'orders.accept', label: 'Buyurtmani qabul qilish' },
-      { key: 'orders.update_status', label: 'Holatini o‘zgartirish' },
-      { key: 'orders.cancel', label: 'Bekor qilish' },
-      { key: 'orders.chat', label: 'Mijoz bilan chat' },
-      { key: 'orders.view_customer_contact', label: 'Mijoz kontaktini ko‘rish' },
+      { key: 'orders.view_all', labelKey: 'perm.orders.viewAll' },
+      { key: 'orders.view_assigned', labelKey: 'perm.orders.viewAssigned' },
+      { key: 'orders.accept', labelKey: 'perm.orders.accept' },
+      { key: 'orders.update_status', labelKey: 'perm.orders.updateStatus' },
+      { key: 'orders.cancel', labelKey: 'perm.orders.cancel' },
+      { key: 'orders.chat', labelKey: 'perm.orders.chat' },
+      { key: 'orders.view_customer_contact', labelKey: 'perm.orders.viewCustomerContact' },
     ],
   },
   {
-    title: 'Sklad',
+    titleKey: 'perm.group.inventory',
     items: [
-      { key: 'inventory.view', label: 'Skladni ko‘rish' },
-      { key: 'inventory.product.create', label: 'Mahsulot qo‘shish' },
-      { key: 'inventory.product.edit_info', label: 'Ma’lumotini tahrirlash' },
-      { key: 'inventory.product.edit_price', label: 'Narxini tahrirlash' },
-      { key: 'inventory.product.edit_stock', label: 'Stokni tahrirlash' },
-      { key: 'inventory.receive', label: 'Kirim qilish (tovar qabul)' },
-      { key: 'inventory.count', label: 'Inventarizatsiya' },
-      { key: 'inventory.movement.view', label: 'Harakatlar tarixi' },
-      { key: 'inventory.low_stock_alerts', label: 'Kam qoldi ogohlantirishi' },
-      { key: 'inventory.barcode.scan', label: 'Shtrix-kod skanerlash' },
+      { key: 'inventory.view', labelKey: 'perm.inventory.view' },
+      { key: 'inventory.product.create', labelKey: 'perm.inventory.productCreate' },
+      { key: 'inventory.product.edit_info', labelKey: 'perm.inventory.productEditInfo' },
+      { key: 'inventory.product.edit_price', labelKey: 'perm.inventory.productEditPrice' },
+      { key: 'inventory.product.edit_stock', labelKey: 'perm.inventory.productEditStock' },
+      { key: 'inventory.receive', labelKey: 'perm.inventory.receive' },
+      { key: 'inventory.count', labelKey: 'perm.inventory.count' },
+      { key: 'inventory.movement.view', labelKey: 'perm.inventory.movementView' },
+      { key: 'inventory.low_stock_alerts', labelKey: 'perm.inventory.lowStockAlerts' },
+      { key: 'inventory.barcode.scan', labelKey: 'perm.inventory.barcodeScan' },
     ],
   },
   {
-    title: 'Sotuv',
-    items: [{ key: 'sales.instore', label: 'Do‘konda sotish (kassa)' }],
+    titleKey: 'perm.group.sales',
+    items: [{ key: 'sales.instore', labelKey: 'perm.sales.instore' }],
   },
   {
-    title: 'Qarz daftar',
-    items: [{ key: 'debt.manage', label: 'Qarz yozish va to‘lov qabul qilish' }],
+    titleKey: 'perm.group.debt',
+    items: [{ key: 'debt.manage', labelKey: 'perm.debt.manage' }],
   },
   {
-    title: 'Kontragent qarzlari',
-    items: [{ key: 'payables.manage', label: 'Ta’minotchi/ijara qarzlarini boshqarish' }],
+    titleKey: 'perm.group.payables',
+    items: [{ key: 'payables.manage', labelKey: 'perm.payables.manage' }],
   },
   {
-    title: 'Do‘kon',
+    titleKey: 'perm.group.shop',
     items: [
-      { key: 'shop.toggle_open', label: 'Ochiq/yopiq qilish' },
-      { key: 'shop.settings.view', label: 'Sozlamalarni ko‘rish' },
+      { key: 'shop.toggle_open', labelKey: 'perm.shop.toggleOpen' },
+      { key: 'shop.settings.view', labelKey: 'perm.shop.settingsView' },
     ],
   },
   {
-    title: 'Sharhlar',
-    items: [{ key: 'reviews.view', label: 'Sharhlarni ko‘rish' }],
+    titleKey: 'perm.group.reviews',
+    items: [{ key: 'reviews.view', labelKey: 'perm.reviews.view' }],
   },
   {
-    title: 'Aksiyalar',
+    titleKey: 'perm.group.promotions',
     items: [
-      { key: 'promotions.view', label: 'Aksiyalarni ko‘rish' },
-      { key: 'promotions.manage', label: 'Aksiya yaratish va boshqarish' },
+      { key: 'promotions.view', labelKey: 'perm.promotions.view' },
+      { key: 'promotions.manage', labelKey: 'perm.promotions.manage' },
     ],
   },
 ];

@@ -104,7 +104,7 @@ export default function ShopDetailScreen() {
   if (!shop) {
     return (
       <View style={styles.center}>
-        <Text style={styles.dim}>Do&apos;kon topilmadi</Text>
+        <Text style={styles.dim}>{tr('shopPage.notFound')}</Text>
       </View>
     );
   }

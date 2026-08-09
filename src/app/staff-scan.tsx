@@ -31,7 +31,7 @@ export default function StaffScanScreen() {
       await qc.invalidateQueries({ queryKey: ['shops', 'mine'] });
       await qc.invalidateQueries({ queryKey: ['working-for-me'] });
       await qc.invalidateQueries({ queryKey: ['me'] });
-      Alert.alert('Tabriklaymiz!', `Siz "${res.data.shopName}" do‘koniga xodim sifatida qo‘shildingiz.`, [
+      Alert.alert(tr('scan.joinedTitle'), tr('scan.joinedMsg', { shop: res.data.shopName }), [
         // Pop back to the (already-mounted) profile tab instead of replacing the
         // whole tab tree — `replace` re-mounts home/map and causes a freeze.
         { text: 'OK', onPress: () => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile')) },
@@ -39,12 +39,12 @@ export default function StaffScanScreen() {
     } catch (e) {
       Alert.alert(tr('common.error'), extractErrorMessage(e), [
         {
-          text: 'Qayta urinish',
+          text: tr('common.retry'),
           onPress: () => {
             handled.current = false;
           },
         },
-        { text: 'Yopish', style: 'cancel', onPress: () => router.back() },
+        { text: tr('common.close'), style: 'cancel', onPress: () => router.back() },
       ]);
     } finally {
       setBusy(false);
@@ -62,13 +62,13 @@ export default function StaffScanScreen() {
   if (!permission.granted) {
     return (
       <SafeAreaView style={styles.center}>
-        <Text style={styles.permTitle}>Kameraga ruxsat kerak</Text>
-        <Text style={styles.permDesc}>QR kodni skanlash uchun kameradan foydalanamiz.</Text>
+        <Text style={styles.permTitle}>{tr('scan.permTitle')}</Text>
+        <Text style={styles.permDesc}>{tr('scan.permDesc')}</Text>
         <Pressable style={styles.permBtn} onPress={requestPermission}>
-          <Text style={styles.permBtnText}>Ruxsat berish</Text>
+          <Text style={styles.permBtnText}>{tr('scan.allow')}</Text>
         </Pressable>
         <Pressable onPress={() => router.back()} style={{ padding: spacing.md }}>
-          <Text style={styles.cancel}>Bekor qilish</Text>
+          <Text style={styles.cancel}>{tr('common.cancel')}</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -85,17 +85,17 @@ export default function StaffScanScreen() {
 
       {/* Scan frame overlay */}
       <SafeAreaView style={styles.overlay} edges={['top', 'bottom']} pointerEvents="box-none">
-        <Text style={styles.title}>Do‘kon QR kodini skanlang</Text>
+        <Text style={styles.title}>{tr('scan.title')}</Text>
         <View style={styles.frame}>
           {busy && (
             <View style={styles.busyBox}>
               <ActivityIndicator color={colors.text.onPrimary} />
-              <Text style={styles.busyText}>Qo‘shilmoqda…</Text>
+              <Text style={styles.busyText}>{tr('scan.joining')}</Text>
             </View>
           )}
         </View>
         <Pressable style={styles.closeBtn} onPress={() => router.back()}>
-          <Text style={styles.closeText}>Bekor qilish</Text>
+          <Text style={styles.closeText}>{tr('common.cancel')}</Text>
         </Pressable>
       </SafeAreaView>
     </View>

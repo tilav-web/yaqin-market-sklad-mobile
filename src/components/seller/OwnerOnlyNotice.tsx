@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/ui';
+import { useTranslation } from '@/i18n';
 import { colors } from '@/theme';
 
 /**
@@ -14,14 +15,15 @@ import { colors } from '@/theme';
  * explains why, instead of a raw error.
  */
 export function OwnerOnlyNotice() {
+  const { tr } = useTranslation();
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.center}>
         <EmptyState
           icon={ShieldAlert}
-          title="Faqat do'kon egasi uchun"
-          description="Bu bo'lim faqat do'kon egasiga ochiq. Sizga kerakli ruxsat yo'q."
-          actionLabel="Orqaga"
+          title={tr('access.ownerOnlyTitle')}
+          description={tr('access.ownerOnlyDesc')}
+          actionLabel={tr('common.back')}
           onAction={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile'))}
         />
       </View>
@@ -37,14 +39,15 @@ export function OwnerOnlyNotice() {
  * confirms the current user is neither the owner nor holds that permission.
  */
 export function NoPermissionNotice() {
+  const { tr } = useTranslation();
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.center}>
         <EmptyState
           icon={ShieldAlert}
-          title="Ruxsat yo'q"
-          description="Bu bo'lim uchun sizda kerakli ruxsat yo'q. Do'kon egasidan so'rang."
-          actionLabel="Orqaga"
+          title={tr('access.noPermTitle')}
+          description={tr('access.noPermDesc')}
+          actionLabel={tr('common.back')}
           onAction={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile'))}
         />
       </View>

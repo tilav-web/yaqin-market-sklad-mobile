@@ -1,3 +1,4 @@
+import { tr } from '@/i18n';
 import * as SecureStore from 'expo-secure-store';
 
 const ACCESS_TOKEN_KEY = 'ym_access_token';
@@ -23,7 +24,7 @@ export const tokenStorage = {
         SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY),
         SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),
       ]);
-      throw new Error('Tokenlarni saqlashda xatolik yuz berdi');
+      throw new Error(tr('storage.saveFailed'));
     }
   },
   async clear(): Promise<void> {

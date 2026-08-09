@@ -3,6 +3,7 @@ import { ChevronRight, ShoppingCart, Store, Trash2 } from 'lucide-react-native';
 import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useTranslation } from '@/i18n';
 import { resolveMedia } from '@/lib/api';
 import { useRequireAuth } from '@/lib/useRequireAuth';
 import { EmptyState } from '@/components/ui';
@@ -11,6 +12,7 @@ import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 export default function CartsTab() {
+  const { tr } = useTranslation();
   const carts = useCartStore((s) => s.carts);
   const hasHydrated = useCartStore((s) => s.hasHydrated);
   const clearShop = useCartStore((s) => s.clearShop);
@@ -20,9 +22,9 @@ export default function CartsTab() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Savatlar</Text>
+        <Text style={styles.title}>{tr('cart.tabTitle')}</Text>
         {entries.length > 0 && (
-          <Text style={styles.subtitle}>{entries.length} ta do‘kon</Text>
+          <Text style={styles.subtitle}>{tr('cart.shopsCount', { n: entries.length })}</Text>
         )}
       </View>
 
@@ -35,8 +37,8 @@ export default function CartsTab() {
       ) : entries.length === 0 ? (
         <EmptyState
           icon={ShoppingCart}
-          title="Savatlaringiz bo‘sh"
-          description="Har bir do‘kondan tanlagan mahsulotlaringiz alohida savatga yig‘iladi"
+          title={tr('cart.empty.title')}
+          description={tr('cart.empty.desc')}
         />
       ) : (
         <FlatList
@@ -95,7 +97,7 @@ export default function CartsTab() {
                       haptics.selection();
                       requireAuth(() => router.push(`/shop/${shopId}/checkout`));
                     }}>
-                    <Text style={styles.proceedText}>Buyurtma berish</Text>
+                    <Text style={styles.proceedText}>{tr('cart.proceed')}</Text>
                     <ChevronRight size={16} color={colors.text.onPrimary} strokeWidth={2.6} />
                   </Pressable>
                 </View>

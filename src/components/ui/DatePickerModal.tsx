@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useTranslation } from '@/i18n';
 import { colors, radius, spacing, typography } from '@/theme';
 
 interface Props {
@@ -51,6 +52,7 @@ function parseIso(iso: string): Date | null {
  * decades back would otherwise take dozens of taps.
  */
 export function DatePickerModal({ visible, value, onConfirm, onClose, title, maxDate }: Props) {
+  const { tr } = useTranslation();
   const maxParsed = maxDate ? parseIso(maxDate) : null;
   const [viewDate, setViewDate] = useState(() => parseIso(value ?? '') ?? maxParsed ?? new Date());
   const [selected, setSelected] = useState<string | null>(value ?? null);
@@ -194,14 +196,14 @@ export function DatePickerModal({ visible, value, onConfirm, onClose, title, max
 
           <View style={styles.actions}>
             <Pressable style={styles.cancelBtn} onPress={onClose}>
-              <Text style={styles.cancelText}>Bekor qilish</Text>
+              <Text style={styles.cancelText}>{tr('common.cancel')}</Text>
             </Pressable>
             {mode === 'calendar' && (
               <Pressable
                 style={[styles.confirmBtn, !selected && styles.confirmBtnDisabled]}
                 disabled={!selected}
                 onPress={() => selected && onConfirm(selected)}>
-                <Text style={styles.confirmText}>Tanlash</Text>
+                <Text style={styles.confirmText}>{tr('common.confirm')}</Text>
               </Pressable>
             )}
           </View>

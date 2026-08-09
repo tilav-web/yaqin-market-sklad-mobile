@@ -102,14 +102,14 @@ export default function ChatTemplatesScreen() {
                   <Pressable
                     style={styles.editBtn}
                     onPress={() => { setEditTarget(item); setText(item.text); }}>
-                    <Text style={styles.editBtnText}>Tahrir</Text>
+                    <Text style={styles.editBtnText}>{tr('common.edit')}</Text>
                   </Pressable>
                   <Pressable
                     style={styles.deleteBtn}
                     onPress={() =>
-                      Alert.alert("O'chirish", "Ushbu shablonni o'chirasizmi?", [
-                        { text: 'Bekor', style: 'cancel' },
-                        { text: "O'chirish", style: 'destructive', onPress: () => remove.mutate(item.id) },
+                      Alert.alert(tr('common.delete'), tr('chatTpl.deleteConfirm'), [
+                        { text: tr('common.cancel'), style: 'cancel' },
+                        { text: tr('common.delete'), style: 'destructive', onPress: () => remove.mutate(item.id) },
                       ])
                     }>
                     <Trash2 size={16} color={colors.feedback.danger} strokeWidth={2.2} />
@@ -123,7 +123,7 @@ export default function ChatTemplatesScreen() {
 
       <Pressable style={styles.fab} onPress={() => { setText(''); setCreateOpen(true); }}>
         <Plus size={20} color={colors.text.onPrimary} strokeWidth={2.8} />
-        <Text style={styles.fabText}>Shablon</Text>
+        <Text style={styles.fabText}>{tr('chatTpl.template')}</Text>
       </Pressable>
 
       <Modal
@@ -133,12 +133,12 @@ export default function ChatTemplatesScreen() {
         onRequestClose={() => { setCreateOpen(false); setEditTarget(null); }}>
         <View style={styles.overlay}>
           <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>{editTarget ? 'Shablonni tahrirlash' : "Yangi shablon qo'shish"}</Text>
+            <Text style={styles.sheetTitle}>{tr(editTarget ? 'chatTpl.editTitle' : 'chatTpl.newTitle')}</Text>
             <TextInput
               style={styles.textArea}
               value={text}
               onChangeText={setText}
-              placeholder="Masalan: Assalomu alaykum! Buyurtmangiz qabul qilindi."
+              placeholder={tr('chatTpl.placeholder')}
               placeholderTextColor={colors.text.hint}
               multiline
               autoFocus
@@ -154,7 +154,7 @@ export default function ChatTemplatesScreen() {
               )}
             </Pressable>
             <Pressable style={styles.cancelBtn} onPress={() => { setCreateOpen(false); setEditTarget(null); }}>
-              <Text style={styles.cancelBtnText}>Bekor qilish</Text>
+              <Text style={styles.cancelBtnText}>{tr('common.cancel')}</Text>
             </Pressable>
           </View>
         </View>

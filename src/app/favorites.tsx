@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { PublicProductVariant, PublicShop } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -20,6 +21,7 @@ import { haptics } from '@/utils/haptics';
 interface Favorites { shopIds: string[]; productIds: string[] }
 
 export default function FavoritesScreen() {
+  const { tr } = useTranslation();
   const qc = useQueryClient();
 
   const favsQ = useQuery<Favorites>({
@@ -78,14 +80,14 @@ export default function FavoritesScreen() {
         }
       >
         {/* Shops */}
-        <Text style={styles.title}>Sevimli do'konlar</Text>
+        <Text style={styles.title}>{tr('fav.shops')}</Text>
 
         {loading ? (
           <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 24 }} />
         ) : shops.length === 0 ? (
           <View style={styles.empty}>
             <Store size={32} color={colors.border.default} strokeWidth={1.5} />
-            <Text style={styles.emptyText}>Hali sevimli do'konlar yo'q</Text>
+            <Text style={styles.emptyText}>{tr('fav.noShops')}</Text>
           </View>
         ) : (
           shops.map((shop) => (
@@ -109,12 +111,12 @@ export default function FavoritesScreen() {
         )}
 
         {/* Products */}
-        <Text style={[styles.title, { marginTop: spacing.xl }]}>Sevimli mahsulotlar</Text>
+        <Text style={[styles.title, { marginTop: spacing.xl }]}>{tr('fav.products')}</Text>
 
         {loading ? null : products.length === 0 ? (
           <View style={styles.empty}>
             <Package size={32} color={colors.border.default} strokeWidth={1.5} />
-            <Text style={styles.emptyText}>Hali sevimli mahsulotlar yo'q</Text>
+            <Text style={styles.emptyText}>{tr('fav.noProducts')}</Text>
           </View>
         ) : (
           products.map((product) => (

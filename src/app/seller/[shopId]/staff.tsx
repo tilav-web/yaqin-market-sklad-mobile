@@ -17,14 +17,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 
-import { tr } from '@/i18n';
+import { useTranslation } from '@/i18n';
 import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import {
   PERMISSION_GROUPS,
   PRESET_PERMISSIONS,
   PRESETS,
-  PRESET_LABELS,
+  PRESET_LABEL_KEYS,
   StaffMember,
   StaffPreset,
 } from '@/constants/staffPermissions';
@@ -53,6 +53,7 @@ interface GrantBody {
 
 export default function StaffScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
+  const { tr } = useTranslation();
   const qc = useQueryClient();
   const [invite, setInvite] = useState<InviteResp | null>(null);
   const [setupOpen, setSetupOpen] = useState(false);
@@ -127,19 +128,16 @@ export default function StaffScreen() {
             colors={[Brand.red]}
           />
         }>
-        <Text style={styles.hint}>
-          Yangi xodim qo‘shish uchun QR yarating va xodim uni ilova orqali skanlasin. Boshlang‘ich
-          ruxsatlarni hozir tanlashingiz yoki keyinroq o‘zgartirishingiz mumkin.
-        </Text>
+        <Text style={styles.hint}>{tr('staff.hint')}</Text>
 
         <Pressable style={styles.addBtn} onPress={() => setSetupOpen(true)}>
-          <Text style={styles.addBtnText}>＋ Yangi xodim qo‘shish</Text>
+          <Text style={styles.addBtnText}>＋ {tr('staff.addStaff')}</Text>
         </Pressable>
 
         {staffQuery.isLoading ? (
           <ActivityIndicator color={Brand.red} style={{ marginTop: 30 }} />
         ) : active.length === 0 ? (
-          <Text style={styles.empty}>Hozircha xodimlar yo‘q</Text>
+          <Text style={styles.empty}>{tr('staff.empty')}</Text>
         ) : (
           active.map((s) => (
             <StaffCard key={s.id} shopId={shopId} member={s} customPresets={customPresets} />
@@ -160,14 +158,16 @@ export default function StaffScreen() {
         <Pressable style={styles.backdrop} onPress={() => setInvite(null)} />
         <View style={styles.qrWrap} pointerEvents="box-none">
           <View style={styles.qrCard}>
-            <Text style={styles.qrTitle}>Xodimni qo‘shish</Text>
+            <Text style={styles.qrTitle}>{tr('staff.qrTitle')}</Text>
             <Text style={styles.qrSub}>
-              Xodim bu QR ni ilova orqali skanlasin
+              {tr('staff.qrSub')}
               {invite
                 ? (() => {
                     const msLeft = new Date(invite.expiresAt).getTime() - nowTick;
-                    if (msLeft <= 0) return ' — muddati tugadi, yangisini yarating';
-                    return ` (${Math.max(1, Math.round(msLeft / 60000))} daqiqa amal qiladi)`;
+                    if (msLeft <= 0) return ` ${tr('staff.qrExpired')}`;
+                    return ` ${tr('staff.qrValidFor', {
+                      minutes: Math.max(1, Math.round(msLeft / 60000)),
+                    })}`;
                   })()
                 : ''}
             </Text>
@@ -181,7 +181,7 @@ export default function StaffScreen() {
               onPress={() => inviteMutation.mutate({})}
               disabled={inviteMutation.isPending}>
               <Text style={styles.qrRegenText}>
-                {inviteMutation.isPending ? 'Yaratilmoqda…' : 'Yangi QR (ruxsatsiz)'}
+                {inviteMutation.isPending ? tr('staff.creating') : tr('staff.newQrNoPerms')}
               </Text>
             </Pressable>
             <Pressable
@@ -190,7 +190,7 @@ export default function StaffScreen() {
                 setInvite(null);
                 qc.invalidateQueries({ queryKey: ['shop-staff', shopId] });
               }}>
-              <Text style={styles.qrCloseText}>Yopish</Text>
+              <Text style={styles.qrCloseText}>{tr('common.close')}</Text>
             </Pressable>
           </View>
         </View>
@@ -215,6 +215,7 @@ function InviteSetupModal({
   onCancel: () => void;
   onSubmit: (body: GrantBody) => void;
 }) {
+  const { tr } = useTranslation();
   const qc = useQueryClient();
   const [roleName, setRoleName] = useState('');
   const [permissions, setPermissions] = useState<string[]>([]);
@@ -276,10 +277,10 @@ function InviteSetupModal({
   };
 
   const confirmDeletePreset = (p: StaffPresetDto) => {
-    Alert.alert('Shablonni o‘chirish', `"${p.name}" shablonini o‘chirasizmi?`, [
-      { text: 'Bekor', style: 'cancel' },
+    Alert.alert(tr('staff.deletePresetTitle'), tr('staff.deletePresetConfirm', { name: p.name }), [
+      { text: tr('common.cancel'), style: 'cancel' },
       {
-        text: 'O‘chirish',
+        text: tr('common.delete'),
         style: 'destructive',
         onPress: () => {
           if (selectedKey === `custom:${p.id}`) pickPreset('none');
@@ -314,41 +315,39 @@ function InviteSetupModal({
       <Pressable style={styles.backdrop} onPress={onCancel} />
       <View style={styles.setupWrap} pointerEvents="box-none">
         <View style={styles.setupCard}>
-          <Text style={styles.qrTitle}>Yangi xodim</Text>
+          <Text style={styles.qrTitle}>{tr('staff.newStaff')}</Text>
           <ScrollView contentContainerStyle={{ gap: Spacing.three }} showsVerticalScrollIndicator={false}>
-            <Text style={styles.setupHint}>
-              Boshlang‘ich ruxsatlarni tanlang — keyinchalik istalgan vaqt o‘zgartirishingiz mumkin.
-            </Text>
+            <Text style={styles.setupHint}>{tr('staff.setupHint')}</Text>
 
-            <Text style={styles.presetLabel}>Lavozim nomi (ixtiyoriy)</Text>
+            <Text style={styles.presetLabel}>{tr('staff.roleNameLabel')}</Text>
             <TextInput
               style={styles.input}
               value={roleName}
               onChangeText={setRoleName}
-              placeholder="Masalan: Kechki kassir"
+              placeholder={tr('staff.roleNamePlaceholder')}
               placeholderTextColor={Brand.gray400}
             />
 
-            <Text style={styles.presetLabel}>Shablon tanlang</Text>
+            <Text style={styles.presetLabel}>{tr('staff.pickPreset')}</Text>
             <View style={styles.presetRow}>
               <Text
                 onPress={() => pickPreset('none')}
                 style={[styles.presetChip, selectedKey === 'none' && styles.presetChipActive]}>
-                Ruxsatsiz
+                {tr('staff.noPermissions')}
               </Text>
               {PRESETS.map((p) => (
                 <Text
                   key={p.key}
                   onPress={() => pickPreset(p.key)}
                   style={[styles.presetChip, selectedKey === p.key && styles.presetChipActive]}>
-                  {p.label}
+                  {tr(p.labelKey)}
                 </Text>
               ))}
             </View>
 
             {customPresets.length > 0 && (
               <>
-                <Text style={styles.presetLabel}>Sizning shablonlaringiz</Text>
+                <Text style={styles.presetLabel}>{tr('staff.yourPresets')}</Text>
                 <View style={styles.presetRow}>
                   {customPresets.map((p) => (
                     <View key={p.id} style={styles.customPresetChipWrap}>
@@ -368,16 +367,16 @@ function InviteSetupModal({
 
             <Pressable style={styles.expandRow} onPress={() => setShowPerms((v) => !v)}>
               <Text style={styles.expandText}>
-                Ruxsatlarni ko‘rish/sozlash ({permissions.length}) {showPerms ? '▲' : '▼'}
+                {tr('staff.viewPermissions', { count: permissions.length })} {showPerms ? '▲' : '▼'}
               </Text>
             </Pressable>
 
             {showPerms && PERMISSION_GROUPS.map((group) => (
-              <View key={group.title} style={styles.permGroup}>
-                <Text style={styles.permGroupTitle}>{group.title}</Text>
+              <View key={group.titleKey} style={styles.permGroup}>
+                <Text style={styles.permGroupTitle}>{tr(group.titleKey)}</Text>
                 {group.items.map((item) => (
                   <View key={item.key} style={styles.permRow}>
-                    <Text style={styles.permLabel}>{item.label}</Text>
+                    <Text style={styles.permLabel}>{tr(item.labelKey)}</Text>
                     <Switch
                       value={permissions.includes(item.key)}
                       onValueChange={() => togglePerm(item.key)}
@@ -390,14 +389,14 @@ function InviteSetupModal({
 
             <Pressable style={styles.saveAsRow} onPress={() => setSaveAsPreset((v) => !v)}>
               <Switch value={saveAsPreset} onValueChange={setSaveAsPreset} trackColor={{ true: Brand.success }} />
-              <Text style={styles.saveAsLabel}>Shu tanlovni shablon sifatida saqlash</Text>
+              <Text style={styles.saveAsLabel}>{tr('staff.saveAsPreset')}</Text>
             </Pressable>
             {saveAsPreset && (
               <TextInput
                 style={styles.input}
                 value={presetName}
                 onChangeText={setPresetName}
-                placeholder="Shablon nomi (masalan: Kechki kassir)"
+                placeholder={tr('staff.presetNamePlaceholder')}
                 placeholderTextColor={Brand.gray400}
               />
             )}
@@ -405,14 +404,14 @@ function InviteSetupModal({
 
           <View style={styles.setupBtnRow}>
             <Pressable style={styles.setupCancelBtn} onPress={onCancel}>
-              <Text style={styles.setupCancelText}>Bekor</Text>
+              <Text style={styles.setupCancelText}>{tr('common.cancel')}</Text>
             </Pressable>
             <Pressable
               style={[styles.setupSubmitBtn, (pending || savePresetMutation.isPending) && { opacity: 0.6 }]}
               disabled={pending || savePresetMutation.isPending || (saveAsPreset && !presetName.trim())}
               onPress={handleSubmit}>
               <Text style={styles.setupSubmitText}>
-                {pending || savePresetMutation.isPending ? 'Yaratilmoqda…' : 'QR yaratish'}
+                {pending || savePresetMutation.isPending ? tr('staff.creating') : tr('staff.createQr')}
               </Text>
             </Pressable>
           </View>
@@ -429,6 +428,7 @@ function StaffCard({
   member: StaffMember;
   customPresets: StaffPresetDto[];
 }) {
+  const { tr } = useTranslation();
   const qc = useQueryClient();
   const [expanded, setExpanded] = useState(false);
 
@@ -455,52 +455,58 @@ function StaffCard({
           </Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{member.name ?? 'Xodim'}</Text>
+          <Text style={styles.name}>{member.name ?? tr('staff.staffFallback')}</Text>
           <Text style={styles.phone}>{member.phone}</Text>
         </View>
         <View style={styles.roleTag}>
           <Text style={styles.roleText}>
-            {member.preset === 'custom' && member.customRoleName ? member.customRoleName : PRESET_LABELS[member.preset]}
+            {member.preset === 'custom' && member.customRoleName
+              ? member.customRoleName
+              : tr(PRESET_LABEL_KEYS[member.preset])}
           </Text>
         </View>
       </View>
 
       <Pressable style={styles.expandRow} onPress={() => setExpanded((v) => !v)}>
         <Text style={styles.expandText}>
-          Ruxsatlar ({member.permissions.length}) {expanded ? '▲' : '▼'}
+          {tr('staff.permissionsCount', { count: member.permissions.length })} {expanded ? '▲' : '▼'}
         </Text>
         <Pressable
           onPress={() =>
-            Alert.alert('O‘chirish', `${member.name ?? 'Xodim'}ni do‘kondan chiqarasizmi?`, [
-              { text: 'Bekor', style: 'cancel' },
-              {
-                text: 'Chiqarish',
-                style: 'destructive',
-                onPress: () => update.mutate({ isActive: false }),
-              },
-            ])
+            Alert.alert(
+              tr('common.delete'),
+              tr('staff.removeConfirm', { name: member.name ?? tr('staff.staffFallback') }),
+              [
+                { text: tr('common.cancel'), style: 'cancel' },
+                {
+                  text: tr('staff.remove'),
+                  style: 'destructive',
+                  onPress: () => update.mutate({ isActive: false }),
+                },
+              ],
+            )
           }>
-          <Text style={styles.removeText}>Chiqarish</Text>
+          <Text style={styles.removeText}>{tr('staff.remove')}</Text>
         </Pressable>
       </Pressable>
 
       {expanded && (
         <View style={styles.permArea}>
-          <Text style={styles.presetLabel}>Tayyor rol:</Text>
+          <Text style={styles.presetLabel}>{tr('staff.readyRole')}</Text>
           <View style={styles.presetRow}>
             {PRESETS.map((p) => (
               <Text
                 key={p.key}
                 onPress={() => update.mutate({ preset: p.key as StaffPreset })}
                 style={[styles.presetChip, member.preset === p.key && styles.presetChipActive]}>
-                {p.label}
+                {tr(p.labelKey)}
               </Text>
             ))}
           </View>
 
           {customPresets.length > 0 && (
             <>
-              <Text style={styles.presetLabel}>Saqlangan shablonlar:</Text>
+              <Text style={styles.presetLabel}>{tr('staff.savedPresets')}</Text>
               <View style={styles.presetRow}>
                 {customPresets.map((p) => (
                   <Text
@@ -518,11 +524,11 @@ function StaffCard({
           )}
 
           {PERMISSION_GROUPS.map((group) => (
-            <View key={group.title} style={styles.permGroup}>
-              <Text style={styles.permGroupTitle}>{group.title}</Text>
+            <View key={group.titleKey} style={styles.permGroup}>
+              <Text style={styles.permGroupTitle}>{tr(group.titleKey)}</Text>
               {group.items.map((item) => (
                 <View key={item.key} style={styles.permRow}>
-                  <Text style={styles.permLabel}>{item.label}</Text>
+                  <Text style={styles.permLabel}>{tr(item.labelKey)}</Text>
                   <Switch
                     value={member.permissions.includes(item.key)}
                     onValueChange={() => togglePerm(item.key)}

@@ -141,7 +141,7 @@ export default function OrderDetailScreen() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['order', id] });
-      toast.success("To'lov muvaffaqiyatli o'tdi");
+      toast.success(tr('orderDet.paySuccess'));
     },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
@@ -202,7 +202,7 @@ export default function OrderDetailScreen() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['order', id] });
-      toast.success('Rahmat, sabab saqlandi');
+      toast.success(tr('orderDet.reasonThanks'));
     },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
@@ -223,18 +223,20 @@ export default function OrderDetailScreen() {
       setRatingDraft({});
       setReviewText({});
       qc.invalidateQueries({ queryKey: ['order', id] });
-      toast.success('Baho uchun rahmat!');
+      toast.success(tr('orderDet.reviewThanks'));
     },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
+  // `value` is the canonical reason string sent to the server; `labelKey` is
+  // only what the customer sees, so switching language never changes the data.
   const COMPLAINT_REASONS = [
-    'Mahsulot yetkazilmadi',
-    'Mahsulot sifatsiz',
-    "Noto'g'ri mahsulot keldi",
-    'Kam yetkazildi',
-    'Boshqa',
-  ];
+    { value: 'Mahsulot yetkazilmadi', labelKey: 'orderDet.complaintNotDelivered' },
+    { value: 'Mahsulot sifatsiz', labelKey: 'orderDet.complaintLowQuality' },
+    { value: "Noto'g'ri mahsulot keldi", labelKey: 'orderDet.complaintWrongItem' },
+    { value: 'Kam yetkazildi', labelKey: 'orderDet.complaintShort' },
+    { value: 'Boshqa', labelKey: 'orderDet.complaintOther' },
+  ] as const;
 
   // Files a dispute within the server's settlement window (the exact
   // window length is not duplicated client-side — a closed window simply
@@ -251,7 +253,7 @@ export default function OrderDetailScreen() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['order', id] });
-      toast.success('Shikoyatingiz qabul qilindi');
+      toast.success(tr('orderDet.complaintSent'));
       setComplaintOpen(false);
       setComplaintReason('');
       setComplaintCustomReason('');
@@ -363,8 +365,10 @@ export default function OrderDetailScreen() {
         {order.refund && (
           <View style={styles.refundBanner}>
             <Text style={styles.refundBannerText}>
-              Qaytarilgan: {order.refund.amount.toLocaleString()} so'm · sana:{' '}
-              {new Date(order.refund.at).toLocaleDateString('uz-UZ')}
+              {tr('orderDet.refundedLine', {
+                amount: order.refund.amount.toLocaleString(),
+                date: new Date(order.refund.at).toLocaleDateString('uz-UZ'),
+              })}
             </Text>
           </View>
         )}
@@ -409,14 +413,14 @@ export default function OrderDetailScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={styles.offerShop} numberOfLines={1}>{o.shopName}</Text>
                         <Text style={styles.offerMeta}>
-                          {o.isOpen ? "Ochiq" : "Yopiq"}
+                          {o.isOpen ? tr('shop.open') : tr('shop.closed')}
                           {o.distanceKm != null
                             ? ` · ${o.distanceKm < 1 ? `${Math.round(o.distanceKm * 1000)} m` : `${o.distanceKm.toFixed(1)} km`}`
                             : ''}
                         </Text>
                       </View>
                       <Text style={styles.offerPrice}>
-                        {(o.discountPrice ?? o.price).toLocaleString()} so'm
+                        {(o.discountPrice ?? o.price).toLocaleString()} {tr('common.som')}
                       </Text>
                     </Pressable>
                   ))}
@@ -432,14 +436,14 @@ export default function OrderDetailScreen() {
         {!isDeadOrder && (
           <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${order.id}`)}>
             <MessageCircle size={18} color={colors.brand.primary} strokeWidth={2.4} />
-            <Text style={styles.chatBtnText}>Sotuvchi bilan bog'lanish</Text>
+            <Text style={styles.chatBtnText}>{tr('orderDet.contactSeller')}</Text>
           </Pressable>
         )}
 
         {/* Timeline */}
         {!isDeadOrder && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Bosqichlar</Text>
+            <Text style={styles.sectionTitle}>{tr('orderDet.timeline')}</Text>
             {FLOW.map((s, idx) => {
               const event = order.timeline.find((e) => e.status === s);
               const active = event !== undefined;
@@ -475,7 +479,7 @@ export default function OrderDetailScreen() {
 
         {/* Items */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Mahsulotlar</Text>
+          <Text style={styles.sectionTitle}>{tr('shop.products')}</Text>
           {order.items.map((it) => {
             const photo = it.productVariant?.globalProduct?.photos?.[0];
             return (
@@ -488,10 +492,12 @@ export default function OrderDetailScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.itemName}>{it.productName}</Text>
                   <Text style={styles.itemQty}>
-                    {it.quantity} × {it.unitPrice.toLocaleString()} so'm
+                    {it.quantity} × {it.unitPrice.toLocaleString()} {tr('common.som')}
                   </Text>
                   {hasReturns && it.returnedQuantity > 0 && (
-                    <Text style={styles.returnedTag}>{it.returnedQuantity} ta qaytarilgan</Text>
+                    <Text style={styles.returnedTag}>
+                      {tr('orderDet.returnedCount', { n: it.returnedQuantity })}
+                    </Text>
                   )}
                 </View>
                 <Text style={styles.itemTotal}>{it.lineTotal.toLocaleString()}</Text>
@@ -505,18 +511,16 @@ export default function OrderDetailScreen() {
           <View style={styles.section}>
             <View style={styles.returnHeader}>
               <RotateCcw size={16} color={colors.feedback.warning} strokeWidth={2.4} />
-              <Text style={styles.sectionTitle}>Qaytarilgan mahsulotlar</Text>
+              <Text style={styles.sectionTitle}>{tr('orderDet.returnedTitle')}</Text>
             </View>
             {order.returnReason ? (
               <Text style={styles.reasonSaved}>"{order.returnReason}"</Text>
             ) : (
               <>
-                <Text style={styles.reasonHint}>
-                  Nega qaytardingiz? Sabab qoldirsangiz, do'kon yaxshilanadi (ixtiyoriy).
-                </Text>
+                <Text style={styles.reasonHint}>{tr('orderDet.returnReasonHint')}</Text>
                 <TextInput
                   style={styles.reviewInput}
-                  placeholder="Masalan: pomidor chirigan edi"
+                  placeholder={tr('orderDet.returnReasonPlaceholder')}
                   placeholderTextColor={colors.text.hint}
                   value={reasonDraft}
                   onChangeText={setReasonDraft}
@@ -530,7 +534,7 @@ export default function OrderDetailScreen() {
                     {submitReason.isPending ? (
                       <ActivityIndicator color={colors.text.onPrimary} />
                     ) : (
-                      <Text style={styles.primaryBtnText}>Sababni saqlash</Text>
+                      <Text style={styles.primaryBtnText}>{tr('orderDet.saveReason')}</Text>
                     )}
                   </Pressable>
                 )}
@@ -549,24 +553,28 @@ export default function OrderDetailScreen() {
           {hasReturns && (
             <>
               <Row
-                label="Qaytarilgan"
-                value={`− ${returnedTotal.toLocaleString()} so'm`}
+                label={tr('orderDet.returnedLabel')}
+                value={`− ${returnedTotal.toLocaleString()} ${tr('common.som')}`}
                 tone="warning"
               />
               <View style={styles.divider} />
             </>
           )}
-          <Row label="Mahsulotlar" value={`${order.subTotal.toLocaleString()} so'm`} />
-          <Row label="Yetkazib berish" value={`${order.deliveryFee.toLocaleString()} so'm`} />
-          <Row label="Masofa" value={`${order.distanceKm.toFixed(2)} km`} />
+          <Row label={tr('cart.subtotal')} value={`${order.subTotal.toLocaleString()} ${tr('common.som')}`} />
+          <Row label={tr('cart.deliveryFee')} value={`${order.deliveryFee.toLocaleString()} ${tr('common.som')}`} />
+          <Row label={tr('cart.distance')} value={`${order.distanceKm.toFixed(2)} km`} />
           <View style={styles.divider} />
-          <Row label={hasReturns ? "Yangi summa (qaytarishdan keyin)" : 'Jami'} value={`${order.total.toLocaleString()} so'm`} bold />
+          <Row
+            label={hasReturns ? tr('orderDet.newTotalAfterReturn') : tr('cart.total')}
+            value={`${order.total.toLocaleString()} ${tr('common.som')}`}
+            bold
+          />
         </View>
 
         {/* Rating */}
         {canReview && unreviewed.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Mahsulotlarni baholang</Text>
+            <Text style={styles.sectionTitle}>{tr('orderDet.rateProducts')}</Text>
             {unreviewed.map((it) => (
               <View key={it.id} style={styles.rateRow}>
                 <Text style={styles.rateName}>{it.productName}</Text>
@@ -580,7 +588,7 @@ export default function OrderDetailScreen() {
                 {(ratingDraft[it.productVariantId] ?? 0) > 0 && (
                   <TextInput
                     style={styles.reviewInput}
-                    placeholder="Izoh (ixtiyoriy)"
+                    placeholder={tr('orderDet.reviewPlaceholder')}
                     placeholderTextColor={colors.text.hint}
                     value={reviewText[it.productVariantId] ?? ''}
                     onChangeText={(t) =>
@@ -598,7 +606,9 @@ export default function OrderDetailScreen() {
                 {submitReviews.isPending ? (
                   <ActivityIndicator color={colors.text.onPrimary} />
                 ) : (
-                  <Text style={styles.primaryBtnText}>Baholarni yuborish ({pendingRatings})</Text>
+                  <Text style={styles.primaryBtnText}>
+                    {tr('orderDet.submitReviews', { n: pendingRatings })}
+                  </Text>
                 )}
               </Pressable>
             )}
@@ -606,7 +616,7 @@ export default function OrderDetailScreen() {
         )}
 
         {canReview && unreviewed.length === 0 && order.items.length > 0 && (
-          <Text style={styles.allReviewed}>✓ Barcha mahsulotlar baholangan</Text>
+          <Text style={styles.allReviewed}>{tr('orderDet.allReviewed')}</Text>
         )}
 
         {/* Complaint — either its current status, or the filing form (only
@@ -616,7 +626,7 @@ export default function OrderDetailScreen() {
           <View style={[styles.section, styles.complaintCard]}>
             <View style={styles.complaintHeader}>
               <AlertCircle size={16} color={colors.feedback.danger} strokeWidth={2.2} />
-              <Text style={styles.sectionTitle}>Shikoyat</Text>
+              <Text style={styles.sectionTitle}>{tr('orderDet.complaintTitle')}</Text>
             </View>
             <Text style={styles.complaintReasonText}>"{order.complaint.reason}"</Text>
             <View
@@ -633,12 +643,16 @@ export default function OrderDetailScreen() {
                     ? styles.complaintStatusTextResolved
                     : styles.complaintStatusTextOpen,
                 ]}>
-                {order.complaint.status === 'resolved' ? "✓ Hal qilindi" : 'Ko\'rib chiqilmoqda'}
+                {order.complaint.status === 'resolved'
+                  ? tr('orderDet.complaintResolved')
+                  : tr('orderDet.complaintReviewing')}
               </Text>
             </View>
             {order.complaint.resolvedAt && (
               <Text style={styles.complaintMeta}>
-                Hal qilingan sana: {new Date(order.complaint.resolvedAt).toLocaleDateString('uz-UZ')}
+                {tr('orderDet.complaintResolvedAt', {
+                  date: new Date(order.complaint.resolvedAt).toLocaleDateString('uz-UZ'),
+                })}
               </Text>
             )}
           </View>
@@ -649,23 +663,26 @@ export default function OrderDetailScreen() {
             {!complaintOpen ? (
               <Pressable style={styles.complaintOpenBtn} onPress={() => setComplaintOpen(true)}>
                 <AlertCircle size={16} color={colors.feedback.danger} strokeWidth={2.2} />
-                <Text style={styles.complaintOpenBtnText}>Shikoyat qilish</Text>
+                <Text style={styles.complaintOpenBtnText}>{tr('orderDet.fileComplaint')}</Text>
               </Pressable>
             ) : (
               <>
-                <Text style={styles.sectionTitle}>Shikoyat sababi</Text>
+                <Text style={styles.sectionTitle}>{tr('orderDet.complaintReasonTitle')}</Text>
                 <View style={styles.wrap}>
                   {COMPLAINT_REASONS.map((r) => (
                     <Pressable
-                      key={r}
-                      onPress={() => setComplaintReason(r)}
-                      style={[styles.reasonChip, complaintReason === r && styles.reasonChipActive]}>
+                      key={r.value}
+                      onPress={() => setComplaintReason(r.value)}
+                      style={[
+                        styles.reasonChip,
+                        complaintReason === r.value && styles.reasonChipActive,
+                      ]}>
                       <Text
                         style={[
                           styles.reasonChipText,
-                          complaintReason === r && styles.reasonChipTextActive,
+                          complaintReason === r.value && styles.reasonChipTextActive,
                         ]}>
-                        {r}
+                        {tr(r.labelKey)}
                       </Text>
                     </Pressable>
                   ))}
@@ -673,7 +690,7 @@ export default function OrderDetailScreen() {
                 {complaintReason === 'Boshqa' && (
                   <TextInput
                     style={styles.reviewInput}
-                    placeholder="Sababni yozing"
+                    placeholder={tr('orderDet.writeReason')}
                     placeholderTextColor={colors.text.hint}
                     value={complaintCustomReason}
                     onChangeText={setComplaintCustomReason}
@@ -681,7 +698,7 @@ export default function OrderDetailScreen() {
                 )}
                 <TextInput
                   style={[styles.reviewInput, styles.complaintTextarea]}
-                  placeholder="Qo'shimcha izoh (ixtiyoriy)"
+                  placeholder={tr('orderDet.extraNotePlaceholder')}
                   placeholderTextColor={colors.text.hint}
                   value={complaintDesc}
                   onChangeText={setComplaintDesc}
@@ -696,7 +713,7 @@ export default function OrderDetailScreen() {
                       setComplaintCustomReason('');
                       setComplaintDesc('');
                     }}>
-                    <Text style={styles.ghostBtnText}>Bekor qilish</Text>
+                    <Text style={styles.ghostBtnText}>{tr('common.cancel')}</Text>
                   </Pressable>
                   <Pressable
                     style={[
@@ -709,7 +726,7 @@ export default function OrderDetailScreen() {
                     {fileComplaint.isPending ? (
                       <ActivityIndicator color={colors.text.onPrimary} />
                     ) : (
-                      <Text style={styles.primaryBtnText}>Yuborish</Text>
+                      <Text style={styles.primaryBtnText}>{tr('orderDet.send')}</Text>
                     )}
                   </Pressable>
                 </View>
@@ -722,9 +739,11 @@ export default function OrderDetailScreen() {
         {order.status === 'delivering' && courierLocation && (
           <View style={styles.mapCard}>
             <View style={styles.mapTitleRow}>
-              <Text style={styles.mapTitle}>Kuryer joylashuvi</Text>
+              <Text style={styles.mapTitle}>{tr('orderDet.courierLocation')}</Text>
               {courierLocation.etaMinutes != null ? (
-                <Text style={styles.mapEta}>~{courierLocation.etaMinutes} daqiqada yetib keladi</Text>
+                <Text style={styles.mapEta}>
+                  {tr('orderDet.courierEta', { n: courierLocation.etaMinutes })}
+                </Text>
               ) : null}
             </View>
             <MapView
@@ -739,7 +758,7 @@ export default function OrderDetailScreen() {
               }}>
               <Marker
                 coordinate={{ latitude: courierLocation.lat, longitude: courierLocation.lng }}
-                title="Kuryer"
+                title={tr('orderDet.courierPin')}
                 pinColor={colors.brand.primary}
               />
               {order.deliveryAddress && (
@@ -748,7 +767,7 @@ export default function OrderDetailScreen() {
                     latitude: order.deliveryAddress.latitude,
                     longitude: order.deliveryAddress.longitude,
                   }}
-                  title="Siz"
+                  title={tr('orderDet.youPin')}
                   pinColor={colors.feedback.success}
                 />
               )}
@@ -883,7 +902,7 @@ export default function OrderDetailScreen() {
             style={styles.primaryBtn}
             onPress={() => setStatus.mutate('delivered')}
             disabled={setStatus.isPending}>
-            <Text style={styles.primaryBtnText}>Buyurtmani qabul qildim</Text>
+            <Text style={styles.primaryBtnText}>{tr('orders.confirmReceived')}</Text>
           </Pressable>
         )}
         {(order.status === 'new' || order.status === 'accepted') && (
@@ -903,7 +922,7 @@ export default function OrderDetailScreen() {
             }
             disabled={setStatus.isPending}>
             <X size={16} color={colors.feedback.danger} strokeWidth={2.6} />
-            <Text style={styles.ghostBtnText}>Bekor qilish</Text>
+            <Text style={styles.ghostBtnText}>{tr('orders.cancel')}</Text>
           </Pressable>
         )}
 
@@ -911,7 +930,7 @@ export default function OrderDetailScreen() {
           <Pressable style={styles.reorderBtn} onPress={handleReorder}>
             <RefreshCw size={16} color={colors.brand.primary} strokeWidth={2.4} />
             <Text style={styles.reorderBtnText}>
-              {isSellerDeclined ? "Shu do'kondan qayta urinish" : 'Qayta buyurtma berish'}
+              {isSellerDeclined ? tr('orderDet.retrySameShop') : tr('orderDet.reorder')}
             </Text>
           </Pressable>
         )}

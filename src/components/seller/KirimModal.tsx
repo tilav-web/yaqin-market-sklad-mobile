@@ -83,7 +83,7 @@ export function KirimModal({ visible, shopId, variant, onClose }: Props) {
         <View style={styles.header}>
           <View style={styles.titleRow}>
             <PackagePlus size={20} color={colors.brand.primary} strokeWidth={2.2} />
-            <Text style={styles.title}>Kirim — tovar keldi</Text>
+            <Text style={styles.title}>{tr('kirim.title')}</Text>
           </View>
           <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
             <X size={20} color={colors.text.secondary} />
@@ -92,62 +92,62 @@ export function KirimModal({ visible, shopId, variant, onClose }: Props) {
 
         {variant ? (
           <Text style={styles.sub} numberOfLines={1}>
-            {variant.name} · hozir {variant.stock} ta
+            {variant.name} · {tr('kirim.currentStock', { n: variant.stock })}
           </Text>
         ) : null}
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-            <Field label="Nechta keldi? *">
+            <Field label={tr('kirim.qtyLabel')}>
               <TextInput
                 style={styles.input}
                 value={quantity}
                 onChangeText={setQuantity}
                 keyboardType="number-pad"
-                placeholder="Masalan: 50"
+                placeholder={tr('kirim.qtyPh')}
                 placeholderTextColor={colors.text.hint}
                 autoFocus
               />
             </Field>
 
-            <Field label="Dona uchun kirim narxi (tannarx, so'm)">
+            <Field label={tr('kirim.costLabel')}>
               <TextInput
                 style={styles.input}
                 value={costPrice}
                 onChangeText={setCostPrice}
                 keyboardType="number-pad"
-                placeholder="Masalan: 3500"
+                placeholder={tr('kirim.costPh')}
                 placeholderTextColor={colors.text.hint}
               />
             </Field>
 
-            <Field label="Muddati (ixtiyoriy)">
+            <Field label={tr('kirim.expiryLabel')}>
               <Pressable style={styles.dateInput} onPress={() => setDatePickerOpen(true)}>
                 <CalendarDays size={16} color={colors.brand.primary} strokeWidth={2.2} />
                 <Text style={[styles.dateInputText, !expiryDate && styles.dateInputPlaceholder]}>
-                  {expiryDate || 'Sanani tanlang'}
+                  {expiryDate || tr('kirim.pickDate')}
                 </Text>
               </Pressable>
             </Field>
 
-            <Field label="Yetkazib beruvchi (ixtiyoriy)">
+            <Field label={tr('kirim.supplierLabel')}>
               <TextInput
                 style={styles.input}
                 value={supplierName}
                 onChangeText={setSupplierName}
-                placeholder="Masalan: Optom baza"
+                placeholder={tr('kirim.supplierPh')}
                 placeholderTextColor={colors.text.hint}
               />
             </Field>
 
             {qty > 0 ? (
               <View style={styles.preview}>
-                <Row k="Jami kirim summasi" v={`${fmt(qty * cost)} so'm`} />
-                <Row k="Yangi qoldiq" v={`${(variant?.stock ?? 0) + qty} ta`} />
+                <Row k={tr('kirim.totalSum')} v={`${fmt(qty * cost)} ${tr('common.som')}`} />
+                <Row k={tr('kirim.newStock')} v={tr('kirim.pcs', { n: (variant?.stock ?? 0) + qty })} />
                 {cost > 0 ? (
                   <Row
-                    k="Bu partiyadan foyda (dona)"
-                    v={`${fmt(Math.max(0, price - cost))} so'm`}
+                    k={tr('kirim.profitPerUnit')}
+                    v={`${fmt(Math.max(0, price - cost))} ${tr('common.som')}`}
                     highlight
                   />
                 ) : null}
@@ -161,7 +161,7 @@ export function KirimModal({ visible, shopId, variant, onClose }: Props) {
             style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
             disabled={!canSave || receive.isPending}
             onPress={() => receive.mutate()}>
-            <Text style={styles.saveText}>{receive.isPending ? 'Saqlanmoqda…' : 'Kirim qilish'}</Text>
+            <Text style={styles.saveText}>{receive.isPending ? tr('kirim.saving') : tr('kirim.submit')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -169,7 +169,7 @@ export function KirimModal({ visible, shopId, variant, onClose }: Props) {
       <DatePickerModal
         visible={datePickerOpen}
         value={expiryDate}
-        title="Muddati"
+        title={tr('kirim.expiry')}
         onClose={() => setDatePickerOpen(false)}
         onConfirm={(iso) => {
           setExpiryDate(iso);

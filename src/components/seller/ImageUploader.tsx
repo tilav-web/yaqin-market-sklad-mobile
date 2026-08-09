@@ -28,7 +28,7 @@ export function ImageUploader({ value, onChange, max = 5, size = 88, label, hint
 
   const pick = async () => {
     if (value.length >= max) {
-      Alert.alert('Limit', `Ko'pi bilan ${max} ta rasm qo'shish mumkin`);
+      Alert.alert(tr('imgUp.limitTitle'), tr('imgUp.limitBody', { n: max }));
       return;
     }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -37,15 +37,15 @@ export function ImageUploader({ value, onChange, max = 5, size = 88, label, hint
         // The in-app prompt was already dismissed/denied for good — asking
         // again does nothing, only Settings can re-enable it.
         Alert.alert(
-          'Ruxsat kerak',
-          "Galereyaga ruxsat butunlay o'chirilgan. Sozlamalardan yoqing.",
+          tr('imgUp.permTitle'),
+          tr('imgUp.permBlocked'),
           [
             { text: 'Bekor', style: 'cancel' },
-            { text: 'Sozlamalar', onPress: () => void Linking.openSettings() },
+            { text: tr('imgUp.openSettings'), onPress: () => void Linking.openSettings() },
           ],
         );
       } else {
-        Alert.alert('Ruxsat kerak', 'Rasm tanlash uchun galereyaga ruxsat bering');
+        Alert.alert(tr('imgUp.permTitle'), 'Rasm tanlash uchun galereyaga ruxsat bering');
       }
       return;
     }
@@ -102,7 +102,7 @@ export function ImageUploader({ value, onChange, max = 5, size = 88, label, hint
             ) : (
               <>
                 <ImagePlus size={26} color={Brand.gray600} strokeWidth={2} />
-                <Text style={styles.addText}>Rasm</Text>
+                <Text style={styles.addText}>{tr('imgUp.photo')}</Text>
               </>
             )}
           </Pressable>

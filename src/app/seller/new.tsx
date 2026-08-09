@@ -26,7 +26,7 @@ export default function NewShopScreen() {
 
   const create = useMutation({
     mutationFn: async () => {
-      if (!point) throw new Error('Do‘kon joylashuvini tanlang');
+      if (!point) throw new Error(tr('newShop.pickLocation'));
       const res = await api.post<{ id: string }>('/seller/shops', {
         name: name.trim(),
         address: address.trim(),
@@ -60,30 +60,27 @@ export default function NewShopScreen() {
           <View style={styles.heroIcon}>
             <Store size={28} color={colors.brand.primary} strokeWidth={2} />
           </View>
-          <Text style={styles.heroTitle}>Yangi do‘kon ochish</Text>
-          <Text style={styles.heroDesc}>
-            Do‘kon yaratganingizdan so‘ng darhol mahsulot qo‘shish, xodim biriktirish va buyurtmalarni
-            qabul qilishni boshlaysiz.
-          </Text>
+          <Text style={styles.heroTitle}>{tr('newShop.title')}</Text>
+          <Text style={styles.heroDesc}>{tr('newShop.desc')}</Text>
         </View>
 
-        <Field label="Do‘kon nomi">
+        <Field label={tr('newShop.nameLabel')}>
           <TextInput
             style={styles.input}
             value={name}
             onChangeText={setName}
-            placeholder="Masalan: Bahor Supermarket"
+            placeholder={tr('newShop.namePh')}
             placeholderTextColor={colors.text.hint}
             maxLength={128}
           />
         </Field>
 
-        <Field label="Manzil">
+        <Field label={tr('newShop.addressLabel')}>
           <TextInput
             style={[styles.input, styles.multiline]}
             value={address}
             onChangeText={setAddress}
-            placeholder="To‘liq manzil (xaritadan tanlasangiz to‘ladi)"
+            placeholder={tr('newShop.addressPh')}
             placeholderTextColor={colors.text.hint}
             multiline
           />
@@ -92,7 +89,7 @@ export default function NewShopScreen() {
         <Pressable style={styles.mapBtn} onPress={() => setPickerVisible(true)}>
           <MapPin size={18} color={colors.brand.primary} strokeWidth={2.4} />
           <Text style={styles.mapBtnText}>
-            {point ? 'Joylashuvni xaritadan o‘zgartirish' : 'Joylashuvni xaritadan belgilash'}
+            {point ? tr('newShop.changeLocation') : tr('newShop.setLocation')}
           </Text>
         </Pressable>
         {point ? (
@@ -101,20 +98,20 @@ export default function NewShopScreen() {
           </Text>
         ) : null}
 
-        <Field label="Tavsif (ixtiyoriy)">
+        <Field label={tr('newShop.descLabel')}>
           <TextInput
             style={[styles.input, styles.multiline]}
             value={description}
             onChangeText={setDescription}
-            placeholder="Do‘kon haqida qisqacha"
+            placeholder={tr('newShop.descPh')}
             placeholderTextColor={colors.text.hint}
             multiline
           />
         </Field>
 
         <ImageUploader
-          label="Do‘kon rasmlari (ixtiyoriy)"
-          hint="Birinchi rasm do‘kon muqovasi bo‘ladi"
+          label={tr('newShop.photosLabel')}
+          hint={tr('newShop.photosHint')}
           value={photos}
           onChange={setPhotos}
           max={5}
@@ -126,7 +123,9 @@ export default function NewShopScreen() {
           style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
           disabled={!canSave || create.isPending}
           onPress={() => create.mutate()}>
-          <Text style={styles.saveText}>{create.isPending ? 'Yaratilmoqda…' : 'Do‘kon ochish'}</Text>
+          <Text style={styles.saveText}>
+            {create.isPending ? tr('newShop.creating') : tr('newShop.submit')}
+          </Text>
         </Pressable>
       </View>
 

@@ -198,6 +198,7 @@ function ShopMarker({
   readonly selected: boolean;
   readonly onPress: () => void;
 }) {
+  const { tr } = useTranslation();
   // Briefly track view changes so the custom marker renders on Android, then
   // stop for performance.
   const [tracks, setTracks] = useState(true);
@@ -228,7 +229,7 @@ function ShopMarker({
               {shop.name}
             </Text>
             {closed ? (
-              <Text style={mk.closedTag}>Yopiq</Text>
+              <Text style={mk.closedTag}>{tr('shop.closed')}</Text>
             ) : (
               shop.distanceKm !== undefined && (
                 <Text style={[mk.dist, selected && mk.textActive]}>

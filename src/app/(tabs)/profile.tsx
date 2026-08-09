@@ -265,7 +265,7 @@ export default function ProfileTab() {
                           {tr('seller.rejected.reason', { reason: latestApp.rejectionReason })}
                         </Text>
                       ) : null}
-                      <Text style={styles.retryText}>Qayta ariza yuborish →</Text>
+                      <Text style={styles.retryText}>{tr('profile.reapply')}</Text>
                     </View>
                   </Pressable>
                 ) : null}
@@ -290,7 +290,7 @@ export default function ProfileTab() {
               <Row icon={MapPin} title={tr('profile.addresses')} onPress={() => router.push('/addresses')} />
               <Row icon={CreditCard} title={tr('cards.title')} onPress={() => router.push('/saved-cards')} />
               <Row icon={ClipboardList} title={tr('profile.orders')} onPress={() => router.push('/orders')} />
-              <Row icon={Heart} title="Sevimlilar" onPress={() => router.push('/favorites')} />
+              <Row icon={Heart} title={tr('nav.favorites')} onPress={() => router.push('/favorites')} />
               {me?.isSellerApproved ? (
                 <Row icon={Plus} title={tr('profile.openShopShort')} onPress={() => router.push('/seller/new')} />
               ) : latestApp?.status !== 'pending' && latestApp?.status !== 'rejected' ? (

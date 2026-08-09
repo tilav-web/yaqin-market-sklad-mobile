@@ -23,6 +23,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Skeleton } from '@/components/ui';
+import { tr as trStatic, useTranslation } from '@/i18n';
 import { trackAddToCart, trackProductView } from '@/lib/analyticsQueue';
 import { api, resolveMedia } from '@/lib/api';
 import { ProductOffer, ProductReview, PublicProductVariant, VariantDetail } from '@/lib/types';
@@ -31,17 +32,15 @@ import { useEffectiveCoords } from '@/stores/location';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
-const UNIT_SHORT: Record<PublicProductVariant['unitType'], string> = {
-  piece: 'dona',
-  kg: 'kg',
-  liter: 'L',
-  gram: 'g',
-  pack: 'pack',
-};
+const UNIT_SHORT = (u: PublicProductVariant['unitType']): string =>
+  u === 'piece'
+    ? trStatic('prodDet.unitPiece')
+    : ({ kg: 'kg', liter: 'L', gram: 'g', pack: 'pack' } as const)[u];
 const unitLabel = (v: Pick<PublicProductVariant, 'unitSize' | 'unitType'>) =>
-  `${v.unitSize % 1 === 0 ? v.unitSize : v.unitSize.toFixed(1)} ${UNIT_SHORT[v.unitType]}`;
+  `${v.unitSize % 1 === 0 ? v.unitSize : v.unitSize.toFixed(1)} ${UNIT_SHORT(v.unitType)}`;
 
 export default function ProductDetailScreen() {
+  const { tr } = useTranslation();
   const { id: routeId } = useLocalSearchParams<{ id: string }>();
   // The active variant is local state so switching variants (0.5L/1L/1.5L)
   // swaps content in place instead of re-opening the whole screen.
@@ -169,14 +168,15 @@ export default function ProductDetailScreen() {
             <View style={styles.ratingChip}>
               <Star size={12} color={colors.feedback.warning} fill={colors.feedback.warning} strokeWidth={2} />
               <Text style={styles.ratingChipText}>
-                {product.ratingAverage.toFixed(1)} · {product.ratingCount} sharh
+                {product.ratingAverage.toFixed(1)} ·{' '}
+                {tr('product.reviewsN', { n: product.ratingCount })}
               </Text>
             </View>
           )}
           {outOfStock && (
             <View style={styles.outOverlay}>
               <View style={styles.outBadge}>
-                <Text style={styles.outBadgeText}>Hozircha mavjud emas</Text>
+                <Text style={styles.outBadgeText}>{tr('product.outOfStock')}</Text>
               </View>
             </View>
           )}
@@ -204,20 +204,20 @@ export default function ProductDetailScreen() {
             <Text style={styles.price} numberOfLines={1}>
               {finalPrice.toLocaleString()}
             </Text>
-            <Text style={styles.currency}>so‘m</Text>
+            <Text style={styles.currency}>{tr('common.som')}</Text>
           </View>
 
           {!outOfStock && product.stock <= product.lowStockThreshold && (
             <View style={styles.stockRow}>
               <Text style={[styles.stockBadge, styles.stockLow]}>
-                Kam qoldi · {product.stock} {UNIT_SHORT[product.unitType]}
+                {tr('product.lowStock')} · {product.stock} {UNIT_SHORT(product.unitType)}
               </Text>
             </View>
           )}
 
           {product.siblings.length > 1 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Variantlar</Text>
+              <Text style={styles.sectionTitle}>{tr('product.variants')}</Text>
               <View style={styles.variantRow}>
                 {product.siblings.map((v) => {
                   const active = v.id === id;
@@ -250,7 +250,7 @@ export default function ProductDetailScreen() {
 
           {product.description ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Tavsif</Text>
+              <Text style={styles.sectionTitle}>{tr('product.description')}</Text>
               <Text style={styles.description}>{product.description}</Text>
             </View>
           ) : null}
@@ -268,7 +268,8 @@ export default function ProductDetailScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.shopName}>{product.shop.name}</Text>
                 <Text style={styles.shopSub}>
-                  {product.shop.isOpenManual ? 'Ochiq' : 'Yopiq'} · Do‘konga o‘tish
+                  {product.shop.isOpenManual ? tr('shop.open') : tr('shop.closed')} ·{' '}
+                  {tr('product.goToShop')}
                 </Text>
               </View>
               <ChevronRight size={20} color={colors.text.hint} />
@@ -284,7 +285,8 @@ export default function ProductDetailScreen() {
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
-              Sharhlar {reviewsQuery.data?.length ? `(${reviewsQuery.data.length})` : ''}
+              {tr('product.reviews')}{' '}
+              {reviewsQuery.data?.length ? `(${reviewsQuery.data.length})` : ''}
             </Text>
             {reviewsQuery.isLoading ? (
               <ActivityIndicator color={colors.brand.primary} />
@@ -299,9 +301,7 @@ export default function ProductDetailScreen() {
                 </View>
               ))
             ) : (
-              <Text style={styles.reviewEmpty}>
-                Bu mahsulotga hali sharh yo‘q. Birinchi bo‘lib baholang!
-              </Text>
+              <Text style={styles.reviewEmpty}>{tr('product.noReviews')}</Text>
             )}
           </View>
         </View>
@@ -310,7 +310,7 @@ export default function ProductDetailScreen() {
       <SafeAreaView edges={['bottom']} style={styles.footer}>
         {outOfStock ? (
           <View style={[styles.addBtn, styles.addBtnDisabled]}>
-            <Text style={styles.addBtnText}>Hozircha mavjud emas</Text>
+            <Text style={styles.addBtnText}>{tr('product.outOfStock')}</Text>
           </View>
         ) : inCart ? (
           <View style={styles.footerRow}>
@@ -340,7 +340,7 @@ export default function ProductDetailScreen() {
                 router.push(`/shop/${product.shopId}/checkout`);
               }}>
               <ShoppingCart size={18} color={colors.text.onPrimary} strokeWidth={2.4} />
-              <Text style={styles.goCartText}>Savatga o‘tish</Text>
+              <Text style={styles.goCartText}>{tr('product.goToCart')}</Text>
             </Pressable>
           </View>
         ) : (
@@ -350,7 +350,7 @@ export default function ProductDetailScreen() {
             style={[styles.addBtn, outOfStock && styles.addBtnDisabled]}>
             <ShoppingBag size={18} color={colors.text.onPrimary} strokeWidth={2.4} />
             <Text style={styles.addBtnText}>
-              {outOfStock ? 'Tugagan' : 'Savatga qo‘shish'}
+              {outOfStock ? tr('shop.outOfStock') : tr('prodDet.addToCart')}
             </Text>
           </Pressable>
         )}
@@ -370,6 +370,7 @@ function OffersSection({
   currentPrice: number;
   isLoading: boolean;
 }) {
+  const { tr } = useTranslation();
   const others = offers.filter((o) => o.variantId !== currentVariantId);
   if (isLoading || others.length === 0) return null;
 
@@ -379,7 +380,7 @@ function OffersSection({
 
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Boshqa do'konlarda</Text>
+      <Text style={styles.sectionTitle}>{tr('prodDet.otherShops')}</Text>
       {visible.map((o, idx) => {
         const effectivePrice = o.discountPrice ?? o.price;
         const isCheapest = effectivePrice === cheapestPrice && idx === 0;
@@ -395,18 +396,20 @@ function OffersSection({
             <View style={styles.offerLeft}>
               <Text style={styles.offerShop} numberOfLines={1}>{o.shopName}</Text>
               <Text style={styles.offerMeta}>
-                {o.isOpen ? 'Ochiq' : 'Yopiq'}
+                {o.isOpen ? tr('shop.open') : tr('shop.closed')}
                 {o.distanceKm != null ? ` · ${o.distanceKm < 1 ? `${Math.round(o.distanceKm * 1000)} m` : `${o.distanceKm.toFixed(1)} km`}` : ''}
               </Text>
             </View>
             <View style={styles.offerRight}>
               {isCheapest && (
                 <View style={styles.cheapBadge}>
-                  <Text style={styles.cheapBadgeText}>Eng arzon</Text>
+                  <Text style={styles.cheapBadgeText}>{tr('prodDet.cheapest')}</Text>
                 </View>
               )}
               {saving > 0 && (
-                <Text style={styles.savingText}>−{saving.toLocaleString()} so'm</Text>
+                <Text style={styles.savingText}>
+                  −{saving.toLocaleString()} {tr('common.som')}
+                </Text>
               )}
               <Text style={[styles.offerPrice, isCheapest && styles.offerPriceCheap]}>
                 {effectivePrice.toLocaleString()}
@@ -417,7 +420,7 @@ function OffersSection({
       })}
       {others.length > SHOW && (
         <Text style={styles.offersMore}>
-          + yana {others.length - SHOW} ta do'kon
+          {tr('prodDet.moreShops', { n: others.length - SHOW })}
         </Text>
       )}
     </View>

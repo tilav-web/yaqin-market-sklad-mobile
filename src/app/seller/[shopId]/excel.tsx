@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { NoPermissionNotice } from '@/components/seller/OwnerOnlyNotice';
 import { DatePickerModal } from '@/components/ui';
-import { tr } from '@/i18n';
+import { tr, useTranslation, type TranslationKey } from '@/i18n';
 import { API_URL, api, extractErrorMessage } from '@/lib/api';
 import { tokenStorage } from '@/lib/storage';
 import { useShopAccess } from '@/lib/useIsShopOwner';
@@ -60,11 +60,11 @@ interface ConfirmImportResult {
 }
 
 type StockStatus = 'low' | 'ok' | 'zero';
-const STOCK_FILTERS: { key: StockStatus | undefined; label: string }[] = [
-  { key: undefined, label: 'Barchasi' },
-  { key: 'low', label: 'Kam qolgan' },
-  { key: 'ok', label: 'Yetarli' },
-  { key: 'zero', label: 'Nol' },
+const STOCK_FILTERS: { key: StockStatus | undefined; labelKey: TranslationKey }[] = [
+  { key: undefined, labelKey: 'excel.filterAll' },
+  { key: 'low', labelKey: 'excel.filterLow' },
+  { key: 'ok', labelKey: 'excel.filterOk' },
+  { key: 'zero', labelKey: 'excel.filterZero' },
 ];
 
 /**
@@ -84,7 +84,7 @@ async function downloadAndShare(path: string, fallbackName: string): Promise<voi
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(file.uri, { mimeType: XLSX_MIME, dialogTitle: fallbackName });
   } else {
-    Alert.alert('Fayl saqlandi', file.uri);
+    Alert.alert(tr('excel.fileSaved'), file.uri);
   }
 }
 
@@ -97,6 +97,7 @@ async function downloadAndShare(path: string, fallbackName: string): Promise<voi
  */
 export default function SellerExcelScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
+  const { tr } = useTranslation();
   const qc = useQueryClient();
   const access = useShopAccess(shopId);
   const canImport = access.has('inventory.product.create');
@@ -140,7 +141,7 @@ export default function SellerExcelScreen() {
 
   const exportOrders = () => {
     if (!ordersRange.from || !ordersRange.to) {
-      Alert.alert('Sana tanlanmagan', "Boshlanish va tugash sanasini tanlang");
+      Alert.alert(tr('excel.dateNotPicked'), tr('excel.dateNotPickedDesc'));
       return;
     }
     return runDownload(
@@ -152,7 +153,7 @@ export default function SellerExcelScreen() {
 
   const exportMovements = () => {
     if (!movementsRange.from || !movementsRange.to) {
-      Alert.alert('Sana tanlanmagan', "Boshlanish va tugash sanasini tanlang");
+      Alert.alert(tr('excel.dateNotPicked'), tr('excel.dateNotPickedDesc'));
       return;
     }
     return runDownload(
@@ -199,9 +200,11 @@ export default function SellerExcelScreen() {
       setPreview(null);
       qc.invalidateQueries({ queryKey: ['variants', shopId] });
       Alert.alert(
-        'Import yakunlandi',
-        `${result.created} ta mahsulot qo'shildi` +
-          (result.failed.length ? `, ${result.failed.length} ta xato yuz berdi` : ''),
+        tr('excel.importDone'),
+        tr('excel.importDoneCount', { count: result.created }) +
+          (result.failed.length
+            ? tr('excel.importDoneErrors', { count: result.failed.length })
+            : ''),
       );
     },
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
@@ -216,11 +219,8 @@ export default function SellerExcelScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         {canImport && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Import — mahsulotlarni yuklash</Text>
-            <Text style={styles.sectionHint}>
-              Namuna faylni yuklab oling, to'ldiring va qayta yuklang. Tizim avval tekshiradi, so'ng
-              siz tasdiqlaganingizdan keyin mahsulotlar qo'shiladi.
-            </Text>
+            <Text style={styles.sectionTitle}>{tr('excel.importTitle')}</Text>
+            <Text style={styles.sectionHint}>{tr('excel.importHint')}</Text>
 
             <Pressable style={styles.actionBtn} onPress={downloadTemplate} disabled={busy === 'template'}>
               {busy === 'template' ? (
@@ -228,7 +228,7 @@ export default function SellerExcelScreen() {
               ) : (
                 <Download size={17} color={colors.brand.primary} strokeWidth={2.2} />
               )}
-              <Text style={styles.actionBtnText}>Namuna faylni yuklab olish (.xlsx)</Text>
+              <Text style={styles.actionBtnText}>{tr('excel.downloadTemplate')}</Text>
             </Pressable>
 
             <Pressable
@@ -240,13 +240,16 @@ export default function SellerExcelScreen() {
               ) : (
                 <Upload size={17} color={colors.text.onPrimary} strokeWidth={2.2} />
               )}
-              <Text style={styles.actionBtnTextPrimary}>Faylni tanlash va yuklash</Text>
+              <Text style={styles.actionBtnTextPrimary}>{tr('excel.pickFile')}</Text>
             </Pressable>
 
             {preview && (
               <View style={styles.previewCard}>
                 <Text style={styles.previewSummary}>
-                  {preview.willCreate} ta mahsulot qo'shiladi, {preview.errors.length} ta xato bor
+                  {tr('excel.previewSummary', {
+                    count: preview.willCreate,
+                    errors: preview.errors.length,
+                  })}
                 </Text>
 
                 {preview.errors.length > 0 && (
@@ -255,12 +258,14 @@ export default function SellerExcelScreen() {
                       <View key={`${err.row}-${i}`} style={styles.errorRow}>
                         <AlertTriangle size={13} color={colors.feedback.danger} strokeWidth={2.2} />
                         <Text style={styles.errorText}>
-                          {err.row}-qator: {err.message}
+                          {tr('excel.rowLabel', { row: err.row })}: {err.message}
                         </Text>
                       </View>
                     ))}
                     {preview.errors.length > 20 && (
-                      <Text style={styles.errorMore}>+ yana {preview.errors.length - 20} ta xato</Text>
+                      <Text style={styles.errorMore}>
+                        {tr('excel.moreErrors', { count: preview.errors.length - 20 })}
+                      </Text>
                     )}
                   </View>
                 )}
@@ -271,19 +276,22 @@ export default function SellerExcelScreen() {
                       <View key={r.rowNumber} style={styles.rowPreviewLine}>
                         <CheckCircle2 size={13} color={colors.feedback.success} strokeWidth={2.2} />
                         <Text style={styles.rowPreviewText} numberOfLines={1}>
-                          {r.name} — {r.price.toLocaleString('ru-RU')} so'm, {r.stock} ta
+                          {r.name} — {r.price.toLocaleString('ru-RU')} {tr('common.som')},{' '}
+                          {tr('excel.qtyPcs', { count: r.stock })}
                         </Text>
                       </View>
                     ))}
                     {preview.rows.length > 8 && (
-                      <Text style={styles.errorMore}>+ yana {preview.rows.length - 8} ta mahsulot</Text>
+                      <Text style={styles.errorMore}>
+                        {tr('excel.moreProducts', { count: preview.rows.length - 8 })}
+                      </Text>
                     )}
                   </View>
                 )}
 
                 <View style={styles.previewActions}>
                   <Pressable style={styles.cancelBtn} onPress={() => setPreview(null)}>
-                    <Text style={styles.cancelBtnText}>Bekor qilish</Text>
+                    <Text style={styles.cancelBtnText}>{tr('common.cancel')}</Text>
                   </Pressable>
                   <Pressable
                     style={[styles.confirmBtn, (!preview.rows.length || confirmImport.isPending) && styles.confirmBtnDisabled]}
@@ -292,7 +300,7 @@ export default function SellerExcelScreen() {
                     {confirmImport.isPending ? (
                       <ActivityIndicator color={colors.text.onPrimary} />
                     ) : (
-                      <Text style={styles.confirmBtnText}>Tasdiqlash</Text>
+                      <Text style={styles.confirmBtnText}>{tr('common.confirm')}</Text>
                     )}
                   </Pressable>
                 </View>
@@ -303,15 +311,17 @@ export default function SellerExcelScreen() {
 
         {canExportInventory && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Sklad holati</Text>
-            <Text style={styles.sectionHint}>Barcha aktiv mahsulotlar: nom, narx, qoldiq, kategoriya.</Text>
+            <Text style={styles.sectionTitle}>{tr('excel.inventoryTitle')}</Text>
+            <Text style={styles.sectionHint}>{tr('excel.inventoryHint')}</Text>
             <View style={styles.chipRow}>
               {STOCK_FILTERS.map((f) => (
                 <Pressable
-                  key={f.label}
+                  key={f.labelKey}
                   style={[styles.chip, stockStatus === f.key && styles.chipActive]}
                   onPress={() => setStockStatus(f.key)}>
-                  <Text style={[styles.chipText, stockStatus === f.key && styles.chipTextActive]}>{f.label}</Text>
+                  <Text style={[styles.chipText, stockStatus === f.key && styles.chipTextActive]}>
+                    {tr(f.labelKey)}
+                  </Text>
                 </Pressable>
               ))}
             </View>
@@ -321,15 +331,15 @@ export default function SellerExcelScreen() {
               ) : (
                 <FileSpreadsheet size={17} color={colors.brand.primary} strokeWidth={2.2} />
               )}
-              <Text style={styles.actionBtnText}>Sklad holatini eksport qilish</Text>
+              <Text style={styles.actionBtnText}>{tr('excel.exportInventory')}</Text>
             </Pressable>
           </View>
         )}
 
         {canExportOrders && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Buyurtmalar</Text>
-            <Text style={styles.sectionHint}>Tanlangan vaqt oralig'idagi buyurtmalar ro'yxati.</Text>
+            <Text style={styles.sectionTitle}>{tr('excel.ordersTitle')}</Text>
+            <Text style={styles.sectionHint}>{tr('excel.ordersHint')}</Text>
             <DateRangeRow
               range={ordersRange}
               onPickFrom={() => setPickingDate({ forRange: 'orders', field: 'from' })}
@@ -341,15 +351,15 @@ export default function SellerExcelScreen() {
               ) : (
                 <FileSpreadsheet size={17} color={colors.brand.primary} strokeWidth={2.2} />
               )}
-              <Text style={styles.actionBtnText}>Buyurtmalarni eksport qilish</Text>
+              <Text style={styles.actionBtnText}>{tr('excel.exportOrders')}</Text>
             </Pressable>
           </View>
         )}
 
         {canExportMovements && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Kirim-chiqim tarixi</Text>
-            <Text style={styles.sectionHint}>Tanlangan vaqt oralig'idagi barcha sklad harakatlari.</Text>
+            <Text style={styles.sectionTitle}>{tr('excel.movementsTitle')}</Text>
+            <Text style={styles.sectionHint}>{tr('excel.movementsHint')}</Text>
             <DateRangeRow
               range={movementsRange}
               onPickFrom={() => setPickingDate({ forRange: 'movements', field: 'from' })}
@@ -361,7 +371,7 @@ export default function SellerExcelScreen() {
               ) : (
                 <FileSpreadsheet size={17} color={colors.brand.primary} strokeWidth={2.2} />
               )}
-              <Text style={styles.actionBtnText}>Kirim-chiqim tarixini eksport qilish</Text>
+              <Text style={styles.actionBtnText}>{tr('excel.exportMovements')}</Text>
             </Pressable>
           </View>
         )}
@@ -374,7 +384,7 @@ export default function SellerExcelScreen() {
             ? (pickingDate.forRange === 'orders' ? ordersRange : movementsRange)[pickingDate.field]
             : null
         }
-        title={pickingDate?.field === 'from' ? 'Boshlanish sanasi' : 'Tugash sanasi'}
+        title={pickingDate?.field === 'from' ? tr('excel.startDate') : tr('excel.endDate')}
         onClose={() => setPickingDate(null)}
         onConfirm={(iso) => {
           if (!pickingDate) return;
@@ -396,19 +406,20 @@ function DateRangeRow({
   onPickFrom: () => void;
   onPickTo: () => void;
 }) {
+  const { tr } = useTranslation();
   return (
     <View style={styles.dateRow}>
       <Pressable style={styles.dateField} onPress={onPickFrom}>
         <CalendarDays size={15} color={colors.brand.primary} strokeWidth={2.2} />
         <Text style={[styles.dateFieldText, !range.from && styles.dateFieldPlaceholder]}>
-          {range.from || 'Boshlanish'}
+          {range.from || tr('excel.from')}
         </Text>
       </Pressable>
       <Text style={styles.dateDash}>—</Text>
       <Pressable style={styles.dateField} onPress={onPickTo}>
         <CalendarDays size={15} color={colors.brand.primary} strokeWidth={2.2} />
         <Text style={[styles.dateFieldText, !range.to && styles.dateFieldPlaceholder]}>
-          {range.to || 'Tugash'}
+          {range.to || tr('excel.to')}
         </Text>
       </Pressable>
     </View>

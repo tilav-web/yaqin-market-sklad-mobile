@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShopAccess } from '@/lib/useIsShopOwner';
 import { api } from '@/lib/api';
 import { PublicShop, ShopCompleteness, ShopCompletenessItem } from '@/lib/types';
+import { useTranslation } from '@/i18n';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -46,6 +47,7 @@ function completenessTarget(key: string, shopId: string): Href {
  * all, even though the server happily allows it).
  */
 export default function SellerHubScreen() {
+  const { tr } = useTranslation();
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
   const qc = useQueryClient();
   const access = useShopAccess(shopId);
@@ -137,7 +139,7 @@ export default function SellerHubScreen() {
         {completeness && completeness.score < 100 && (
           <View style={styles.completenessCard}>
             <View style={styles.completenessHeader}>
-              <Text style={styles.completenessTitle}>Do'kon profili to'liqligi</Text>
+              <Text style={styles.completenessTitle}>{tr('shopSettings.completeness')}</Text>
               <Text style={[styles.completenessScore, { color: completeness.score >= 70 ? colors.feedback.success : colors.feedback.warning }]}>
                 {completeness.score} / 100
               </Text>
@@ -156,7 +158,7 @@ export default function SellerHubScreen() {
         {/* Management links — each shown only if the current user can actually
             use it (owner, or holds the specific permission that screen's
             server endpoint requires). */}
-        <Text style={styles.sectionTitle}>Boshqaruv</Text>
+        <Text style={styles.sectionTitle}>{tr('shopSettings.management')}</Text>
         <View style={styles.group}>
           {[
             // Editing name/address/delivery zone hits GET+PATCH

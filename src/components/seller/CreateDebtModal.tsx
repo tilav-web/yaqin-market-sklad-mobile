@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { tr } from '@/i18n';
+import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
 import { SellerVariant } from '@/lib/types';
@@ -36,6 +36,7 @@ function fmt(n: number): string {
 
 export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPhone }: Props) {
   const qc = useQueryClient();
+  const { tr } = useTranslation();
   const [name, setName] = useState(presetName ?? '');
   const [phone, setPhone] = useState(presetPhone ?? '');
   const [searchInput, setSearchInput] = useState('');
@@ -132,7 +133,7 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.header}>
-          <Text style={styles.title}>Yangi qarz</Text>
+          <Text style={styles.title}>{tr('debt.title')}</Text>
           <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
             <X size={20} color={colors.text.secondary} />
           </Pressable>
@@ -141,10 +142,16 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
             {/* Customer */}
-            <Field label="Mijoz ismi *">
-              <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Akmal aka" placeholderTextColor={colors.text.hint} />
+            <Field label={tr('debt.customerName')}>
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder={tr('debt.customerNamePlaceholder')}
+                placeholderTextColor={colors.text.hint}
+              />
             </Field>
-            <Field label="Telefon raqami *">
+            <Field label={tr('debt.phone')}>
               <TextInput
                 style={styles.input}
                 value={phone}
@@ -156,14 +163,14 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
             </Field>
 
             {/* Product picker */}
-            <Text style={styles.label}>Mahsulotlar</Text>
+            <Text style={styles.label}>{tr('debt.products')}</Text>
             <View style={styles.searchBox}>
               <Search size={16} color={colors.text.tertiary} />
               <TextInput
                 style={styles.searchInput}
                 value={searchInput}
                 onChangeText={setSearchInput}
-                placeholder="Mahsulot qidirish"
+                placeholder={tr('debt.searchPlaceholder')}
                 placeholderTextColor={colors.text.hint}
               />
             </View>
@@ -178,7 +185,7 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
                         {v.name}
                       </Text>
                       <Text style={styles.pMeta}>
-                        {fmt(price)} so&apos;m · qoldiq {v.stock}
+                        {fmt(price)} {tr('common.som')} · {tr('debt.stockLeft', { n: v.stock })}
                       </Text>
                     </View>
                     {q > 0 ? (
@@ -202,7 +209,7 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
             </View>
 
             {/* Extra charge for off-system items */}
-            <Field label="Qo'shimcha narx (tizimda yo'q tovarlar uchun)">
+            <Field label={tr('debt.extraCharge')}>
               <TextInput
                 style={styles.input}
                 value={extraCharge}
@@ -212,12 +219,12 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
                 placeholderTextColor={colors.text.hint}
               />
             </Field>
-            <Field label="Izoh">
+            <Field label={tr('debt.note')}>
               <TextInput
                 style={[styles.input, styles.multiline]}
                 value={note}
                 onChangeText={setNote}
-                placeholder="Masalan: cola va non oldi"
+                placeholder={tr('debt.notePlaceholder')}
                 placeholderTextColor={colors.text.hint}
                 multiline
               />
@@ -225,20 +232,24 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
 
             {/* REQUIRED: decrement stock? */}
             <View style={[styles.askBox, decrementStock === null && styles.askBoxRequired]}>
-              <Text style={styles.askTitle}>Qoldiqdan kamaytirilsinmi? *</Text>
-              <Text style={styles.askSub}>Tanlangan tizim mahsulotlari ombordan kamaytirilsinmi?</Text>
+              <Text style={styles.askTitle}>{tr('debt.decrementTitle')}</Text>
+              <Text style={styles.askSub}>{tr('debt.decrementSub')}</Text>
               <View style={styles.askRow}>
                 <Pressable
                   style={[styles.askChip, decrementStock === true && styles.askChipYes]}
                   onPress={() => setDecrementStock(true)}>
                   {decrementStock === true ? <Check size={15} color={colors.text.onPrimary} strokeWidth={3} /> : null}
-                  <Text style={[styles.askChipText, decrementStock === true && styles.askChipTextActive]}>Ha, kamaytirilsin</Text>
+                  <Text style={[styles.askChipText, decrementStock === true && styles.askChipTextActive]}>
+                    {tr('debt.decrementYes')}
+                  </Text>
                 </Pressable>
                 <Pressable
                   style={[styles.askChip, decrementStock === false && styles.askChipNo]}
                   onPress={() => setDecrementStock(false)}>
                   {decrementStock === false ? <Check size={15} color={colors.text.onPrimary} strokeWidth={3} /> : null}
-                  <Text style={[styles.askChipText, decrementStock === false && styles.askChipTextActive]}>Yo&apos;q</Text>
+                  <Text style={[styles.askChipText, decrementStock === false && styles.askChipTextActive]}>
+                    {tr('common.no')}
+                  </Text>
                 </Pressable>
               </View>
             </View>
@@ -247,14 +258,16 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
 
         <View style={styles.footer}>
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Jami qarz</Text>
-            <Text style={styles.totalValue}>{fmt(total)} so&apos;m</Text>
+            <Text style={styles.totalLabel}>{tr('debt.totalDebt')}</Text>
+            <Text style={styles.totalValue}>
+              {fmt(total)} {tr('common.som')}
+            </Text>
           </View>
           <Pressable
             style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
             disabled={!canSave || save.isPending}
             onPress={() => save.mutate()}>
-            <Text style={styles.saveText}>{save.isPending ? 'Saqlanmoqda…' : 'Qarzga yozish'}</Text>
+            <Text style={styles.saveText}>{save.isPending ? tr('debt.saving') : tr('debt.submit')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
