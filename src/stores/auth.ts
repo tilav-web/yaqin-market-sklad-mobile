@@ -46,13 +46,24 @@ export const useAuthStore = create<AuthState>((set) => ({
       return;
     }
     try {
-      const res = await api.get<AuthUser & { sub: string }>('/auth/me');
+      const res = await api.get<{
+        id: string;
+        phone: string;
+        name: string | null;
+        firstName?: string | null;
+        lastName?: string | null;
+        avatarUrl: string | null;
+      }>('/users/me');
+      const fullName =
+        res.data.name ||
+        [res.data.firstName, res.data.lastName].filter(Boolean).join(' ') ||
+        null;
       set({
         user: {
-          id: res.data.sub ?? res.data.id,
+          id: res.data.id,
           phone: res.data.phone,
-          name: null,
-          avatarUrl: null,
+          name: fullName,
+          avatarUrl: res.data.avatarUrl ?? null,
         },
         status: 'authenticated',
       });
