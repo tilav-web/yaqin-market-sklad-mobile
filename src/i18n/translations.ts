@@ -1,6 +1,6 @@
 export type Lang = 'uz' | 'uz_cyrl' | 'ru';
 
-export type TName = string | { uz?: string; uz_cyrl?: string; ru?: string } | null | undefined;
+export type TName = string | { uz?: string; kr?: string; uz_cyrl?: string; ru?: string } | null | undefined;
 
 export const translations = {
   uz: {

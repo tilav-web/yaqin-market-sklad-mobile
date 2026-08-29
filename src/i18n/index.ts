@@ -36,15 +36,16 @@ export function t(name: TName, lang?: Lang): string {
   if (typeof name === 'string') return name;
   const l = lang ?? useLangStore.getState().lang;
   if (l === 'ru') return name.ru || name.uz || '';
-  if (l === 'uz_cyrl') return name.uz_cyrl || name.uz || '';
+  if (l === 'uz_cyrl') return name.kr || name.uz_cyrl || name.uz || '';
   return name.uz || name.ru || '';
 }
 
-/** Localize a category's name (which stores all three scripts as flat fields). */
+/** Localize a category's name (which stores all three scripts or JSONB). */
 export function catName(
-  c: { nameUzLatn: string; nameUzCyrl: string; nameRu: string },
+  c: { name?: any; nameUzLatn?: string; nameUzCyrl?: string; nameRu?: string },
   lang?: Lang,
 ): string {
+  if (c.name) return t(c.name, lang);
   return t({ uz: c.nameUzLatn, uz_cyrl: c.nameUzCyrl, ru: c.nameRu }, lang);
 }
 
