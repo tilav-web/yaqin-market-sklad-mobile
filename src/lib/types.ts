@@ -11,13 +11,23 @@ export interface PublicShop {
   description: string | null;
   photos: string[];
   address: string;
+  phone?: string | null;
   latitude: number;
   longitude: number;
   minOrderPrice: number;
   ratingAverage: number;
   ratingCount: number;
   isOpenManual: boolean;
+  isDeliveryEnabled?: boolean;
+  isDeliveryOpenNow?: boolean;
+  isPickupEnabled?: boolean;
   workingHours: {
+    dayOfWeek: number;
+    openTime: string;
+    closeTime: string;
+    isOpen: boolean;
+  }[];
+  deliveryHours?: {
     dayOfWeek: number;
     openTime: string;
     closeTime: string;
@@ -86,6 +96,10 @@ export interface FeedProduct extends PublicProductVariant {
     distanceKm: number;
     deliveryFeeAtUser: number;
     isOpen: boolean;
+    isDeliveryOpen?: boolean;
+    isDeliveryEnabled?: boolean;
+    isPickupEnabled?: boolean;
+    phone?: string | null;
     photos: string[];
   };
 }

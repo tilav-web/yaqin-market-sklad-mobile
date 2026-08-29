@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
-import { Gift, Navigation, Star } from 'lucide-react-native';
+import { Gift, Navigation, Star, Store, Truck } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
@@ -22,9 +22,10 @@ const MAP_STYLE = [
   { featureType: 'transit', stylers: [{ visibility: 'off' }] },
 ];
 
-type FilterKey = 'open' | 'free' | 'rated';
+type FilterKey = 'delivery' | 'open' | 'free' | 'rated';
 
 const FILTERS: { key: FilterKey; labelKey: TranslationKey }[] = [
+  { key: 'delivery', labelKey: 'map.filterDelivery' },
   { key: 'open', labelKey: 'map.filterOpen' },
   { key: 'free', labelKey: 'map.filterFree' },
   { key: 'rated', labelKey: 'map.filterRated' },
@@ -83,6 +84,7 @@ export default function MapTab() {
   const shops = useMemo(() => {
     let all = shopsQuery.data ?? [];
     if (q && matchQuery.data) all = all.filter((s) => matchQuery.data!.has(s.id));
+    if (active.has('delivery')) all = all.filter((s) => s.isDeliveryEnabled !== false && s.isDeliveryOpenNow !== false);
     if (active.has('open')) all = all.filter((s) => s.isOpenManual);
     if (active.has('free')) all = all.filter((s) => (s.deliveryFeeAtUser ?? 0) === 0);
     if (active.has('rated')) all = all.filter((s) => s.ratingAverage >= 4);
@@ -158,6 +160,9 @@ export default function MapTab() {
                 key={f.key}
                 onPress={() => toggle(f.key)}
                 style={[styles.chip, on && styles.chipActive]}>
+                {f.key === 'delivery' && (
+                  <Truck size={13} color={on ? colors.text.onPrimary : colors.brand.primary} strokeWidth={2.4} />
+                )}
                 {f.key === 'free' && (
                   <Gift size={13} color={on ? colors.text.onPrimary : colors.brand.primary} strokeWidth={2.4} />
                 )}
@@ -186,8 +191,10 @@ export default function MapTab() {
 
 /**
  * Custom map marker: a white pill showing the shop's initial, name and
- * distance (instead of a bare red pin) with a small pointer tail. Highlights
- * red when selected. Closed shops read muted.
+ * distance / delivery status with a pointer tail.
+ * Visual distinguishes:
+ *   - Delivery shops: Red brand identity with delivery km or closed tag
+ *   - In-store / Showcase shops: Indigo storefront identity with "Do'kondan" label
  */
 function ShopMarker({
   shop,
@@ -199,8 +206,6 @@ function ShopMarker({
   readonly onPress: () => void;
 }) {
   const { tr } = useTranslation();
-  // Briefly track view changes so the custom marker renders on Android, then
-  // stop for performance.
   const [tracks, setTracks] = useState(true);
   useEffect(() => {
     const id = setTimeout(() => setTracks(false), 700);
@@ -210,6 +215,8 @@ function ShopMarker({
   if (!Number.isFinite(shop.latitude) || !Number.isFinite(shop.longitude)) return null;
 
   const closed = !shop.isOpenManual;
+  const isShowcase = shop.isDeliveryEnabled === false;
+  const isDeliveryClosed = !isShowcase && shop.isDeliveryOpenNow === false;
 
   return (
     <Marker
@@ -218,11 +225,15 @@ function ShopMarker({
       tracksViewChanges={tracks}
       anchor={{ x: 0.5, y: 1 }}>
       <View style={[mk.wrap, closed && mk.wrapClosed]}>
-        <View style={[mk.pill, selected && mk.pillActive, closed && mk.pillClosed]}>
-          <View style={[mk.avatar, selected && mk.avatarActive, closed && mk.avatarClosed]}>
-            <Text style={[mk.avatarLetter, selected && mk.avatarLetterActive]}>
-              {shop.name[0]?.toUpperCase() ?? '?'}
-            </Text>
+        <View style={[mk.pill, selected && mk.pillActive, closed && mk.pillClosed, isShowcase && !selected && mk.pillShowcase]}>
+          <View style={[mk.avatar, selected && mk.avatarActive, closed && mk.avatarClosed, isShowcase && !selected && !closed && mk.avatarShowcase]}>
+            {isShowcase ? (
+              <Store size={13} color={selected ? colors.brand.primary : colors.text.onPrimary} strokeWidth={2.4} />
+            ) : (
+              <Text style={[mk.avatarLetter, selected && mk.avatarLetterActive]}>
+                {shop.name[0]?.toUpperCase() ?? '?'}
+              </Text>
+            )}
           </View>
           <View style={mk.textCol}>
             <Text style={[mk.name, selected && mk.textActive, closed && mk.textClosed]} numberOfLines={1}>
@@ -230,16 +241,20 @@ function ShopMarker({
             </Text>
             {closed ? (
               <Text style={mk.closedTag}>{tr('shop.closed')}</Text>
+            ) : isShowcase ? (
+              <Text style={[mk.showcaseTag, selected && mk.textActive]}>📍 {tr('shop.inStoreOnly')}</Text>
+            ) : isDeliveryClosed ? (
+              <Text style={[mk.deliveryClosedTag, selected && mk.textActive]}>🚚 {tr('shop.deliveryClosed')}</Text>
             ) : (
               shop.distanceKm !== undefined && (
                 <Text style={[mk.dist, selected && mk.textActive]}>
-                  {shop.distanceKm.toFixed(1)} km
+                  🚚 {shop.distanceKm.toFixed(1)} km
                 </Text>
               )
             )}
           </View>
         </View>
-        <View style={[mk.tail, selected && mk.tailActive, closed && mk.tailClosed]} />
+        <View style={[mk.tail, selected && mk.tailActive, closed && mk.tailClosed, isShowcase && !selected && !closed && mk.tailShowcase]} />
       </View>
     </Marker>
   );
@@ -361,6 +376,7 @@ const mk = StyleSheet.create({
     ...shadow.md,
   },
   pillActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
+  pillShowcase: { borderColor: '#3B82F6', backgroundColor: '#F8FAFC' },
   // Closed: muted gray, faded and dashed — visibly "disabled".
   wrapClosed: { opacity: 0.6 },
   pillClosed: {
@@ -377,12 +393,15 @@ const mk = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarActive: { backgroundColor: colors.text.onPrimary },
+  avatarShowcase: { backgroundColor: '#3B82F6' },
   avatarClosed: { backgroundColor: colors.text.hint },
   avatarLetter: { color: colors.text.onPrimary, fontSize: 13, fontWeight: '800' },
   avatarLetterActive: { color: colors.brand.primary },
   textCol: { flexShrink: 1 },
   name: { ...typography.caption, fontSize: 12, fontWeight: '800', color: colors.text.primary },
   dist: { ...typography.caption, fontSize: 10, color: colors.text.secondary, marginTop: -1 },
+  showcaseTag: { ...typography.caption, fontSize: 10, fontWeight: '700', color: '#2563EB', marginTop: -1 },
+  deliveryClosedTag: { ...typography.caption, fontSize: 10, fontWeight: '700', color: colors.feedback.warning, marginTop: -1 },
   textActive: { color: colors.text.onPrimary },
   textClosed: { color: colors.text.tertiary },
   closedTag: {
@@ -404,6 +423,7 @@ const mk = StyleSheet.create({
     marginTop: -1,
   },
   tailActive: { borderTopColor: colors.brand.primary },
+  tailShowcase: { borderTopColor: '#F8FAFC' },
   tailClosed: { borderTopColor: colors.bg.surfaceMuted },
 });
 

@@ -1,11 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ChevronRight, Star, Store, X } from 'lucide-react-native';
+import { ChevronRight, Navigation, Phone, Star, Store, Truck, X } from 'lucide-react-native';
 import { useMemo } from 'react';
 import {
   Dimensions,
   FlatList,
+  Linking,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -62,12 +64,19 @@ export function ShopPreviewSheet({ visible, shop, onClose }: Props) {
       distanceKm: shop.distanceKm ?? 0,
       deliveryFeeAtUser: shop.deliveryFeeAtUser ?? 0,
       isOpen: shop.isOpenManual,
+      isDeliveryOpen: shop.isDeliveryOpenNow,
+      isDeliveryEnabled: shop.isDeliveryEnabled,
+      isPickupEnabled: shop.isPickupEnabled,
+      phone: shop.phone,
       photos: shop.photos,
     };
     return list.map((v) => ({ ...v, shop: summary }));
   }, [productsQuery.data, shop]);
 
   if (!shop) return null;
+
+  const isShowcase = shop.isDeliveryEnabled === false;
+  const isDeliveryClosed = !isShowcase && shop.isDeliveryOpenNow === false;
 
   const goToShop = () => {
     onClose();
@@ -76,6 +85,18 @@ export function ShopPreviewSheet({ visible, shop, onClose }: Props) {
   const goToCheckout = () => {
     onClose();
     router.push(`/shop/${shop.id}/checkout`);
+  };
+
+  const handleCall = () => {
+    if (shop.phone) void Linking.openURL(`tel:${shop.phone}`);
+  };
+
+  const handleRoute = () => {
+    const url = Platform.select({
+      ios: `maps:0,0?q=${shop.latitude},${shop.longitude}`,
+      default: `geo:${shop.latitude},${shop.longitude}?q=${shop.latitude},${shop.longitude}(${encodeURIComponent(shop.name)})`,
+    });
+    if (url) void Linking.openURL(url);
   };
 
   return (
@@ -87,8 +108,8 @@ export function ShopPreviewSheet({ visible, shop, onClose }: Props) {
 
           {/* Shop header */}
           <Pressable style={styles.header} onPress={goToShop}>
-            <View style={styles.icon}>
-              <Store size={22} color={colors.brand.primary} strokeWidth={2.2} />
+            <View style={[styles.icon, isShowcase && styles.iconShowcase]}>
+              <Store size={22} color={isShowcase ? '#2563EB' : colors.brand.primary} strokeWidth={2.2} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.name} numberOfLines={1}>
@@ -108,21 +129,45 @@ export function ShopPreviewSheet({ visible, shop, onClose }: Props) {
             <Text style={[styles.badge, shop.isOpenManual ? styles.badgeOpen : styles.badgeClosed]}>
               {shop.isOpenManual ? tr('shop.open') : tr('shop.closed')}
             </Text>
+            {isShowcase ? (
+              <Text style={[styles.badge, styles.badgeShowcase]}>
+                📍 {tr('shop.inStoreOnly')}
+              </Text>
+            ) : isDeliveryClosed ? (
+              <Text style={[styles.badge, styles.badgeClosed]}>
+                🚚 {tr('shop.deliveryClosed')}
+              </Text>
+            ) : (
+              <Text style={styles.metaText}>
+                🚚{' '}
+                {shop.deliveryFeeAtUser === 0
+                  ? tr('shop.freeShort')
+                  : `${shop.deliveryFeeAtUser?.toLocaleString()} ${tr('common.som')}`}
+              </Text>
+            )}
             {shop.distanceKm !== undefined && (
               <Text style={styles.metaText}>{shop.distanceKm.toFixed(1)} km</Text>
             )}
-            <Text style={styles.metaText}>
-              🚚{' '}
-              {shop.deliveryFeeAtUser === 0
-                ? tr('shop.freeShort')
-                : `${shop.deliveryFeeAtUser?.toLocaleString()} ${tr('common.som')}`}
-            </Text>
             {shop.ratingCount > 0 && (
               <View style={styles.ratingPill}>
                 <Star size={11} color={colors.feedback.warning} fill={colors.feedback.warning} />
                 <Text style={styles.ratingText}>{shop.ratingAverage.toFixed(1)}</Text>
               </View>
             )}
+          </View>
+
+          {/* Quick contact / navigation action buttons */}
+          <View style={styles.actionRow}>
+            {shop.phone ? (
+              <Pressable style={styles.actionBtn} onPress={handleCall}>
+                <Phone size={14} color={colors.brand.primary} />
+                <Text style={styles.actionBtnText}>{shop.phone}</Text>
+              </Pressable>
+            ) : null}
+            <Pressable style={styles.actionBtn} onPress={handleRoute}>
+              <Navigation size={14} color={colors.brand.primary} />
+              <Text style={styles.actionBtnText}>{tr('shop.openRoute')}</Text>
+            </Pressable>
           </View>
 
           <View style={styles.sectionRow}>
@@ -229,6 +274,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  iconShowcase: {
+    backgroundColor: '#EFF6FF',
+  },
   name: { ...typography.h4, color: colors.text.primary },
   address: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
   closeBtn: {
@@ -257,6 +305,25 @@ const styles = StyleSheet.create({
   },
   badgeOpen: { color: colors.feedback.success, backgroundColor: colors.feedback.successSurface },
   badgeClosed: { color: colors.text.tertiary, backgroundColor: colors.bg.surfaceMuted },
+  badgeShowcase: { color: '#1D4ED8', backgroundColor: '#EFF6FF' },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 7,
+    borderRadius: radius.md,
+    backgroundColor: colors.bg.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  actionBtnText: { ...typography.caption, fontWeight: '700', color: colors.text.primary },
   metaText: { ...typography.caption, color: colors.text.secondary, fontWeight: '600' },
   ratingPill: {
     flexDirection: 'row',

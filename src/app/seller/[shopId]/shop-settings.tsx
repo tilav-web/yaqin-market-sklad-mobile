@@ -101,6 +101,7 @@ export default function ShopSettingsScreen() {
   useEffect(() => () => stopOrderAlarm(), []);
 
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
@@ -110,6 +111,8 @@ export default function ShopSettingsScreen() {
   const [coordsEvidence, setCoordsEvidence] = useState<PickedLocation['evidence']>(undefined);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [hoursOpen, setHoursOpen] = useState(false);
+  const [isDeliveryEnabled, setIsDeliveryEnabled] = useState(true);
+  const [isPickupEnabled, setIsPickupEnabled] = useState(true);
   const [minOrder, setMinOrder] = useState('');
   const [maxKm, setMaxKm] = useState('');
   const [freeKm, setFreeKm] = useState('');
@@ -123,10 +126,13 @@ export default function ShopSettingsScreen() {
       const res = await api.get<PublicShop>(`/seller/shops/${shopId}`);
       const s = res.data;
       setName(s.name);
+      setPhone(s.phone ?? '');
       setAddress(s.address);
       setDescription(s.description ?? '');
       setPhotos(s.photos ?? []);
       setCoords({ latitude: s.latitude, longitude: s.longitude });
+      setIsDeliveryEnabled(s.isDeliveryEnabled ?? true);
+      setIsPickupEnabled(s.isPickupEnabled ?? true);
       setMinOrder(String(s.minOrderPrice));
       setMaxKm(String(s.deliveryZone.maxKm));
       setFreeKm(String(s.deliveryZone.freeKm));
@@ -147,9 +153,12 @@ export default function ShopSettingsScreen() {
     mutationFn: async () => {
       await api.patch<PublicShop>(`/seller/shops/${shopId}`, {
         name: name.trim(),
+        phone: phone.trim() || null,
         address: address.trim(),
         description: description.trim() || undefined,
         photos,
+        isDeliveryEnabled,
+        isPickupEnabled,
         ...(coords ? { latitude: coords.latitude, longitude: coords.longitude, evidence: coordsEvidence } : {}),
         minOrderPrice: Number(minOrder) || 0,
         deliveryZone: {
@@ -214,6 +223,17 @@ export default function ShopSettingsScreen() {
           />
           <Field label={tr('shopSet.nameLabel')}>
             <TextInput style={styles.input} value={name} onChangeText={setName} placeholderTextColor={colors.text.hint} />
+          </Field>
+          <Field label={tr('shopSet.phoneLabel')}>
+            <TextInput
+              style={styles.input}
+              value={phone}
+              onChangeText={setPhone}
+              placeholder={tr('shopSet.phonePlaceholder')}
+              placeholderTextColor={colors.text.hint}
+              keyboardType="phone-pad"
+            />
+            <Text style={styles.hint}>{tr('shopSet.phoneHint')}</Text>
           </Field>
           <Field label={tr('shopSet.addressLabel')}>
             <TextInput
@@ -294,55 +314,78 @@ export default function ShopSettingsScreen() {
 
         {/* Delivery */}
         <Section title={tr('shopSet.deliverySection')} icon={Truck}>
-          <Pressable
-            style={styles.mapZoneBtn}
-            onPress={() => router.push({ pathname: '/seller/[shopId]/delivery-zones', params: { shopId } } as never)}>
-            <Map size={18} color={colors.brand.primary} strokeWidth={2} />
-            <Text style={styles.mapZoneBtnText}>{tr('shopSet.drawZone')}</Text>
-            <ChevronRight size={16} color={colors.text.tertiary} />
-          </Pressable>
-
-          <Field label={tr('shopSet.minOrder')}>
-            <TextInput style={styles.input} value={minOrder} onChangeText={setMinOrder} keyboardType="number-pad" />
-            <Text style={styles.hint}>{tr('shopSet.minOrderHint')}</Text>
-          </Field>
-
-          <Field label={tr('shopSet.maxKm')}>
-            <TextInput style={styles.input} value={maxKm} onChangeText={setMaxKm} keyboardType="numeric" />
-            <Text style={styles.hint}>{tr('shopSet.maxKmHint')}</Text>
-          </Field>
-
-          <Field label={tr('shopSet.freeKm')}>
-            <TextInput style={styles.input} value={freeKm} onChangeText={setFreeKm} keyboardType="numeric" />
-            <Text style={styles.hint}>{tr('shopSet.freeKmHint')}</Text>
-          </Field>
-
-          <Field label={tr('shopSet.pricingLabel')}>
-            <View style={styles.chipRow}>
-              {(['per_km', 'per_500m', 'per_100m', 'flat'] as Pricing[]).map((t) => (
-                <Pressable
-                  key={t}
-                  onPress={() => setPricingType(t)}
-                  style={[styles.chip, pricingType === t && styles.chipActive]}>
-                  <Text style={[styles.chipText, pricingType === t && styles.chipTextActive]}>
-                    {pricingMeta(t).label}
-                  </Text>
-                </Pressable>
-              ))}
+          <View style={styles.toggleRow}>
+            <View style={{ flex: 1, paddingRight: spacing.md }}>
+              <Text style={styles.toggleLabel}>{tr('shopSet.deliveryToggle')}</Text>
+              <Text style={styles.toggleSub}>{tr('shopSet.deliveryToggleSub')}</Text>
             </View>
-            <Text style={styles.hint}>{pricingMeta(pricingType).hint}</Text>
-          </Field>
+            <Switch
+              value={isDeliveryEnabled}
+              onValueChange={setIsDeliveryEnabled}
+              trackColor={{ true: colors.feedback.success }}
+              thumbColor={colors.bg.surface}
+            />
+          </View>
 
-          <Field label={pricingMeta(pricingType).priceLabel}>
-            <TextInput style={styles.input} value={price} onChangeText={setPrice} keyboardType="number-pad" />
-          </Field>
+          {!isDeliveryEnabled ? (
+            <View style={styles.showcaseNoticeBox}>
+              <Text style={styles.showcaseNoticeText}>
+                ℹ️ {tr('shopSet.showcaseNotice')}
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Pressable
+                style={styles.mapZoneBtn}
+                onPress={() => router.push({ pathname: '/seller/[shopId]/delivery-zones', params: { shopId } } as never)}>
+                <Map size={18} color={colors.brand.primary} strokeWidth={2} />
+                <Text style={styles.mapZoneBtnText}>{tr('shopSet.drawZone')}</Text>
+                <ChevronRight size={16} color={colors.text.tertiary} />
+              </Pressable>
 
-          <DeliveryExample
-            maxKm={Number(maxKm) || 0}
-            freeKm={Number(freeKm) || 0}
-            pricingType={pricingType}
-            price={Number(price) || 0}
-          />
+              <Field label={tr('shopSet.minOrder')}>
+                <TextInput style={styles.input} value={minOrder} onChangeText={setMinOrder} keyboardType="number-pad" />
+                <Text style={styles.hint}>{tr('shopSet.minOrderHint')}</Text>
+              </Field>
+
+              <Field label={tr('shopSet.maxKm')}>
+                <TextInput style={styles.input} value={maxKm} onChangeText={setMaxKm} keyboardType="numeric" />
+                <Text style={styles.hint}>{tr('shopSet.maxKmHint')}</Text>
+              </Field>
+
+              <Field label={tr('shopSet.freeKm')}>
+                <TextInput style={styles.input} value={freeKm} onChangeText={setFreeKm} keyboardType="numeric" />
+                <Text style={styles.hint}>{tr('shopSet.freeKmHint')}</Text>
+              </Field>
+
+              <Field label={tr('shopSet.pricingLabel')}>
+                <View style={styles.chipRow}>
+                  {(['per_km', 'per_500m', 'per_100m', 'flat'] as Pricing[]).map((t) => (
+                    <Pressable
+                      key={t}
+                      onPress={() => setPricingType(t)}
+                      style={[styles.chip, pricingType === t && styles.chipActive]}>
+                      <Text style={[styles.chipText, pricingType === t && styles.chipTextActive]}>
+                        {pricingMeta(t).label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Text style={styles.hint}>{pricingMeta(pricingType).hint}</Text>
+              </Field>
+
+              <Field label={pricingMeta(pricingType).priceLabel}>
+                <TextInput style={styles.input} value={price} onChangeText={setPrice} keyboardType="number-pad" />
+              </Field>
+
+              <DeliveryExample
+                maxKm={Number(maxKm) || 0}
+                freeKm={Number(freeKm) || 0}
+                pricingType={pricingType}
+                price={Number(price) || 0}
+              />
+            </>
+          )}
         </Section>
 
         <Pressable
@@ -555,4 +598,17 @@ const styles = StyleSheet.create({
   },
   saveBtnDisabled: { backgroundColor: colors.border.strong },
   saveText: { ...typography.body, fontWeight: '700', color: colors.text.onPrimary },
+  showcaseNoticeBox: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    marginTop: spacing.xs,
+  },
+  showcaseNoticeText: {
+    ...typography.bodySmall,
+    color: '#1E40AF',
+    lineHeight: 20,
+  },
 });

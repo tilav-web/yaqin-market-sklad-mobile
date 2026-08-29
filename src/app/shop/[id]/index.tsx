@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ChevronRight, Heart, MapPin, Store, Truck } from 'lucide-react-native';
+import { ChevronRight, Heart, MapPin, Navigation, Phone, Store, Truck } from 'lucide-react-native';
 import { useMemo } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
   FlatList,
   Image,
+  Linking,
+  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -88,6 +90,10 @@ export default function ShopDetailScreen() {
       distanceKm: shop.distanceKm ?? 0,
       deliveryFeeAtUser: shop.deliveryFeeAtUser ?? 0,
       isOpen: shop.isOpenManual,
+      isDeliveryOpen: shop.isDeliveryOpenNow,
+      isDeliveryEnabled: shop.isDeliveryEnabled,
+      isPickupEnabled: shop.isPickupEnabled,
+      phone: shop.phone,
       photos: shop.photos,
     };
     return list.map((v) => ({ ...v, shop: summary }));
@@ -108,6 +114,21 @@ export default function ShopDetailScreen() {
       </View>
     );
   }
+
+  const isShowcase = shop.isDeliveryEnabled === false;
+  const isDeliveryClosed = !isShowcase && shop.isDeliveryOpenNow === false;
+
+  const handleCall = () => {
+    if (shop.phone) void Linking.openURL(`tel:${shop.phone}`);
+  };
+
+  const handleRoute = () => {
+    const url = Platform.select({
+      ios: `maps:0,0?q=${shop.latitude},${shop.longitude}`,
+      default: `geo:${shop.latitude},${shop.longitude}?q=${shop.latitude},${shop.longitude}(${encodeURIComponent(shop.name)})`,
+    });
+    if (url) void Linking.openURL(url);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -165,20 +186,51 @@ export default function ShopDetailScreen() {
                     <Text style={styles.metaText}>{shop.distanceKm.toFixed(2)} km</Text>
                   </View>
                 )}
-                <View style={styles.metaItem}>
-                  <Truck size={13} color={colors.text.secondary} strokeWidth={2.4} />
-                  <Text style={styles.metaText}>
-                    {shop.deliveryFeeAtUser === 0
-                      ? tr('home.deliveryFree')
-                      : `${shop.deliveryFeeAtUser?.toLocaleString()} ${tr('common.som')}`}
-                  </Text>
-                </View>
-                {shop.minOrderPrice > 0 && (
+                {isShowcase ? (
+                  <View style={[styles.metaItem, styles.showcasePill]}>
+                    <Store size={13} color="#1D4ED8" strokeWidth={2.4} />
+                    <Text style={[styles.metaText, { color: '#1D4ED8', fontWeight: '700' }]}>
+                      {tr('shop.inStoreOnly')}
+                    </Text>
+                  </View>
+                ) : isDeliveryClosed ? (
+                  <View style={[styles.metaItem, styles.closedPill]}>
+                    <Truck size={13} color={colors.feedback.warning} strokeWidth={2.4} />
+                    <Text style={[styles.metaText, { color: colors.feedback.warning, fontWeight: '700' }]}>
+                      {tr('shop.deliveryClosed')}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.metaItem}>
+                    <Truck size={13} color={colors.text.secondary} strokeWidth={2.4} />
+                    <Text style={styles.metaText}>
+                      {shop.deliveryFeeAtUser === 0
+                        ? tr('home.deliveryFree')
+                        : `${shop.deliveryFeeAtUser?.toLocaleString()} ${tr('common.som')}`}
+                    </Text>
+                  </View>
+                )}
+                {shop.minOrderPrice > 0 && !isShowcase && (
                   <Text style={styles.metaText}>
                     {tr('home.minOrder', { price: shop.minOrderPrice.toLocaleString() })}
                   </Text>
                 )}
               </View>
+
+              {/* Action buttons (phone + maps) */}
+              <View style={styles.actionRow}>
+                {shop.phone ? (
+                  <Pressable style={styles.actionBtn} onPress={handleCall}>
+                    <Phone size={14} color={colors.brand.primary} />
+                    <Text style={styles.actionBtnText}>{shop.phone}</Text>
+                  </Pressable>
+                ) : null}
+                <Pressable style={styles.actionBtn} onPress={handleRoute}>
+                  <Navigation size={14} color={colors.brand.primary} />
+                  <Text style={styles.actionBtnText}>{tr('shop.openRoute')}</Text>
+                </Pressable>
+              </View>
+
               {!shop.isOpenManual && (
                 <View style={styles.closedAlert}>
                   <Text style={styles.closedAlertText}>{tr('shop.closedAlert')}</Text>
@@ -207,7 +259,7 @@ export default function ShopDetailScreen() {
         }
       />
 
-      {cartCount > 0 && (
+      {cartCount > 0 && !isShowcase && (
         <Pressable
           style={styles.cartCta}
           onPress={() => router.push(`/shop/${shop.id}/checkout`)}>
@@ -261,6 +313,36 @@ const styles = StyleSheet.create({
   },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText: { ...typography.caption, color: colors.text.secondary, fontWeight: '600' },
+  showcasePill: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.sm,
+  },
+  closedPill: {
+    backgroundColor: colors.feedback.warningSurface,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.sm,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 7,
+    borderRadius: radius.md,
+    backgroundColor: colors.bg.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  actionBtnText: { ...typography.caption, fontWeight: '700', color: colors.text.primary },
   closedAlert: {
     backgroundColor: colors.feedback.dangerSurface,
     padding: spacing.sm,
