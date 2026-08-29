@@ -1,12 +1,10 @@
 import type { TranslationKey } from '@/i18n/translations';
 
-export type StaffPreset = 'kassir' | 'menejer' | 'sklad' | 'yetkazib_beruvchi' | 'custom';
+export type StaffRole = 'cashier' | 'storekeeper' | 'courier' | 'manager' | 'custom';
+export type StaffPreset = StaffRole | 'kassir' | 'sklad' | 'yetkazib_beruvchi' | 'menejer' | 'omborchi' | 'kuryer';
 
 /**
  * Mirror of the server's `ALL_STAFF_PERMISSIONS`
- * (../../../server/src/shops/entities/shop-staff.entity.ts) — keep in sync.
- * The server is the actual source of truth/enforcement (via
- * `assertShopPermission`); this list only drives what the client shows.
  */
 export const ALL_STAFF_PERMISSIONS = [
   // inventory
@@ -46,11 +44,8 @@ export const ALL_STAFF_PERMISSIONS = [
 
 export type StaffPermission = (typeof ALL_STAFF_PERMISSIONS)[number];
 
-/** Mirror of the server's `PRESET_PERMISSIONS` — kept for parity/reference; the
- * server (shops.service.ts#updateStaff) is what actually applies these when a
- * preset is selected, this isn't re-sent by the client. */
-export const PRESET_PERMISSIONS: Record<Exclude<StaffPreset, 'custom'>, StaffPermission[]> = {
-  kassir: [
+export const ROLE_PERMISSIONS: Record<'cashier' | 'storekeeper' | 'courier' | 'manager', StaffPermission[]> = {
+  cashier: [
     'inventory.view',
     'inventory.product.edit_stock',
     'inventory.barcode.scan',
@@ -62,7 +57,24 @@ export const PRESET_PERMISSIONS: Record<Exclude<StaffPreset, 'custom'>, StaffPer
     'orders.view_customer_contact',
     'debt.manage',
   ],
-  menejer: [
+  storekeeper: [
+    'inventory.view',
+    'inventory.product.create',
+    'inventory.product.edit_info',
+    'inventory.product.edit_stock',
+    'inventory.receive',
+    'inventory.count',
+    'inventory.movement.view',
+    'inventory.low_stock_alerts',
+    'inventory.barcode.scan',
+  ],
+  courier: [
+    'orders.view_assigned',
+    'orders.update_status',
+    'orders.chat',
+    'orders.view_customer_contact',
+  ],
+  manager: [
     'inventory.view',
     'inventory.product.create',
     'inventory.product.edit_info',
@@ -88,24 +100,33 @@ export const PRESET_PERMISSIONS: Record<Exclude<StaffPreset, 'custom'>, StaffPer
     'promotions.view',
     'promotions.manage',
   ],
-  sklad: [
-    'inventory.view',
-    'inventory.product.create',
-    'inventory.product.edit_info',
-    'inventory.product.edit_stock',
-    'inventory.receive',
-    'inventory.count',
-    'inventory.movement.view',
-    'inventory.low_stock_alerts',
-    'inventory.barcode.scan',
-  ],
-  yetkazib_beruvchi: [
-    'orders.view_assigned',
-    'orders.update_status',
-    'orders.chat',
-    'orders.view_customer_contact',
-  ],
 };
+
+export const PRESET_PERMISSIONS: Record<string, StaffPermission[]> = {
+  ...ROLE_PERMISSIONS,
+  kassir: ROLE_PERMISSIONS.cashier,
+  sklad: ROLE_PERMISSIONS.storekeeper,
+  omborchi: ROLE_PERMISSIONS.storekeeper,
+  yetkazib_beruvchi: ROLE_PERMISSIONS.courier,
+  kuryer: ROLE_PERMISSIONS.courier,
+  menejer: ROLE_PERMISSIONS.manager,
+};
+
+export function computePermissionsForRoles(
+  roles: (StaffRole | string)[],
+  customPerms: StaffPermission[] = [],
+): StaffPermission[] {
+  const permSet = new Set<StaffPermission>(customPerms);
+  for (const role of roles) {
+    const perms = PRESET_PERMISSIONS[role] || ROLE_PERMISSIONS[role as keyof typeof ROLE_PERMISSIONS];
+    if (perms) {
+      for (const p of perms) {
+        permSet.add(p);
+      }
+    }
+  }
+  return Array.from(permSet);
+}
 
 export interface StaffMember {
   id: string;
@@ -114,22 +135,131 @@ export interface StaffMember {
   phone: string;
   customRoleName: string;
   preset: StaffPreset;
+  roles?: StaffRole[];
   permissions: string[];
   isActive: boolean;
 }
 
+export interface RoleOption {
+  key: 'cashier' | 'storekeeper' | 'courier' | 'manager';
+  icon: string;
+  badge: string;
+  titleUz: string;
+  titleRu: string;
+  titleKr: string;
+  descUz: string;
+  descRu: string;
+  descKr: string;
+}
+
+export const ROLE_OPTIONS: RoleOption[] = [
+  {
+    key: 'cashier',
+    icon: 'credit-card',
+    badge: '💳',
+    titleUz: 'Kassir',
+    titleRu: 'Кассир',
+    titleKr: 'Кассир',
+    descUz: 'Kassa (POS), shtrix-kod skaner, sotuv va qarz daftari',
+    descRu: 'Касса (POS), сканер штрих-кодов, прием оплат и долги',
+    descKr: 'Касса (POS), штрих-код сканер, сотув ва қарз дафтари',
+  },
+  {
+    key: 'storekeeper',
+    icon: 'package',
+    badge: '📦',
+    titleUz: 'Omborchi',
+    titleRu: 'Кладовщик',
+    titleKr: 'Омборчи',
+    descUz: 'Kirim qilish, qoldiqlar sanog\'i va Excel import',
+    descRu: 'Приемка товара, контроль остатков и Excel',
+    descKr: 'Кирим қилиш, қолдиқлар саноғи ва Excel импорт',
+  },
+  {
+    key: 'courier',
+    icon: 'bike',
+    badge: '🛵',
+    titleUz: 'Kuryer',
+    titleRu: 'Курьер',
+    titleKr: 'Курьер',
+    descUz: 'Buyurtmani xaridorga yetkazish va xarita',
+    descRu: 'Доставка заказов клиентам и карта',
+    descKr: 'Буюртмани харидорга етказиш ва харита',
+  },
+  {
+    key: 'manager',
+    icon: 'briefcase',
+    badge: '💼',
+    titleUz: 'Menejer',
+    titleRu: 'Менеджер',
+    titleKr: 'Менежер',
+    descUz: 'Do\'kon tovarlari, aksiyalar va operatsion boshqaruv',
+    descRu: 'Управление магазином, товары и акции',
+    descKr: 'Дўкон товарлари, акциялар ва бошқарув',
+  },
+];
+
+export const SMALL_SHOP_SHORTCUTS = [
+  {
+    id: 'universal_helper',
+    labelUz: 'Kichik do\'kon yordamchisi',
+    labelRu: 'Универсальный помощник',
+    labelKr: 'Кичик дўкон ёрдамчиси',
+    subUz: 'Kassir + Omborchi',
+    subRu: 'Кассир + Кладовщик',
+    subKr: 'Кассир + Омборчи',
+    roles: ['cashier', 'storekeeper'] as StaffRole[],
+  },
+  {
+    id: 'only_courier',
+    labelUz: 'Faqat Kuryer',
+    labelRu: 'Только Курьер',
+    labelKr: 'Фақат Курьер',
+    subUz: 'Yetkazib berish',
+    subRu: 'Доставка',
+    subKr: 'Етказиб бериш',
+    roles: ['courier'] as StaffRole[],
+  },
+  {
+    id: 'only_cashier',
+    labelUz: 'Faqat Kassir',
+    labelRu: 'Только Кассир',
+    labelKr: 'Фақат Кассир',
+    subUz: 'Kassa & Sotuv',
+    subRu: 'Касса и продажи',
+    subKr: 'Касса & Сотув',
+    roles: ['cashier'] as StaffRole[],
+  },
+  {
+    id: 'full_manager',
+    labelUz: 'Katta Menejer',
+    labelRu: 'Главный Менеджер',
+    labelKr: 'Катта Менежер',
+    subUz: 'Hamma operatsiyalar',
+    subRu: 'Все операции',
+    subKr: 'Ҳамма операциялар',
+    roles: ['manager'] as StaffRole[],
+  },
+];
+
 export const PRESETS: { key: Exclude<StaffPreset, 'custom'>; labelKey: TranslationKey }[] = [
-  { key: 'kassir', labelKey: 'perm.preset.kassir' },
-  { key: 'menejer', labelKey: 'perm.preset.menejer' },
-  { key: 'sklad', labelKey: 'perm.preset.sklad' },
-  { key: 'yetkazib_beruvchi', labelKey: 'perm.preset.yetkazibBeruvchi' },
+  { key: 'cashier', labelKey: 'perm.preset.kassir' },
+  { key: 'storekeeper', labelKey: 'perm.preset.sklad' },
+  { key: 'courier', labelKey: 'perm.preset.yetkazibBeruvchi' },
+  { key: 'manager', labelKey: 'perm.preset.menejer' },
 ];
 
 export const PRESET_LABEL_KEYS: Record<StaffPreset, TranslationKey> = {
+  cashier: 'perm.preset.kassir',
+  storekeeper: 'perm.preset.sklad',
+  courier: 'perm.preset.yetkazibBeruvchi',
+  manager: 'perm.preset.menejer',
   kassir: 'perm.preset.kassir',
   menejer: 'perm.preset.menejer',
   sklad: 'perm.preset.sklad',
   yetkazib_beruvchi: 'perm.preset.yetkazibBeruvchi',
+  omborchi: 'perm.preset.sklad',
+  kuryer: 'perm.preset.yetkazibBeruvchi',
   custom: 'perm.preset.custom',
 };
 

@@ -94,6 +94,15 @@ export default function SellerLayout() {
   const hiddenRoutes = useMemo(() => {
     if (!access.isResolved || access.isOwner) return [];
     const hidden = [...OWNER_ONLY_ROUTES];
+    if (!access.permissions.includes('debt.manage')) hidden.push('debt');
+    if (!access.permissions.includes('payables.manage')) hidden.push('payables');
+    if (!access.permissions.includes('inventory.view')) hidden.push('inventory');
+    if (
+      !access.permissions.includes('orders.view_all') &&
+      !access.permissions.includes('orders.view_assigned')
+    ) {
+      hidden.push('orders');
+    }
     if (!HUB_PERMISSIONS.some((p) => access.permissions.includes(p))) hidden.push('settings');
     return hidden;
   }, [access.isResolved, access.isOwner, access.permissions]);

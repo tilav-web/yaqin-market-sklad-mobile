@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import type { StaffPermission } from '@/constants/staffPermissions';
+import type { StaffPermission, StaffRole } from '@/constants/staffPermissions';
 
 import { api } from './api';
 import { MyShop } from './types';
@@ -10,6 +10,7 @@ export interface WorkingForMeEntry {
   shop: { id: string; name: string; address: string; isOpenManual: boolean };
   role: string;
   preset: string;
+  roles?: StaffRole[];
   permissions: StaffPermission[];
 }
 
@@ -36,21 +37,6 @@ function useWorkingForMeQuery() {
  * owned-shops list the profile screen already fetches — safe to call for any
  * authenticated user, including staff who are not sellers themselves; it just
  * returns an empty list for them).
- *
- * Server-side, owner-only actions (staff management, balance, stats/
- * analytics, permanent product delete, blocking a customer, prime
- * subscription) have no corresponding `StaffPermission` at all and are
- * ALREADY correctly enforced regardless of this value — this hook only
- * drives client UI so staff don't see a button that will 403. For anything
- * that DOES have a real permission flag (reviews, promotions, shop
- * open/close, etc.), use `useShopAccess` below instead so staff who hold that
- * permission aren't blocked by a blanket owner check.
- *
- * Returns `undefined` while unresolved. Callers should treat that as "unknown
- * — assume owner" for entry points (avoids flashing "missing" tabs to the
- * common owner case) but as "not yet confirmed" for guarding the owner-only
- * network calls themselves (skip only once this resolves to `false`, so a
- * genuine owner is never delayed).
  */
 export function useIsShopOwner(shopId: string | undefined): boolean | undefined {
   const myShopsQuery = useMyShopsQuery();
@@ -61,24 +47,15 @@ export function useIsShopOwner(shopId: string | undefined): boolean | undefined 
 /**
  * Resolves what the current user can actually do at a shop, combining
  * `GET /seller/shops/mine` (owned shops) with `GET
- * /seller/shops/working-for-me` (staff memberships + their `permissions`,
- * added alongside SPEC.md §24/25/27). Owners have no `shop_staff` row at all
- * (there is nothing to "grant" — they can do everything), so `has()`
- * special-cases `isOwner` the same way the server's
- * `shop-access.util.ts#assertShopPermission` does (owner always passes,
- * otherwise the actor must hold the specific permission).
- *
- * `has()` is optimistic (`true`) before both queries resolve, matching the
- * existing "assume owner" bias on this screen family (see `useIsShopOwner`
- * above) — it avoids flashing away a tab/row for the common case while the
- * network settles. Use `isResolved` when a definite "no" is required (e.g.
- * to decide whether to show a permission-denied notice).
+ * /seller/shops/working-for-me` (staff memberships + their `permissions`).
  */
 export function useShopAccess(shopId: string | undefined): {
   isOwner: boolean | undefined;
+  roles: StaffRole[];
   permissions: StaffPermission[];
   isResolved: boolean;
   has: (permission: StaffPermission) => boolean;
+  hasRole: (role: StaffRole) => boolean;
 } {
   const myShopsQuery = useMyShopsQuery();
   const workingForMeQuery = useWorkingForMeQuery();
@@ -88,8 +65,11 @@ export function useShopAccess(shopId: string | undefined): {
     !shopId || myShopsQuery.data === undefined
       ? undefined
       : myShopsQuery.data.some((s) => s.id === shopId);
-  const permissions =
-    workingForMeQuery.data?.find((w) => w.shop.id === shopId)?.permissions ?? [];
+  const membership = workingForMeQuery.data?.find((w) => w.shop.id === shopId);
+  const roles: StaffRole[] = isOwner
+    ? (['manager', 'cashier', 'storekeeper', 'courier'] as StaffRole[])
+    : (membership?.roles ?? (membership?.preset ? [membership.preset as StaffRole] : []));
+  const permissions = membership?.permissions ?? [];
 
   function has(permission: StaffPermission): boolean {
     if (!isResolved) return true;
@@ -97,5 +77,11 @@ export function useShopAccess(shopId: string | undefined): {
     return permissions.includes(permission);
   }
 
-  return { isOwner, permissions, isResolved, has };
+  function hasRole(role: StaffRole): boolean {
+    if (!isResolved) return true;
+    if (isOwner) return true;
+    return roles.includes(role);
+  }
+
+  return { isOwner, roles, permissions, isResolved, has, hasRole };
 }
