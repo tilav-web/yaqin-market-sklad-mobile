@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ChevronRight, Navigation, Phone, Star, Store, Truck, X } from 'lucide-react-native';
+import { ChevronRight, Navigation, Phone, Star, Store, X } from 'lucide-react-native';
 import { useMemo } from 'react';
 import {
   Dimensions,

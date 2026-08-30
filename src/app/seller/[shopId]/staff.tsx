@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect, useGlobalSearchParams } from 'expo-router';
-import { Check, CheckSquare, ChevronDown, ChevronUp, Copy, Plus, QrCode, Shield, Sparkles, Trash2, UserCheck, Users, X } from 'lucide-react-native';
+import { Check, ChevronDown, ChevronUp, Plus, QrCode, Shield, Sparkles, Users, X } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -24,10 +24,7 @@ import { Brand, Radius, Spacing } from '@/constants/theme';
 import {
   computePermissionsForRoles,
   PERMISSION_GROUPS,
-  PRESET_LABEL_KEYS,
-  PRESETS,
   ROLE_OPTIONS,
-  ROLE_PERMISSIONS,
   SMALL_SHOP_SHORTCUTS,
   StaffMember,
   StaffPreset,

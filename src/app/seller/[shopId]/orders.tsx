@@ -92,7 +92,7 @@ export default function SellerOrdersScreen() {
     haptics.success();
     toast.show(tr('sellerOrders.newArrived'), { variant: 'success' });
     qc.invalidateQueries({ queryKey: ['seller-orders', shopId] });
-  }, [toast, qc, shopId]);
+  }, [toast, qc, shopId, tr]);
   useShopRealtime(shopId, onNewOrder);
 
   const advance = useAdvanceOrderStatus({
