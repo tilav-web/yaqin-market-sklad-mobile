@@ -241,7 +241,7 @@ export default function SellerApplicationScreen() {
         stir: cleanStir,
         companyName: companyName.trim(),
         entityType: stirData?.entityType || 'MChJ',
-        legalAddress: legalAddress.trim() || 'Qashqadaryo viloyati, Qarshi shahri',
+        legalAddress: legalAddress.trim() || 'Qashqadaryo viloyati',
         bankCardNumber: rawCard,
         bankCardHolderName: bankCardHolderName.trim().toUpperCase(),
         phone: contactPhone || user?.phone,
