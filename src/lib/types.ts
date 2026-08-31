@@ -641,3 +641,45 @@ export const ORDER_STATUS_KEY: Record<OrderStatus, TranslationKey> = {
   seller_no_response: 'orders.statusSellerNoResponse',
   seller_rejected: 'orders.statusSellerRejected',
 };
+
+export interface FiscalReceiptLine {
+  orderItemId: string;
+  productName: string;
+  mxikCode: string | null;
+  packageCode: string | null;
+  unitCode: string | null;
+  markingRequired: boolean;
+  markingCodes: string[];
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  vatRate: number;
+  vatAmount: number;
+}
+
+export interface FiscalReceipt {
+  id: string;
+  orderId: string;
+  type: 'sale' | 'refund';
+  status: 'incomplete' | 'pending' | 'sent' | 'confirmed' | 'failed';
+  provider: string;
+  sellerStir: string | null;
+  sellerName: string | null;
+  sellerVatPayer: boolean;
+  platformStir: string | null;
+  platformLegalName: string | null;
+  lines: FiscalReceiptLine[];
+  totalAmount: number;
+  totalVatAmount: number;
+  cashAmount: number;
+  cardAmount: number;
+  missingFields: string[];
+  fiscalSign: string | null;
+  fiscalReceiptNumber: string | null;
+  terminalId: string | null;
+  qrUrl: string | null;
+  sentAt?: string | null;
+  confirmedAt?: string | null;
+  createdAt: string;
+}
+

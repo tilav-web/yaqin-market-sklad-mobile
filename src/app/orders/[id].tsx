@@ -1,7 +1,7 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams , router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { AlertCircle, Banknote, Check, CreditCard, MessageCircle, RefreshCw, RotateCcw, Star, X } from 'lucide-react-native';
+import { AlertCircle, Banknote, Check, CreditCard, FileText, MessageCircle, RefreshCw, RotateCcw, Star, X } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -21,6 +21,7 @@ import QRCode from 'react-native-qrcode-svg';
 
 import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
 import { CardVisual } from '@/components/CardVisual';
+import { FiscalReceiptModal } from '@/components/FiscalReceiptModal';
 import { Button, useToast } from '@/components/ui';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { captureEvidence } from '@/lib/location-evidence';
@@ -28,7 +29,7 @@ import { useCountdown } from '@/lib/useCountdown';
 import { endOrderActivity, updateOrderActivity } from '@/lib/useOrderLiveActivity';
 import { useOrderSocket } from '@/lib/useOrderSocket';
 import { useTranslation } from '@/i18n';
-import { ORDER_STATUS_KEY, Order, OrderStatus, ProductOffer, PublicProductVariant, SavedCard } from '@/lib/types';
+import { FiscalReceipt, ORDER_STATUS_KEY, Order, OrderStatus, ProductOffer, PublicProductVariant, SavedCard } from '@/lib/types';
 import { OrderActivityProps } from '@/widgets/order-activity';
 import { useCartStore } from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
@@ -63,6 +64,7 @@ export default function OrderDetailScreen() {
   const [complaintReason, setComplaintReason] = useState('');
   const [complaintCustomReason, setComplaintCustomReason] = useState('');
   const [complaintDesc, setComplaintDesc] = useState('');
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
 
   const orderQuery = useQuery({
     queryKey: ['order', id],
@@ -76,6 +78,15 @@ export default function OrderDetailScreen() {
       // Stop polling once the order reaches a terminal state.
       return isTerminalStatus(s) ? false : 8000;
     },
+  });
+
+  const fiscalReceiptQuery = useQuery({
+    queryKey: ['order-fiscal-receipt', id],
+    queryFn: async () => {
+      const res = await api.get<FiscalReceipt | null>(`/orders/${id}/fiscal-receipt`);
+      return res.data;
+    },
+    enabled: !!id && (orderQuery.data?.paymentStatus === 'paid' || orderQuery.data?.status === 'delivered'),
   });
 
   const order = orderQuery.data;
@@ -619,6 +630,25 @@ export default function OrderDetailScreen() {
             value={`${order.total.toLocaleString()} ${tr('common.som')}`}
             bold
           />
+          {(order.paymentStatus === 'paid' || order.status === 'delivered') && (
+            <>
+              <View style={styles.divider} />
+              <Pressable
+                style={styles.fiscalReceiptBtn}
+                onPress={() => {
+                  haptics.selection();
+                  setReceiptModalOpen(true);
+                }}>
+                <View style={styles.fiscalReceiptBtnLeft}>
+                  <FileText size={18} color={colors.brand.primary} strokeWidth={2.4} />
+                  <Text style={styles.fiscalReceiptBtnText}>{tr('fiscal.viewReceiptBtn')}</Text>
+                </View>
+                <View style={styles.fiscalReceiptBtnTagWrap}>
+                  <Text style={styles.fiscalReceiptBtnTag}>1% keshbek</Text>
+                </View>
+              </Pressable>
+            </>
+          )}
         </View>
 
         {/* Rating */}
@@ -1051,6 +1081,13 @@ export default function OrderDetailScreen() {
           </Pressable>
         )}
       </ScrollView>
+
+      <FiscalReceiptModal
+        visible={receiptModalOpen}
+        onClose={() => setReceiptModalOpen(false)}
+        receipt={fiscalReceiptQuery.data ?? null}
+        loading={fiscalReceiptQuery.isLoading}
+      />
     </View>
   );
 }
@@ -1413,4 +1450,37 @@ const styles = StyleSheet.create({
   },
   savedCardInfo: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1 },
   savedCardNumber: { ...typography.bodyStrong, color: colors.text.primary, flexShrink: 1 },
+  fiscalReceiptBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    marginTop: spacing.xs,
+  },
+  fiscalReceiptBtnLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  fiscalReceiptBtnText: {
+    ...typography.subtitle,
+    color: '#15803D',
+    fontWeight: '700',
+  },
+  fiscalReceiptBtnTagWrap: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+  },
+  fiscalReceiptBtnTag: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#166534',
+  },
 });
