@@ -153,6 +153,7 @@ function RootNavigator() {
       <Stack.Screen name="saved-cards" options={{ title: tr('cards.title') }} />
       <Stack.Screen name="add-card" options={{ title: tr('cards.addTitle') }} />
       <Stack.Screen name="profile/edit" options={{ title: tr('editProfile.title') }} />
+      <Stack.Screen name="profile/delete-account" options={{ title: tr('deleteAccount.title') }} />
       <Stack.Screen name="staff-scan" options={{ headerShown: false }} />
       <Stack.Screen name="seller-application" options={{ title: tr('sellerApp.title') }} />
       <Stack.Screen name="seller/new" options={{ title: tr('nav.newShop') }} />

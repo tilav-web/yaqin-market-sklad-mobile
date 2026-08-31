@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import {
   Bell,
@@ -13,8 +13,8 @@ import {
   Plus,
   QrCode,
   Settings,
+  ShieldAlert,
   Store,
-  Trash2,
   XCircle,
 } from 'lucide-react-native';
 import { useState } from 'react';
@@ -100,49 +100,6 @@ export default function ProfileTab() {
   const me = meQuery.data;
   const latestApp = myApplicationsQuery.data?.[0];
   const staffShops = staffShopsQuery.data ?? [];
-
-  const deleteAccountMutation = useMutation({
-    mutationFn: async () => {
-      const res = await api.delete<{ success: boolean; message: string }>('/users/me');
-      return res.data;
-    },
-    onSuccess: (data) => {
-      haptics.success();
-      signOut();
-      Alert.alert(
-        tr('auth.deleteAccountSuccess'),
-        data.message || tr('auth.deleteAccountSuccess'),
-      );
-    },
-    onError: (err: unknown) => {
-      haptics.error();
-      const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
-      const msg =
-        axiosErr?.response?.data?.message ||
-        axiosErr?.message ||
-        "Hisobni o'chirishda xatolik yuz berdi";
-      Alert.alert('Xatolik', msg);
-    },
-  });
-
-  const handleDeleteAccount = () => {
-    haptics.warning();
-    Alert.alert(
-      tr('auth.deleteAccountConfirm'),
-      tr('auth.deleteAccountWarning'),
-      [
-        { text: tr('common.cancel'), style: 'cancel' },
-        {
-          text: tr('auth.deleteAccountAction'),
-          style: 'destructive',
-          onPress: () => {
-            haptics.heavy();
-            deleteAccountMutation.mutate();
-          },
-        },
-      ],
-    );
-  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -356,41 +313,35 @@ export default function ProfileTab() {
             value={LANG_LABELS[lang]}
             onPress={() => setLangSheetVisible(true)}
           />
+          {!isGuest && (
+            <Row
+              icon={ShieldAlert}
+              title={tr('deleteAccount.title')}
+              titleColor={colors.feedback.danger}
+              onPress={() => router.push('/profile/delete-account')}
+            />
+          )}
         </Section>
 
         {!isGuest && (
-          <View style={styles.authActionsWrap}>
-            <Pressable
-              style={styles.logoutBtn}
-              onPress={() => {
-                haptics.warning();
-                Alert.alert(tr('auth.signOut'), tr('auth.signOutConfirm'), [
-                  { text: tr('common.cancel'), style: 'cancel' },
-                  {
-                    text: tr('auth.signOut'),
-                    style: 'destructive',
-                    onPress: () => {
-                      haptics.heavy();
-                      signOut();
-                    },
+          <Pressable
+            style={styles.logoutBtn}
+            onPress={() => {
+              haptics.warning();
+              Alert.alert(tr('auth.signOut'), tr('auth.signOutConfirm'), [
+                { text: tr('common.cancel'), style: 'cancel' },
+                {
+                  text: tr('auth.signOut'),
+                  style: 'destructive',
+                  onPress: () => {
+                    haptics.heavy();
+                    signOut();
                   },
-                ]);
-              }}>
-              <Text style={styles.logoutText}>{tr('auth.signOut')}</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.deleteAccountBtn}
-              disabled={deleteAccountMutation.isPending}
-              onPress={handleDeleteAccount}>
-              <Trash2 size={16} color={colors.feedback.danger} strokeWidth={2} />
-              <Text style={styles.deleteAccountText}>
-                {deleteAccountMutation.isPending
-                  ? "O'chirilmoqda..."
-                  : tr('auth.deleteAccount')}
-              </Text>
-            </Pressable>
-          </View>
+                },
+              ]);
+            }}>
+            <Text style={styles.logoutText}>{tr('auth.signOut')}</Text>
+          </Pressable>
         )}
       </ScrollView>
 
