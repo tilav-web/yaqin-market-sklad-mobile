@@ -9,9 +9,10 @@ import {
   Check,
   CheckCircle2,
   Copy,
-  CreditCard,
   ExternalLink,
   FileText,
+  Hash,
+  Landmark,
   MapPin,
   Search,
   ShieldAlert,
@@ -20,7 +21,7 @@ import {
   User,
   X,
 } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -80,9 +81,11 @@ export default function SellerApplicationScreen() {
     attachedAt?: string;
   } | null>(null);
 
-  // Step 3: Bank Card & Contact
-  const [bankCardNumber, setBankCardNumber] = useState('');
-  const [bankCardHolderName, setBankCardHolderName] = useState('');
+  // Step 3: Bank Account & Contact
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankMfo, setBankMfo] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankAccountHolderName, setBankAccountHolderName] = useState('');
   const [contactPhone, setContactPhone] = useState(user?.phone || '');
 
   // Platform info fetched dynamically from admin settings via backend
@@ -126,12 +129,12 @@ export default function SellerApplicationScreen() {
     try {
       const res = await api.get<StirData>(`/sellers/lookup-stir/${query}`);
       setStirData(res.data);
-      if (res.data.companyName) setCompanyName(res.data.companyName);
+      if (res.data.companyName) {
+        setCompanyName(res.data.companyName);
+        setBankAccountHolderName(res.data.companyName);
+      }
       if (res.data.legalName) setLegalName(res.data.legalName);
       if (res.data.legalAddress) setLegalAddress(res.data.legalAddress);
-      if (!bankCardHolderName && (res.data.legalName || user?.name)) {
-        setBankCardHolderName((res.data.legalName || user?.name || '').toUpperCase());
-      }
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch {}
@@ -208,26 +211,22 @@ export default function SellerApplicationScreen() {
     setTimeout(() => setCopiedStir(false), 3000);
   };
 
-  const formatCardInput = (text: string) => {
-    const raw = text.replace(/\D/g, '').slice(0, 16);
+  const formatBankAccountInput = (text: string) => {
+    const raw = text.replace(/\D/g, '').slice(0, 20);
     const groups = raw.match(/.{1,4}/g);
     return groups ? groups.join(' ') : raw;
   };
 
-  const cardType = useMemo(() => {
-    const raw = bankCardNumber.replace(/\s+/g, '');
-    if (raw.startsWith('8600')) return 'UZCARD';
-    if (raw.startsWith('9860')) return 'HUMO';
-    if (raw.startsWith('4')) return 'VISA';
-    if (raw.startsWith('5')) return 'MASTERCARD';
-    return null;
-  }, [bankCardNumber]);
+  const formatMfoInput = (text: string) => {
+    return text.replace(/\D/g, '').slice(0, 5);
+  };
 
   // Validation
   const canGoToStep2 = cleanStir.length === 9 && !!stirData && companyName.trim().length >= 2 && ofertaAccepted;
   const canGoToStep3 = soliqConfirmed;
-  const rawCard = bankCardNumber.replace(/\s+/g, '');
-  const canSubmit = rawCard.length === 16 && bankCardHolderName.trim().length > 3;
+  const rawAccount = bankAccountNumber.replace(/\s+/g, '');
+  const rawMfo = bankMfo.replace(/\s+/g, '');
+  const canSubmit = rawAccount.length === 20 && rawMfo.length === 5 && bankAccountHolderName.trim().length >= 2;
 
   const submitMutation = useMutation({
     mutationFn: async () => {
@@ -242,8 +241,10 @@ export default function SellerApplicationScreen() {
         companyName: companyName.trim(),
         entityType: stirData?.entityType || 'MChJ',
         legalAddress: legalAddress.trim() || 'Qashqadaryo viloyati',
-        bankCardNumber: rawCard,
-        bankCardHolderName: bankCardHolderName.trim().toUpperCase(),
+        bankAccountNumber: rawAccount,
+        bankMfo: rawMfo,
+        bankName: bankName.trim() || 'Bank',
+        bankAccountHolderName: bankAccountHolderName.trim(),
         phone: contactPhone || user?.phone,
         soliqConfirmed: true,
         ofertaAccepted: true,
@@ -256,9 +257,10 @@ export default function SellerApplicationScreen() {
       } catch {}
       queryClient.invalidateQueries({ queryKey: ['users', 'me'] });
       queryClient.invalidateQueries({ queryKey: ['seller-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['seller-bank-accounts'] });
       Alert.alert(
         "Arizangiz qabul qilindi! 🎉",
-        "Hamkorlik arizangiz tekshirish uchun yuborildi. Operator tasdiqlagach, ilovada bemalol yangi do'konlaringizni ochishingiz mumkin.",
+        "Hamkorlik arizangiz va bank hisob raqamingiz tekshirish uchun yuborildi. Operator tasdiqlagach, ilovada bemalol yangi do'konlaringizni ochishingiz mumkin.",
         [{ text: 'Tushunarli', onPress: () => router.replace('/(tabs)/profile') }],
       );
     },
@@ -292,7 +294,7 @@ export default function SellerApplicationScreen() {
           <Text style={styles.headerSubtitle}>
             {step === 1 && '1/3: Yuridik & STIR'}
             {step === 2 && '2/3: my3.soliq.uz'}
-            {step === 3 && '3/3: Karta & Shartnoma'}
+            {step === 3 && '3/3: Bank Hisob Raqami'}
           </Text>
         </View>
 
@@ -316,7 +318,7 @@ export default function SellerApplicationScreen() {
             Soliq biriktiruvi
           </Text>
           <Text style={[styles.progressLabel, step === 3 && styles.progressLabelActive]}>
-            Savdo kartasi
+            Bank Hisob Raqam
           </Text>
         </View>
       </View>
@@ -666,68 +668,107 @@ export default function SellerApplicationScreen() {
             </View>
           )}
 
-          {/* ===================== STEP 3: KARTA & YAKUN ===================== */}
+          {/* ===================== STEP 3: BANK HISOB RAQAMI & YAKUN ===================== */}
           {step === 3 && (
             <View style={styles.stepWrapper}>
-              {/* Virtual Bank Card Mockup */}
+              {/* Virtual Bank Account Mockup */}
               <View style={styles.bankCardMockup}>
                 <View style={styles.bankCardTop}>
                   <View style={styles.bankChip}>
-                    <View style={styles.bankChipLines} />
+                    <Landmark size={22} color="#ffffff" strokeWidth={2.2} />
                   </View>
                   <View style={styles.cardTypeBadge}>
-                    <Text style={styles.cardTypeText}>{cardType || 'UZCARD / HUMO'}</Text>
+                    <Text style={styles.cardTypeText}>
+                      {bankMfo ? `MFO: ${bankMfo}` : 'B2B BANK HISOB RAQAM'}
+                    </Text>
                   </View>
                 </View>
 
-                <Text style={styles.bankCardDigits}>
-                  {bankCardNumber ? bankCardNumber : '•••• •••• •••• ••••'}
+                <Text style={styles.bankCardDigits} numberOfLines={1}>
+                  {bankAccountNumber ? bankAccountNumber : '2020 8000 •••• •••• ••••'}
                 </Text>
 
                 <View style={styles.bankCardBottom}>
-                  <View>
-                    <Text style={styles.bankCardHolderLabel}>KARTA EGASI</Text>
+                  <View style={{ flex: 1, marginRight: spacing.sm }}>
+                    <Text style={styles.bankCardHolderLabel}>HISOB EGASI (TASHKILOT)</Text>
                     <Text style={styles.bankCardHolderVal} numberOfLines={1}>
-                      {bankCardHolderName ? bankCardHolderName : 'F.I.SH.'}
+                      {bankAccountHolderName || companyName || 'KORXONA NOMI'}
                     </Text>
                   </View>
                   <View style={styles.payoutBadge}>
-                    <Text style={styles.payoutBadgeText}>100% Avto-tushum</Text>
+                    <Text style={styles.payoutBadgeText}>0% Komissiya</Text>
                   </View>
                 </View>
               </View>
 
-              {/* Card Inputs Form */}
+              {/* Bank Account Inputs Form */}
               <View style={styles.formCard}>
-                <Text style={styles.cardSectionHeading}>Hisob-kitob rekvizitlari</Text>
+                <Text style={styles.cardSectionHeading}>Bank hisob-kitob rekvizitlari</Text>
+                <Text style={styles.formCardSub}>
+                  Savdo tushumlari to'g'ridan-to'g'ri korxonangizning bank hisob raqamiga 0% komissiya bilan o'tkazib beriladi.
+                </Text>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Karta raqami (16 xonali Uzcard yoki Humo)</Text>
+                  <Text style={styles.inputLabel}>
+                    20 xonali Bank Hisob Raqami (Hisob-kitob hisobvarag'i) <Text style={styles.requiredStar}>*</Text>
+                  </Text>
                   <View style={styles.inputWithIcon}>
-                    <CreditCard size={18} color={colors.text.hint} />
+                    <Hash size={18} color={colors.text.hint} />
                     <TextInput
                       style={styles.textInput}
-                      value={bankCardNumber}
-                      onChangeText={(t) => setBankCardNumber(formatCardInput(t))}
-                      placeholder="8600 0000 0000 0000"
+                      value={bankAccountNumber}
+                      onChangeText={(t) => setBankAccountNumber(formatBankAccountInput(t))}
+                      placeholder="2020 8000 0000 0000 0001"
                       placeholderTextColor={colors.text.hint}
                       keyboardType="number-pad"
-                      maxLength={19}
+                      maxLength={24}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1 }]}>
+                    <Text style={styles.inputLabel}>
+                      Bank MFO kodi <Text style={styles.requiredStar}>*</Text>
+                    </Text>
+                    <View style={styles.inputWithIcon}>
+                      <Building2 size={18} color={colors.text.hint} />
+                      <TextInput
+                        style={styles.textInput}
+                        value={bankMfo}
+                        onChangeText={(t) => setBankMfo(formatMfoInput(t))}
+                        placeholder="00444"
+                        placeholderTextColor={colors.text.hint}
+                        keyboardType="number-pad"
+                        maxLength={5}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={[styles.inputGroup, { flex: 1.5 }]}>
+                    <Text style={styles.inputLabel}>Bank nomi / filiali</Text>
+                    <TextInput
+                      style={styles.textInputFull}
+                      value={bankName}
+                      onChangeText={setBankName}
+                      placeholder="Masalan: AT Xalq Banki"
+                      placeholderTextColor={colors.text.hint}
                     />
                   </View>
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Karta egasining to'liq ismi (F.I.SH.)</Text>
+                  <Text style={styles.inputLabel}>
+                    Hisob egasi / Korxona nomi <Text style={styles.requiredStar}>*</Text>
+                  </Text>
                   <View style={styles.inputWithIcon}>
                     <User size={18} color={colors.text.hint} />
                     <TextInput
                       style={styles.textInput}
-                      value={bankCardHolderName}
-                      onChangeText={setBankCardHolderName}
-                      placeholder="MASALAN: JASUR KARIMOV"
+                      value={bankAccountHolderName}
+                      onChangeText={setBankAccountHolderName}
+                      placeholder='Masalan: "TILAV" MCHJ'
                       placeholderTextColor={colors.text.hint}
-                      autoCapitalize="characters"
                     />
                   </View>
                 </View>
@@ -762,8 +803,15 @@ export default function SellerApplicationScreen() {
                 </View>
 
                 <View style={styles.receiptRow}>
-                  <Text style={styles.receiptKey}>Savdo kartasi:</Text>
-                  <Text style={styles.receiptVal}>{bankCardNumber || '—'}</Text>
+                  <Text style={styles.receiptKey}>Bank Hisob Raqami:</Text>
+                  <Text style={styles.receiptVal} numberOfLines={1}>
+                    {bankAccountNumber ? `${bankAccountNumber.slice(0, 10)}...` : '—'}
+                  </Text>
+                </View>
+
+                <View style={styles.receiptRow}>
+                  <Text style={styles.receiptKey}>Bank MFO:</Text>
+                  <Text style={styles.receiptVal}>{bankMfo || '—'}</Text>
                 </View>
 
                 <View style={styles.receiptRow}>
@@ -1000,6 +1048,19 @@ const styles = StyleSheet.create({
     borderColor: colors.border.subtle,
     gap: spacing.md,
     ...shadow.xs,
+  },
+  formCardSub: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    lineHeight: 16,
+    marginTop: -spacing.xs,
+  },
+  requiredStar: {
+    color: '#EF4444',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
   cardHeaderRow: {
     flexDirection: 'row',
