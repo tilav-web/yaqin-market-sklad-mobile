@@ -100,11 +100,14 @@ export default function ProfileTab() {
   const me = meQuery.data;
   const latestApp = myApplicationsQuery.data?.[0];
   const staffShops = staffShopsQuery.data ?? [];
+  const myShops = myShopsQuery.data ?? [];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           isGuest ? undefined : (
             <RefreshControl
@@ -220,58 +223,58 @@ export default function ProfileTab() {
 
         {!isGuest ? (
           <>
-            {(me?.isSellerApproved && myShopsQuery.data && myShopsQuery.data.length > 0) ||
-            latestApp?.status === 'pending' ||
-            latestApp?.status === 'rejected' ? (
+            {myShops.length > 0 ? (
               <Section>
-                {me?.isSellerApproved && myShopsQuery.data
-                  ? myShopsQuery.data.map((shop) => (
-                      <Row
-                        key={shop.id}
-                        icon={Store}
-                        title={shop.name}
-                        subtitle={`${shop.isOpenManual ? tr('profile.openShop') : tr('profile.closedShop')} · ${shop.address}`}
-                        badge={shop.newOrderCount}
-                        onPress={() => router.push(`/seller/${shop.id}/orders`)}
-                      />
-                    ))
-                  : null}
-
-                {latestApp?.status === 'pending' ? (
-                  // Application submitted, waiting for admin
-                  <View style={styles.pendingCta}>
-                    <View style={styles.pendingIcon}>
-                      <Clock size={22} color={colors.feedback.warning} strokeWidth={2.4} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.pendingTitle}>{tr('seller.pending.title')}</Text>
-                      <Text style={styles.applySub}>{tr('seller.pending.desc')}</Text>
-                    </View>
-                  </View>
-                ) : latestApp?.status === 'rejected' ? (
-                  // Application rejected — show reason + retry button
-                  <Pressable
-                    onPress={() => {
-                      haptics.medium();
-                      router.push('/seller-application');
-                    }}
-                    style={styles.rejectedCta}>
-                    <View style={styles.rejectedIcon}>
-                      <XCircle size={22} color={colors.brand.primary} strokeWidth={2.4} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.rejectedTitle}>{tr('seller.rejected.title')}</Text>
-                      {latestApp.rejectionReason ? (
-                        <Text style={styles.applySub}>
-                          {tr('seller.rejected.reason', { reason: latestApp.rejectionReason })}
-                        </Text>
-                      ) : null}
-                      <Text style={styles.retryText}>{tr('profile.reapply')}</Text>
-                    </View>
-                  </Pressable>
-                ) : null}
+                {myShops.map((shop) => (
+                  <Row
+                    key={shop.id}
+                    icon={Store}
+                    title={shop.name}
+                    subtitle={`${shop.isOpenManual ? tr('profile.openShop') : tr('profile.closedShop')} · ${shop.address}`}
+                    badge={shop.newOrderCount}
+                    onPress={() => router.push(`/seller/${shop.id}/orders`)}
+                  />
+                ))}
+                <Row icon={Plus} title={tr('nav.newShop')} onPress={() => router.push('/seller/new')} />
               </Section>
-            ) : null}
+            ) : latestApp?.status === 'pending' ? (
+              <Section>
+                <View style={styles.pendingCta}>
+                  <View style={styles.pendingIcon}>
+                    <Clock size={24} color={colors.feedback.warning} strokeWidth={2.4} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.pendingTitle}>{tr('seller.pending.title')}</Text>
+                    <Text style={styles.applySub}>{tr('seller.pending.desc')}</Text>
+                  </View>
+                </View>
+              </Section>
+            ) : latestApp?.status === 'rejected' ? (
+              <Section>
+                <Pressable style={styles.rejectedCta} onPress={() => router.push('/seller-application')}>
+                  <View style={styles.rejectedIcon}>
+                    <XCircle size={24} color={colors.brand.primary} strokeWidth={2.4} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.rejectedTitle}>{tr('seller.rejected.title')}</Text>
+                    {latestApp.rejectionReason ? (
+                      <Text style={styles.applySub} numberOfLines={2}>
+                        {tr('seller.rejected.reason', { reason: latestApp.rejectionReason })}
+                      </Text>
+                    ) : null}
+                    <Text style={styles.retryText}>{tr('profile.reapply')}</Text>
+                  </View>
+                </Pressable>
+              </Section>
+            ) : (
+              <Section>
+                <Row
+                  icon={Store}
+                  title={tr('profile.openShopShort')}
+                  onPress={() => requireAuth(() => router.push('/seller-application'))}
+                />
+              </Section>
+            )}
 
             {staffShops.length > 0 ? (
               <Section>
@@ -292,15 +295,6 @@ export default function ProfileTab() {
               <Row icon={CreditCard} title={tr('cards.title')} onPress={() => router.push('/saved-cards')} />
               <Row icon={ClipboardList} title={tr('profile.orders')} onPress={() => router.push('/orders')} />
               <Row icon={Heart} title={tr('nav.favorites')} onPress={() => router.push('/favorites')} />
-              {me?.isSellerApproved ? (
-                <Row icon={Plus} title={tr('profile.openShopShort')} onPress={() => router.push('/seller/new')} />
-              ) : latestApp?.status !== 'pending' && latestApp?.status !== 'rejected' ? (
-                <Row
-                  icon={Store}
-                  title={tr('profile.openShopShort')}
-                  onPress={() => requireAuth(() => router.push('/seller-application'))}
-                />
-              ) : null}
               <Row icon={QrCode} title={tr('profile.joinAsStaff')} onPress={() => router.push('/staff-scan')} />
             </Section>
           </>
@@ -324,24 +318,26 @@ export default function ProfileTab() {
         </Section>
 
         {!isGuest && (
-          <Pressable
-            style={styles.logoutBtn}
-            onPress={() => {
-              haptics.warning();
-              Alert.alert(tr('auth.signOut'), tr('auth.signOutConfirm'), [
-                { text: tr('common.cancel'), style: 'cancel' },
-                {
-                  text: tr('auth.signOut'),
-                  style: 'destructive',
-                  onPress: () => {
-                    haptics.heavy();
-                    signOut();
+          <View style={styles.authActionsWrap}>
+            <Pressable
+              style={styles.logoutBtn}
+              onPress={() => {
+                haptics.warning();
+                Alert.alert(tr('auth.signOut'), tr('auth.signOutConfirm'), [
+                  { text: tr('common.cancel'), style: 'cancel' },
+                  {
+                    text: tr('auth.signOut'),
+                    style: 'destructive',
+                    onPress: () => {
+                      haptics.heavy();
+                      signOut();
+                    },
                   },
-                },
-              ]);
-            }}>
-            <Text style={styles.logoutText}>{tr('auth.signOut')}</Text>
-          </Pressable>
+                ]);
+              }}>
+              <Text style={styles.logoutText}>{tr('auth.signOut')}</Text>
+            </Pressable>
+          </View>
         )}
       </ScrollView>
 
@@ -410,7 +406,11 @@ function Row({ icon: Icon, title, subtitle, titleColor, value, badge, onPress }:
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg.canvas },
-  scroll: { padding: layout.screenPadding, paddingBottom: spacing['4xl'], gap: spacing.lg },
+  scroll: {
+    padding: layout.screenPadding,
+    paddingBottom: 130,
+    gap: spacing.lg,
+  },
   headerBanner: {
     backgroundColor: colors.brand.primary,
     borderRadius: radius['2xl'],
@@ -546,17 +546,17 @@ const styles = StyleSheet.create({
   retryText: { ...typography.bodySmall, color: colors.brand.primary, fontWeight: '800', marginTop: spacing.xs },
   dim: { ...typography.bodySmall, padding: spacing.lg, color: colors.text.secondary },
   authActionsWrap: {
-    gap: spacing.md,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xl,
   },
   logoutBtn: {
     height: layout.buttonHeight.lg,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     backgroundColor: colors.brand.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoutText: { ...typography.button, color: colors.text.onPrimary },
+  logoutText: { ...typography.button, color: colors.text.onPrimary, fontWeight: '700' },
   deleteAccountBtn: {
     flexDirection: 'row',
     alignItems: 'center',
