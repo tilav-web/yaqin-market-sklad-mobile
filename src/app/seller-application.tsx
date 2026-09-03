@@ -383,7 +383,7 @@ export default function SellerApplicationScreen() {
                     <Building2 size={24} color={colors.brand.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.heroTitle}>"TILAV" MChJ Bilan Hamkorlik</Text>
+                    <Text style={styles.heroTitle}>{platformName} Bilan Hamkorlik</Text>
                     <Text style={styles.heroDesc}>
                       Yaqin Market platformasida o'z do'koningizni ochish va tovarlaringizni sotish uchun arizani to'ldiring.
                     </Text>
@@ -527,7 +527,7 @@ export default function SellerApplicationScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.infoBannerTitle}>my3.soliq.uz biriktiruvi shart</Text>
                   <Text style={styles.infoBannerDesc}>
-                    O'zbekiston Respublikasi Soliq kodeksiga binoan, marketpleys orqali savdo qilish uchun soliq shaxsiy kabinetingizda "TILAV" MChJ ni komissioner sifatida qo'shishingiz lozim.
+                    O'zbekiston Respublikasi Soliq kodeksiga binoan, marketpleys orqali savdo qilish uchun soliq shaxsiy kabinetingizda {platformName} ni komissioner sifatida qo'shishingiz lozim.
                   </Text>
                 </View>
               </View>
@@ -593,9 +593,9 @@ export default function SellerApplicationScreen() {
                     <Text style={styles.guideNumText}>3</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.guideItemTitle}>TILAV MChJ ni biriktiring</Text>
+                    <Text style={styles.guideItemTitle}>Operatorni biriktiring</Text>
                     <Text style={styles.guideItemDesc}>
-                      "Komissioner qo'shish" tugmasini bosib, {platformStir} STIRni kiriting va saqlang.
+                      "Komissioner qo'shish" tugmasini bosib, {platformName} ({platformStir}) STIRni kiriting va saqlang.
                     </Text>
                   </View>
                 </View>
@@ -699,7 +699,7 @@ export default function SellerApplicationScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.ofertaMainText, { fontWeight: '700' }]}>
-                      Men "TILAV" MChJ ni soliq kabinetimda komissioner sifatida biriktirganimni tasdiqlayman.
+                      Men {platformName} ni soliq kabinetimda komissioner sifatida biriktirganimni tasdiqlayman.
                     </Text>
                   </View>
                 </Pressable>
@@ -806,7 +806,7 @@ export default function SellerApplicationScreen() {
                       style={styles.textInput}
                       value={bankAccountHolderName}
                       onChangeText={setBankAccountHolderName}
-                      placeholder='Masalan: "TILAV" MCHJ'
+                      placeholder={companyName || 'Korxona yoki YaTT nomi'}
                       placeholderTextColor={colors.text.hint}
                     />
                   </View>
@@ -946,7 +946,9 @@ export default function SellerApplicationScreen() {
             >
               <View style={styles.pdfPagesContainer}>
                 <ExpoImage
-                  source={{ uri: 'https://api.yaqin-market.uz/api/uploads/legal/oferta_page-1.png?v=20260904_2' }}
+                  source={{
+                    uri: resolvePdfUrl('/api/uploads/legal/oferta_page-1.png?v=20260904_2'),
+                  }}
                   style={styles.pdfPageImage}
                   contentFit="contain"
                   priority="high"
@@ -956,7 +958,9 @@ export default function SellerApplicationScreen() {
                 </View>
 
                 <ExpoImage
-                  source={{ uri: 'https://api.yaqin-market.uz/api/uploads/legal/oferta_page-2.png?v=20260904_2' }}
+                  source={{
+                    uri: resolvePdfUrl('/api/uploads/legal/oferta_page-2.png?v=20260904_2'),
+                  }}
                   style={[styles.pdfPageImage, { marginTop: 14 }]}
                   contentFit="contain"
                   priority="high"

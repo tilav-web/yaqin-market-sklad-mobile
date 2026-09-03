@@ -294,7 +294,7 @@ export default function NewShopScreen() {
                     style={styles.iconInput}
                     value={newAccountHolderName}
                     onChangeText={setNewAccountHolderName}
-                    placeholder='Masalan: "TILAV" MCHJ'
+                    placeholder="Masalan: ООО BIZNES yoki YaTT"
                     placeholderTextColor={colors.text.hint}
                   />
                 </View>
