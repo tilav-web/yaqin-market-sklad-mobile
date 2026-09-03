@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
+import { useIsGuest } from '@/lib/useRequireAuth';
 import { ORDER_STATUS_KEY, Order, OrderStatus } from '@/lib/types';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -33,12 +34,14 @@ function paymentInfo(
 
 export default function OrdersScreen() {
   const { tr } = useTranslation();
+  const isGuest = useIsGuest();
   const ordersQuery = useQuery({
     queryKey: ['orders', 'mine'],
     queryFn: async () => {
       const res = await api.get<Order[]>('/orders/mine');
       return res.data;
     },
+    enabled: !isGuest,
     refetchInterval: 30_000,
   });
 
@@ -64,7 +67,15 @@ export default function OrdersScreen() {
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          ordersQuery.isLoading ? (
+          isGuest ? (
+            <EmptyState
+              icon={Package}
+              title={tr('profile.guest.title')}
+              description={tr('auth.requireMessage')}
+              actionLabel={tr('auth.loginAction')}
+              onAction={() => router.push('/(auth)/phone')}
+            />
+          ) : ordersQuery.isLoading ? (
             <ActivityIndicator color={colors.brand.primary} style={{ marginTop: spacing['4xl'] }} />
           ) : ordersQuery.isError ? (
             <EmptyState
@@ -102,7 +113,7 @@ export default function OrdersScreen() {
             </View>
             <View style={styles.cardFooter}>
               <View>
-                <Text style={styles.itemCount}>{item.items.length} ta mahsulot</Text>
+                <Text style={styles.itemCount}>{(item.items ?? []).length} ta mahsulot</Text>
                 <Text style={styles.total}>{item.total.toLocaleString()} so‘m</Text>
               </View>
               <View style={styles.dateCol}>

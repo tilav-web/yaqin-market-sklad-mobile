@@ -36,6 +36,7 @@ import { useEffectiveCoords } from '@/stores/location';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { detectCardBrand } from '@/utils/cardBrand';
 import { haptics } from '@/utils/haptics';
+import { getLocalizedText } from '@/utils/text';
 
 const FLOW: OrderStatus[] = ['new', 'accepted', 'preparing', 'delivering', 'delivered'];
 
@@ -366,7 +367,7 @@ export default function OrderDetailScreen() {
         variantId: it.productVariantId,
         shopId,
         shopName,
-        productName: it.productName,
+        productName: getLocalizedText(it.productName),
         unitPrice: live ? live.discountPrice ?? live.price : it.unitPrice,
         quantity: it.quantity,
         photoUrl: live?.photos[0] ?? it.productVariant?.globalProduct?.photos?.[0],
@@ -462,7 +463,7 @@ export default function OrderDetailScreen() {
               if (offers.length === 0) return null;
               return (
                 <View key={it.id} style={styles.altGroup}>
-                  <Text style={styles.altGroupTitle}>{it.productName}</Text>
+                  <Text style={styles.altGroupTitle}>{getLocalizedText(it.productName)}</Text>
                   {offers.map((o) => (
                     <Pressable
                       key={o.variantId}
@@ -551,7 +552,7 @@ export default function OrderDetailScreen() {
                   <View style={styles.itemImage} />
                 )}
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.itemName}>{it.productName}</Text>
+                  <Text style={styles.itemName}>{getLocalizedText(it.productName)}</Text>
                   <Text style={styles.itemQty}>
                     {it.quantity} × {it.unitPrice.toLocaleString()} {tr('common.som')}
                   </Text>
@@ -657,7 +658,7 @@ export default function OrderDetailScreen() {
             <Text style={styles.sectionTitle}>{tr('orderDet.rateProducts')}</Text>
             {unreviewed.map((it) => (
               <View key={it.id} style={styles.rateRow}>
-                <Text style={styles.rateName}>{it.productName}</Text>
+                <Text style={styles.rateName}>{getLocalizedText(it.productName)}</Text>
                 <StarPicker
                   value={ratingDraft[it.productVariantId] ?? 0}
                   onChange={(v) => {
