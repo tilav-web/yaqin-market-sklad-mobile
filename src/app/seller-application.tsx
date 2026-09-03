@@ -189,7 +189,7 @@ export default function SellerApplicationScreen() {
     }
   };
 
-  const handleVerifySoliq = async () => {
+  const handleVerifyAndProceedToStep3 = async () => {
     if (!cleanStir || cleanStir.length !== 9) {
       Alert.alert('Xatolik', 'Avval STIR raqamini kiriting');
       return;
@@ -209,6 +209,8 @@ export default function SellerApplicationScreen() {
         try {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch {}
+        // Successfully verified commissioner! Proceed directly to Step 3!
+        setStep(3);
       } else {
         setSoliqConfirmed(false);
         try {
@@ -217,12 +219,11 @@ export default function SellerApplicationScreen() {
       }
     } catch (e) {
       setSoliqConfirmed(false);
-      const errMsg = extractErrorMessage(e) || 'Soliq bazasidan ma\'lumot olib bo\'lmadi';
+      const errMsg = extractErrorMessage(e) || "Soliq bazasidan tekshirib bo'lmadi";
       setSoliqVerifyResult({
         isAttached: false,
         message: errMsg,
       });
-      Alert.alert('Soliq tekshiruv xatoligi', errMsg);
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       } catch {}
@@ -521,18 +522,18 @@ export default function SellerApplicationScreen() {
           {/* ===================== STEP 2: SOLIQ BIRIKTIRUVI ===================== */}
           {step === 2 && (
             <View style={styles.stepWrapper}>
-              {/* Notice Banner */}
-              <View style={styles.infoBanner}>
-                <ShieldAlert size={22} color={colors.brand.primary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.infoBannerTitle}>my3.soliq.uz biriktiruvi shart</Text>
-                  <Text style={styles.infoBannerDesc}>
-                    O'zbekiston Respublikasi Soliq kodeksiga binoan, marketpleys orqali savdo qilish uchun soliq shaxsiy kabinetingizda {platformName} ni komissioner sifatida qo'shishingiz lozim.
-                  </Text>
+              {/* Clean Concise Header */}
+              <View style={styles.cleanStepHeader}>
+                <View style={styles.cleanStepIconBox}>
+                  <ShieldCheck size={28} color={colors.brand.primary} />
                 </View>
+                <Text style={styles.cleanStepTitle}>Soliq kabinetida biriktirish</Text>
+                <Text style={styles.cleanStepSubtitle}>
+                  my3.soliq.uz portaliga kiring va platformani o'zingizga rasmiy komissioner (vositachi) sifatida qo'shing.
+                </Text>
               </View>
 
-              {/* High-Impact Copy STIR Card */}
+              {/* High-Impact Operator STIR Card */}
               <View style={styles.platformStirCard}>
                 <View style={styles.platformStirHeader}>
                   <Sparkles size={16} color="#FDECEA" />
@@ -560,150 +561,45 @@ export default function SellerApplicationScreen() {
                 </Pressable>
               </View>
 
-              {/* 3 Step Guide Cards */}
-              <View style={styles.guideCard}>
-                <Text style={styles.guideCardTitle}>Qanday biriktiriladi? (3 qadam)</Text>
+              {/* Direct Link to Soliq */}
+              <Pressable
+                onPress={() => Linking.openURL('https://my3.soliq.uz')}
+                style={styles.directSoliqLinkCard}
+              >
+                <View style={styles.directSoliqLinkLeft}>
+                  <Text style={styles.directSoliqLinkTitle}>my3.soliq.uz saytini ochish</Text>
+                  <Text style={styles.directSoliqLinkDesc}>
+                    Xizmatlar ➔ Elektron tijorat ➔ Komissioner qo'shish
+                  </Text>
+                </View>
+                <ExternalLink size={20} color={colors.brand.primary} />
+              </Pressable>
 
-                <View style={styles.guideItem}>
-                  <View style={styles.guideNumBadge}>
-                    <Text style={styles.guideNumText}>1</Text>
-                  </View>
+              {/* Dynamic Status Notification */}
+              {soliqVerifyResult && !soliqVerifyResult.isAttached && (
+                <View style={styles.soliqFailedCard}>
+                  <AlertTriangle size={22} color="#DC2626" />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.guideItemTitle}>Soliq kabinetiga kiring</Text>
-                    <Text style={styles.guideItemDesc}>
-                      my3.soliq.uz saytiga yoki "Soliq" ilovasiga ERI kalitingiz bilan kiring.
+                    <Text style={styles.soliqFailedTitle}>Biriktiruv topilmadi</Text>
+                    <Text style={styles.soliqFailedDesc}>
+                      {soliqVerifyResult.message ||
+                        `my3.soliq.uz tizimida platforma (${platformStir}) komissioner sifatida topilmadi. Iltimos, Soliq kabinetingizga kirib komissioner qo'shing va qayta bosing.`}
                     </Text>
                   </View>
                 </View>
+              )}
 
-                <View style={styles.guideItem}>
-                  <View style={styles.guideNumBadge}>
-                    <Text style={styles.guideNumText}>2</Text>
-                  </View>
+              {soliqVerifyResult?.isAttached && (
+                <View style={styles.soliqSuccessCard}>
+                  <CheckCircle2 size={22} color="#16A34A" />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.guideItemTitle}>Komissionerlar bo'limini oching</Text>
-                    <Text style={styles.guideItemDesc}>
-                      Xizmatlar ➔ Elektron tijorat ➔ "Komissionerlar ro'yxati" sahifasiga o'ting.
+                    <Text style={styles.soliqSuccessTitle}>Komissionerlik tasdiqlandi!</Text>
+                    <Text style={styles.soliqSuccessDesc}>
+                      {soliqVerifyResult.message}
                     </Text>
                   </View>
                 </View>
-
-                <View style={styles.guideItem}>
-                  <View style={styles.guideNumBadge}>
-                    <Text style={styles.guideNumText}>3</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.guideItemTitle}>Operatorni biriktiring</Text>
-                    <Text style={styles.guideItemDesc}>
-                      "Komissioner qo'shish" tugmasini bosib, {platformName} ({platformStir}) STIRni kiriting va saqlang.
-                    </Text>
-                  </View>
-                </View>
-
-                <Pressable
-                  onPress={() => Linking.openURL('https://my3.soliq.uz')}
-                  style={styles.openSoliqBtn}
-                >
-                  <Text style={styles.openSoliqText}>my3.soliq.uz saytini ochish</Text>
-                  <ExternalLink size={16} color={colors.brand.primary} />
-                </Pressable>
-              </View>
-
-              {/* Soliq Real-time Verification Box */}
-              <View style={styles.formCard}>
-                <View style={styles.cardHeaderRow}>
-                  <Text style={styles.inputLabel}>Soliq Biriktiruv Holati</Text>
-                  {soliqVerifyResult?.isAttached ? (
-                    <View style={styles.statusPill}>
-                      <Text style={styles.statusPillText}>Tasdiqlangan</Text>
-                    </View>
-                  ) : (
-                    <View style={[styles.statusPill, { backgroundColor: colors.palette.gray100 }]}>
-                      <Text style={[styles.statusPillText, { color: colors.text.secondary }]}>Kutilmoqda</Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Verification result card */}
-                {soliqVerifyResult && (
-                  <View
-                    style={[
-                      styles.soliqResultBox,
-                      soliqVerifyResult.isAttached
-                        ? styles.soliqResultSuccess
-                        : styles.soliqResultWarning,
-                    ]}
-                  >
-                    {soliqVerifyResult.isAttached ? (
-                      <CheckCircle2 size={20} color="#16A34A" />
-                    ) : (
-                      <AlertTriangle size={20} color="#D97706" />
-                    )}
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={[
-                          styles.soliqResultTitle,
-                          { color: soliqVerifyResult.isAttached ? '#15803D' : '#B45309' },
-                        ]}
-                      >
-                        {soliqVerifyResult.isAttached
-                          ? "Komissionerlik tasdiqlandi!"
-                          : "Soliq biriktiruvi topilmadi"}
-                      </Text>
-                      <Text style={styles.soliqResultDesc}>
-                        {soliqVerifyResult.message}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-
-                <Pressable
-                  onPress={handleVerifySoliq}
-                  disabled={isVerifyingSoliq}
-                  style={[
-                    styles.verifySoliqBtn,
-                    soliqVerifyResult?.isAttached && styles.verifySoliqBtnSuccess,
-                  ]}
-                >
-                  {isVerifyingSoliq ? (
-                    <>
-                      <ActivityIndicator size="small" color={colors.palette.white} />
-                      <Text style={styles.verifySoliqBtnText}>Soliq bazasi tekshirilmoqda...</Text>
-                    </>
-                  ) : soliqVerifyResult?.isAttached ? (
-                    <>
-                      <ShieldCheck size={18} color={colors.palette.white} />
-                      <Text style={styles.verifySoliqBtnText}>Qayta tekshirish (Tasdiqlangan)</Text>
-                    </>
-                  ) : (
-                    <>
-                      <Search size={18} color={colors.palette.white} />
-                      <Text style={styles.verifySoliqBtnText}>Soliqdan biriktirishni tekshirish</Text>
-                    </>
-                  )}
-                </Pressable>
-
-                <Pressable
-                  onPress={() => setSoliqConfirmed(!soliqConfirmed)}
-                  style={styles.ofertaRow}
-                >
-                  <View
-                    style={[
-                      styles.customCheckbox,
-                      soliqConfirmed && styles.customCheckboxActive,
-                    ]}
-                  >
-                    {soliqConfirmed && (
-                      <Check size={15} color={colors.palette.white} strokeWidth={3} />
-                    )}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.ofertaMainText, { fontWeight: '700' }]}>
-                      Men {platformName} ni soliq kabinetimda komissioner sifatida biriktirganimni tasdiqlayman.
-                    </Text>
-                  </View>
-                </Pressable>
-              </View>
+              )}
             </View>
           )}
 
@@ -884,29 +780,34 @@ export default function SellerApplicationScreen() {
         <Pressable
           onPress={() => {
             if (step === 1 && canGoToStep2) setStep(2);
-            else if (step === 2 && canGoToStep3) setStep(3);
+            else if (step === 2) handleVerifyAndProceedToStep3();
             else if (step === 3 && canSubmit) submitMutation.mutate();
           }}
           disabled={
             (step === 1 && !canGoToStep2) ||
-            (step === 2 && !canGoToStep3) ||
+            (step === 2 && isVerifyingSoliq) ||
             (step === 3 && (!canSubmit || submitMutation.isPending))
           }
           style={[
             styles.nextButton,
             ((step === 1 && !canGoToStep2) ||
-              (step === 2 && !canGoToStep3) ||
+              (step === 2 && isVerifyingSoliq) ||
               (step === 3 && (!canSubmit || submitMutation.isPending))) &&
               styles.nextButtonDisabled,
           ]}
         >
-          {submitMutation.isPending ? (
-            <ActivityIndicator size="small" color={colors.palette.white} />
+          {submitMutation.isPending || (step === 2 && isVerifyingSoliq) ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <ActivityIndicator size="small" color={colors.palette.white} />
+              <Text style={styles.nextBtnText}>
+                {step === 2 ? 'Soliqdan tekshirilmoqda...' : 'Yuborilmoqda...'}
+              </Text>
+            </View>
           ) : (
             <>
               <Text style={styles.nextBtnText}>
                 {step === 1 && 'Keyingi bosqich'}
-                {step === 2 && 'Davom etish'}
+                {step === 2 && 'Tekshirish va davom etish'}
                 {step === 3 && 'Arizani yuborish'}
               </Text>
               <ArrowRight size={18} color={colors.palette.white} strokeWidth={2.4} />
@@ -1363,109 +1264,103 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.palette.white,
   },
-  guideCard: {
+  cleanStepHeader: {
+    alignItems: 'center',
+    textAlign: 'center',
+    paddingVertical: spacing.md,
+    gap: 8,
+  },
+  cleanStepIconBox: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  cleanStepTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.text.primary,
+    textAlign: 'center',
+  },
+  cleanStepSubtitle: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: spacing.md,
+  },
+  directSoliqLinkCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: colors.palette.white,
     borderRadius: radius.xl,
     padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    gap: spacing.lg,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
     ...shadow.xs,
   },
-  guideCardTitle: {
+  directSoliqLinkLeft: {
+    flex: 1,
+    paddingRight: spacing.md,
+    gap: 4,
+  },
+  directSoliqLinkTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: colors.text.primary,
+    color: colors.brand.primary,
   },
-  guideItem: {
+  directSoliqLinkDesc: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    lineHeight: 16,
+  },
+  soliqFailedCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.md,
-  },
-  guideNumBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  guideNumText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.brand.primary,
-  },
-  guideItemTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text.primary,
-    marginBottom: 2,
-  },
-  guideItemDesc: {
-    fontSize: 12,
-    color: colors.text.secondary,
-    lineHeight: 17,
-  },
-  openSoliqBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: radius.lg,
-    backgroundColor: colors.palette.gray50,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  openSoliqText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.brand.primary,
-  },
-  soliqResultBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-  },
-  soliqResultSuccess: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
-  },
-  soliqResultWarning: {
-    backgroundColor: '#FFFBEB',
-    borderColor: '#FDE68A',
-  },
-  soliqResultTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    marginBottom: 2,
-  },
-  soliqResultDesc: {
-    fontSize: 12,
-    color: colors.text.secondary,
-    lineHeight: 17,
-  },
-  verifySoliqBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.brand.primary,
-    paddingVertical: 13,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1.5,
+    borderColor: '#FCA5A5',
     borderRadius: radius.xl,
+    padding: spacing.lg,
     ...shadow.xs,
   },
-  verifySoliqBtnSuccess: {
-    backgroundColor: '#16A34A',
-  },
-  verifySoliqBtnText: {
+  soliqFailedTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: colors.palette.white,
+    color: '#DC2626',
+    marginBottom: 4,
+  },
+  soliqFailedDesc: {
+    fontSize: 13,
+    color: '#991B1B',
+    lineHeight: 18,
+  },
+  soliqSuccessCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1.5,
+    borderColor: '#86EFAC',
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    ...shadow.xs,
+  },
+  soliqSuccessTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#16A34A',
+    marginBottom: 4,
+  },
+  soliqSuccessDesc: {
+    fontSize: 13,
+    color: '#166534',
+    lineHeight: 18,
   },
   bankCardMockup: {
     backgroundColor: '#1C1917',
