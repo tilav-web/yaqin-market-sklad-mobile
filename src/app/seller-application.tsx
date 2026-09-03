@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { router, Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+import { Image as ExpoImage } from 'expo-image';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -71,6 +72,7 @@ export default function SellerApplicationScreen() {
   const [legalAddress, setLegalAddress] = useState('');
   const [ofertaAccepted, setOfertaAccepted] = useState(false);
   const [showOfertaModal, setShowOfertaModal] = useState(false);
+  const [ofertaTab, setOfertaTab] = useState<'pdf' | 'text'>('pdf');
 
   // Step 2: Soliq biriktiruvi
   const [soliqConfirmed, setSoliqConfirmed] = useState(false);
@@ -127,24 +129,25 @@ export default function SellerApplicationScreen() {
     return `${domain}${cleanPath}`;
   };
 
-  const handleOpenOferta = async () => {
-    const pdfUrl = platformConfig?.ofertaPdfUrl;
-    if (pdfUrl) {
-      const fullPdfUrl = resolvePdfUrl(pdfUrl);
-      try {
-        await WebBrowser.openBrowserAsync(fullPdfUrl, {
-          presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
-          toolbarColor: colors.brand.primary,
-          controlsColor: '#ffffff',
-          dismissButtonStyle: 'close',
-          showTitle: true,
-        });
-        return;
-      } catch {
-        // Fallback to in-app text modal
-      }
-    }
+  const handleOpenOferta = (mode: 'pdf' | 'text' = 'pdf') => {
+    setOfertaTab(mode);
     setShowOfertaModal(true);
+  };
+
+  const handleOpenExternalPdf = async () => {
+    const pdfUrl = platformConfig?.ofertaPdfUrl || '/api/uploads/legal/oferta.pdf';
+    const fullPdfUrl = resolvePdfUrl(pdfUrl);
+    try {
+      await WebBrowser.openBrowserAsync(fullPdfUrl, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+        toolbarColor: colors.brand.primary,
+        controlsColor: '#ffffff',
+        dismissButtonStyle: 'close',
+        showTitle: true,
+      });
+    } catch {
+      // ignore
+    }
   };
 
   // Auto trigger STIR check when 9 digits entered
@@ -506,7 +509,7 @@ export default function SellerApplicationScreen() {
                     <Text style={styles.ofertaMainText}>
                       Men {platformName}ning ommaviy hamkorlik ofertasi va {commissionRate}% vositachilik shartlariga roziman.
                     </Text>
-                    <Pressable onPress={handleOpenOferta} hitSlop={6}>
+                    <Pressable onPress={() => handleOpenOferta('pdf')} hitSlop={6}>
                       <Text style={styles.ofertaLinkText}>
                         {platformConfig?.ofertaPdfUrl ? 'Rasmiy PDF shartnomani ilovada o\'qish ↗' : 'Shartnoma matnini to\'liq o\'qish ↗'}
                       </Text>
@@ -928,29 +931,72 @@ export default function SellerApplicationScreen() {
               </Pressable>
             </View>
 
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              {!!platformConfig?.ofertaPdfUrl && (
-                <Pressable
-                  onPress={async () => {
-                    const fullPdfUrl = resolvePdfUrl(platformConfig.ofertaPdfUrl!);
-                    await WebBrowser.openBrowserAsync(fullPdfUrl, {
-                      presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
-                      toolbarColor: colors.brand.primary,
-                      controlsColor: '#ffffff',
-                      dismissButtonStyle: 'close',
-                    });
-                  }}
-                  style={styles.pdfQuickBtn}
-                >
-                  <FileText size={16} color={colors.brand.primary} />
-                  <Text style={styles.pdfQuickBtnText}>
-                    Rasmiy muhrlangan PDF nusxasini ilovada ko'rish ↗
-                  </Text>
-                </Pressable>
-              )}
+            {/* View Mode Tabs */}
+            <View style={styles.ofertaTabContainer}>
+              <Pressable
+                onPress={() => setOfertaTab('pdf')}
+                style={[styles.ofertaTabBtn, ofertaTab === 'pdf' && styles.ofertaTabBtnActive]}
+              >
+                <Text style={[styles.ofertaTabText, ofertaTab === 'pdf' && styles.ofertaTabTextActive]}>
+                  📄 Rasmiy Hujjat (PDF)
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setOfertaTab('text')}
+                style={[styles.ofertaTabBtn, ofertaTab === 'text' && styles.ofertaTabBtnActive]}
+              >
+                <Text style={[styles.ofertaTabText, ofertaTab === 'text' && styles.ofertaTabTextActive]}>
+                  📝 Matn Ko'rinishi
+                </Text>
+              </Pressable>
+            </View>
 
-              <Text style={styles.modalText}>
-                {`ELEKTRON TIJORAT VOSITACHILIK (KOMISSIYA) OMMAVIY OFERTASI
+            {ofertaTab === 'pdf' ? (
+              <ScrollView
+                style={styles.modalBody}
+                showsVerticalScrollIndicator={true}
+                contentContainerStyle={{ paddingBottom: 24 }}
+              >
+                <View style={styles.pdfPagesContainer}>
+                  <View style={styles.pdfTopBar}>
+                    <Text style={styles.pdfPageNotice}>
+                      O'zbekiston Respublikasi qonunlariga muvofiq rasmiy muhrlangan hujjat
+                    </Text>
+                    <Pressable onPress={handleOpenExternalPdf} style={styles.externalLinkBtn}>
+                      <ExternalLink size={13} color={colors.brand.primary} />
+                      <Text style={styles.externalLinkText}>Brauzerda</Text>
+                    </Pressable>
+                  </View>
+
+                  <ExpoImage
+                    source={{ uri: 'https://api.yaqin-market.uz/api/uploads/legal/oferta_page-1.png' }}
+                    style={styles.pdfPageImage}
+                    contentFit="contain"
+                    priority="high"
+                  />
+                  <View style={styles.pdfPageBadge}>
+                    <Text style={styles.pdfPageBadgeText}>1 / 2-sahifa</Text>
+                  </View>
+
+                  <ExpoImage
+                    source={{ uri: 'https://api.yaqin-market.uz/api/uploads/legal/oferta_page-2.png' }}
+                    style={[styles.pdfPageImage, { marginTop: 14 }]}
+                    contentFit="contain"
+                    priority="high"
+                  />
+                  <View style={styles.pdfPageBadge}>
+                    <Text style={styles.pdfPageBadgeText}>2 / 2-sahifa (Muhr va Rekvizitlar)</Text>
+                  </View>
+                </View>
+              </ScrollView>
+            ) : (
+              <ScrollView
+                style={styles.modalBody}
+                showsVerticalScrollIndicator={true}
+                contentContainerStyle={{ paddingBottom: 24 }}
+              >
+                <Text style={styles.modalText}>
+                  {`ELEKTRON TIJORAT VOSITACHILIK (KOMISSIYA) OMMAVIY OFERTASI
 
 Ushbu hujjat O‘zbekiston Respublikasi Fuqarolik kodeksining 367–370-moddalari hamda "Elektron tijorat to‘g‘risida"gi Qonuniga muvofiq rasmiy Ommaviy Oferta (shartnoma tuzish to‘g‘risidagi taklif) hisoblanadi.
 
@@ -998,8 +1044,9 @@ STIR: ${platformStir}
 Brend: Yaqin Market
 Aloqa: ${platformConfig?.supportPhone || '+998993256685'}
 Veb-sayt: yaqin-market.uz`}
-              </Text>
-            </ScrollView>
+                </Text>
+              </ScrollView>
+            )}
 
             <Pressable
               onPress={() => {
@@ -1695,14 +1742,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.palette.white,
     borderTopLeftRadius: radius['3xl'],
     borderTopRightRadius: radius['3xl'],
-    padding: spacing.xl,
-    maxHeight: '85%',
-    gap: spacing.lg,
+    padding: spacing.lg,
+    height: '92%',
+    gap: spacing.sm,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingBottom: spacing.xs,
   },
   modalHeaderTitleRow: {
     flexDirection: 'row',
@@ -1718,17 +1766,104 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.palette.gray50,
+    backgroundColor: colors.palette.gray100,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  ofertaTabContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.palette.gray100,
+    borderRadius: radius.lg,
+    padding: 3,
+    gap: 4,
+    marginBottom: spacing.xs,
+  },
+  ofertaTabBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: radius.md,
+  },
+  ofertaTabBtnActive: {
+    backgroundColor: colors.palette.white,
+    ...shadow.xs,
+  },
+  ofertaTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text.secondary,
+  },
+  ofertaTabTextActive: {
+    fontWeight: '800',
+    color: colors.brand.primary,
+  },
   modalBody: {
-    maxHeight: 350,
+    flex: 1,
   },
   modalText: {
     fontSize: 13,
     color: colors.text.secondary,
     lineHeight: 21,
+    paddingHorizontal: 4,
+  },
+  pdfPagesContainer: {
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  pdfTopBar: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: colors.palette.gray50,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    marginBottom: spacing.sm,
+    gap: 8,
+  },
+  pdfPageNotice: {
+    flex: 1,
+    fontSize: 11,
+    color: colors.text.secondary,
+    lineHeight: 15,
+  },
+  externalLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+  },
+  externalLinkText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.brand.primary,
+  },
+  pdfPageImage: {
+    width: '100%',
+    aspectRatio: 1654 / 2339,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+  pdfPageBadge: {
+    backgroundColor: colors.palette.gray100,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    alignSelf: 'center',
+    marginTop: 6,
+  },
+  pdfPageBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.text.secondary,
   },
   modalAcceptBtn: {
     flexDirection: 'row',
@@ -1738,28 +1873,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand.primary,
     paddingVertical: 14,
     borderRadius: radius.xl,
+    marginTop: spacing.xs,
   },
   modalAcceptText: {
     fontSize: 15,
     fontWeight: '800',
     color: colors.palette.white,
-  },
-  pdfQuickBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    borderRadius: radius.md,
-    paddingVertical: 10,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.md,
-  },
-  pdfQuickBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.brand.primary,
   },
 });
