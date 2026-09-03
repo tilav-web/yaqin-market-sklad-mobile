@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { router, Stack } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -98,6 +99,7 @@ export default function SellerApplicationScreen() {
         commissionRate: number;
         ofertaTitle: string;
         ofertaUrl: string;
+        ofertaPdfUrl?: string;
         supportPhone: string;
       }>('/sellers/platform-config');
       return res.data;
@@ -108,6 +110,29 @@ export default function SellerApplicationScreen() {
   const platformStir = platformConfig?.platformStir || '313296455';
   const platformName = platformConfig?.platformName || '"TILAV" MCHJ (Yaqin Market)';
   const commissionRate = platformConfig?.commissionRate ?? 12;
+
+  const handleOpenOferta = async () => {
+    if (platformConfig?.ofertaPdfUrl) {
+      const baseURL = (api.defaults.baseURL || 'https://api.yaqin-market.uz').replace(/\/+$/, '');
+      const fullPdfUrl = platformConfig.ofertaPdfUrl.startsWith('http')
+        ? platformConfig.ofertaPdfUrl
+        : `${baseURL}${platformConfig.ofertaPdfUrl.startsWith('/') ? '' : '/'}${platformConfig.ofertaPdfUrl}`;
+
+      try {
+        await WebBrowser.openBrowserAsync(fullPdfUrl, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+          toolbarColor: colors.brand.primary,
+          controlsColor: '#ffffff',
+          dismissButtonStyle: 'close',
+          showTitle: true,
+        });
+        return;
+      } catch {
+        // Fallback to in-app text modal
+      }
+    }
+    setShowOfertaModal(true);
+  };
 
   // Auto trigger STIR check when 9 digits entered
   const cleanStir = stir.replace(/\D/g, '').slice(0, 9);
@@ -468,9 +493,9 @@ export default function SellerApplicationScreen() {
                     <Text style={styles.ofertaMainText}>
                       Men {platformName}ning ommaviy hamkorlik ofertasi va {commissionRate}% vositachilik shartlariga roziman.
                     </Text>
-                    <Pressable onPress={() => setShowOfertaModal(true)} hitSlop={6}>
+                    <Pressable onPress={handleOpenOferta} hitSlop={6}>
                       <Text style={styles.ofertaLinkText}>
-                        Shartnoma matnini to'liq o'qish ↗
+                        {platformConfig?.ofertaPdfUrl ? 'Rasmiy PDF shartnomani ilovada o\'qish ↗' : 'Shartnoma matnini to\'liq o\'qish ↗'}
                       </Text>
                     </Pressable>
                   </View>
@@ -891,6 +916,29 @@ export default function SellerApplicationScreen() {
             </View>
 
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {!!platformConfig?.ofertaPdfUrl && (
+                <Pressable
+                  onPress={async () => {
+                    const baseURL = (api.defaults.baseURL || 'https://api.yaqin-market.uz').replace(/\/+$/, '');
+                    const fullPdfUrl = platformConfig.ofertaPdfUrl!.startsWith('http')
+                      ? platformConfig.ofertaPdfUrl!
+                      : `${baseURL}${platformConfig.ofertaPdfUrl!.startsWith('/') ? '' : '/'}${platformConfig.ofertaPdfUrl!}`;
+                    await WebBrowser.openBrowserAsync(fullPdfUrl, {
+                      presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+                      toolbarColor: colors.brand.primary,
+                      controlsColor: '#ffffff',
+                      dismissButtonStyle: 'close',
+                    });
+                  }}
+                  style={styles.pdfQuickBtn}
+                >
+                  <FileText size={16} color={colors.brand.primary} />
+                  <Text style={styles.pdfQuickBtnText}>
+                    Rasmiy muhrlangan PDF nusxasini ilovada ko'rish ↗
+                  </Text>
+                </Pressable>
+              )}
+
               <Text style={styles.modalText}>
                 {`ELEKTRON TIJORAT VOSITACHILIK (KOMISSIYA) OMMAVIY OFERTASI
 
@@ -1685,5 +1733,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     color: colors.palette.white,
+  },
+  pdfQuickBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: radius.md,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+  },
+  pdfQuickBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.brand.primary,
   },
 });
