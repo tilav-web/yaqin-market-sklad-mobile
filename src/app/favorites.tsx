@@ -18,6 +18,7 @@ import { api } from '@/lib/api';
 import { PublicProductVariant, PublicShop } from '@/lib/types';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
+import { getLocalizedText } from '@/utils/text';
 
 interface Favorites {
   shopIds: string[];
@@ -192,7 +193,7 @@ export default function FavoritesScreen() {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.shopName} numberOfLines={1}>
-                          {product.name}
+                          {getLocalizedText(product.name)}
                         </Text>
                         <Text style={styles.priceTag} numberOfLines={1}>
                           {product.discountPrice

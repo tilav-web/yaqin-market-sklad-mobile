@@ -31,6 +31,7 @@ import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
+import { getLocalizedText } from '@/utils/text';
 
 const UNIT_SHORT = (u: PublicProductVariant['unitType']): string =>
   u === 'piece'
@@ -125,6 +126,8 @@ export default function ProductDetailScreen() {
     );
   }
 
+  const productName = getLocalizedText(product.name);
+  const productDescription = getLocalizedText(product.description);
   const finalPrice = product.discountPrice ?? product.price;
   const hasDiscount =
     product.discountPrice != null && product.discountPrice < product.price;
@@ -136,7 +139,7 @@ export default function ProductDetailScreen() {
       variantId: product.id,
       shopId: product.shopId,
       shopName: product.shop?.name ?? '',
-      productName: product.name,
+      productName,
       unitPrice: finalPrice,
       quantity: 1,
       photoUrl: product.photos[0],
@@ -195,7 +198,7 @@ export default function ProductDetailScreen() {
         </View>
 
         <View style={styles.body}>
-          <Text style={styles.name}>{product.name}</Text>
+          <Text style={styles.name}>{productName}</Text>
 
           <View style={styles.priceRow}>
             {hasDiscount && (

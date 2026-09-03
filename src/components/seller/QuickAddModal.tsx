@@ -17,6 +17,7 @@ import { tr } from '@/i18n';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { GlobalProduct } from '@/lib/types';
 import { colors, radius, spacing, typography } from '@/theme';
+import { getLocalizedText } from '@/utils/text';
 
 const UNIT_KEYS = {
   piece: 'quickAdd.unitPiece',
@@ -96,7 +97,7 @@ export function QuickAddModal({ visible, shopId, globalProduct, onClose }: Props
             )}
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-                <Text style={styles.productName} numberOfLines={1}>{globalProduct.name}</Text>
+                <Text style={styles.productName} numberOfLines={1}>{getLocalizedText(globalProduct.name)}</Text>
                 {globalProduct.isVerified ? (
                   <BadgeCheck size={15} color={colors.feedback.success} strokeWidth={2} />
                 ) : null}

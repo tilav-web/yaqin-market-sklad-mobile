@@ -8,6 +8,8 @@ import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { colors, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
+import { getLocalizedText } from '@/utils/text';
+
 interface Props {
   readonly product: FeedProduct;
   readonly onPress: () => void;
@@ -28,6 +30,7 @@ export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props
   const updateQty = useCartStore((s) => s.updateQty);
   const inCart = lines.find((l) => l.variantId === product.id);
 
+  const productName = getLocalizedText(product.name);
   const finalPrice = product.discountPrice ?? product.price;
   const hasDiscount =
     product.discountPrice !== null &&
@@ -43,7 +46,7 @@ export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props
       variantId: product.id,
       shopId: product.shopId,
       shopName: product.shop.name,
-      productName: product.name,
+      productName,
       unitPrice: finalPrice,
       quantity: 1,
       photoUrl: product.photos[0],
@@ -79,7 +82,7 @@ export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props
 
       <View style={styles.body}>
         <Text style={styles.name} numberOfLines={2}>
-          {product.name}
+          {productName}
         </Text>
 
         {!hideShopChip && (
