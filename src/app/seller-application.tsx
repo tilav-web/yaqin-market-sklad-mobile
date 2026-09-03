@@ -72,7 +72,6 @@ export default function SellerApplicationScreen() {
   const [legalAddress, setLegalAddress] = useState('');
   const [ofertaAccepted, setOfertaAccepted] = useState(false);
   const [showOfertaModal, setShowOfertaModal] = useState(false);
-  const [ofertaTab, setOfertaTab] = useState<'pdf' | 'text'>('pdf');
 
   // Step 2: Soliq biriktiruvi
   const [soliqConfirmed, setSoliqConfirmed] = useState(false);
@@ -129,8 +128,7 @@ export default function SellerApplicationScreen() {
     return `${domain}${cleanPath}`;
   };
 
-  const handleOpenOferta = (mode: 'pdf' | 'text' = 'pdf') => {
-    setOfertaTab(mode);
+  const handleOpenOferta = () => {
     setShowOfertaModal(true);
   };
 
@@ -509,9 +507,9 @@ export default function SellerApplicationScreen() {
                     <Text style={styles.ofertaMainText}>
                       Men {platformName}ning ommaviy hamkorlik ofertasi va {commissionRate}% vositachilik shartlariga roziman.
                     </Text>
-                    <Pressable onPress={() => handleOpenOferta('pdf')} hitSlop={6}>
+                    <Pressable onPress={handleOpenOferta} hitSlop={6}>
                       <Text style={styles.ofertaLinkText}>
-                        {platformConfig?.ofertaPdfUrl ? 'Rasmiy PDF shartnomani ilovada o\'qish ↗' : 'Shartnoma matnini to\'liq o\'qish ↗'}
+                        Rasmiy PDF shartnomani ilovada o'qish ↗
                       </Text>
                     </Pressable>
                   </View>
@@ -931,122 +929,43 @@ export default function SellerApplicationScreen() {
               </Pressable>
             </View>
 
-            {/* View Mode Tabs */}
-            <View style={styles.ofertaTabContainer}>
-              <Pressable
-                onPress={() => setOfertaTab('pdf')}
-                style={[styles.ofertaTabBtn, ofertaTab === 'pdf' && styles.ofertaTabBtnActive]}
-              >
-                <Text style={[styles.ofertaTabText, ofertaTab === 'pdf' && styles.ofertaTabTextActive]}>
-                  📄 Rasmiy Hujjat (PDF)
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setOfertaTab('text')}
-                style={[styles.ofertaTabBtn, ofertaTab === 'text' && styles.ofertaTabBtnActive]}
-              >
-                <Text style={[styles.ofertaTabText, ofertaTab === 'text' && styles.ofertaTabTextActive]}>
-                  📝 Matn Ko'rinishi
-                </Text>
+            <View style={styles.pdfHeaderRow}>
+              <Text style={styles.pdfHeaderNotice}>
+                O'zbekiston Respublikasi qonunlariga muvofiq rasmiy ommaviy shartnoma
+              </Text>
+              <Pressable onPress={handleOpenExternalPdf} style={styles.externalLinkBtn}>
+                <ExternalLink size={13} color={colors.brand.primary} />
+                <Text style={styles.externalLinkText}>PDF fayl ↗</Text>
               </Pressable>
             </View>
 
-            {ofertaTab === 'pdf' ? (
-              <ScrollView
-                style={styles.modalBody}
-                showsVerticalScrollIndicator={true}
-                contentContainerStyle={{ paddingBottom: 24 }}
-              >
-                <View style={styles.pdfPagesContainer}>
-                  <View style={styles.pdfTopBar}>
-                    <Text style={styles.pdfPageNotice}>
-                      O'zbekiston Respublikasi qonunlariga muvofiq rasmiy muhrlangan hujjat
-                    </Text>
-                    <Pressable onPress={handleOpenExternalPdf} style={styles.externalLinkBtn}>
-                      <ExternalLink size={13} color={colors.brand.primary} />
-                      <Text style={styles.externalLinkText}>Brauzerda</Text>
-                    </Pressable>
-                  </View>
-
-                  <ExpoImage
-                    source={{ uri: 'https://api.yaqin-market.uz/api/uploads/legal/oferta_page-1.png' }}
-                    style={styles.pdfPageImage}
-                    contentFit="contain"
-                    priority="high"
-                  />
-                  <View style={styles.pdfPageBadge}>
-                    <Text style={styles.pdfPageBadgeText}>1 / 2-sahifa</Text>
-                  </View>
-
-                  <ExpoImage
-                    source={{ uri: 'https://api.yaqin-market.uz/api/uploads/legal/oferta_page-2.png' }}
-                    style={[styles.pdfPageImage, { marginTop: 14 }]}
-                    contentFit="contain"
-                    priority="high"
-                  />
-                  <View style={styles.pdfPageBadge}>
-                    <Text style={styles.pdfPageBadgeText}>2 / 2-sahifa (Muhr va Rekvizitlar)</Text>
-                  </View>
+            <ScrollView
+              style={styles.modalBody}
+              showsVerticalScrollIndicator={true}
+              contentContainerStyle={{ paddingBottom: 24 }}
+            >
+              <View style={styles.pdfPagesContainer}>
+                <ExpoImage
+                  source={{ uri: 'https://api.yaqin-market.uz/api/uploads/legal/oferta_page-1.png?v=20260904_2' }}
+                  style={styles.pdfPageImage}
+                  contentFit="contain"
+                  priority="high"
+                />
+                <View style={styles.pdfPageBadge}>
+                  <Text style={styles.pdfPageBadgeText}>1 / 2-sahifa</Text>
                 </View>
-              </ScrollView>
-            ) : (
-              <ScrollView
-                style={styles.modalBody}
-                showsVerticalScrollIndicator={true}
-                contentContainerStyle={{ paddingBottom: 24 }}
-              >
-                <Text style={styles.modalText}>
-                  {`ELEKTRON TIJORAT VOSITACHILIK (KOMISSIYA) OMMAVIY OFERTASI
 
-Ushbu hujjat O‘zbekiston Respublikasi Fuqarolik kodeksining 367–370-moddalari hamda "Elektron tijorat to‘g‘risida"gi Qonuniga muvofiq rasmiy Ommaviy Oferta (shartnoma tuzish to‘g‘risidagi taklif) hisoblanadi.
-
-1. UMUMIY QOIDALAR VA ATAMALAR
-1.1. "Operator" (Platforma) — "TILAV" MCHJ (STIR: ${platformStir}), Yaqin Market elektron platformasi egasi va boshqaruvchisi.
-1.2. "Hamkor" (Sotuvchi) — Yaqin Market platformasi orqali xaridorlarga tovar va mahsulotlarni sotish niyatida ushbu Ofertani to‘liq qabul qilgan (akseptlagan) yuridik shaxs, YaTT yoki o‘zini o‘zi band qilgan shaxs.
-1.3. "Aksept" — Hamkor tomonidan mobil ilovada yoki veb-saytda Oferta shartlariga rozilik bildirilishi va my.soliq.uz portalida Operatorni vositachi (komissioner) sifatida biriktirilishi. Akseptlangan paytdan boshlab shartnoma to‘liq yuridik kuchga ega deb hisoblanadi.
-
-2. SHARTNOMA PREDMETI
-2.1. Operator o‘zining axborot-texnologik tizimi, mobil ilovasi va kuryerlik tarmog‘i orqali Hamkorning tovarlarini xaridorlarga onlayn sotish, buyurtmalarni qabul qilish, to‘lovlarni vositachilik asosida qabul qilish va yetkazib berish bo‘yicha xizmatlarni ko‘rsatadi.
-2.2. Tovar xaridorga yetkazib berilgunga qadar uning egalik huquqi va to‘liq sifati uchun javobgarlik Hamkorda saqlanib qoladi.
-
-3. XIZMAT HAQI (KOMISSIYA) VA HISOB-KITOBLAR TARTIBI
-3.1. Operatorning vositachilik komissiyasi har bir muvaffaqiyatli yakunlangan buyurtmaning tovarlar umumiy qiymatidan ${commissionRate}% miqdorida belgilanadi.
-3.2. Do‘kon ochish va ro‘yxatdan o‘tish mutlaqo bepul (0 so‘m). Majburiy boshlang‘ich depozit talab etilmaydi.
-3.3. Savdo tushumlari Operator tomonidan 12% vositachilik komissiyasi ushlab qolingan holda, Hamkor ko‘rsatgan bank hisob raqamiga yoki milliy bank kartasiga (Uzcard/Humo) haftalik / doimiy rejimda o‘tkazib beriladi.
-
-4. BALANS VA QARZDORLIK INTIZOMI
-4.1. Hamkorning platformadagi Shaxsiy Balansi real vaqt rejimida yuritiladi.
-4.2. Xaridor naqd pulda to‘lagan buyurtmalar bo‘yicha Operatorning 12% komissiyasi Hamkorning balansiga qarz sifatida yoziladi.
-4.3. Agar Hamkorning balansi manfiy (qarz) holatga tushsa, qarzni 3 (uch) kalendar kuni ichida to‘ldirishi shart. Qarz o‘z vaqtida so‘ndirilmasa, tizim Hamkorning do‘kon faoliyatini avtomatik ravishda vaqtincha to‘xtatadi (deaktivatsiya qiladi).
-
-5. TOVAR SIFATI, NARXLAR VA BUYURTMALARNI TAYYORLASH
-5.1. Hamkor do‘kondagi amaldagi real narx va tovar qoldig‘i ilovadagi vitrina bilan 100% bir xil bo‘lishini ta'minlaydi.
-5.2. Sotuvga qo‘yiladigan barcha tovarlar qonuniy, standartlarga muvofiq, xavfsiz va yaroqlilik muddati buzilmagan bo‘lishi shart.
-5.3. Hamkor ilovadan buyurtma kelib tushganda uni belgilangan vaqtda sifatli qadoqlab, kuryerga topshirishga tayyor holga keltiradi. Tovar yo‘qligi sababli asossiz bekor qilingan buyurtmalar uchun do‘kon reytingi tushiriladi va takrorlanganda do‘kon faoliyati cheklanadi.
-
-6. MAHSULOTNI QAYTARISH VA MODDIY JAVOBGARLIK
-6.1. Xaridor tomonidan olingan mahsulot yaroqlilik muddati o‘tgan, sifatsiz, buzilgan yoki buyurtmaga nomuvofiq (adashib noto‘g‘ri) yuborilganligi aniqlansa — tovar summasi xaridorga to‘liq qaytariladi hamda yetkazib berish xarajati Hamkor hisobidan qoplanadi (balansidan ushlab qolinadi).
-6.2. O‘zbekiston Respublikasining "Iste'molchilar huquqlarini himoya qilish to‘g‘risida"gi Qonuniga muvofiq, sifati buzilmagan va yaroqli bo‘lgan oziq-ovqat tovarlari asossiz qaytarilmaydi.
-
-7. SOLIQ VA FISKAL MAJBURIYATLAR
-7.1. O‘zbekiston Respublikasi Soliq kodeksining 463-moddasiga muvofiq, Hamkor my3.soliq.uz davlat soliq portalida Operatorni ("TILAV" MCHJ, STIR: ${platformStir}) o‘ziga rasmiy vositachi (komissioner) sifatida biriktirishi shart.
-7.2. Operator o‘ziga tegishli 12% vositachilik daromadidan qonunchilikda belgilangan tartibda soliq to‘laydi. Hamkor o‘zining tovar aylanmasi bo‘yicha tanlagan soliq rejimiga muvofiq mustaqil hisobot beradi va soliq to‘laydi.
-7.3. Har bir sotilgan tovar bo‘yicha O‘zbekiston Respublikasi Davlat Soliq Qo‘mitasi talablariga mos keluvchi QR-kodli elektron fiskal chek yaratilishi ta'minlanadi.
-
-8. SHARTNOMANING AMAL QILISHI VA BEKOR QILINISHI
-8.1. Ushbu shartnoma Hamkor tomonidan Aksept qilingan kundan boshlab muddatsiz tuziladi.
-8.2. Hamkor istalgan vaqtda do‘kon faoliyatini to‘xtatish yoki shartnomani bekor qilish tashabbusi bilan chiqish huquqiga ega. Barcha faol buyurtmalar yakunlanib, tomonlar o‘rtasida o‘zaro hisob-kitoblar to‘liq amalga oshirilgach (1-3 ish kuni ichida), hisobdagi qoldiq mablag‘ Hamkorga to‘lab beriladi va do‘kon yopiladi.
-8.3. Hamkor tomonidan qonunbuzarlik, kontrafakt yoki qalloblik holatlari sodir etilganda, Operator shartnomani bir tomonlama darhol bekor qilish va qonuniy organlarga murojaat qilish huquqini o‘zida saqlab qoladi.
-
-9. REKVIZITLAR:
-Operator: "TILAV" MCHJ
-STIR: ${platformStir}
-Brend: Yaqin Market
-Aloqa: ${platformConfig?.supportPhone || '+998993256685'}
-Veb-sayt: yaqin-market.uz`}
-                </Text>
-              </ScrollView>
-            )}
+                <ExpoImage
+                  source={{ uri: 'https://api.yaqin-market.uz/api/uploads/legal/oferta_page-2.png?v=20260904_2' }}
+                  style={[styles.pdfPageImage, { marginTop: 14 }]}
+                  contentFit="contain"
+                  priority="high"
+                />
+                <View style={styles.pdfPageBadge}>
+                  <Text style={styles.pdfPageBadgeText}>2 / 2-sahifa (Tomonlar rekvizitlari va imzo)</Text>
+                </View>
+              </View>
+            </ScrollView>
 
             <Pressable
               onPress={() => {
@@ -1770,48 +1689,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ofertaTabContainer: {
-    flexDirection: 'row',
-    backgroundColor: colors.palette.gray100,
-    borderRadius: radius.lg,
-    padding: 3,
-    gap: 4,
-    marginBottom: spacing.xs,
-  },
-  ofertaTabBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: radius.md,
-  },
-  ofertaTabBtnActive: {
-    backgroundColor: colors.palette.white,
-    ...shadow.xs,
-  },
-  ofertaTabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.text.secondary,
-  },
-  ofertaTabTextActive: {
-    fontWeight: '800',
-    color: colors.brand.primary,
-  },
-  modalBody: {
-    flex: 1,
-  },
-  modalText: {
-    fontSize: 13,
-    color: colors.text.secondary,
-    lineHeight: 21,
-    paddingHorizontal: 4,
-  },
-  pdfPagesContainer: {
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-  },
-  pdfTopBar: {
-    width: '100%',
+  pdfHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -1821,14 +1699,21 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border.default,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
     gap: 8,
   },
-  pdfPageNotice: {
+  pdfHeaderNotice: {
     flex: 1,
     fontSize: 11,
     color: colors.text.secondary,
     lineHeight: 15,
+  },
+  modalBody: {
+    flex: 1,
+  },
+  pdfPagesContainer: {
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
   },
   externalLinkBtn: {
     flexDirection: 'row',
