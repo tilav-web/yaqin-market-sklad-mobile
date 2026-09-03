@@ -111,13 +111,26 @@ export default function SellerApplicationScreen() {
   const platformName = platformConfig?.platformName || '"TILAV" MCHJ (Yaqin Market)';
   const commissionRate = platformConfig?.commissionRate ?? 12;
 
-  const handleOpenOferta = async () => {
-    if (platformConfig?.ofertaPdfUrl) {
-      const baseURL = (api.defaults.baseURL || 'https://api.yaqin-market.uz').replace(/\/+$/, '');
-      const fullPdfUrl = platformConfig.ofertaPdfUrl.startsWith('http')
-        ? platformConfig.ofertaPdfUrl
-        : `${baseURL}${platformConfig.ofertaPdfUrl.startsWith('/') ? '' : '/'}${platformConfig.ofertaPdfUrl}`;
+  const resolvePdfUrl = (url?: string) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    let domain = 'https://api.yaqin-market.uz';
+    if (api.defaults.baseURL) {
+      try {
+        const parsed = new URL(api.defaults.baseURL);
+        domain = parsed.origin;
+      } catch {
+        domain = 'https://api.yaqin-market.uz';
+      }
+    }
+    const cleanPath = url.startsWith('/') ? url : `/${url}`;
+    return `${domain}${cleanPath}`;
+  };
 
+  const handleOpenOferta = async () => {
+    const pdfUrl = platformConfig?.ofertaPdfUrl;
+    if (pdfUrl) {
+      const fullPdfUrl = resolvePdfUrl(pdfUrl);
       try {
         await WebBrowser.openBrowserAsync(fullPdfUrl, {
           presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
@@ -919,10 +932,7 @@ export default function SellerApplicationScreen() {
               {!!platformConfig?.ofertaPdfUrl && (
                 <Pressable
                   onPress={async () => {
-                    const baseURL = (api.defaults.baseURL || 'https://api.yaqin-market.uz').replace(/\/+$/, '');
-                    const fullPdfUrl = platformConfig.ofertaPdfUrl!.startsWith('http')
-                      ? platformConfig.ofertaPdfUrl!
-                      : `${baseURL}${platformConfig.ofertaPdfUrl!.startsWith('/') ? '' : '/'}${platformConfig.ofertaPdfUrl!}`;
+                    const fullPdfUrl = resolvePdfUrl(platformConfig.ofertaPdfUrl!);
                     await WebBrowser.openBrowserAsync(fullPdfUrl, {
                       presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
                       toolbarColor: colors.brand.primary,
