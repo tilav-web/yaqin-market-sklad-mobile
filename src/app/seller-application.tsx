@@ -4,6 +4,7 @@ import { router, Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { Image as ExpoImage } from 'expo-image';
 import {
+  AlertCircle,
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
@@ -14,6 +15,7 @@ import {
   ExternalLink,
   FileText,
   Hash,
+  Info,
   Landmark,
   MapPin,
   Search,
@@ -26,7 +28,6 @@ import {
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -41,6 +42,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api, extractErrorMessage } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
 import { useAuthStore } from '@/stores/auth';
 import { colors, radius, shadow, spacing } from '@/theme';
 
@@ -59,6 +61,7 @@ export default function SellerApplicationScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
+  const toast = useToast();
 
   // Stepper State: 1 | 2 | 3
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -67,11 +70,13 @@ export default function SellerApplicationScreen() {
   const [stir, setStir] = useState('');
   const [isCheckingStir, setIsCheckingStir] = useState(false);
   const [stirData, setStirData] = useState<StirData | null>(null);
+  const [stirError, setStirError] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState('');
   const [legalName, setLegalName] = useState(user?.name || '');
   const [legalAddress, setLegalAddress] = useState('');
   const [ofertaAccepted, setOfertaAccepted] = useState(false);
   const [showOfertaModal, setShowOfertaModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Step 2: Soliq biriktiruvi
   const [soliqConfirmed, setSoliqConfirmed] = useState(false);
@@ -151,50 +156,72 @@ export default function SellerApplicationScreen() {
   // Auto trigger STIR check when 9 digits entered
   const cleanStir = stir.replace(/\D/g, '').slice(0, 9);
 
+  // Real-time STIR validatsiyasi (yozish jarayonida qizil ko'rsatish)
+  const validateStirRealtime = (val: string): string | null => {
+    if (!val || val.length === 0) return null;
+    const first = val[0];
+    if (!['2', '3', '4', '5', '6'].includes(first)) {
+      return "STIR 2, 3 (yuridik shaxs) yoki 4, 5, 6 (YaTT) bilan boshlanishi shart";
+    }
+    if (val.length === 9) {
+      if (
+        /^(\d)\1{8}$/.test(val) ||
+        val === '123456789' ||
+        val === '987654321' ||
+        val === '123123123' ||
+        val === '012345678' ||
+        val === '999999999' ||
+        val === '000000000'
+      ) {
+        return "Davlat soliq reyestrida bunday STIR mavjud emas";
+      }
+    }
+    return null;
+  };
+
+  const handleStirChange = (text: string) => {
+    const cleaned = text.replace(/\D/g, '').slice(0, 9);
+    setStir(cleaned);
+
+    const realtimeErr = validateStirRealtime(cleaned);
+    setStirError(realtimeErr);
+
+    if (stirData && cleaned !== stirData.stir) {
+      setStirData(null);
+    }
+
+    if (cleaned.length === 9 && !realtimeErr && (!stirData || stirData.stir !== cleaned)) {
+      handleCheckStir(cleaned);
+    }
+  };
+
   const handleCheckStir = async (targetStir?: string) => {
     const query = (targetStir || cleanStir).trim();
     if (query.length !== 9) {
-      Alert.alert('Xatolik', "STIR 9 ta raqamdan iborat bo'lishi kerak");
+      setStirError("STIR 9 ta raqamdan iborat bo'lishi kerak");
       return;
     }
 
-    const firstDigit = query[0];
-    if (!['2', '3', '4', '5', '6'].includes(firstDigit)) {
-      Alert.alert(
-        'STIR xato',
-        "O'zbekistonda tadbirkorlik STIRi 2, 3 (yuridik shaxs) yoki 4, 5, 6 (YaTT) bilan boshlanishi shart.",
-      );
+    const realtimeErr = validateStirRealtime(query);
+    if (realtimeErr) {
+      setStirError(realtimeErr);
       setStirData(null);
       return;
     }
 
-    if (
-      /^(\d)\1{8}$/.test(query) ||
-      query === '123456789' ||
-      query === '987654321' ||
-      query === '123123123' ||
-      query === '012345678' ||
-      query === '999999999' ||
-      query === '000000000'
-    ) {
-      Alert.alert(
-        'STIR topilmadi',
-        "Bunday STIR bo'yicha davlat reyestrida faol tadbirkorlik subyekti topilmadi.",
-      );
-      setStirData(null);
-      return;
-    }
-
+    setStirError(null);
     setIsCheckingStir(true);
     try {
       const res = await api.get<StirData>(`/sellers/lookup-stir/${query}`);
       setStirData(res.data);
+      setStirError(null);
       if (res.data.companyName) {
         setCompanyName(res.data.companyName);
         setBankAccountHolderName(res.data.companyName);
       }
       if (res.data.legalName) setLegalName(res.data.legalName);
       if (res.data.legalAddress) setLegalAddress(res.data.legalAddress);
+      toast.success("STIR davlat reyestridan tasdiqlandi");
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch {}
@@ -203,7 +230,8 @@ export default function SellerApplicationScreen() {
       const errMsg =
         extractErrorMessage(e) ||
         "Ushbu STIR bo'yicha davlat soliq reyestrida faol tadbirkorlik subyekti topilmadi";
-      Alert.alert('STIR topilmadi', errMsg);
+      setStirError(errMsg);
+      toast.error(errMsg);
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       } catch {}
@@ -214,7 +242,7 @@ export default function SellerApplicationScreen() {
 
   const handleVerifyAndProceedToStep3 = async () => {
     if (!cleanStir || cleanStir.length !== 9) {
-      Alert.alert('Xatolik', 'Avval STIR raqamini kiriting');
+      toast.warning('Avval STIR raqamini kiriting');
       return;
     }
 
@@ -229,6 +257,7 @@ export default function SellerApplicationScreen() {
       setSoliqVerifyResult(res.data);
       if (res.data.isAttached) {
         setSoliqConfirmed(true);
+        toast.success("Platforma komissioner sifatida tasdiqlandi!");
         try {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch {}
@@ -236,6 +265,7 @@ export default function SellerApplicationScreen() {
         setStep(3);
       } else {
         setSoliqConfirmed(false);
+        toast.warning(res.data.message || "Platforma hali komissioner qilib biriktirilmagan");
         try {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         } catch {}
@@ -247,22 +277,12 @@ export default function SellerApplicationScreen() {
         isAttached: false,
         message: errMsg,
       });
+      toast.error(errMsg);
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       } catch {}
     } finally {
       setIsVerifyingSoliq(false);
-    }
-  };
-
-  const handleStirChange = (text: string) => {
-    const cleaned = text.replace(/\D/g, '').slice(0, 9);
-    setStir(cleaned);
-    if (stirData && cleaned !== stirData.stir) {
-      setStirData(null);
-    }
-    if (cleaned.length === 9 && (!stirData || stirData.stir !== cleaned)) {
-      handleCheckStir(cleaned);
     }
   };
 
@@ -329,14 +349,10 @@ export default function SellerApplicationScreen() {
       queryClient.invalidateQueries({ queryKey: ['users', 'me'] });
       queryClient.invalidateQueries({ queryKey: ['seller-profile'] });
       queryClient.invalidateQueries({ queryKey: ['seller-bank-accounts'] });
-      Alert.alert(
-        "Arizangiz qabul qilindi! 🎉",
-        "Hamkorlik arizangiz va bank hisob raqamingiz tekshirish uchun yuborildi. Operator tasdiqlagach, ilovada bemalol yangi do'konlaringizni ochishingiz mumkin.",
-        [{ text: 'Tushunarli', onPress: () => router.replace('/(tabs)/profile') }],
-      );
+      setShowSuccessModal(true);
     },
     onError: (e) => {
-      Alert.alert('Xatolik', extractErrorMessage(e));
+      toast.error(extractErrorMessage(e));
     },
   });
 
@@ -427,15 +443,49 @@ export default function SellerApplicationScreen() {
               <View style={styles.formCard}>
                 <View style={styles.cardHeaderRow}>
                   <Text style={styles.inputLabel}>STIR / INN raqamingiz</Text>
-                  <View style={styles.charCounterBadge}>
-                    <Text style={styles.charCounterText}>{cleanStir.length} / 9</Text>
+                  <View
+                    style={[
+                      styles.charCounterBadge,
+                      !!stirError && styles.charCounterBadgeError,
+                      !!stirData && styles.charCounterBadgeSuccess,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.charCounterText,
+                        !!stirError && styles.charCounterTextError,
+                        !!stirData && styles.charCounterTextSuccess,
+                      ]}
+                    >
+                      {cleanStir.length} / 9
+                    </Text>
                   </View>
                 </View>
 
-                <View style={styles.fullStirInputBox}>
-                  <Search size={18} color={colors.text.hint} strokeWidth={2.2} />
+                {/* Real-time Dynamic Input Box (to'g'ri yozilmasa qizil, to'g'ri bo'lsa yashil) */}
+                <View
+                  style={[
+                    styles.fullStirInputBox,
+                    !!stirError && styles.fullStirInputBoxError,
+                    !!stirData && styles.fullStirInputBoxSuccess,
+                  ]}
+                >
+                  {isCheckingStir ? (
+                    <ActivityIndicator size="small" color={colors.brand.primary} />
+                  ) : stirData ? (
+                    <CheckCircle2 size={20} color="#16A34A" strokeWidth={2.4} />
+                  ) : stirError ? (
+                    <AlertTriangle size={20} color="#EF4444" strokeWidth={2.4} />
+                  ) : (
+                    <Search size={18} color={colors.text.hint} strokeWidth={2.2} />
+                  )}
+
                   <TextInput
-                    style={styles.fullStirInput}
+                    style={[
+                      styles.fullStirInput,
+                      !!stirError && styles.fullStirInputError,
+                      !!stirData && styles.fullStirInputSuccess,
+                    ]}
                     value={stir}
                     onChangeText={handleStirChange}
                     placeholder="305 123 456"
@@ -443,18 +493,41 @@ export default function SellerApplicationScreen() {
                     keyboardType="number-pad"
                     maxLength={9}
                   />
-                  {isCheckingStir && (
-                    <ActivityIndicator size="small" color={colors.brand.primary} />
-                  )}
+
                   {cleanStir.length === 9 && !isCheckingStir && !stirData && (
                     <Pressable
                       onPress={() => handleCheckStir()}
-                      style={styles.miniCheckBtn}
+                      style={[
+                        styles.miniCheckBtn,
+                        !!stirError && { backgroundColor: '#EF4444' },
+                      ]}
                     >
-                      <Text style={styles.miniCheckBtnText}>Tekshirish</Text>
+                      <Text style={styles.miniCheckBtnText}>
+                        {stirError ? 'Qayta tekshirish' : 'Tekshirish'}
+                      </Text>
                     </Pressable>
                   )}
                 </View>
+
+                {/* Real-time Error Row */}
+                {!!stirError && (
+                  <View style={styles.realtimeErrorRow}>
+                    <AlertCircle size={15} color="#DC2626" style={{ marginTop: 1 }} />
+                    <Text style={styles.realtimeErrorText}>{stirError}</Text>
+                  </View>
+                )}
+
+                {/* Real-time Typing Hint */}
+                {cleanStir.length > 0 && cleanStir.length < 9 && !stirError && (
+                  <View style={styles.realtimeHintRow}>
+                    <Info size={14} color={colors.text.hint} style={{ marginTop: 1 }} />
+                    <Text style={styles.realtimeHintText}>
+                      {cleanStir.startsWith('2') || cleanStir.startsWith('3')
+                        ? 'Yuridik shaxs (MChJ/XK) STIRi — 9 ta raqam'
+                        : 'YaTT (Yakka tartibdagi tadbirkor) STIRi — 9 ta raqam'}
+                    </Text>
+                  </View>
+                )}
 
                 {/* STIR Verified Result & Confirmed Official Details (Read-Only: qo'lda o'zgartirilmaydi) */}
                 {stirData && (
@@ -938,6 +1011,37 @@ export default function SellerApplicationScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ================= CUSTOM SUCCESS MODAL (OS Alert o'rniga) ================= */}
+      <Modal
+        visible={showSuccessModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => router.replace('/(tabs)/profile')}
+      >
+        <View style={styles.successModalBackdrop}>
+          <View style={styles.successModalCard}>
+            <View style={styles.successIconCircle}>
+              <CheckCircle2 size={42} color="#16A34A" strokeWidth={2.4} />
+            </View>
+
+            <Text style={styles.successModalTitle}>Arizangiz qabul qilindi! 🎉</Text>
+            <Text style={styles.successModalSubtitle}>
+              Hamkorlik arizangiz va bank hisob raqamingiz tekshirish uchun yuborildi. Operator tasdiqlagach, ilovada bemalol yangi do'konlaringizni ochishingiz mumkin.
+            </Text>
+
+            <Pressable
+              style={styles.successModalBtn}
+              onPress={() => {
+                setShowSuccessModal(false);
+                router.replace('/(tabs)/profile');
+              }}
+            >
+              <Text style={styles.successModalBtnText}>Tushunarli</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1122,6 +1226,14 @@ const styles = StyleSheet.create({
     borderColor: colors.border.default,
     paddingHorizontal: spacing.md,
   },
+  fullStirInputBoxError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  fullStirInputBoxSuccess: {
+    borderColor: '#16A34A',
+    backgroundColor: '#F0FDF4',
+  },
   fullStirInput: {
     flex: 1,
     paddingVertical: 14,
@@ -1129,6 +1241,57 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.text.primary,
     letterSpacing: 2,
+  },
+  fullStirInputError: {
+    color: '#B91C1C',
+  },
+  fullStirInputSuccess: {
+    color: '#15803D',
+  },
+  charCounterBadgeError: {
+    backgroundColor: '#FEE2E2',
+  },
+  charCounterBadgeSuccess: {
+    backgroundColor: '#DCFCE7',
+  },
+  charCounterTextError: {
+    color: '#DC2626',
+    fontWeight: '800',
+  },
+  charCounterTextSuccess: {
+    color: '#15803D',
+    fontWeight: '800',
+  },
+  realtimeErrorRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+    marginTop: 2,
+  },
+  realtimeErrorText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#B91C1C',
+    flex: 1,
+    lineHeight: 16,
+  },
+  realtimeHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 4,
+    marginTop: 2,
+  },
+  realtimeHintText: {
+    fontSize: 12,
+    color: colors.text.hint,
+    fontWeight: '500',
   },
   miniCheckBtn: {
     backgroundColor: colors.brand.primary,
@@ -1764,6 +1927,57 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   modalAcceptText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.palette.white,
+  },
+  successModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  successModalCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: colors.palette.white,
+    borderRadius: radius['2xl'],
+    padding: spacing.xl,
+    alignItems: 'center',
+    ...shadow.md,
+  },
+  successIconCircle: {
+    width: 76,
+    height: 76,
+    borderRadius: radius.full,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  successModalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.text.primary,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  successModalSubtitle: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: spacing.xl,
+  },
+  successModalBtn: {
+    width: '100%',
+    backgroundColor: colors.brand.primary,
+    paddingVertical: 14,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+  },
+  successModalBtnText: {
     fontSize: 15,
     fontWeight: '800',
     color: colors.palette.white,
