@@ -45,6 +45,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { api, extractErrorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { useAuthStore } from '@/stores/auth';
+import { useTranslation } from '@/i18n';
 import { colors, radius, shadow, spacing } from '@/theme';
 
 interface StirData {
@@ -63,6 +64,7 @@ export default function SellerApplicationScreen() {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const toast = useToast();
+  const { tr } = useTranslation();
 
   // Stepper State: 1 | 2 | 3
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -162,7 +164,7 @@ export default function SellerApplicationScreen() {
     if (!val || val.length === 0) return null;
     const first = val[0];
     if (!['2', '3', '4', '5', '6'].includes(first)) {
-      return "STIR 2, 3 (yuridik shaxs) yoki 4, 5, 6 (YaTT) bilan boshlanishi shart";
+      return tr('sellerApp.stirInvalidStart');
     }
     if (val.length === 9) {
       if (
@@ -174,7 +176,7 @@ export default function SellerApplicationScreen() {
         val === '999999999' ||
         val === '000000000'
       ) {
-        return "Davlat soliq reyestrida bunday STIR mavjud emas";
+        return tr('sellerApp.stirNotFound');
       }
     }
     return null;
@@ -199,7 +201,7 @@ export default function SellerApplicationScreen() {
   const handleCheckStir = async (targetStir?: string) => {
     const query = (targetStir || cleanStir).trim();
     if (query.length !== 9) {
-      setStirError("STIR 9 ta raqamdan iborat bo'lishi kerak");
+      setStirError(tr('sellerApp.stirLengthError'));
       return;
     }
 
@@ -222,7 +224,7 @@ export default function SellerApplicationScreen() {
       }
       if (res.data.legalName) setLegalName(res.data.legalName);
       if (res.data.legalAddress) setLegalAddress(res.data.legalAddress);
-      toast.success("STIR davlat reyestridan tasdiqlandi");
+      toast.success(tr('sellerApp.toastStirVerified'));
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch { }
@@ -230,7 +232,7 @@ export default function SellerApplicationScreen() {
       setStirData(null);
       const errMsg =
         extractErrorMessage(e) ||
-        "Ushbu STIR bo'yicha davlat soliq reyestrida faol tadbirkorlik subyekti topilmadi";
+        tr('sellerApp.stirNotFoundFallback');
       setStirError(errMsg);
       toast.error(errMsg);
       try {
@@ -243,7 +245,7 @@ export default function SellerApplicationScreen() {
 
   const handleVerifyAndProceedToStep3 = async () => {
     if (!cleanStir || cleanStir.length !== 9) {
-      toast.warning('Avval STIR raqamini kiriting');
+      toast.warning(tr('sellerApp.enterStirFirst'));
       return;
     }
 
@@ -258,7 +260,7 @@ export default function SellerApplicationScreen() {
       setSoliqVerifyResult(res.data);
       if (res.data.isAttached) {
         setSoliqConfirmed(true);
-        toast.success("Platforma komissioner sifatida tasdiqlandi!");
+        toast.success(tr('sellerApp.toastSoliqSuccess'));
         try {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch { }
@@ -266,14 +268,14 @@ export default function SellerApplicationScreen() {
         setStep(3);
       } else {
         setSoliqConfirmed(false);
-        toast.warning(res.data.message || "Platforma hali komissioner qilib biriktirilmagan");
+        toast.warning(res.data.message || tr('sellerApp.toastSoliqWarning'));
         try {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         } catch { }
       }
     } catch (e) {
       setSoliqConfirmed(false);
-      const errMsg = extractErrorMessage(e) || "Soliq bazasidan tekshirib bo'lmadi";
+      const errMsg = extractErrorMessage(e) || tr('sellerApp.soliqCheckError');
       setSoliqVerifyResult({
         isAttached: false,
         message: errMsg,
@@ -378,11 +380,11 @@ export default function SellerApplicationScreen() {
         </Pressable>
 
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Hamkorlik & Do'kon</Text>
+          <Text style={styles.headerTitle}>{tr('sellerApp.headerTitle')}</Text>
           <Text style={styles.headerSubtitle}>
-            {step === 1 && '1/3: Yuridik & STIR'}
-            {step === 2 && '2/3: my3.soliq.uz'}
-            {step === 3 && '3/3: Bank Hisob Raqami'}
+            {step === 1 && tr('sellerApp.step1Badge')}
+            {step === 2 && tr('sellerApp.step2Badge')}
+            {step === 3 && tr('sellerApp.step3Badge')}
           </Text>
         </View>
 
@@ -400,13 +402,13 @@ export default function SellerApplicationScreen() {
         </View>
         <View style={styles.progressLabels}>
           <Text style={[styles.progressLabel, step === 1 && styles.progressLabelActive]}>
-            STIR & Oferta
+            {tr('sellerApp.tab1')}
           </Text>
           <Text style={[styles.progressLabel, step === 2 && styles.progressLabelActive]}>
-            Soliq biriktiruvi
+            {tr('sellerApp.tab2')}
           </Text>
           <Text style={[styles.progressLabel, step === 3 && styles.progressLabelActive]}>
-            Bank Hisob Raqam
+            {tr('sellerApp.tab3')}
           </Text>
         </View>
       </View>
@@ -432,9 +434,11 @@ export default function SellerApplicationScreen() {
                     <Building2 size={24} color={colors.brand.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.heroTitle}>{platformName} Bilan Hamkorlik</Text>
+                    <Text style={styles.heroTitle}>
+                      {tr('sellerApp.introTitle', { name: platformName })}
+                    </Text>
                     <Text style={styles.heroDesc}>
-                      Yaqin Market platformasida o'z do'koningizni ochish va tovarlaringizni sotish uchun arizani to'ldiring.
+                      {tr('sellerApp.introDesc')}
                     </Text>
                   </View>
                 </View>
@@ -443,7 +447,7 @@ export default function SellerApplicationScreen() {
               {/* STIR Input Card */}
               <View style={styles.formCard}>
                 <View style={styles.cardHeaderRow}>
-                  <Text style={styles.inputLabel}>STIR / INN raqamingiz</Text>
+                  <Text style={styles.inputLabel}>{tr('sellerApp.stirLabel')}</Text>
                   <View
                     style={[
                       styles.charCounterBadge,
@@ -523,8 +527,8 @@ export default function SellerApplicationScreen() {
                     <Info size={14} color={colors.text.hint} style={{ marginTop: 1 }} />
                     <Text style={styles.realtimeHintText}>
                       {cleanStir.startsWith('2') || cleanStir.startsWith('3')
-                        ? 'Yuridik shaxs (MChJ/XK) STIRi — 9 ta raqam'
-                        : 'YaTT (Yakka tartibdagi tadbirkor) STIRi — 9 ta raqam'}
+                        ? tr('sellerApp.stirHintLegal')
+                        : tr('sellerApp.stirHintIndividual')}
                     </Text>
                   </View>
                 )}
@@ -535,14 +539,14 @@ export default function SellerApplicationScreen() {
                     <View style={styles.verifiedHeader}>
                       <ShieldCheck size={20} color="#16A34A" />
                       <View style={{ flex: 1, marginLeft: 8 }}>
-                        <Text style={styles.verifiedTitle}>STIR tasdiqlandi</Text>
+                        <Text style={styles.verifiedTitle}>{tr('sellerApp.stirVerified')}</Text>
                         <Text style={styles.verifiedSubtitle}>
-                          Davlat soliq reyestridan olindi
+                          {tr('sellerApp.stirVerifiedDesc')}
                         </Text>
                       </View>
                       <View style={styles.statusPill}>
                         <Text style={styles.statusPillText}>
-                          {stirData.entityType} • Faol
+                          {stirData.entityType} • {tr('sellerApp.active')}
                         </Text>
                       </View>
                     </View>
@@ -556,7 +560,7 @@ export default function SellerApplicationScreen() {
                           style={styles.readOnlyIcon}
                         />
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.readOnlyLabel}>Tashkilot / Korxona nomi</Text>
+                          <Text style={styles.readOnlyLabel}>{tr('sellerApp.companyNameLabel')}</Text>
                           <Text style={styles.readOnlyValueBold}>
                             {stirData.companyName}
                           </Text>
@@ -572,7 +576,7 @@ export default function SellerApplicationScreen() {
                             style={styles.readOnlyIcon}
                           />
                           <View style={{ flex: 1 }}>
-                            <Text style={styles.readOnlyLabel}>Rahbar / Tadbirkor</Text>
+                            <Text style={styles.readOnlyLabel}>{tr('sellerApp.directorLabel')}</Text>
                             <Text style={styles.readOnlyValue}>
                               {stirData.legalName}
                             </Text>
@@ -589,7 +593,7 @@ export default function SellerApplicationScreen() {
                             style={styles.readOnlyIcon}
                           />
                           <View style={{ flex: 1 }}>
-                            <Text style={styles.readOnlyLabel}>Yuridik manzil</Text>
+                            <Text style={styles.readOnlyLabel}>{tr('sellerApp.legalAddressLabel')}</Text>
                             <Text style={styles.readOnlyValue}>
                               {stirData.legalAddress || stirData.region}
                             </Text>
@@ -601,11 +605,11 @@ export default function SellerApplicationScreen() {
                       <View style={styles.taxStatusBadges}>
                         <View style={styles.greenBadge}>
                           <CheckCircle2 size={13} color="#15803D" />
-                          <Text style={styles.greenBadgeText}>Davlat reyestrida faol</Text>
+                          <Text style={styles.greenBadgeText}>{tr('sellerApp.activeStatus')}</Text>
                         </View>
                         <View style={styles.neutralBadge}>
                           <Text style={styles.neutralBadgeText}>
-                            {stirData.vatPayer ? 'QQS to\'lovchisi' : 'QQS to\'lovchisi emas'}
+                            {stirData.vatPayer ? tr('sellerApp.vatPayer') : tr('sellerApp.notVatPayer')}
                           </Text>
                         </View>
                       </View>
@@ -632,11 +636,11 @@ export default function SellerApplicationScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.ofertaMainText}>
-                      Men {platformName}ning ommaviy hamkorlik ofertasi va {commissionRate}% vositachilik shartlariga roziman.
+                      {tr('sellerApp.ofertaAgreement', { platformName, rate: commissionRate })}
                     </Text>
                     <Pressable onPress={handleOpenOferta} hitSlop={6}>
                       <Text style={styles.ofertaLinkText}>
-                        Rasmiy PDF shartnomani ilovada o'qish ↗
+                        {tr('sellerApp.readPdfContract')}
                       </Text>
                     </Pressable>
                   </View>
@@ -653,9 +657,9 @@ export default function SellerApplicationScreen() {
                 <View style={styles.cleanStepIconBox}>
                   <ShieldCheck size={28} color={colors.brand.primary} />
                 </View>
-                <Text style={styles.cleanStepTitle}>Soliq kabinetida biriktirish</Text>
+                <Text style={styles.cleanStepTitle}>{tr('sellerApp.soliqStepTitle')}</Text>
                 <Text style={styles.cleanStepSubtitle}>
-                  my3.soliq.uz portaliga kiring va platformani o'zingizga rasmiy komissioner (vositachi) sifatida qo'shing.
+                  {tr('sellerApp.soliqStepSubtitle')}
                 </Text>
               </View>
 
@@ -663,7 +667,7 @@ export default function SellerApplicationScreen() {
               <View style={styles.platformStirCard}>
                 <View style={styles.platformStirHeader}>
                   <Sparkles size={16} color="#FDECEA" />
-                  <Text style={styles.platformStirTag}>OPERATOR STIR RAQAMI</Text>
+                  <Text style={styles.platformStirTag}>{tr('sellerApp.operatorStirTag')}</Text>
                 </View>
 
                 <Text style={styles.platformStirNumber}>{platformStir}</Text>
@@ -676,15 +680,70 @@ export default function SellerApplicationScreen() {
                   {copiedStir ? (
                     <>
                       <CheckCircle2 size={18} color={colors.palette.white} />
-                      <Text style={styles.copyStirBtnText}>STIR nusxalandi!</Text>
+                      <Text style={styles.copyStirBtnText}>{tr('sellerApp.stirCopied')}</Text>
                     </>
                   ) : (
                     <>
                       <Copy size={18} color={colors.palette.white} />
-                      <Text style={styles.copyStirBtnText}>STIR raqamini nusxalash</Text>
+                      <Text style={styles.copyStirBtnText}>{tr('sellerApp.copyStir')}</Text>
                     </>
                   )}
                 </Pressable>
+              </View>
+
+              {/* Soliq Ilovasida / Portalida To'ldirish Bo'yicha Aniq Qo'llanma */}
+              <View style={styles.soliqGuideCard}>
+                <View style={styles.soliqGuideHeader}>
+                  <Info size={18} color={colors.brand.primary} />
+                  <Text style={styles.soliqGuideTitle}>
+                    {tr('sellerApp.guideTitle')}
+                  </Text>
+                </View>
+
+                <View style={styles.soliqGuideStep}>
+                  <View style={styles.guideStepNumber}>
+                    <Text style={styles.guideStepNumberText}>1</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.guideStepLabel}>{tr('sellerApp.guideStep1')}</Text>
+                    <Text style={styles.guideStepHighlight}>{platformStir}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.soliqGuideStep}>
+                  <View style={styles.guideStepNumber}>
+                    <Text style={styles.guideStepNumberText}>2</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.guideStepLabel}>{tr('sellerApp.guideStep2')}</Text>
+                    <View style={styles.guideChipsRow}>
+                      <View style={styles.guideChipInactive}>
+                        <Text style={styles.guideChipInactiveText}>ONKM</Text>
+                      </View>
+                      <View style={styles.guideChipActive}>
+                        <Check size={12} color="#FFFFFF" strokeWidth={3} />
+                        <Text style={styles.guideChipActiveText}>Marketpleys</Text>
+                      </View>
+                      <View style={styles.guideChipInactive}>
+                        <Text style={styles.guideChipInactiveText}>Taxi</Text>
+                      </View>
+                      <View style={styles.guideChipInactive}>
+                        <Text style={styles.guideChipInactiveText}>EHF</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.soliqGuideStep}>
+                  <View style={styles.guideStepNumber}>
+                    <Text style={styles.guideStepNumberText}>3</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.guideStepLabel}>
+                      {tr('sellerApp.guideStep3')}
+                    </Text>
+                  </View>
+                </View>
               </View>
 
               {/* Direct Link to Soliq */}
@@ -693,9 +752,9 @@ export default function SellerApplicationScreen() {
                 style={styles.directSoliqLinkCard}
               >
                 <View style={styles.directSoliqLinkLeft}>
-                  <Text style={styles.directSoliqLinkTitle}>my3.soliq.uz saytini ochish</Text>
+                  <Text style={styles.directSoliqLinkTitle}>{tr('sellerApp.openSoliqSite')}</Text>
                   <Text style={styles.directSoliqLinkDesc}>
-                    Xizmatlar ➔ Elektron tijorat ➔ Komissioner qo'shish
+                    {tr('sellerApp.openSoliqDesc')}
                   </Text>
                 </View>
                 <ExternalLink size={20} color={colors.brand.primary} />
@@ -706,10 +765,9 @@ export default function SellerApplicationScreen() {
                 <View style={styles.soliqFailedCard}>
                   <AlertTriangle size={22} color="#DC2626" />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.soliqFailedTitle}>Biriktiruv topilmadi</Text>
+                    <Text style={styles.soliqFailedTitle}>{tr('sellerApp.attachmentNotFound')}</Text>
                     <Text style={styles.soliqFailedDesc}>
-                      {soliqVerifyResult.message ||
-                        `my3.soliq.uz tizimida platforma (${platformStir}) komissioner sifatida topilmadi. Iltimos, Soliq kabinetingizga kirib komissioner qo'shing va qayta bosing.`}
+                      {soliqVerifyResult.message || tr('sellerApp.soliqNotFoundFallback', { stir: platformStir })}
                     </Text>
                   </View>
                 </View>
@@ -719,7 +777,7 @@ export default function SellerApplicationScreen() {
                 <View style={styles.soliqSuccessCard}>
                   <CheckCircle2 size={22} color="#16A34A" />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.soliqSuccessTitle}>Komissionerlik tasdiqlandi!</Text>
+                    <Text style={styles.soliqSuccessTitle}>{tr('sellerApp.attachmentConfirmed')}</Text>
                     <Text style={styles.soliqSuccessDesc}>
                       {soliqVerifyResult.message}
                     </Text>
@@ -740,7 +798,7 @@ export default function SellerApplicationScreen() {
                   </View>
                   <View style={styles.cardTypeBadge}>
                     <Text style={styles.cardTypeText}>
-                      {bankMfo ? `MFO: ${bankMfo}` : 'B2B BANK HISOB RAQAM'}
+                      {bankMfo ? `MFO: ${bankMfo}` : tr('sellerApp.bankCardTitle')}
                     </Text>
                   </View>
                 </View>
@@ -751,27 +809,27 @@ export default function SellerApplicationScreen() {
 
                 <View style={styles.bankCardBottom}>
                   <View style={{ flex: 1, marginRight: spacing.sm }}>
-                    <Text style={styles.bankCardHolderLabel}>HISOB EGASI (TASHKILOT)</Text>
+                    <Text style={styles.bankCardHolderLabel}>{tr('sellerApp.bankAccountHolder')}</Text>
                     <Text style={styles.bankCardHolderVal} numberOfLines={1}>
                       {bankAccountHolderName || companyName || 'KORXONA NOMI'}
                     </Text>
                   </View>
                   <View style={styles.payoutBadge}>
-                    <Text style={styles.payoutBadgeText}>0% Komissiya</Text>
+                    <Text style={styles.payoutBadgeText}>{tr('sellerApp.zeroCommission')}</Text>
                   </View>
                 </View>
               </View>
 
               {/* Bank Account Inputs Form */}
               <View style={styles.formCard}>
-                <Text style={styles.cardSectionHeading}>Bank hisob-kitob rekvizitlari</Text>
+                <Text style={styles.cardSectionHeading}>{tr('sellerApp.bankDetailsTitle')}</Text>
                 <Text style={styles.formCardSub}>
-                  Savdo tushumlari to'g'ridan-to'g'ri korxonangizning bank hisob raqamiga 0% komissiya bilan o'tkazib beriladi.
+                  {tr('sellerApp.bankDetailsDesc')}
                 </Text>
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>
-                    20 xonali Bank Hisob Raqami (Hisob-kitob hisobvarag'i) <Text style={styles.requiredStar}>*</Text>
+                    {tr('sellerApp.bankAccountLabel')} <Text style={styles.requiredStar}>*</Text>
                   </Text>
                   <View style={styles.inputWithIcon}>
                     <Hash size={18} color={colors.text.hint} />
@@ -790,7 +848,7 @@ export default function SellerApplicationScreen() {
                 <View style={styles.inputRow}>
                   <View style={[styles.inputGroup, { flex: 1 }]}>
                     <Text style={styles.inputLabel}>
-                      Bank MFO kodi <Text style={styles.requiredStar}>*</Text>
+                      {tr('sellerApp.bankMfoLabel')} <Text style={styles.requiredStar}>*</Text>
                     </Text>
                     <View style={styles.inputWithIcon}>
                       <Building2 size={18} color={colors.text.hint} />
@@ -807,12 +865,12 @@ export default function SellerApplicationScreen() {
                   </View>
 
                   <View style={[styles.inputGroup, { flex: 1.5 }]}>
-                    <Text style={styles.inputLabel}>Bank nomi / filiali</Text>
+                    <Text style={styles.inputLabel}>{tr('sellerApp.bankNameLabel')}</Text>
                     <TextInput
                       style={styles.textInputFull}
                       value={bankName}
                       onChangeText={setBankName}
-                      placeholder="Masalan: AT Xalq Banki"
+                      placeholder={tr('sellerApp.bankNamePlaceholder')}
                       placeholderTextColor={colors.text.hint}
                     />
                   </View>
@@ -820,7 +878,7 @@ export default function SellerApplicationScreen() {
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>
-                    Hisob egasi / Korxona nomi <Text style={styles.requiredStar}>*</Text>
+                    {tr('sellerApp.accountHolderInputLabel')} <Text style={styles.requiredStar}>*</Text>
                   </Text>
                   <View style={styles.inputWithIcon}>
                     <User size={18} color={colors.text.hint} />
@@ -828,14 +886,14 @@ export default function SellerApplicationScreen() {
                       style={styles.textInput}
                       value={bankAccountHolderName}
                       onChangeText={setBankAccountHolderName}
-                      placeholder={companyName || 'Korxona yoki YaTT nomi'}
+                      placeholder={companyName || tr('sellerApp.accountHolderPlaceholder')}
                       placeholderTextColor={colors.text.hint}
                     />
                   </View>
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Bog'lanish telefon raqami</Text>
+                  <Text style={styles.inputLabel}>{tr('sellerApp.contactPhoneLabel')}</Text>
                   <TextInput
                     style={styles.textInputFull}
                     value={contactPhone}
@@ -849,40 +907,42 @@ export default function SellerApplicationScreen() {
 
               {/* Summary Receipt Card */}
               <View style={styles.receiptCard}>
-                <Text style={styles.receiptTitle}>Ariza xulosasi</Text>
+                <Text style={styles.receiptTitle}>{tr('sellerApp.summaryTitle')}</Text>
 
                 <View style={styles.receiptRow}>
-                  <Text style={styles.receiptKey}>Tashkilot:</Text>
+                  <Text style={styles.receiptKey}>{tr('sellerApp.summaryOrg')}</Text>
                   <Text style={styles.receiptVal} numberOfLines={1}>
                     {companyName || stirData?.companyName || '—'}
                   </Text>
                 </View>
 
                 <View style={styles.receiptRow}>
-                  <Text style={styles.receiptKey}>STIR raqami:</Text>
+                  <Text style={styles.receiptKey}>{tr('sellerApp.summaryStir')}</Text>
                   <Text style={styles.receiptVal}>{cleanStir}</Text>
                 </View>
 
                 <View style={styles.receiptRow}>
-                  <Text style={styles.receiptKey}>Bank Hisob Raqami:</Text>
+                  <Text style={styles.receiptKey}>{tr('sellerApp.summaryAccount')}</Text>
                   <Text style={styles.receiptVal} numberOfLines={1}>
                     {bankAccountNumber ? `${bankAccountNumber.slice(0, 10)}...` : '—'}
                   </Text>
                 </View>
 
                 <View style={styles.receiptRow}>
-                  <Text style={styles.receiptKey}>Bank MFO:</Text>
+                  <Text style={styles.receiptKey}>{tr('sellerApp.summaryMfo')}</Text>
                   <Text style={styles.receiptVal}>{bankMfo || '—'}</Text>
                 </View>
 
                 <View style={styles.receiptRow}>
-                  <Text style={styles.receiptKey}>Soliq integratsiyasi:</Text>
-                  <Text style={[styles.receiptVal, { color: '#16A34A' }]}>✅ Biriktirilgan</Text>
+                  <Text style={styles.receiptKey}>{tr('sellerApp.summarySoliq')}</Text>
+                  <Text style={[styles.receiptVal, { color: '#16A34A' }]}>{tr('sellerApp.summaryAttached')}</Text>
                 </View>
 
                 <View style={styles.receiptRow}>
-                  <Text style={styles.receiptKey}>Vositachilik to'lovi:</Text>
-                  <Text style={styles.receiptVal}>{commissionRate}% (sotilganda)</Text>
+                  <Text style={styles.receiptKey}>{tr('sellerApp.summaryComm')}</Text>
+                  <Text style={styles.receiptVal}>
+                    {tr('sellerApp.summaryCommRate', { rate: commissionRate })}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -899,7 +959,7 @@ export default function SellerApplicationScreen() {
             hitSlop={8}
           >
             <ArrowLeft size={18} color={colors.text.primary} strokeWidth={2.2} />
-            <Text style={styles.prevBtnText}>Orqaga</Text>
+            <Text style={styles.prevBtnText}>{tr('sellerApp.btnBack')}</Text>
           </Pressable>
         )}
 
@@ -926,15 +986,15 @@ export default function SellerApplicationScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <ActivityIndicator size="small" color={colors.palette.white} />
               <Text style={styles.nextBtnText} numberOfLines={1}>
-                {step === 2 ? 'Tekshirilmoqda...' : 'Yuborilmoqda...'}
+                {step === 2 ? tr('sellerApp.btnVerifying') : tr('sellerApp.btnSubmitting')}
               </Text>
             </View>
           ) : (
             <>
               <Text style={styles.nextBtnText} numberOfLines={1}>
-                {step === 1 && 'Keyingi bosqich'}
-                {step === 2 && 'Tekshirish'}
-                {step === 3 && 'Arizani yuborish'}
+                {step === 1 && tr('sellerApp.btnNext')}
+                {step === 2 && tr('sellerApp.btnVerify')}
+                {step === 3 && tr('sellerApp.btnSubmit')}
               </Text>
               <ArrowRight size={18} color={colors.palette.white} strokeWidth={2.4} />
             </>
@@ -949,7 +1009,7 @@ export default function SellerApplicationScreen() {
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderTitleRow}>
                 <FileText size={20} color={colors.brand.primary} />
-                <Text style={styles.modalTitle}>Hamkorlik Ommaviy Ofertasi</Text>
+                <Text style={styles.modalTitle}>{tr('sellerApp.ofertaModalTitle')}</Text>
               </View>
               <Pressable onPress={() => setShowOfertaModal(false)} style={styles.modalCloseBtn}>
                 <X size={20} color={colors.text.secondary} />
@@ -958,11 +1018,11 @@ export default function SellerApplicationScreen() {
 
             <View style={styles.pdfHeaderRow}>
               <Text style={styles.pdfHeaderNotice}>
-                O'zbekiston Respublikasi qonunlariga muvofiq rasmiy ommaviy shartnoma
+                {tr('sellerApp.ofertaModalNotice')}
               </Text>
               <Pressable onPress={handleOpenExternalPdf} style={styles.externalLinkBtn}>
                 <ExternalLink size={13} color={colors.brand.primary} />
-                <Text style={styles.externalLinkText}>PDF fayl ↗</Text>
+                <Text style={styles.externalLinkText}>{tr('sellerApp.ofertaPdfBtn')}</Text>
               </Pressable>
             </View>
 
@@ -981,7 +1041,7 @@ export default function SellerApplicationScreen() {
                   priority="high"
                 />
                 <View style={styles.pdfPageBadge}>
-                  <Text style={styles.pdfPageBadgeText}>1 / 2-sahifa</Text>
+                  <Text style={styles.pdfPageBadgeText}>{tr('sellerApp.ofertaPage1')}</Text>
                 </View>
 
                 <ExpoImage
@@ -993,7 +1053,7 @@ export default function SellerApplicationScreen() {
                   priority="high"
                 />
                 <View style={styles.pdfPageBadge}>
-                  <Text style={styles.pdfPageBadgeText}>2 / 2-sahifa (Tomonlar rekvizitlari va imzo)</Text>
+                  <Text style={styles.pdfPageBadgeText}>{tr('sellerApp.ofertaPage2')}</Text>
                 </View>
               </View>
             </ScrollView>
@@ -1006,7 +1066,7 @@ export default function SellerApplicationScreen() {
               style={styles.modalAcceptBtn}
             >
               <Check size={18} color={colors.palette.white} />
-              <Text style={styles.modalAcceptText}>Shartlarni qabul qilaman</Text>
+              <Text style={styles.modalAcceptText}>{tr('sellerApp.ofertaAcceptBtn')}</Text>
             </Pressable>
           </View>
         </View>
@@ -1025,9 +1085,9 @@ export default function SellerApplicationScreen() {
               <CheckCircle2 size={42} color="#16A34A" strokeWidth={2.4} />
             </View>
 
-            <Text style={styles.successModalTitle}>Arizangiz qabul qilindi! 🎉</Text>
+            <Text style={styles.successModalTitle}>{tr('sellerApp.successModalTitle')}</Text>
             <Text style={styles.successModalSubtitle}>
-              Hamkorlik arizangiz va bank hisob raqamingiz tekshirish uchun yuborildi. Operator tasdiqlagach, ilovada bemalol yangi do'konlaringizni ochishingiz mumkin.
+              {tr('sellerApp.successModalDesc')}
             </Text>
 
             <Pressable
@@ -1037,7 +1097,7 @@ export default function SellerApplicationScreen() {
                 router.replace('/(tabs)/profile');
               }}
             >
-              <Text style={styles.successModalBtnText}>Tushunarli</Text>
+              <Text style={styles.successModalBtnText}>{tr('sellerApp.successModalBtn')}</Text>
             </Pressable>
           </View>
         </View>
@@ -1553,6 +1613,91 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: spacing.md,
+  },
+  soliqGuideCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    gap: spacing.md,
+    ...shadow.xs,
+  },
+  soliqGuideHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingBottom: 2,
+  },
+  soliqGuideTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text.primary,
+  },
+  soliqGuideStep: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  guideStepNumber: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  guideStepNumberText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.text.primary,
+  },
+  guideStepLabel: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    lineHeight: 18,
+  },
+  guideStepHighlight: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.brand.primary,
+    letterSpacing: 1,
+    marginTop: 2,
+  },
+  guideChipsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
+  },
+  guideChipInactive: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.sm,
+    backgroundColor: '#EDF2F7',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  guideChipInactiveText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  guideChipActive: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+    backgroundColor: '#16A34A',
+  },
+  guideChipActiveText: {
+    fontSize: 11,
+    color: '#FFFFFF',
+    fontWeight: '800',
   },
   directSoliqLinkCard: {
     flexDirection: 'row',
