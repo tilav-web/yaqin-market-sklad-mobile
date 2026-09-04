@@ -797,17 +797,17 @@ export default function SellerApplicationScreen() {
           ]}
         >
           {submitMutation.isPending || (step === 2 && isVerifyingSoliq) ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <ActivityIndicator size="small" color={colors.palette.white} />
-              <Text style={styles.nextBtnText}>
-                {step === 2 ? 'Soliqdan tekshirilmoqda...' : 'Yuborilmoqda...'}
+              <Text style={styles.nextBtnText} numberOfLines={1}>
+                {step === 2 ? 'Tekshirilmoqda...' : 'Yuborilmoqda...'}
               </Text>
             </View>
           ) : (
             <>
-              <Text style={styles.nextBtnText}>
+              <Text style={styles.nextBtnText} numberOfLines={1}>
                 {step === 1 && 'Keyingi bosqich'}
-                {step === 2 && 'Tekshirish va davom etish'}
+                {step === 2 && 'Tekshirish'}
                 {step === 3 && 'Arizani yuborish'}
               </Text>
               <ArrowRight size={18} color={colors.palette.white} strokeWidth={2.4} />
@@ -1537,9 +1537,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
     backgroundColor: colors.brand.primary,
     paddingVertical: 14,
+    paddingHorizontal: spacing.md,
     borderRadius: radius.xl,
     ...shadow.sm,
   },
@@ -1547,9 +1548,10 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   nextBtnText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     color: colors.palette.white,
+    flexShrink: 1,
   },
   modalOverlay: {
     flex: 1,
