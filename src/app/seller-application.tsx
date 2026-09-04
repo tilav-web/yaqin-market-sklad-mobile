@@ -158,8 +158,29 @@ export default function SellerApplicationScreen() {
       return;
     }
 
-    if (/^(\d)\1{8}$/.test(query)) {
-      Alert.alert('STIR topilmadi', "Bunday STIR bo'yicha davlat reyestrida faol tadbirkorlik subyekti topilmadi.");
+    const firstDigit = query[0];
+    if (!['2', '3', '4', '5', '6'].includes(firstDigit)) {
+      Alert.alert(
+        'STIR xato',
+        "O'zbekistonda tadbirkorlik STIRi 2, 3 (yuridik shaxs) yoki 4, 5, 6 (YaTT) bilan boshlanishi shart.",
+      );
+      setStirData(null);
+      return;
+    }
+
+    if (
+      /^(\d)\1{8}$/.test(query) ||
+      query === '123456789' ||
+      query === '987654321' ||
+      query === '123123123' ||
+      query === '012345678' ||
+      query === '999999999' ||
+      query === '000000000'
+    ) {
+      Alert.alert(
+        'STIR topilmadi',
+        "Bunday STIR bo'yicha davlat reyestrida faol tadbirkorlik subyekti topilmadi.",
+      );
       setStirData(null);
       return;
     }
@@ -179,7 +200,9 @@ export default function SellerApplicationScreen() {
       } catch {}
     } catch (e) {
       setStirData(null);
-      const errMsg = extractErrorMessage(e) || 'Ushbu STIR bo\'yicha faol korxona topilmadi';
+      const errMsg =
+        extractErrorMessage(e) ||
+        "Ushbu STIR bo'yicha davlat soliq reyestrida faol tadbirkorlik subyekti topilmadi";
       Alert.alert('STIR topilmadi', errMsg);
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -261,8 +284,14 @@ export default function SellerApplicationScreen() {
     return text.replace(/\D/g, '').slice(0, 5);
   };
 
-  // Validation
-  const canGoToStep2 = cleanStir.length === 9 && !!stirData && companyName.trim().length >= 2 && ofertaAccepted;
+  // Validation: Step 2ga faqat Soliq bazasidan tasdiqlangan rasmiy korxona nomiga ega bo'lgan va ofertaga rozilik bergan foydalanuvchi o'ta oladi
+  const canGoToStep2 =
+    cleanStir.length === 9 &&
+    !!stirData &&
+    stirData.status === 'active' &&
+    !!stirData.companyName &&
+    stirData.companyName.trim().length >= 2 &&
+    ofertaAccepted;
   const canGoToStep3 = soliqConfirmed;
   const rawAccount = bankAccountNumber.replace(/\s+/g, '');
   const rawMfo = bankMfo.replace(/\s+/g, '');
@@ -270,7 +299,9 @@ export default function SellerApplicationScreen() {
 
   const submitMutation = useMutation({
     mutationFn: async () => {
-      const nameParts = (legalName || user?.name || '').trim().split(/\s+/);
+      const appliedCompanyName = (stirData?.companyName || companyName).trim();
+      const appliedLegalName = (stirData?.legalName || legalName || user?.name || '').trim();
+      const nameParts = appliedLegalName.split(/\s+/);
       const firstName = nameParts[0] || 'Tadbirkor';
       const lastName = nameParts.slice(1).join(' ') || '';
 
@@ -278,13 +309,13 @@ export default function SellerApplicationScreen() {
         firstName,
         lastName,
         stir: cleanStir,
-        companyName: companyName.trim(),
+        companyName: appliedCompanyName,
         entityType: stirData?.entityType || 'MChJ',
-        legalAddress: legalAddress.trim() || 'Qashqadaryo viloyati',
+        legalAddress: (stirData?.legalAddress || legalAddress || 'Qashqadaryo viloyati').trim(),
         bankAccountNumber: rawAccount,
         bankMfo: rawMfo,
         bankName: bankName.trim() || 'Bank',
-        bankAccountHolderName: bankAccountHolderName.trim(),
+        bankAccountHolderName: bankAccountHolderName.trim() || appliedCompanyName,
         phone: contactPhone || user?.phone,
         soliqConfirmed: true,
         ofertaAccepted: true,
@@ -425,62 +456,84 @@ export default function SellerApplicationScreen() {
                   )}
                 </View>
 
-                {/* STIR Verified Result & Confirmed Details Form */}
+                {/* STIR Verified Result & Confirmed Official Details (Read-Only: qo'lda o'zgartirilmaydi) */}
                 {stirData && (
                   <View style={styles.verifiedBox}>
                     <View style={styles.verifiedHeader}>
-                      <ShieldCheck size={18} color="#16A34A" />
-                      <Text style={styles.verifiedTitle}>STIR tasdiqlandi</Text>
+                      <ShieldCheck size={20} color="#16A34A" />
+                      <View style={{ flex: 1, marginLeft: 8 }}>
+                        <Text style={styles.verifiedTitle}>STIR tasdiqlandi</Text>
+                        <Text style={styles.verifiedSubtitle}>
+                          Davlat soliq reyestridan olindi
+                        </Text>
+                      </View>
                       <View style={styles.statusPill}>
                         <Text style={styles.statusPillText}>
-                          {stirData.entityType} • {stirData.region}
+                          {stirData.entityType} • Faol
                         </Text>
                       </View>
                     </View>
 
-                    <View style={{ gap: 10, marginTop: spacing.sm }}>
+                    <View style={styles.verifiedDetailsContainer}>
                       {/* Tashkilot Nomi */}
-                      <View>
-                        <Text style={styles.miniFieldLabel}>Tashkilot / Korxona nomi *</Text>
-                        <View style={styles.editFieldBox}>
-                          <Building2 size={16} color={colors.text.secondary} />
-                          <TextInput
-                            style={styles.editFieldInput}
-                            value={companyName}
-                            onChangeText={setCompanyName}
-                            placeholder="MChJ yoki do'koningiz nomi"
-                            placeholderTextColor={colors.text.hint}
-                          />
+                      <View style={styles.readOnlyRow}>
+                        <Building2
+                          size={16}
+                          color={colors.brand.primary}
+                          style={styles.readOnlyIcon}
+                        />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.readOnlyLabel}>Tashkilot / Korxona nomi</Text>
+                          <Text style={styles.readOnlyValueBold}>
+                            {stirData.companyName}
+                          </Text>
                         </View>
                       </View>
 
                       {/* Rahbar F.I.SH */}
-                      <View>
-                        <Text style={styles.miniFieldLabel}>Rahbar / Tadbirkor F.I.SH</Text>
-                        <View style={styles.editFieldBox}>
-                          <User size={16} color={colors.text.secondary} />
-                          <TextInput
-                            style={styles.editFieldInput}
-                            value={legalName}
-                            onChangeText={setLegalName}
-                            placeholder="Familiya Ism Sharifingiz"
-                            placeholderTextColor={colors.text.hint}
+                      {!!stirData.legalName && (
+                        <View style={styles.readOnlyRow}>
+                          <User
+                            size={16}
+                            color={colors.text.secondary}
+                            style={styles.readOnlyIcon}
                           />
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.readOnlyLabel}>Rahbar / Tadbirkor</Text>
+                            <Text style={styles.readOnlyValue}>
+                              {stirData.legalName}
+                            </Text>
+                          </View>
                         </View>
-                      </View>
+                      )}
 
                       {/* Yuridik Manzil */}
-                      <View>
-                        <Text style={styles.miniFieldLabel}>Yuridik manzil</Text>
-                        <View style={styles.editFieldBox}>
-                          <MapPin size={16} color={colors.text.secondary} />
-                          <TextInput
-                            style={styles.editFieldInput}
-                            value={legalAddress}
-                            onChangeText={setLegalAddress}
-                            placeholder="Viloyat, shahar, ko'cha"
-                            placeholderTextColor={colors.text.hint}
+                      {!!(stirData.legalAddress || stirData.region) && (
+                        <View style={styles.readOnlyRow}>
+                          <MapPin
+                            size={16}
+                            color={colors.text.secondary}
+                            style={styles.readOnlyIcon}
                           />
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.readOnlyLabel}>Yuridik manzil</Text>
+                            <Text style={styles.readOnlyValue}>
+                              {stirData.legalAddress || stirData.region}
+                            </Text>
+                          </View>
+                        </View>
+                      )}
+
+                      {/* Holat va QQS belgilari */}
+                      <View style={styles.taxStatusBadges}>
+                        <View style={styles.greenBadge}>
+                          <CheckCircle2 size={13} color="#15803D" />
+                          <Text style={styles.greenBadgeText}>Davlat reyestrida faol</Text>
+                        </View>
+                        <View style={styles.neutralBadge}>
+                          <Text style={styles.neutralBadgeText}>
+                            {stirData.vatPayer ? 'QQS to\'lovchisi' : 'QQS to\'lovchisi emas'}
+                          </Text>
                         </View>
                       </View>
                     </View>
@@ -1090,8 +1143,8 @@ const styles = StyleSheet.create({
   },
   verifiedBox: {
     backgroundColor: '#F0FDF4',
-    borderRadius: radius.lg,
-    borderWidth: 1,
+    borderRadius: radius.xl,
+    borderWidth: 1.5,
     borderColor: '#BBF7D0',
     padding: spacing.md,
     gap: spacing.sm,
@@ -1099,18 +1152,25 @@ const styles = StyleSheet.create({
   verifiedHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    paddingBottom: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: '#DCFCE7',
   },
   verifiedTitle: {
     fontSize: 13,
     fontWeight: '800',
     color: '#16A34A',
-    flex: 1,
+  },
+  verifiedSubtitle: {
+    fontSize: 11,
+    color: colors.text.secondary,
+    fontWeight: '500',
+    marginTop: 1,
   },
   statusPill: {
     backgroundColor: '#DCFCE7',
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: radius.full,
   },
   statusPillText: {
@@ -1118,29 +1178,71 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#15803D',
   },
-  miniFieldLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.text.secondary,
-    marginBottom: 4,
+  verifiedDetailsContainer: {
+    gap: 8,
+    marginTop: 2,
   },
-  editFieldBox: {
+  readOnlyRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     backgroundColor: colors.palette.white,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
-    paddingHorizontal: spacing.sm,
-    height: 42,
-    gap: spacing.xs,
+    borderColor: '#E2E8F0',
+    gap: 10,
   },
-  editFieldInput: {
-    flex: 1,
-    fontSize: 13,
+  readOnlyIcon: {
+    marginTop: 2,
+  },
+  readOnlyLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.text.hint,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  readOnlyValueBold: {
+    fontSize: 14,
+    fontWeight: '800',
     color: colors.text.primary,
+  },
+  readOnlyValue: {
+    fontSize: 13,
     fontWeight: '600',
-    paddingVertical: 0,
+    color: colors.text.primary,
+  },
+  taxStatusBadges: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 2,
+  },
+  greenBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+  },
+  greenBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#15803D',
+  },
+  neutralBadge: {
+    backgroundColor: colors.palette.gray100,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+  },
+  neutralBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.text.secondary,
   },
   verifiedContent: {
     gap: 6,
