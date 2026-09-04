@@ -18,6 +18,7 @@ import {
   Info,
   Landmark,
   MapPin,
+  RefreshCw,
   Search,
   ShieldAlert,
   ShieldCheck,
@@ -224,7 +225,7 @@ export default function SellerApplicationScreen() {
       toast.success("STIR davlat reyestridan tasdiqlandi");
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch {}
+      } catch { }
     } catch (e) {
       setStirData(null);
       const errMsg =
@@ -234,7 +235,7 @@ export default function SellerApplicationScreen() {
       toast.error(errMsg);
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      } catch {}
+      } catch { }
     } finally {
       setIsCheckingStir(false);
     }
@@ -260,7 +261,7 @@ export default function SellerApplicationScreen() {
         toast.success("Platforma komissioner sifatida tasdiqlandi!");
         try {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } catch {}
+        } catch { }
         // Successfully verified commissioner! Proceed directly to Step 3!
         setStep(3);
       } else {
@@ -268,7 +269,7 @@ export default function SellerApplicationScreen() {
         toast.warning(res.data.message || "Platforma hali komissioner qilib biriktirilmagan");
         try {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        } catch {}
+        } catch { }
       }
     } catch (e) {
       setSoliqConfirmed(false);
@@ -280,7 +281,7 @@ export default function SellerApplicationScreen() {
       toast.error(errMsg);
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      } catch {}
+      } catch { }
     } finally {
       setIsVerifyingSoliq(false);
     }
@@ -290,7 +291,7 @@ export default function SellerApplicationScreen() {
     setCopiedStir(true);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch {}
+    } catch { }
     setTimeout(() => setCopiedStir(false), 3000);
   };
 
@@ -345,7 +346,7 @@ export default function SellerApplicationScreen() {
     onSuccess: () => {
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch {}
+      } catch { }
       queryClient.invalidateQueries({ queryKey: ['users', 'me'] });
       queryClient.invalidateQueries({ queryKey: ['seller-profile'] });
       queryClient.invalidateQueries({ queryKey: ['seller-bank-accounts'] });
@@ -497,14 +498,13 @@ export default function SellerApplicationScreen() {
                   {cleanStir.length === 9 && !isCheckingStir && !stirData && (
                     <Pressable
                       onPress={() => handleCheckStir()}
+                      hitSlop={8}
                       style={[
-                        styles.miniCheckBtn,
+                        styles.miniReloadBtn,
                         !!stirError && { backgroundColor: '#EF4444' },
                       ]}
                     >
-                      <Text style={styles.miniCheckBtnText}>
-                        {stirError ? 'Qayta tekshirish' : 'Tekshirish'}
-                      </Text>
+                      <RefreshCw size={17} color={colors.palette.white} strokeWidth={2.4} />
                     </Pressable>
                   )}
                 </View>
@@ -919,7 +919,7 @@ export default function SellerApplicationScreen() {
             ((step === 1 && !canGoToStep2) ||
               (step === 2 && isVerifyingSoliq) ||
               (step === 3 && (!canSubmit || submitMutation.isPending))) &&
-              styles.nextButtonDisabled,
+            styles.nextButtonDisabled,
           ]}
         >
           {submitMutation.isPending || (step === 2 && isVerifyingSoliq) ? (
@@ -1293,16 +1293,13 @@ const styles = StyleSheet.create({
     color: colors.text.hint,
     fontWeight: '500',
   },
-  miniCheckBtn: {
+  miniReloadBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.brand.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radius.md,
-  },
-  miniCheckBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   verifiedBox: {
     backgroundColor: '#F0FDF4',
