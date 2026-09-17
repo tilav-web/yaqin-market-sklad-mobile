@@ -5,6 +5,24 @@ export interface GeoJsonPolygon {
   coordinates: [number, number][][]; // [[[lng, lat], ...]] — GeoJSON standard
 }
 
+export interface District {
+  id: string;
+  regionId: string;
+  regionCode: string;
+  nameKey: string;
+  name: {
+    uz: string;
+    ru: string;
+    kr?: string;
+  };
+  centerLat: number;
+  centerLng: number;
+  boundary?: {
+    type: 'Polygon' | 'MultiPolygon';
+    coordinates: any;
+  };
+}
+
 export interface PublicShop {
   id: string;
   name: string;
@@ -45,6 +63,8 @@ export interface PublicShop {
   distanceKm?: number;
   deliveryFeeAtUser?: number;
   isWithinZone?: boolean;
+  isPrime?: boolean;
+  primeBadgeText?: string | null;
 }
 
 export interface Category {

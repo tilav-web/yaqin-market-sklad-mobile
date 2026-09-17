@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ChevronRight, Navigation, Phone, Star, Store, X } from 'lucide-react-native';
+import { ChevronRight, Crown, Navigation, Phone, Star, Store, X } from 'lucide-react-native';
 import { useMemo } from 'react';
 import {
   Dimensions,
@@ -105,6 +105,15 @@ export function ShopPreviewSheet({ visible, shop, onClose }: Props) {
       <SafeAreaView edges={['bottom']} style={styles.sheetWrap} pointerEvents="box-none">
         <View style={styles.sheet}>
           <View style={styles.handle} />
+
+          {shop.isPrime && (
+            <View style={styles.primeBanner}>
+              <Crown size={14} color="#D97706" strokeWidth={2.6} />
+              <Text style={styles.primeBannerText}>
+                {shop.primeBadgeText ? `${shop.primeBadgeText} Hamkor` : 'Yaqin Prime Hamkor'} • Kafolatlangan sifat
+              </Text>
+            </View>
+          )}
 
           {/* Shop header */}
           <Pressable style={styles.header} onPress={goToShop}>
@@ -306,6 +315,24 @@ const styles = StyleSheet.create({
   badgeOpen: { color: colors.feedback.success, backgroundColor: colors.feedback.successSurface },
   badgeClosed: { color: colors.text.tertiary, backgroundColor: colors.bg.surfaceMuted },
   badgeShowcase: { color: '#1D4ED8', backgroundColor: '#EFF6FF' },
+  primeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+    marginBottom: spacing.xs,
+  },
+  primeBannerText: {
+    ...typography.caption,
+    color: '#92400E',
+    fontWeight: '800',
+    fontSize: 12,
+  },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
