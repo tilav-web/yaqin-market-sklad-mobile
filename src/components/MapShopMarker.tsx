@@ -2,18 +2,18 @@ import {
   Apple,
   Croissant,
   Crown,
-  HeartPulse,
+  Pill,
   ShoppingBag,
-  Star,
   Store,
-  Utensils,
+  UtensilsCrossed,
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Marker } from 'react-native-maps';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 import { PublicShop } from '@/lib/types';
-import { colors, radius, shadow } from '@/theme';
+import { colors, shadow } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 interface Props {
@@ -22,126 +22,152 @@ interface Props {
   readonly onPress: () => void;
 }
 
-/**
- * Returns a fitting Lucide icon element based on shop name/keywords.
- */
-function renderShopCategoryIcon(name: string, selected: boolean) {
-  const lower = name.toLowerCase();
-  const size = selected ? 19 : 16;
-  const color = colors.text.onPrimary;
-  const strokeWidth = 2.4;
-
-  if (/go['’`]?sht|osh|kabob|burger|lavash|kafe|restoran|somsa/.test(lower)) {
-    return <Utensils size={size} color={color} strokeWidth={strokeWidth} />;
-  }
-  if (/non|novvoy|tandir|shirinlik|tort|pechenye|bakery/.test(lower)) {
-    return <Croissant size={size} color={color} strokeWidth={strokeWidth} />;
-  }
-  if (/dori|shifo|apteka|farm/.test(lower)) {
-    return <HeartPulse size={size} color={color} strokeWidth={strokeWidth} />;
-  }
-  if (/meva|sabzavot|bog['’`]?|mevazor|poliz|chashma/.test(lower)) {
-    return <Apple size={size} color={color} strokeWidth={strokeWidth} />;
-  }
-  if (/super|market|bozor|savdo|store/.test(lower)) {
-    return <ShoppingBag size={size} color={color} strokeWidth={strokeWidth} />;
-  }
-  return <Store size={size} color={color} strokeWidth={strokeWidth} />;
+interface CategoryConfig {
+  bg: string;
+  icon: React.ReactNode;
 }
 
+/**
+ * Returns category color & icon based on shop name keywords.
+ */
+function getCategoryConfig(name: string, isPrime: boolean, closed: boolean): CategoryConfig {
+  const size = 18;
+  const color = '#FFFFFF';
+  const strokeWidth = 2.2;
+
+  if (closed) {
+    return {
+      bg: '#64748B',
+      icon: <Store size={size} color={color} strokeWidth={strokeWidth} />,
+    };
+  }
+
+  if (isPrime) {
+    return {
+      bg: '#0F172A',
+      icon: <Crown size={size + 1} color="#F59E0B" strokeWidth={2.4} />,
+    };
+  }
+
+  const lower = name.toLowerCase();
+
+  // Food / Cafe / Fast-food / Meat / Restaurant
+  if (/go['’`]?sht|osh|kabob|burger|lavash|kafe|restoran|somsa|pizza|choyxona|shashlik|tandir/.test(lower)) {
+    return {
+      bg: '#E11D48', // Vibrant Crimson
+      icon: <UtensilsCrossed size={size} color={color} strokeWidth={strokeWidth} />,
+    };
+  }
+
+  // Bakery / Pastry
+  if (/non|novvoy|shirinlik|tort|pechenye|bakery|patir|pishiriq/.test(lower)) {
+    return {
+      bg: '#D97706', // Warm Amber Gold
+      icon: <Croissant size={size} color={color} strokeWidth={strokeWidth} />,
+    };
+  }
+
+  // Pharmacy / Medical
+  if (/dori|shifo|apteka|farm|tib|med/.test(lower)) {
+    return {
+      bg: '#0284C7', // Medical Sky Blue
+      icon: <Pill size={size} color={color} strokeWidth={strokeWidth} />,
+    };
+  }
+
+  // Fruits / Organic / Green
+  if (/meva|sabzavot|bog['’`]?|mevazor|poliz|chashma|organik|green/.test(lower)) {
+    return {
+      bg: '#059669', // Fresh Emerald Green
+      icon: <Apple size={size} color={color} strokeWidth={strokeWidth} />,
+    };
+  }
+
+  // Supermarket / Store
+  if (/super|market|bozor|savdo|store|minimarket|hyper/.test(lower)) {
+    return {
+      bg: '#2563EB', // Royal Blue
+      icon: <ShoppingBag size={size} color={color} strokeWidth={strokeWidth} />,
+    };
+  }
+
+  return {
+    bg: colors.brand.primary, // Brand Primary Blue
+    icon: <Store size={size} color={color} strokeWidth={strokeWidth} />,
+  };
+}
+
+// Vector Teardrop Pin Path in 42x50 canvas:
+// Circle center: (21, 19), radius: 17. Needle tip: (21, 48).
+const PIN_PATH = 'M 21 48 C 13.5 36.5 4 28.5 4 19 A 17 17 0 1 1 38 19 C 38 28.5 28.5 36.5 21 48 Z';
+
 function MapShopMarkerComponent({ shop, selected, onPress }: Props) {
-  // CRITICAL PERFORMANCE: track view changes only briefly on initial render or
-  // selection change, then freeze snapshot to avoid Android map repaint stutter.
+  // Allow initial render snapshot on Android, then freeze to keep 60 FPS
   const [tracks, setTracks] = useState(true);
 
   useEffect(() => {
-    const anim = requestAnimationFrame(() => setTracks(true));
-    const timer = setTimeout(() => setTracks(false), 220);
-    return () => {
-      cancelAnimationFrame(anim);
-      clearTimeout(timer);
-    };
-  }, [selected]);
+    const timer = setTimeout(() => {
+      setTracks(false);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (!Number.isFinite(shop.latitude) || !Number.isFinite(shop.longitude)) {
     return null;
   }
 
   const closed = !shop.isOpenManual;
-  const isShowcase = shop.isDeliveryEnabled === false;
-  const isFreeDelivery = (shop.deliveryFeeAtUser ?? 0) === 0 && !isShowcase && !closed;
-  const hasRating = shop.ratingAverage >= 4.0;
   const isPrime = shop.isPrime === true;
+  const isFreeDelivery = (shop.deliveryFeeAtUser ?? 0) === 0 && shop.isDeliveryEnabled !== false && !closed;
+  const config = getCategoryConfig(shop.name, isPrime, closed);
+
+  // Selected pins get a bold dark outline and elevated zIndex
+  const strokeColor = selected ? '#0F172A' : isPrime ? '#F59E0B' : '#FFFFFF';
+  const strokeWidth = selected ? 3.2 : 2.2;
 
   return (
     <Marker
       coordinate={{ latitude: shop.latitude, longitude: shop.longitude }}
-      tracksViewChanges={tracks}
-      anchor={{ x: 0.5, y: 1 }}
+      tracksViewChanges={selected || tracks}
+      anchor={{ x: 0.5, y: 0.94 }}
       onPress={(e) => {
         e?.stopPropagation?.();
         haptics.selection();
         onPress();
       }}
-      zIndex={selected ? 999 : isPrime ? 80 : closed ? 10 : 20}>
-      <View style={[styles.wrap, closed && styles.wrapClosed]}>
-        {/* Prime shops always have their signature floating gold capsule */}
-        {isPrime && !closed ? (
-          <View style={[styles.primeFloatingCapsule, selected && styles.primeFloatingCapsuleSelected]}>
-            <View style={styles.primeCrownBadge}>
-              <Crown size={9} color="#B45309" strokeWidth={2.6} />
-            </View>
-            <Text style={styles.primeFloatingText} numberOfLines={1}>
-              {shop.name}
-            </Text>
-            {hasRating && (
-              <Text style={styles.primeRatingText}>
-                ⭐{shop.ratingAverage.toFixed(1)}
-              </Text>
-            )}
-          </View>
-        ) : hasRating && !closed ? (
-          /* Top-rated standard shops have a micro rating pill */
-          <View style={[styles.microRatingPill, selected && styles.microRatingPillSelected]}>
-            <Star size={8} color="#F59E0B" fill="#F59E0B" />
-            <Text style={styles.microRatingText}>
-              {shop.ratingAverage.toFixed(1)}
-            </Text>
-          </View>
-        ) : null}
+      zIndex={selected ? 999 : isPrime ? 120 : closed ? 10 : 40}>
+      {/* 
+        Constant fixed-size container (44x52):
+        Because the container size NEVER changes when selected, Android Google Maps
+        native texture never clips or resizes awkwardly.
+      */}
+      <View style={styles.markerBox}>
+        <Svg width={42} height={50} viewBox="0 0 42 50">
+          {/* Main Pin Teardrop */}
+          <Path
+            d={PIN_PATH}
+            fill={config.bg}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+          />
 
-        {/* Pin body */}
-        <View
-          style={[
-            styles.pinCircle,
-            selected && styles.pinCircleSelected,
-            closed && styles.pinCircleClosed,
-            isShowcase && !closed && styles.pinCircleShowcase,
-            isFreeDelivery && !selected && !isPrime && styles.pinCircleFree,
-            isPrime && !closed && styles.pinCirclePrime,
-          ]}>
-          {isPrime && !closed ? (
-            <Crown
-              size={selected ? 22 : 18}
-              color="#F59E0B"
-              strokeWidth={2.4}
+          {/* Integrated Free Delivery Dot (never clipped outside viewBox) */}
+          {isFreeDelivery && !selected && !isPrime && (
+            <Circle
+              cx={34}
+              cy={9}
+              r={4.5}
+              fill="#10B981"
+              stroke="#FFFFFF"
+              strokeWidth={1.5}
             />
-          ) : (
-            renderShopCategoryIcon(shop.name, selected)
           )}
-        </View>
+        </Svg>
 
-        {/* Pointer tail */}
-        <View
-          style={[
-            styles.tail,
-            selected && styles.tailSelected,
-            closed && styles.tailClosed,
-            isShowcase && !closed && styles.tailShowcase,
-            isFreeDelivery && !selected && !isPrime && styles.tailFree,
-            isPrime && !closed && styles.tailPrime,
-          ]}
-        />
+        {/* Spacious, perfectly centered category icon */}
+        <View style={styles.iconContainer} pointerEvents="none">
+          {config.icon}
+        </View>
       </View>
     </Marker>
   );
@@ -154,160 +180,29 @@ export const MapShopMarker = React.memo(
     prev.selected === next.selected &&
     prev.shop.isOpenManual === next.shop.isOpenManual &&
     prev.shop.isDeliveryOpenNow === next.shop.isDeliveryOpenNow &&
-    prev.shop.isPrime === next.shop.isPrime,
+    prev.shop.isPrime === next.shop.isPrime &&
+    prev.shop.ratingAverage === next.shop.ratingAverage &&
+    prev.shop.deliveryFeeAtUser === next.shop.deliveryFeeAtUser,
 );
 
 const styles = StyleSheet.create({
-  wrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  wrapClosed: {
-    opacity: 0.65,
-  },
-
-  // Floating micro rating pill
-  microRatingPill: {
-    position: 'absolute',
-    top: -10,
-    right: -8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-    ...shadow.sm,
-    zIndex: 5,
-  },
-  microRatingText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#334155',
-  },
-
-  // Prime floating capsule (always-visible name & crown for prime shops)
-  primeFloatingCapsule: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFFFFF',
-    paddingLeft: 4,
-    paddingRight: 8,
-    paddingVertical: 3,
-    borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: '#F59E0B',
-    marginBottom: 4,
-    maxWidth: 160,
-    ...shadow.md,
-  },
-  primeCrownBadge: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#FEF3C7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primeFloatingText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#1E293B',
-    flexShrink: 1,
-  },
-  primeRatingText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#D97706',
-  },
-
-  // Selected banner
-  primeFloatingCapsuleSelected: {
-    borderColor: '#D97706',
-    borderWidth: 2,
-    backgroundColor: '#FFFFFF',
-    transform: [{ scale: 1.06 }],
-  },
-  microRatingPillSelected: {
-    borderColor: colors.brand.primary,
-    borderWidth: 1.5,
-    transform: [{ scale: 1.1 }],
-  },
-
-  // Pin circle
-  pinCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2.5,
-    borderColor: '#FFFFFF',
-    ...shadow.md,
-  },
-  pinCircleSelected: {
+  // Fixed bounds: 100% constant layout ensures Android native Bitmap never clips
+  markerBox: {
     width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    backgroundColor: colors.brand.primary,
-    transform: [{ scale: 1.1 }],
-    ...shadow.lg,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    ...shadow.md,
   },
-  pinCirclePrime: {
-    backgroundColor: '#0F172A',
-    borderWidth: 2.5,
-    borderColor: '#F59E0B',
-    ...shadow.lg,
-  },
-  pinCircleClosed: {
-    backgroundColor: '#94A3B8',
-    borderColor: '#F1F5F9',
-  },
-  pinCircleShowcase: {
-    backgroundColor: '#2563EB',
-    borderColor: '#FFFFFF',
-  },
-  pinCircleFree: {
-    backgroundColor: '#E8392E',
-    borderColor: '#FEF08A', // Gold border accent for free delivery shops
-  },
-
-  // Pointer tail
-  tail: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 5,
-    borderRightWidth: 5,
-    borderTopWidth: 6,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: colors.brand.primary,
-    marginTop: -1,
-  },
-  tailSelected: {
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 8,
-    borderTopColor: colors.brand.primary,
-    marginTop: -2,
-  },
-  tailPrime: {
-    borderTopColor: '#0F172A',
-  },
-  tailClosed: {
-    borderTopColor: '#94A3B8',
-  },
-  tailShowcase: {
-    borderTopColor: '#2563EB',
-  },
-  tailFree: {
-    borderTopColor: '#E8392E',
+  // Aligns precisely with circle center (21, 19) in 42x50 SVG
+  iconContainer: {
+    position: 'absolute',
+    top: 9,
+    left: 12,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -1,4 +1,3 @@
-import { Crown, Store } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Marker } from 'react-native-maps';
@@ -12,27 +11,30 @@ interface Props {
   readonly latitude: number;
   readonly longitude: number;
   readonly count: number;
+  readonly expansionZoom?: number;
   readonly shops: PublicShop[];
-  readonly onPress: (shops: PublicShop[], lat: number, lng: number) => void;
+  readonly onPress: (shops: PublicShop[], lat: number, lng: number, expansionZoom?: number) => void;
 }
 
 export const MapClusterMarker = React.memo(function MapClusterMarker({
   latitude,
   longitude,
   count,
+  expansionZoom,
   shops,
   onPress,
 }: Props) {
   const [tracks, setTracks] = useState(true);
 
   useEffect(() => {
-    const id = setTimeout(() => setTracks(false), 150);
-    return () => clearTimeout(id);
-  }, [count]);
+    const timer = setTimeout(() => setTracks(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
 
   const hasPrime = shops.some((s) => s.isPrime === true);
+  const isLarge = count >= 10;
 
   return (
     <Marker
@@ -42,17 +44,20 @@ export const MapClusterMarker = React.memo(function MapClusterMarker({
       onPress={(e) => {
         e?.stopPropagation?.();
         haptics.selection();
-        onPress(shops, latitude, longitude);
+        onPress(shops, latitude, longitude, expansionZoom);
       }}
-      zIndex={hasPrime ? 70 : 50}>
-      <View style={[styles.halo, hasPrime && styles.haloPrime]}>
-        <View style={[styles.circle, hasPrime && styles.circlePrime]}>
-          {hasPrime ? (
-            <Crown size={11} color="#F59E0B" strokeWidth={2.4} style={styles.icon} />
-          ) : (
-            <Store size={11} color={colors.text.onPrimary} strokeWidth={2.4} style={styles.icon} />
-          )}
-          <Text style={[styles.countText, hasPrime && styles.countTextPrime]} allowFontScaling={false}>
+      zIndex={hasPrime ? 80 : 50}>
+      {/* Fixed generous container prevents clipping on Android bitmap rasterizer */}
+      <View style={styles.fixedContainer}>
+        <View
+          style={[
+            styles.badge,
+            isLarge && styles.badgeLarge,
+            hasPrime && styles.badgePrime,
+          ]}>
+          <Text
+            style={[styles.countText, isLarge && styles.countTextLarge, hasPrime && styles.countTextPrime]}
+            allowFontScaling={false}>
             {count}
           </Text>
         </View>
@@ -62,43 +67,44 @@ export const MapClusterMarker = React.memo(function MapClusterMarker({
 });
 
 const styles = StyleSheet.create({
-  halo: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: 'rgba(232, 57, 46, 0.18)',
+  fixedContainer: {
+    width: 56,
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  haloPrime: {
-    backgroundColor: 'rgba(245, 158, 11, 0.28)',
-  },
-  circle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  badge: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: colors.brand.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 3,
-    borderWidth: 2.5,
+    borderWidth: 2.6,
     borderColor: '#FFFFFF',
     ...shadow.md,
   },
-  circlePrime: {
+  badgeLarge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 3,
+  },
+  badgePrime: {
     backgroundColor: '#0F172A',
     borderColor: '#F59E0B',
+    borderWidth: 2.6,
     ...shadow.lg,
-  },
-  icon: {
-    marginTop: -1,
   },
   countText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '900',
-    letterSpacing: -0.2,
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
+  countTextLarge: {
+    fontSize: 15,
   },
   countTextPrime: {
     color: '#FEF3C7',

@@ -1,72 +1,40 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import {
-  Gift,
-  Layers,
-  MapPin,
-  Navigation,
-  RefreshCw,
-  Star,
-  Store,
-  Truck,
-  X,
-} from 'lucide-react-native';
+import { Gift, MapPin, Navigation, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapClusterMarker } from '@/components/MapClusterMarker';
+import { MapShopCarousel } from '@/components/MapShopCarousel';
 import { MapShopMarker } from '@/components/MapShopMarker';
 import { ShopPreviewSheet } from '@/components/ShopPreviewSheet';
 import { FALLBACK_PILOT_DISTRICT } from '@/constants/geo';
 import { useTranslation } from '@/i18n';
-import type { TranslationKey } from '@/i18n/translations';
 import { api } from '@/lib/api';
 import { District, FeedResponse, PublicShop } from '@/lib/types';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
-import { clusterShops } from '@/utils/mapClustering';
+import { createShopClusterIndex, getClustersForRegion } from '@/utils/mapClustering';
 
-// Clean custom map style: hide standard Google POIs/transit so our shops take center stage
+// Clean custom map style: hide standard Google POIs/transit so our delivery shops take center stage
 const MAP_STYLE = [
   { featureType: 'poi', elementType: 'all', stylers: [{ visibility: 'off' }] },
   { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
   { featureType: 'transit', stylers: [{ visibility: 'off' }] },
 ];
 
-type FilterKey = 'delivery' | 'open' | 'free' | 'rated';
-
-const FILTERS: { key: FilterKey; labelKey: TranslationKey }[] = [
-  { key: 'delivery', labelKey: 'map.filterDelivery' },
-  { key: 'open', labelKey: 'map.filterOpen' },
-  { key: 'free', labelKey: 'map.filterFree' },
-  { key: 'rated', labelKey: 'map.filterRated' },
-];
-
-function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
 export default function MapTab() {
+  const insets = useSafeAreaInsets();
   const { tr, t } = useTranslation();
   const coords = useEffectiveCoords();
   const selectedAddress = useLocationStore((s) => s.selectedAddress);
@@ -75,26 +43,36 @@ export default function MapTab() {
   const { q } = useLocalSearchParams<{ q?: string }>();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // Default active filters: show only open & delivery-ready shops initially
-  const [active, setActive] = useState<Set<FilterKey>>(new Set(['delivery', 'open']));
+  const [previewShop, setPreviewShop] = useState<PublicShop | null>(null);
+  const [onlyFreeDelivery, setOnlyFreeDelivery] = useState(false);
 
-  // Viewport tracking & dynamic search area
+  // Viewport tracking for smooth LOD clustering
   const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
-  const [searchCenter, setSearchCenter] = useState<{ latitude: number; longitude: number } | null>(
-    null,
-  );
+  const [debouncedRegion, setDebouncedRegion] = useState<Region | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const bottomInset = Math.max(insets.bottom, 12);
+  const recenterBottom = bottomInset + 72 + 104;
 
   const handleRegionChangeComplete = useCallback((r: Region) => {
     setCurrentRegion(r);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setDebouncedRegion(r);
+    }, 150);
   }, []);
 
-  const effectiveCenter = searchCenter ?? coords;
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!coords) void refresh();
   }, [coords, refresh]);
 
-  // Query active district for name banner
+  // Query active district
   const districtQuery = useQuery({
     queryKey: ['districts', 'current', coords?.latitude, coords?.longitude],
     queryFn: async () => {
@@ -109,32 +87,34 @@ export default function MapTab() {
       }
     },
     enabled: !!coords,
+    staleTime: 10 * 60 * 1000,
   });
 
-  // Query nearby shops centered on effectiveCenter
+  // Single fast query for all delivery-capable shops around customer's active location
   const shopsQuery = useQuery({
     queryKey: [
       'shops',
-      'nearby-map',
-      effectiveCenter?.latitude,
-      effectiveCenter?.longitude,
+      'delivery-ready',
+      coords?.latitude,
+      coords?.longitude,
       districtQuery.data?.id,
     ],
     queryFn: async () => {
-      if (!effectiveCenter) return [];
+      if (!coords) return [];
       const res = await api.get<PublicShop[]>('/shops/nearby', {
         params: {
-          lat: effectiveCenter.latitude,
-          lng: effectiveCenter.longitude,
+          lat: coords.latitude,
+          lng: coords.longitude,
           districtId: districtQuery.data?.id,
         },
       });
       return res.data;
     },
-    enabled: !!effectiveCenter,
+    enabled: !!coords,
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Product-search mode: restrict to shops that stock a match
+  // Product-search mode: restrict to shops that stock a search match
   const matchQuery = useQuery({
     queryKey: ['map-product-shops', coords?.latitude, coords?.longitude, q],
     queryFn: async () => {
@@ -145,37 +125,25 @@ export default function MapTab() {
       return new Set(res.data.items.map((i) => i.shopId));
     },
     enabled: !!coords && !!q,
+    staleTime: 5 * 60 * 1000,
   });
 
-  const isAll = active.size === 0;
-
-  const resetFilters = () => {
-    haptics.selection();
-    setActive(new Set());
-  };
-
-  const toggle = (key: FilterKey) => {
-    haptics.selection();
-    setActive((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
-
-  // Filtered shop list with Prime partner decoration
+  // Filtered and sorted shops list
   const shops = useMemo(() => {
     let all = shopsQuery.data ?? [];
-    if (q && matchQuery.data) all = all.filter((s) => matchQuery.data!.has(s.id));
-    if (active.has('delivery')) {
-      all = all.filter((s) => s.isDeliveryEnabled !== false && s.isDeliveryOpenNow !== false);
+    if (q && matchQuery.data) {
+      all = all.filter((s) => matchQuery.data!.has(s.id));
     }
-    if (active.has('open')) all = all.filter((s) => s.isOpenManual);
-    if (active.has('free')) all = all.filter((s) => (s.deliveryFeeAtUser ?? 0) === 0);
-    if (active.has('rated')) all = all.filter((s) => s.ratingAverage >= 4);
+    if (onlyFreeDelivery) {
+      all = all.filter(
+        (s) =>
+          (s.deliveryFeeAtUser ?? 0) === 0 &&
+          s.isDeliveryEnabled !== false &&
+          s.isOpenManual,
+      );
+    }
 
-    // Decorate prime shops if not configured yet in DB to ensure immediate live visibility
+    // Decorate prime partners
     return all.map((s, idx) => {
       if (s.isPrime !== undefined && s.isPrime !== null) return s;
       const isPrime =
@@ -188,48 +156,70 @@ export default function MapTab() {
         primeBadgeText: isPrime ? 'Prime' : undefined,
       };
     });
-  }, [shopsQuery.data, matchQuery.data, q, active]);
+  }, [shopsQuery.data, matchQuery.data, q, onlyFreeDelivery]);
+
+  // Supercluster K-D tree spatial index over delivery-capable shops
+  const clusterIndex = useMemo(() => {
+    return createShopClusterIndex(shops);
+  }, [shops]);
 
   // Clustered items based on current zoom and viewport
   const clusteredItems = useMemo(() => {
-    return clusterShops(shops, currentRegion);
-  }, [shops, currentRegion]);
+    return getClustersForRegion(clusterIndex, debouncedRegion ?? currentRegion, shops);
+  }, [clusterIndex, debouncedRegion, currentRegion, shops]);
 
-  const selected = shops.find((s) => s.id === selectedId) ?? null;
-
-  // Has the user panned the map significantly away from the current search center?
-  const isPannedAway = useMemo(() => {
-    if (!currentRegion || !effectiveCenter) return false;
-    // Don't prompt to search another area when user is zoomed in locally inspecting shops
-    if (currentRegion.latitudeDelta < 0.08 && !searchCenter) return false;
-    const dist = distanceKm(
-      currentRegion.latitude,
-      currentRegion.longitude,
-      effectiveCenter.latitude,
-      effectiveCenter.longitude,
-    );
-    return dist > 4.0; // Only show when panned > 4 km away into another area
-  }, [currentRegion, effectiveCenter, searchCenter]);
+  const initialRegion = useMemo<Region>(() => {
+    return {
+      latitude: coords?.latitude ?? 41.2995,
+      longitude: coords?.longitude ?? 69.2401,
+      latitudeDelta: 0.035,
+      longitudeDelta: 0.035,
+    };
+  }, [coords?.latitude, coords?.longitude]);
 
   const handleClusterPress = useCallback(
-    (_clusterShopsList: PublicShop[], lat: number, lng: number) => {
-      if (!currentRegion) return;
+    (_clusterShopsList: PublicShop[], lat: number, lng: number, expansionZoom?: number) => {
+      const r = currentRegion ?? initialRegion;
+      const targetDelta = expansionZoom
+        ? Math.min(r.latitudeDelta * 0.5, 360 / Math.pow(2, expansionZoom))
+        : Math.max(0.008, r.latitudeDelta * 0.42);
+
       mapRef.current?.animateToRegion(
         {
           latitude: lat,
           longitude: lng,
-          latitudeDelta: currentRegion.latitudeDelta * 0.42,
-          longitudeDelta: currentRegion.longitudeDelta * 0.42,
+          latitudeDelta: Math.max(0.005, targetDelta),
+          longitudeDelta: Math.max(0.005, targetDelta),
         },
-        380,
+        350,
       );
     },
-    [currentRegion],
+    [currentRegion, initialRegion],
   );
 
-  const handleSelectShop = useCallback((shopId: string) => {
-    setSelectedId((prev) => (prev === shopId ? null : shopId));
-  }, []);
+  const handleSelectShop = useCallback(
+    (shopId: string) => {
+      setSelectedId(shopId);
+      const found = shops.find((s) => s.id === shopId);
+      if (found && Number.isFinite(found.latitude) && Number.isFinite(found.longitude)) {
+        mapRef.current?.animateToRegion(
+          {
+            latitude: found.latitude - 0.0035, // offset so marker stays above bottom carousel
+            longitude: found.longitude,
+            latitudeDelta: 0.016,
+            longitudeDelta: 0.016,
+          },
+          350,
+        );
+      }
+    },
+    [shops],
+  );
+
+  const recenter = useCallback(() => {
+    haptics.selection();
+    mapRef.current?.animateToRegion(initialRegion, 450);
+  }, [initialRegion]);
 
   if (!coords) {
     return (
@@ -239,28 +229,6 @@ export default function MapTab() {
       </SafeAreaView>
     );
   }
-
-  const initialRegion: Region = {
-    latitude: coords.latitude,
-    longitude: coords.longitude,
-    latitudeDelta: 0.035,
-    longitudeDelta: 0.035,
-  };
-
-  const recenter = () => {
-    haptics.selection();
-    setSearchCenter(null);
-    mapRef.current?.animateToRegion(initialRegion, 450);
-  };
-
-  const handleSearchThisArea = () => {
-    if (!currentRegion) return;
-    haptics.selection();
-    setSearchCenter({
-      latitude: currentRegion.latitude,
-      longitude: currentRegion.longitude,
-    });
-  };
 
   return (
     <View style={styles.container}>
@@ -273,9 +241,15 @@ export default function MapTab() {
         showsUserLocation
         showsMyLocationButton={false}
         toolbarEnabled={false}
+        mapPadding={{
+          top: insets.top + 60,
+          right: 0,
+          bottom: bottomInset + 170,
+          left: 0,
+        }}
         onRegionChangeComplete={handleRegionChangeComplete}
         onPress={() => setSelectedId(null)}>
-        {/* Render clustered items (either single shop marker or cluster marker) */}
+        {/* Render clustered items (single shop marker or cluster marker) */}
         {clusteredItems.map((item) => {
           if (item.type === 'cluster') {
             return (
@@ -285,6 +259,7 @@ export default function MapTab() {
                 latitude={item.latitude}
                 longitude={item.longitude}
                 count={item.count}
+                expansionZoom={item.expansionZoom}
                 shops={item.shops}
                 onPress={handleClusterPress}
               />
@@ -310,124 +285,92 @@ export default function MapTab() {
         )}
       </MapView>
 
-      {/* Floating "Search this area" button when panned far away */}
-      {isPannedAway && !selected && (
-        <SafeAreaView edges={['top']} style={styles.topActionOverlay} pointerEvents="box-none">
-          <Pressable style={styles.searchThisAreaBtn} onPress={handleSearchThisArea}>
-            <RefreshCw size={13} color={colors.brand.primary} strokeWidth={2.4} />
-            <Text style={styles.searchThisAreaText}>{tr('map.searchThisArea')}</Text>
-          </Pressable>
-        </SafeAreaView>
-      )}
-
-      {/* Top District Indicator Badge */}
-      {districtQuery.data && !q && !isPannedAway && (
-        <SafeAreaView edges={['top']} style={styles.topDistrictOverlay} pointerEvents="box-none">
-          <View style={styles.districtBadge}>
-            <MapPin size={13} color={colors.brand.primary} strokeWidth={2.6} />
-            <Text style={styles.districtBadgeText} numberOfLines={1}>
-              {t(districtQuery.data.name)}
-            </Text>
-          </View>
-        </SafeAreaView>
-      )}
-
-      {/* Top Search Pill (only shown when filtered by product search) */}
-      {q && (
-        <SafeAreaView edges={['top']} style={styles.topSearchOverlay} pointerEvents="box-none">
-          <View style={styles.searchPill}>
-            <Text style={styles.searchPillText} numberOfLines={1}>
-              “{q}”
-            </Text>
-            <Pressable
-              onPress={() => router.setParams({ q: undefined })}
-              hitSlop={8}
-              style={styles.searchCloseBtn}>
-              <X size={13} color={colors.text.secondary} strokeWidth={2.4} />
-            </Pressable>
-          </View>
-        </SafeAreaView>
-      )}
-
-      {/* Bottom controls: Recenter button + Floating filter chips */}
-      {!selected && (
-        <View style={styles.bottomControls} pointerEvents="box-none">
-          <Pressable
-            style={styles.recenterBtn}
-            onPress={recenter}
-            hitSlop={8}
-            accessibilityLabel="Recenter map">
-            <Navigation size={20} color={colors.brand.primary} strokeWidth={2.4} />
-          </Pressable>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bottomChipsContent}
-            style={styles.bottomChipsScroll}>
-            {/* "Barchasi" / All chip */}
-            <Pressable
-              onPress={resetFilters}
-              style={[styles.chip, isAll && styles.chipActive]}>
-              <Layers
-                size={13}
-                color={isAll ? colors.text.onPrimary : colors.brand.primary}
-                strokeWidth={2.4}
-              />
-              <Text style={[styles.chipText, isAll && styles.chipTextActive]}>
-                {tr('map.filterAll')}
+      {/* Top Floating Bar: District Badge + Minimalist Free Delivery Toggle */}
+      <SafeAreaView edges={['top']} style={styles.topContainer} pointerEvents="box-none">
+        <View style={styles.topBar}>
+          {/* District Name Badge */}
+          {districtQuery.data && !q && (
+            <View style={styles.districtBadge}>
+              <MapPin size={13} color={colors.brand.primary} strokeWidth={2.6} />
+              <Text style={styles.districtBadgeText} numberOfLines={1}>
+                {t(districtQuery.data.name)}
               </Text>
-            </Pressable>
+            </View>
+          )}
 
-            {FILTERS.map((f) => {
-              const on = active.has(f.key);
-              return (
-                <Pressable
-                  key={f.key}
-                  onPress={() => toggle(f.key)}
-                  style={[styles.chip, on && styles.chipActive]}>
-                  {f.key === 'delivery' && (
-                    <Truck
-                      size={13}
-                      color={on ? colors.text.onPrimary : colors.brand.primary}
-                      strokeWidth={2.4}
-                    />
-                  )}
-                  {f.key === 'open' && (
-                    <Store
-                      size={13}
-                      color={on ? colors.text.onPrimary : colors.brand.primary}
-                      strokeWidth={2.4}
-                    />
-                  )}
-                  {f.key === 'free' && (
-                    <Gift
-                      size={13}
-                      color={on ? colors.text.onPrimary : colors.brand.primary}
-                      strokeWidth={2.4}
-                    />
-                  )}
-                  {f.key === 'rated' && (
-                    <Star
-                      size={13}
-                      color={on ? colors.text.onPrimary : colors.feedback.warning}
-                      fill={on ? colors.text.onPrimary : colors.feedback.warning}
-                    />
-                  )}
-                  <Text style={[styles.chipText, on && styles.chipTextActive]}>
-                    {tr(f.labelKey)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+          {/* Product Search Pill */}
+          {q && (
+            <View style={styles.searchPill}>
+              <Text style={styles.searchPillText} numberOfLines={1}>
+                “{q}”
+              </Text>
+              <Pressable
+                onPress={() => router.setParams({ q: undefined })}
+                hitSlop={8}
+                style={styles.searchCloseBtn}>
+                <X size={13} color={colors.text.secondary} strokeWidth={2.4} />
+              </Pressable>
+            </View>
+          )}
+
+          {/* Minimal Free Delivery Toggle Switch */}
+          <Pressable
+            style={[
+              styles.freeToggleBtn,
+              onlyFreeDelivery && styles.freeToggleBtnActive,
+            ]}
+            onPress={() => {
+              haptics.selection();
+              setOnlyFreeDelivery((prev) => !prev);
+            }}>
+            <Gift
+              size={13}
+              color={onlyFreeDelivery ? '#FFFFFF' : colors.brand.primary}
+              strokeWidth={2.4}
+            />
+            <Text
+              style={[
+                styles.freeToggleText,
+                onlyFreeDelivery && styles.freeToggleTextActive,
+              ]}>
+              {tr('shop.freeShort')} {tr('map.filterDelivery')}
+            </Text>
+            <View
+              style={[
+                styles.switchThumb,
+                onlyFreeDelivery && styles.switchThumbActive,
+              ]}
+            />
+          </Pressable>
         </View>
-      )}
+      </SafeAreaView>
 
+      {/* Recenter button (floats directly above the bottom carousel) */}
+      <View
+        style={[styles.recenterWrap, { bottom: recenterBottom }]}
+        pointerEvents="box-none">
+        <Pressable
+          style={styles.recenterBtn}
+          onPress={recenter}
+          hitSlop={8}
+          accessibilityLabel="Recenter map">
+          <Navigation size={20} color={colors.brand.primary} strokeWidth={2.4} />
+        </Pressable>
+      </View>
+
+      {/* Bottom Horizontal Shop Carousel (Airbnb style) */}
+      <MapShopCarousel
+        shops={shops}
+        selectedId={selectedId}
+        onSelectShop={handleSelectShop}
+        onOpenPreview={(shop) => setPreviewShop(shop)}
+      />
+
+      {/* Quick In-Map Product Catalog / Checkout Sheet */}
       <ShopPreviewSheet
-        visible={!!selected}
-        shop={selected}
-        onClose={() => setSelectedId(null)}
+        visible={!!previewShop}
+        shop={previewShop}
+        onClose={() => setPreviewShop(null)}
       />
     </View>
   );
@@ -484,24 +427,31 @@ const styles = StyleSheet.create({
   },
   dim: { ...typography.bodySmall, color: colors.text.secondary },
 
-  topDistrictOverlay: {
+  topContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
+    paddingHorizontal: layout.screenPadding,
+  },
+  topBar: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
   },
   districtBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    marginTop: spacing.sm,
-    backgroundColor: colors.bg.surface,
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: spacing.md,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: radius.full,
     borderWidth: 1.5,
     borderColor: colors.brand.primaryBorder,
+    flexShrink: 1,
     ...shadow.md,
   },
   districtBadgeText: {
@@ -511,49 +461,14 @@ const styles = StyleSheet.create({
     color: colors.brand.primary,
   },
 
-  topActionOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  searchThisAreaBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: spacing.sm,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-    ...shadow.lg,
-  },
-  searchThisAreaText: {
-    ...typography.caption,
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.brand.primary,
-  },
-
-  topSearchOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
   searchPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    marginTop: spacing.sm,
-    backgroundColor: colors.bg.surface,
+    backgroundColor: '#FFFFFF',
     paddingLeft: spacing.md,
     paddingRight: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingVertical: 6,
     borderRadius: radius.full,
     borderWidth: 1,
     borderColor: colors.border.subtle,
@@ -563,7 +478,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontWeight: '700',
     color: colors.brand.primary,
-    maxWidth: 220,
+    maxWidth: 160,
   },
   searchCloseBtn: {
     width: 20,
@@ -574,59 +489,57 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  bottomControls: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 84,
-  },
-  recenterBtn: {
-    alignSelf: 'flex-end',
-    marginRight: layout.screenPadding,
-    marginBottom: spacing.xs,
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surface,
+  // Minimal Free Delivery Toggle Pill with Switch Indicator
+  freeToggleBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingLeft: spacing.md,
+    paddingRight: 8,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    borderWidth: 1.5,
     borderColor: colors.border.subtle,
     ...shadow.md,
   },
-  bottomChipsScroll: {
-    flexGrow: 0,
-  },
-  bottomChipsContent: {
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.xs,
-    gap: spacing.xs,
-    alignItems: 'center',
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 7,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surface,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    ...shadow.sm,
-  },
-  chipActive: {
+  freeToggleBtnActive: {
     backgroundColor: colors.brand.primary,
     borderColor: colors.brand.primary,
   },
-  chipText: {
+  freeToggleText: {
     ...typography.caption,
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.text.secondary,
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: colors.brand.primary,
   },
-  chipTextActive: {
-    color: colors.text.onPrimary,
+  freeToggleTextActive: {
+    color: '#FFFFFF',
+  },
+  switchThumb: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#CBD5E1',
+  },
+  switchThumbActive: {
+    backgroundColor: '#10B981',
+  },
+
+  recenterWrap: {
+    position: 'absolute',
+    right: layout.screenPadding,
+  },
+  recenterBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...shadow.lg,
   },
 });
 
