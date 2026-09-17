@@ -92,7 +92,13 @@ async function refreshAccess(): Promise<string | null> {
   refreshing = (async () => {
     try {
       const refreshToken = await tokenStorage.getRefresh();
-      if (!refreshToken) return null;
+      if (!refreshToken) {
+        await tokenStorage.clear();
+        queryClient.clear();
+        const { disconnectSocket } = await import('./socket');
+        disconnectSocket();
+        return null;
+      }
       const res = await axios.post<{ accessToken: string; refreshToken: string }>(
         `${API_URL}/api/auth/refresh`,
         { refreshToken },
@@ -108,9 +114,12 @@ async function refreshAccess(): Promise<string | null> {
       return res.data.accessToken;
     } catch (err) {
       // Only clear tokens when the server definitively rejects the refresh token
-      // (401 = expired / revoked). Network errors or server 5xx must NOT log
+      // (401 = expired / revoked, 400/404 = bad payload/user). Network errors or server 5xx must NOT log
       // the user out — the session is still valid, connectivity is the problem.
-      if (isAxiosError(err) && err.response?.status === 401) {
+      if (
+        isAxiosError(err) &&
+        (err.response?.status === 401 || err.response?.status === 400 || err.response?.status === 404)
+      ) {
         await tokenStorage.clear();
         // Refresh token is dead — this is a forced logout. Drop cached queries
         // and tear down the socket so the next login never flashes stale data.

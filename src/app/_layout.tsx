@@ -126,42 +126,37 @@ function RootNavigator() {
       <Stack
         screenOptions={{
           headerShown: true,
-        headerStyle: { backgroundColor: colors.bg.surface },
-        headerTintColor: colors.text.primary,
-        headerTitleStyle: { fontWeight: '700' },
-        headerShadowVisible: false,
-        contentStyle: { backgroundColor: colors.bg.canvas },
-        // Telegram-style swipe-to-go-back from anywhere on screen, not just
-        // an edge sliver — react-native-screens supports this on Android too
-        // once explicitly enabled (native-stack only defaults it on iOS).
-        gestureEnabled: true,
-        fullScreenGestureEnabled: true,
-      }}>
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="shops" options={{ title: tr('home.nearbyShops') }} />
-      <Stack.Screen name="product/[id]" options={{ title: tr('nav.product') }} />
-      <Stack.Screen name="shop/[id]/index" options={{ title: tr('nav.shop') }} />
-      <Stack.Screen name="shop/[id]/checkout" options={{ title: tr('cart.proceed') }} />
-      <Stack.Screen name="orders/index" options={{ title: tr('orders.title') }} />
-      <Stack.Screen name="orders/[id]" options={{ title: tr('nav.orderDetail') }} />
-      <Stack.Screen name="orders/tracking" options={{ title: tr('tracking.title') }} />
-      <Stack.Screen name="chat/[orderId]" options={{ title: tr('nav.chat') }} />
-      <Stack.Screen name="notifications" options={{ title: tr('notifications.title') }} />
-      <Stack.Screen name="notification/[id]" options={{ title: tr('nav.notificationDetail') }} />
-      <Stack.Screen name="addresses" options={{ title: tr('addr.title') }} />
-      <Stack.Screen name="saved-cards" options={{ title: tr('cards.title') }} />
-      <Stack.Screen name="add-card" options={{ title: tr('cards.addTitle') }} />
-      <Stack.Screen name="profile/edit" options={{ title: tr('editProfile.title') }} />
-      <Stack.Screen name="profile/delete-account" options={{ title: tr('deleteAccount.title') }} />
-      <Stack.Screen name="staff-scan" options={{ headerShown: false }} />
-      <Stack.Screen name="seller-application" options={{ title: tr('sellerApp.title') }} />
-      <Stack.Screen name="seller/new" options={{ title: tr('nav.newShop') }} />
-      <Stack.Screen name="seller/[shopId]" options={{ headerShown: false }} />
-      <Stack.Screen name="seller/return/[orderId]" options={{ title: tr('nav.returnItems') }} />
-      <Stack.Screen name="seller/order/[orderId]" options={{ title: tr('nav.orderDetail') }} />
-      <Stack.Screen name="seller/pos/[shopId]" options={{ headerShown: false }} />
-      <Stack.Screen name="favorites" options={{ title: tr('nav.favorites') }} />
+          headerStyle: { backgroundColor: colors.bg.surface },
+          headerTintColor: colors.text.primary,
+          headerTitleStyle: { fontWeight: '700' },
+          headerShadowVisible: false,
+          contentStyle: { backgroundColor: colors.bg.canvas },
+        }}>
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="shops" options={{ title: tr('home.nearbyShops') }} />
+        <Stack.Screen name="product/[id]" options={{ title: tr('nav.product') }} />
+        <Stack.Screen name="shop/[id]/index" options={{ title: tr('nav.shop') }} />
+        <Stack.Screen name="shop/[id]/checkout" options={{ title: tr('cart.proceed') }} />
+        <Stack.Screen name="orders/index" options={{ title: tr('orders.title') }} />
+        <Stack.Screen name="orders/[id]" options={{ title: tr('nav.orderDetail') }} />
+        <Stack.Screen name="orders/tracking" options={{ title: tr('tracking.title') }} />
+        <Stack.Screen name="chat/[orderId]" options={{ title: tr('nav.chat') }} />
+        <Stack.Screen name="notifications" options={{ title: tr('notifications.title') }} />
+        <Stack.Screen name="notification/[id]" options={{ title: tr('nav.notificationDetail') }} />
+        <Stack.Screen name="addresses" options={{ title: tr('addr.title') }} />
+        <Stack.Screen name="saved-cards" options={{ title: tr('cards.title') }} />
+        <Stack.Screen name="add-card" options={{ title: tr('cards.addTitle') }} />
+        <Stack.Screen name="profile/edit" options={{ title: tr('editProfile.title') }} />
+        <Stack.Screen name="profile/delete-account" options={{ title: tr('deleteAccount.title') }} />
+        <Stack.Screen name="staff-scan" options={{ headerShown: false }} />
+        <Stack.Screen name="seller-application" options={{ title: tr('sellerApp.title') }} />
+        <Stack.Screen name="seller/new" options={{ title: tr('nav.newShop') }} />
+        <Stack.Screen name="seller/[shopId]" options={{ headerShown: false }} />
+        <Stack.Screen name="seller/return/[orderId]" options={{ title: tr('nav.returnItems') }} />
+        <Stack.Screen name="seller/order/[orderId]" options={{ title: tr('nav.orderDetail') }} />
+        <Stack.Screen name="seller/pos/[shopId]" options={{ headerShown: false }} />
+        <Stack.Screen name="favorites" options={{ title: tr('nav.favorites') }} />
       </Stack>
     </>
   );

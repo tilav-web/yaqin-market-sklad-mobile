@@ -17,8 +17,8 @@ export default function TabsLayout() {
       tabBarPosition="bottom"
       tabBar={renderTabBar}
       screenOptions={{
-        swipeEnabled: true,
-        animationEnabled: true,
+        swipeEnabled: false,
+        animationEnabled: false,
         sceneStyle: { backgroundColor: colors.bg.canvas },
       }}>
       <TopTabs.Screen name="index" />

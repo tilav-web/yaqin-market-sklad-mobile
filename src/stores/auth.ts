@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios';
 import { create } from 'zustand';
 
 import { api, extractErrorMessage } from '@/lib/api';
@@ -67,12 +68,19 @@ export const useAuthStore = create<AuthState>((set) => ({
         },
         status: 'authenticated',
       });
-    } catch {
-      // If refreshAccess() cleared the tokens (refresh token expired/revoked,
-      // a definitive 401), the user must re-login. If it was a network/server
-      // error, refreshAccess() deliberately left the tokens alone — the
-      // session is still valid, connectivity is the problem, so don't force
-      // this genuinely-still-logged-in user through the login screen.
+    } catch (err) {
+      // If server explicitly rejected credentials (401/403), user is unauthenticated
+      const isAuthError =
+        isAxiosError(err) &&
+        (err.response?.status === 401 || err.response?.status === 403);
+
+      if (isAuthError) {
+        await tokenStorage.clear();
+        set({ user: null, status: 'unauthenticated' });
+        queryClient.clear();
+        return;
+      }
+
       const stillHasToken = !!(await tokenStorage.getAccess());
       if (!stillHasToken) {
         set({ user: null, status: 'unauthenticated' });
