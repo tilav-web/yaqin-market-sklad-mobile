@@ -20,6 +20,7 @@ export const common = {
   'common.somPerKg': 'сум/кг',
   'common.som': 'сум',
   'tab.home': 'Главная',
+  'tab.chats': 'Чаты',
   'tab.map': 'Карта',
   'tab.search': 'Поиск',
   'tab.carts': 'Корзины',

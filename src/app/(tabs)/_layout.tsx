@@ -22,10 +22,11 @@ export default function TabsLayout() {
         sceneStyle: { backgroundColor: colors.bg.canvas },
       }}>
       <TopTabs.Screen name="index" />
+      <TopTabs.Screen name="chats" />
       <TopTabs.Screen name="map" />
-      <TopTabs.Screen name="search" />
       <TopTabs.Screen name="carts" />
       <TopTabs.Screen name="profile" />
+      <TopTabs.Screen name="search" options={{ tabBarItemStyle: { display: 'none' } }} />
     </TopTabs>
   );
 }

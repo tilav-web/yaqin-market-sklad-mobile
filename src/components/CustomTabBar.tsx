@@ -1,5 +1,5 @@
 import type { MaterialTopTabBarProps } from 'expo-router/js-top-tabs';
-import { Home, LucideIcon, MapPin, Search, ShoppingBag, User } from 'lucide-react-native';
+import { Home, LucideIcon, MapPin, MessageCircle, Search, ShoppingBag, User } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -18,17 +18,17 @@ import { colors, radius, shadow, spacing, typography } from '@/theme';
 
 const ICONS: Record<string, LucideIcon> = {
   index: Home,
+  chats: MessageCircle,
   map: MapPin,
-  search: Search,
   carts: ShoppingBag,
   profile: User,
 };
 
-type LabelKey = 'tab.home' | 'tab.map' | 'tab.search' | 'tab.carts' | 'tab.profile';
+type LabelKey = 'tab.home' | 'tab.chats' | 'tab.map' | 'tab.carts' | 'tab.profile';
 const LABEL_KEYS: Record<string, LabelKey> = {
   index: 'tab.home',
+  chats: 'tab.chats',
   map: 'tab.map',
-  search: 'tab.search',
   carts: 'tab.carts',
   profile: 'tab.profile',
 };

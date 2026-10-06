@@ -154,6 +154,42 @@ export interface ChatMessage {
   createdAt: string;
 }
 
+export interface Conversation {
+  id: string;
+  shopId: string;
+  shopName: string;
+  shopPhotos: string[];
+  customerId: string;
+  customerName: string;
+  customerPhone?: string;
+  customerAvatarUrl?: string | null;
+  lastMessageText: string | null;
+  lastMessageAt: string | null;
+  unreadCount: number;
+  isSellerSide?: boolean;
+  createdAt: string;
+}
+
+export interface ConversationMessage {
+  id: string;
+  conversationId: string;
+  senderUserId: string;
+  fromShop: boolean;
+  text: string;
+  attachedProductId?: string | null;
+  attachedOrderNumber?: string | null;
+  photoUrl?: string | null;
+  isRead: boolean;
+  createdAt: string;
+  sender?: {
+    id: string;
+    name?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    avatarUrl?: string | null;
+  };
+}
+
 export interface ProductReview {
   id: string;
   stars: number;

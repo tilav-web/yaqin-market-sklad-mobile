@@ -1,179 +1,44 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { router, useFocusEffect } from 'expo-router';
-import { ChevronDown, Map as MapIcon, MapPin, Navigation, Search as SearchIcon, ShoppingBag, WifiOff } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Bell,
+  ChevronDown,
+  MapPin,
+  Search as SearchIcon,
+  ShoppingBag,
+  Store,
+} from 'lucide-react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
+  FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import Animated, {
-  Extrapolation,
-  SharedValue,
-  interpolate,
-  useAnimatedStyle,
-  useAnimatedScrollHandler,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import PagerView from 'react-native-pager-view';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AddressPickerSheet } from '@/components/AddressPickerSheet';
-import { ProductCard } from '@/components/ProductCard';
-import { ProductCardSkeleton } from '@/components/ProductCardSkeleton';
-import { StoreFeedCard } from '@/components/StoreFeedCard';
+import {
+  FolderTabItem,
+  TelegramFolderTabs,
+} from '@/components/telegram/TelegramFolderTabs';
+import { TelegramProductRow } from '@/components/telegram/TelegramProductRow';
+import { TelegramShopRow } from '@/components/telegram/TelegramShopRow';
+import { TelegramShopStoryAvatar } from '@/components/telegram/TelegramShopStoryAvatar';
 import { EmptyState } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
-import { FeedProduct, FeedResponse, PublicShop } from '@/lib/types';
-import { hideProgress } from '@/stores/scrollHide';
+import { Category, FeedProduct, FeedResponse, PublicShop } from '@/lib/types';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { haptics } from '@/utils/haptics';
 
-// How far (in px) the list must scroll continuously in one direction before
-// the tab bar commits to hiding or showing — small enough to feel
-// responsive, large enough to ignore bounce/rubber-band jitter.
-const HIDE_AFTER_PX = 40;
-const SHOW_AFTER_PX = 16;
-
-// The brand/address row collapses away over this many px of scroll — same
-// distance as its own natural height once measured (see expandedRowHeight),
-// this is just the pre-measurement fallback.
-const SEARCH_BAR_HEIGHT = 44;
-const HEADER_ROW_GAP = spacing.md;
-
-const SCREEN_W = Dimensions.get('window').width;
-const GUTTER = spacing.sm;
-const SIDE = layout.screenPadding;
-const CARD_WIDTH = (SCREEN_W - SIDE * 2 - GUTTER) / 2;
-
-// Insert a shop card after every N product rows (each row = 2 products).
-const STORE_EVERY_ROWS = 4;
-
-type Row =
-  | { readonly kind: 'products'; readonly items: FeedProduct[] }
-  | { readonly kind: 'store'; readonly shop: PublicShop };
-
-interface HomeHeaderProps {
-  readonly tr: ReturnType<typeof useTranslation>['tr'];
-  readonly usingManualAddress: boolean;
-  readonly locationLabel: string;
-  readonly onPressLocation: () => void;
-  readonly onPressSearch: () => void;
-  readonly onPressMap: () => void;
-  readonly insetsTop: number;
-  readonly collapseProgress: SharedValue<number>;
-  readonly expandedRowHeight: SharedValue<number>;
-  readonly onExpandedRowLayout: (height: number) => void;
-}
-
-// A single fixed header, always mounted (no floating duplicate to keep in
-// sync). The brand title + full address pill collapse away continuously as
-// the feed scrolls, and a compact address button crossfades in next to the
-// search bar so the address stays reachable even once collapsed.
-function HomeHeader({
-  tr,
-  usingManualAddress,
-  locationLabel,
-  onPressLocation,
-  onPressSearch,
-  onPressMap,
-  insetsTop,
-  collapseProgress,
-  expandedRowHeight,
-  onExpandedRowLayout,
-}: HomeHeaderProps) {
-  const expandedRowStyle = useAnimatedStyle(() => {
-    // Content fades out well before the row finishes collapsing (a "dissolve
-    // then close" feel) so the text/pill never look visibly squashed.
-    const fadeOpacity = interpolate(collapseProgress.value, [0, 0.6], [1, 0], Extrapolation.CLAMP);
-    return {
-      opacity: fadeOpacity,
-      height: expandedRowHeight.value > 0 ? expandedRowHeight.value * (1 - collapseProgress.value) : undefined,
-      marginBottom: HEADER_ROW_GAP * (1 - collapseProgress.value),
-      overflow: 'hidden',
-    };
-  });
-  const miniLocationStyle = useAnimatedStyle(() => {
-    // Held back until the expanded row is mostly gone, then pops in with a
-    // small scale flourish instead of just sliding open linearly.
-    const reveal = interpolate(collapseProgress.value, [0.35, 1], [0, 1], Extrapolation.CLAMP);
-    return {
-      opacity: reveal,
-      width: 36 * reveal,
-      marginRight: spacing.sm * reveal,
-      transform: [{ scale: interpolate(reveal, [0, 1], [0.5, 1], Extrapolation.CLAMP) }],
-    };
-  });
-
-  return (
-    <View style={[styles.header, { paddingTop: insetsTop + spacing.sm }]}>
-      <Animated.View
-        style={[styles.expandedRow, expandedRowStyle]}
-        onLayout={(e) => onExpandedRowLayout(e.nativeEvent.layout.height)}>
-        <View style={styles.brandRow}>
-          <Text style={styles.brand}>Yaqin Market</Text>
-        </View>
-        <Pressable
-          style={[styles.locationPill, usingManualAddress && styles.locationPillManual]}
-          onPress={onPressLocation}>
-          {usingManualAddress ? (
-            <MapPin
-              size={15}
-              color={colors.brand.primary}
-              strokeWidth={2.6}
-              fill={colors.brand.primarySurface}
-            />
-          ) : (
-            <Navigation size={13} color={colors.text.onPrimary} strokeWidth={2.4} />
-          )}
-          <View style={styles.locationTextWrap}>
-            <Text
-              style={[styles.locationText, usingManualAddress && styles.locationTextManual]}
-              numberOfLines={1}>
-              {locationLabel}
-            </Text>
-            {usingManualAddress && (
-              <Text style={styles.locationSub} numberOfLines={1}>
-                {tr('home.notCurrentLocation')}
-              </Text>
-            )}
-          </View>
-          <ChevronDown
-            size={14}
-            color={usingManualAddress ? colors.text.tertiary : 'rgba(255,255,255,0.85)'}
-            strokeWidth={2.4}
-          />
-        </Pressable>
-      </Animated.View>
-
-      <View style={styles.searchRow}>
-        <Animated.View style={[styles.miniLocationBtn, miniLocationStyle]}>
-          <Pressable style={styles.miniLocationInner} onPress={onPressLocation} hitSlop={8}>
-            {usingManualAddress ? (
-              <MapPin size={16} color={colors.feedback.warning} strokeWidth={2.6} />
-            ) : (
-              <Navigation size={15} color={colors.text.onPrimary} strokeWidth={2.4} />
-            )}
-          </Pressable>
-        </Animated.View>
-        <Pressable style={styles.searchBar} onPress={onPressSearch}>
-          <SearchIcon size={18} color={colors.text.tertiary} strokeWidth={2.4} />
-          <Text style={styles.searchPlaceholder}>{tr('search.placeholder')}</Text>
-          <Pressable style={styles.mapBtn} onPress={onPressMap}>
-            <MapIcon size={16} color={colors.brand.primary} strokeWidth={2.4} />
-          </Pressable>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-export default function HomeScreen() {
+export default function TelegramHomeScreen() {
   const { tr } = useTranslation();
   const insets = useSafeAreaInsets();
   const coords = useEffectiveCoords();
@@ -183,79 +48,8 @@ export default function HomeScreen() {
   const permissionStatus = useLocationStore((s) => s.permissionStatus);
 
   const [pickerOpen, setPickerOpen] = useState(false);
-  // The fixed header's total (expanded) height, once measured — used to pad
-  // the feed's top so content starts below it instead of underneath it.
-  // Seeded with a rough estimate so there's no visible jump before the real
-  // measurement lands on the first layout pass.
-  const [fullHeaderHeight, setFullHeaderHeight] = useState(
-    () => insets.top + spacing.sm + 40 + HEADER_ROW_GAP + SEARCH_BAR_HEIGHT + spacing.md,
-  );
-
-  // 0 = header fully expanded (brand + address row visible), 1 = fully
-  // collapsed (only the search row, with a compact address button). Tracks
-  // scroll position directly (not direction-based) for a native "pinned
-  // toolbar" feel — no separate floating copy to keep in sync with this one.
-  const collapseProgress = useSharedValue(0);
-  const expandedRowHeight = useSharedValue(0);
-  const lastScrollY = useSharedValue(0);
-  const scrollDir = useSharedValue(0);
-  const scrollAccum = useSharedValue(0);
-  const onFeedScroll = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      const y = Math.max(0, event.contentOffset.y);
-      const delta = y - lastScrollY.value;
-      lastScrollY.value = y;
-
-      const collapseDistance = expandedRowHeight.value > 0 ? expandedRowHeight.value : 1;
-      collapseProgress.value = Math.min(1, Math.max(0, y / collapseDistance));
-
-      if (y <= 4) {
-        scrollAccum.value = 0;
-        scrollDir.value = 0;
-        hideProgress.value = withTiming(0, { duration: 200 });
-        return;
-      }
-      if (Math.abs(delta) < 1) return;
-
-      const dir = delta > 0 ? 1 : -1;
-      if (dir !== scrollDir.value) {
-        scrollDir.value = dir;
-        scrollAccum.value = 0;
-      }
-      scrollAccum.value += Math.abs(delta);
-
-      if (dir === 1 && scrollAccum.value > HIDE_AFTER_PX) {
-        hideProgress.value = withTiming(1, { duration: 220 });
-      } else if (dir === -1 && scrollAccum.value > SHOW_AFTER_PX) {
-        hideProgress.value = withTiming(0, { duration: 220 });
-      }
-    },
-  });
-
-  // Measured once (natural height, before any collapsing happens) — later
-  // onLayout firings as the row animates its own height are ignored.
-  const onExpandedRowLayout = useCallback(
-    (height: number) => {
-      // `.get()`/`.set()` rather than `.value` here: this runs on the JS side
-      // inside a useCallback, where the compiler cannot tell that a shared
-      // value is meant to be mutated. Inside worklets `.value` stays fine.
-      if (expandedRowHeight.get() !== 0) return;
-      expandedRowHeight.set(height);
-      setFullHeaderHeight(insets.top + spacing.sm + height + HEADER_ROW_GAP + SEARCH_BAR_HEIGHT + spacing.md);
-    },
-    [expandedRowHeight, insets.top],
-  );
-
-  // Leaving the home tab (e.g. via the Telegram-style tab swipe) must never
-  // strand the tab bar hidden on another screen that doesn't scroll it back
-  // into view.
-  useFocusEffect(
-    useCallback(() => {
-      return () => {
-        hideProgress.value = withTiming(0, { duration: 200 });
-      };
-    }, []),
-  );
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const pagerRef = useRef<PagerView>(null);
 
   useEffect(() => {
     if (!permissionStatus) {
@@ -265,6 +59,7 @@ export default function HomeScreen() {
     }
   }, [permissionStatus, coords, requestPermission, refresh]);
 
+  // Nearby Shops Query
   const shopsQuery = useQuery({
     queryKey: ['shops', 'nearby', coords?.latitude, coords?.longitude],
     queryFn: async () => {
@@ -278,12 +73,13 @@ export default function HomeScreen() {
     staleTime: 60_000,
   });
 
+  // Global Products Feed Query
   const feedQuery = useInfiniteQuery({
     queryKey: ['feed', coords?.latitude, coords?.longitude],
     queryFn: async ({ pageParam }) => {
       if (!coords) return { items: [], nextPage: null } satisfies FeedResponse;
       const res = await api.get<FeedResponse>('/catalog/products', {
-        params: { lat: coords.latitude, lng: coords.longitude, page: pageParam, limit: 24 },
+        params: { lat: coords.latitude, lng: coords.longitude, page: pageParam, limit: 30 },
       });
       return res.data;
     },
@@ -292,257 +88,357 @@ export default function HomeScreen() {
     getNextPageParam: (last) => last.nextPage,
   });
 
-  const items = useMemo<FeedProduct[]>(
+  // Categories Query
+  const categoriesQuery = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const res = await api.get<Category[]>('/categories');
+      return res.data;
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const leafCategories = useMemo(() => {
+    const list: Category[] = [];
+    for (const root of categoriesQuery.data ?? []) {
+      if (root.children && root.children.length > 0) {
+        list.push(...root.children);
+      } else {
+        list.push(root);
+      }
+    }
+    return list;
+  }, [categoriesQuery.data]);
+
+  const allProducts = useMemo<FeedProduct[]>(
     () => feedQuery.data?.pages.flatMap((p) => p.items) ?? [],
     [feedQuery.data],
   );
 
-  // Build interleaved rows: 2 products per row, a shop card after every few
-  // PRODUCT rows. Shop placement is keyed to the product-row index (not the
-  // mixed output length), so already-rendered rows never shift when a new feed
-  // page arrives. No shops are shown before products exist (avoids the
-  // "shops flash first, then get replaced" jump), and any shops that didn't
-  // fit are appended only once the feed is fully loaded.
-  const rows = useMemo<Row[]>(() => {
-    if (items.length === 0) return [];
-    // Closed shops are hidden from the feed (their products are filtered out
-    // server-side, so showing their banner would be misleading).
-    const shops = (shopsQuery.data ?? []).filter((s) => s.isOpenManual);
-    const out: Row[] = [];
-    let shopIdx = 0;
-    let productRows = 0;
-    for (let i = 0; i < items.length; i += 2) {
-      out.push({ kind: 'products', items: items.slice(i, i + 2) });
-      productRows++;
-      if (productRows % STORE_EVERY_ROWS === 0 && shopIdx < shops.length) {
-        out.push({ kind: 'store', shop: shops[shopIdx++] });
-      }
-    }
-    if (!feedQuery.hasNextPage) {
-      while (shopIdx < shops.length) {
-        out.push({ kind: 'store', shop: shops[shopIdx++] });
-      }
-    }
-    return out;
-  }, [items, shopsQuery.data, feedQuery.hasNextPage]);
+  const shops = shopsQuery.data ?? [];
 
-  const isInitialLoading =
-    (feedQuery.isLoading && items.length === 0) || (!coords && !!permissionStatus);
+  // Telegram Top Folder Tabs List
+  const folderTabs = useMemo<FolderTabItem[]>(() => {
+    const list: FolderTabItem[] = [
+      { id: 'all', title: 'Barchasi' },
+      { id: 'shops', title: 'Do\'konlar', badge: shops.length },
+    ];
+    for (const cat of leafCategories) {
+      list.push({
+        id: cat.id,
+        title: cat.nameUzLatn,
+      });
+    }
+    return list;
+  }, [shops.length, leafCategories]);
 
-  const locationLabel = selectedAddress
-    ? selectedAddress.label
-    : coords
-      ? tr('home.currentLocation')
-      : tr('home.locationLoading');
-  // A manually picked saved address is NOT the device's live position. Surface
-  // this strongly so the customer never browses the wrong area by accident.
-  const usingManualAddress = !!selectedAddress;
+  const handleSelectTab = useCallback((index: number) => {
+    setActiveTabIndex(index);
+    pagerRef.current?.setPage(index);
+  }, []);
+
+  const locationLabel = useMemo(() => {
+    if (selectedAddress?.name) return selectedAddress.name;
+    if (coords?.address) return coords.address;
+    return 'Manzilni tanlang';
+  }, [selectedAddress, coords]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <Animated.FlatList
-        data={rows}
-        keyExtractor={(row: Row, idx: number) => (row.kind === 'store' ? `s-${row.shop.id}` : `p-${idx}`)}
-        style={styles.scroll}
-        contentContainerStyle={[styles.list, { paddingTop: fullHeaderHeight }]}
-        showsVerticalScrollIndicator={false}
-        onScroll={onFeedScroll}
-        scrollEventThrottle={16}
-        ItemSeparatorComponent={() => <View style={{ height: GUTTER }} />}
-        refreshControl={
-          <RefreshControl
-            refreshing={feedQuery.isFetching && !feedQuery.isFetchingNextPage && !isInitialLoading}
-            onRefresh={() => {
-              void refresh();
-              void feedQuery.refetch();
-              void shopsQuery.refetch();
-            }}
-            tintColor={colors.brand.primary}
-            colors={[colors.brand.primary]}
-            // The header is a fixed overlay and the list is only padded under
-            // it — without this offset the spinner renders at the list's real
-            // top edge, invisible behind the header.
-            progressViewOffset={fullHeaderHeight}
-          />
-        }
-        onEndReachedThreshold={0.6}
-        onEndReached={() => {
-          if (feedQuery.hasNextPage && !feedQuery.isFetchingNextPage) {
-            void feedQuery.fetchNextPage();
-          }
-        }}
-        ListEmptyComponent={
-          isInitialLoading ? (
-            <View style={{ gap: GUTTER }}>
-              {[0, 1, 2].map((r) => (
-                <View key={r} style={styles.skeletonRow}>
-                  <ProductCardSkeleton cardWidth={CARD_WIDTH} />
-                  <ProductCardSkeleton cardWidth={CARD_WIDTH} />
-                </View>
-              ))}
-            </View>
-          ) : feedQuery.isError ? (
-            <EmptyState
-              icon={WifiOff}
-              title={tr('common.error.title')}
-              description={tr('common.error.desc')}
-              actionLabel={tr('common.retry')}
-              onAction={() => void feedQuery.refetch()}
-            />
-          ) : (
-            <EmptyState
-              icon={coords ? ShoppingBag : MapPin}
-              title={coords ? tr('home.empty.title') : tr('home.locationLoading')}
-              description={tr('home.empty.desc')}
-              actionLabel={coords ? undefined : tr('home.locationRetry')}
-              onAction={coords ? undefined : () => void refresh()}
-            />
-          )
-        }
-        ListFooterComponent={
-          feedQuery.isFetchingNextPage ? (
-            <ActivityIndicator color={colors.brand.primary} style={{ paddingVertical: spacing.lg }} />
-          ) : null
-        }
-        renderItem={({ item: row }) => {
-          if (row.kind === 'store') {
-            return (
-              <StoreFeedCard
-                shop={row.shop}
-                onPress={() => router.push(`/shop/${row.shop.id}`)}
-              />
-            );
-          }
-          return (
-            <View style={styles.productRow}>
-              {row.items.map((product) => (
-                <View key={product.id} style={styles.cell}>
-                  <ProductCard
-                    product={product}
-                    cardWidth={CARD_WIDTH}
-                    onPress={() => router.push(`/product/${product.id}`)}
-                  />
-                </View>
-              ))}
-              {row.items.length === 1 && <View style={styles.cell} />}
-            </View>
-          );
-        }}
-      />
+    <SafeAreaView edges={['top']} style={styles.safe}>
+      {/* Telegram Style Top Header */}
+      <View style={styles.header}>
+        {/* Left: Location Picker */}
+        <Pressable
+          onPress={() => {
+            haptics.selection();
+            setPickerOpen(true);
+          }}
+          style={styles.locationPill}>
+          <MapPin size={15} color={colors.brand.primary} />
+          <Text style={styles.locationText} numberOfLines={1}>
+            {locationLabel}
+          </Text>
+          <ChevronDown size={14} color={colors.text.secondary} />
+        </Pressable>
 
-      <View style={styles.fixedHeaderContainer} pointerEvents="box-none">
-        <HomeHeader
-          tr={tr}
-          usingManualAddress={usingManualAddress}
-          locationLabel={locationLabel}
-          onPressLocation={() => setPickerOpen(true)}
-          onPressSearch={() => router.push('/search')}
-          onPressMap={() => router.push('/map')}
-          insetsTop={insets.top}
-          collapseProgress={collapseProgress}
-          expandedRowHeight={expandedRowHeight}
-          onExpandedRowLayout={onExpandedRowLayout}
-        />
+        {/* Center: Brand Name */}
+        <View style={styles.brandContainer}>
+          <Text style={styles.brandTitle}>Yaqin</Text>
+        </View>
+
+        {/* Right: Search & Notifications */}
+        <View style={styles.rightActions}>
+          <Pressable
+            onPress={() => {
+              haptics.selection();
+              router.push('/(tabs)/search');
+            }}
+            style={styles.iconButton}>
+            <SearchIcon size={19} color={colors.text.primary} />
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              haptics.selection();
+              router.push('/notifications');
+            }}
+            style={styles.iconButton}>
+            <Bell size={19} color={colors.text.primary} />
+          </Pressable>
+        </View>
       </View>
 
-      <AddressPickerSheet visible={pickerOpen} onClose={() => setPickerOpen(false)} />
+      {/* Telegram Swipeable Category Tabs (Folders) */}
+      <TelegramFolderTabs
+        tabs={folderTabs}
+        activeIndex={activeTabIndex}
+        onSelectTab={handleSelectTab}
+      />
+
+      {/* Telegram Pager View (horizontal swiping between folders) */}
+      <PagerView
+        ref={pagerRef}
+        style={styles.pager}
+        initialPage={0}
+        onPageSelected={(e) => {
+          setActiveTabIndex(e.nativeEvent.position);
+        }}>
+        {/* Tab 0: Barchasi (Story Shops + Telegram Product Rows) */}
+        <View key="all" style={styles.page}>
+          <FlatList
+            data={allProducts}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => <TelegramProductRow item={item} />}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: insets.bottom + 85 },
+            ]}
+            ListHeaderComponent={
+              shops.length > 0 ? (
+                <View style={styles.storiesSection}>
+                  <Text style={styles.sectionTitle}>Do'konlar</Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.storiesScroll}>
+                    {shops.map((shop) => (
+                      <TelegramShopStoryAvatar key={shop.id} shop={shop} />
+                    ))}
+                  </ScrollView>
+                  <View style={styles.storiesDivider} />
+                </View>
+              ) : null
+            }
+            ListEmptyComponent={
+              feedQuery.isLoading ? (
+                <View style={styles.centerLoading}>
+                  <ActivityIndicator size="large" color={colors.brand.primary} />
+                </View>
+              ) : (
+                <View style={styles.centerLoading}>
+                  <EmptyState
+                    title="Mahsulotlar topilmadi"
+                    description="Hududingizda hozircha faol tovarlar yo'q"
+                  />
+                </View>
+              )
+            }
+            onEndReached={() => {
+              if (feedQuery.hasNextPage && !feedQuery.isFetchingNextPage) {
+                void feedQuery.fetchNextPage();
+              }
+            }}
+            onEndReachedThreshold={0.5}
+            refreshControl={
+              <RefreshControl
+                refreshing={feedQuery.isRefetching}
+                onRefresh={() => {
+                  void feedQuery.refetch();
+                  void shopsQuery.refetch();
+                }}
+                tintColor={colors.brand.primary}
+              />
+            }
+          />
+        </View>
+
+        {/* Tab 1: Do'konlar (Telegram Shop Rows) */}
+        <View key="shops" style={styles.page}>
+          <FlatList
+            data={shops}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => <TelegramShopRow shop={item} />}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: insets.bottom + 85 },
+            ]}
+            ListEmptyComponent={
+              shopsQuery.isLoading ? (
+                <View style={styles.centerLoading}>
+                  <ActivityIndicator size="large" color={colors.brand.primary} />
+                </View>
+              ) : (
+                <View style={styles.centerLoading}>
+                  <EmptyState
+                    title="Do'konlar topilmadi"
+                    description="Yaqin-atrofda faol do'konlar mavjud emas"
+                  />
+                </View>
+              )
+            }
+            refreshControl={
+              <RefreshControl
+                refreshing={shopsQuery.isRefetching}
+                onRefresh={() => void shopsQuery.refetch()}
+                tintColor={colors.brand.primary}
+              />
+            }
+          />
+        </View>
+
+        {/* Tabs 2..N: Dynamic Category Folders */}
+        {leafCategories.map((category) => {
+          const categoryProducts = allProducts.filter(
+            (p) => p.categoryId === category.id,
+          );
+          return (
+            <View key={category.id} style={styles.page}>
+              <FlatList
+                data={categoryProducts}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => <TelegramProductRow item={item} />}
+                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                contentContainerStyle={[
+                  styles.listContent,
+                  { paddingBottom: insets.bottom + 85 },
+                ]}
+                ListEmptyComponent={
+                  <View style={styles.centerLoading}>
+                    <EmptyState
+                      title={`${category.nameUzLatn} bo'yicha tovar yo'q`}
+                      description="Tez orada yangi mahsulotlar qo'shiladi"
+                    />
+                  </View>
+                }
+                refreshControl={
+                  <RefreshControl
+                    refreshing={feedQuery.isRefetching}
+                    onRefresh={() => void feedQuery.refetch()}
+                    tintColor={colors.brand.primary}
+                  />
+                }
+              />
+            </View>
+          );
+        })}
+      </PagerView>
+
+      <AddressPickerSheet
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg.canvas },
-  // Always-mounted, edge-to-edge fixed header — no floating duplicate to
-  // keep in sync. Sits above the feed, which is padded (`fullHeaderHeight`)
-  // to start below it.
-  fixedHeaderContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
+  safe: {
+    flex: 1,
+    backgroundColor: colors.bg.canvas,
   },
   header: {
-    backgroundColor: colors.brand.primary,
-    paddingHorizontal: layout.screenPadding,
-    paddingBottom: spacing.md,
-    borderBottomLeftRadius: radius['2xl'],
-    borderBottomRightRadius: radius['2xl'],
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    backgroundColor: colors.bg.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border.subtle,
   },
-  // Brand title + full address pill — collapses (height + opacity) away as
-  // the feed scrolls, see HomeHeader's expandedRowStyle.
-  expandedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  brand: { ...typography.h3, color: colors.text.onPrimary, flexShrink: 0 },
   locationPill: {
-    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.bg.surfaceMuted,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    maxWidth: 135,
+  },
+  locationText: {
+    ...typography.caption,
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.text.primary,
+    maxWidth: 80,
+  },
+  brandContainer: {
+    alignItems: 'center',
+  },
+  brandTitle: {
+    ...typography.title,
+    fontSize: 20,
+    fontWeight: '900',
+    color: colors.brand.primary,
+    letterSpacing: -0.5,
+  },
+  rightActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 7,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
   },
-  // Manual address = NOT live GPS: solid white pill with an amber alert border
-  // so it visibly stands out against the red header.
-  locationPillManual: {
-    backgroundColor: colors.bg.surface,
-    borderColor: colors.feedback.warning,
-    borderWidth: 1.5,
-    paddingVertical: 5,
-  },
-  locationTextWrap: { flex: 1 },
-  locationText: { ...typography.caption, color: colors.text.onPrimary, fontWeight: '600' },
-  locationTextManual: { color: colors.text.primary, fontWeight: '700' },
-  locationSub: {
-    fontSize: 10,
-    lineHeight: 13,
-    fontWeight: '700',
-    color: colors.feedback.warning,
-  },
-  // Holds the always-visible search bar plus the compact address button that
-  // crossfades in (replacing the full address pill above) once collapsed.
-  searchRow: { flexDirection: 'row', alignItems: 'center' },
-  miniLocationBtn: { height: SEARCH_BAR_HEIGHT, overflow: 'hidden' },
-  miniLocationInner: {
+  iconButton: {
     width: 36,
-    height: SEARCH_BAR_HEIGHT,
-    borderRadius: radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
+    height: 36,
+    borderRadius: radius.full,
+    backgroundColor: colors.bg.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  searchBar: {
+  pager: {
     flex: 1,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    height: SEARCH_BAR_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    gap: spacing.sm,
-    ...shadow.sm,
   },
-  searchPlaceholder: { flex: 1, ...typography.body, color: colors.text.hint },
-  mapBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: radius.sm,
-    backgroundColor: colors.brand.primarySurface,
+  page: {
+    flex: 1,
+  },
+  listContent: {
+    paddingTop: 4,
+  },
+  storiesSection: {
+    backgroundColor: colors.bg.surface,
+    paddingTop: 10,
+    paddingBottom: 6,
+    marginBottom: 4,
+  },
+  sectionTitle: {
+    ...typography.caption,
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.text.tertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    paddingHorizontal: spacing.lg,
+    marginBottom: 8,
+  },
+  storiesScroll: {
+    paddingHorizontal: spacing.md,
+  },
+  storiesDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border.subtle,
+    marginTop: 10,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border.subtle,
+    marginLeft: spacing.lg + 58 + spacing.md, // Telegram inset separator
+  },
+  centerLoading: {
+    paddingTop: 60,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  scroll: { flex: 1, backgroundColor: colors.bg.canvas },
-  list: {
-    padding: layout.screenPadding,
-    paddingBottom: spacing['3xl'],
-  },
-  skeletonRow: { flexDirection: 'row', gap: GUTTER },
-  productRow: { flexDirection: 'row', gap: GUTTER },
-  cell: { flex: 1 },
 });

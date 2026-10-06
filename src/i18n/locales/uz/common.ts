@@ -20,6 +20,7 @@ export const common = {
   'common.somPerKg': 'so\'m/kg',
   'common.som': 'so\'m',
   'tab.home': 'Bosh sahifa',
+  'tab.chats': 'Chatlar',
   'tab.map': 'Xarita',
   'tab.search': 'Qidiruv',
   'tab.carts': 'Savatlar',
