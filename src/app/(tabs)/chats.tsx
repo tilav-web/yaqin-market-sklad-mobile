@@ -11,7 +11,7 @@ import {
   Store,
   X,
 } from 'lucide-react-native';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -23,14 +23,21 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import PagerView from 'react-native-pager-view';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import {
+  FolderTabItem,
+  TelegramFolderTabs,
+} from '@/components/telegram/TelegramFolderTabs';
+import { TelegramShopRow } from '@/components/telegram/TelegramShopRow';
 import { EmptyState } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
-import { Conversation, Order } from '@/lib/types';
+import { Conversation, Order, PublicShop } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
+import { useEffectiveCoords } from '@/stores/location';
 import { useTheme } from '@/stores/theme';
 import { colors, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
@@ -78,9 +85,30 @@ export default function ChatsTabScreen() {
   const { colors: activeColors } = useTheme();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
+  const coords = useEffectiveCoords();
   const isAuthenticated = useAuthStore((s) => !!s.user);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'shops'>('all');
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const pagerRef = useRef<PagerView>(null);
+
+  // Query nearby shops
+  const {
+    data: shops = [],
+    isLoading: isLoadingShops,
+    isRefetching: isRefetchingShops,
+    refetch: refetchShops,
+  } = useQuery<PublicShop[]>({
+    queryKey: ['shops', 'nearby', coords?.latitude, coords?.longitude],
+    queryFn: async () => {
+      if (!coords) return [];
+      const res = await api.get<PublicShop[]>('/shops/nearby', {
+        params: { lat: coords.latitude, lng: coords.longitude },
+      });
+      return res.data ?? [];
+    },
+    enabled: !!coords,
+    staleTime: 60_000,
+  });
 
   // Query conversation threads
   const {
@@ -192,12 +220,9 @@ export default function ChatsTabScreen() {
     });
   }, [conversations, orders, tr]);
 
-  // Filter chats by query & tabs
+  // Filter chats by query
   const filteredChats = useMemo(() => {
     return unifiedChats.filter((item) => {
-      if (activeFilter === 'unread' && item.unreadCount <= 0) return false;
-      if (activeFilter === 'shops' && item.isSellerSide) return false;
-
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
       return (
@@ -205,11 +230,30 @@ export default function ChatsTabScreen() {
         item.subtitle.toLowerCase().includes(q)
       );
     });
-  }, [unifiedChats, searchQuery, activeFilter]);
+  }, [unifiedChats, searchQuery]);
+
+  const filteredShops = useMemo(() => {
+    if (!searchQuery.trim()) return shops;
+    const q = searchQuery.toLowerCase();
+    return shops.filter((s) =>
+      s.name.toLowerCase().includes(q) ||
+      (s.address && s.address.toLowerCase().includes(q)),
+    );
+  }, [shops, searchQuery]);
 
   const unreadTotal = useMemo(() => {
     return unifiedChats.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
   }, [unifiedChats]);
+
+  const folderTabs = useMemo<FolderTabItem[]>(() => [
+    { id: 'chats', title: tr('chat.title') || 'Chatlar', badge: unreadTotal > 0 ? unreadTotal : undefined },
+    { id: 'shops', title: "Do'konlar", badge: shops.length > 0 ? shops.length : undefined },
+  ], [unreadTotal, shops.length, tr]);
+
+  const handleSelectTab = useCallback((index: number) => {
+    setActiveTabIndex(index);
+    pagerRef.current?.setPage(index);
+  }, []);
 
   const handleOpenChat = useCallback((chat: UnifiedChat) => {
     haptics.selection();
@@ -351,7 +395,7 @@ export default function ChatsTabScreen() {
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder={tr('chat.searchPlaceholder')}
+            placeholder={activeTabIndex === 0 ? tr('chat.searchPlaceholder') : "Do'konlarni qidirish..."}
             placeholderTextColor={activeColors.text.secondary}
             style={[styles.searchInput, { color: activeColors.text.primary }]}
             returnKeyType="search"
@@ -362,157 +406,158 @@ export default function ChatsTabScreen() {
             </Pressable>
           )}
         </View>
-
-        {/* Telegram Filter Pills */}
-        <View style={styles.filterPills}>
-          <Pressable
-            onPress={() => {
-              haptics.selection();
-              setActiveFilter('all');
-            }}
-            style={[
-              styles.filterPill,
-              { backgroundColor: activeColors.bg.surfaceMuted },
-              activeFilter === 'all' && styles.filterPillActive,
-            ]}>
-            <Text
-              style={[
-                styles.filterPillText,
-                { color: activeColors.text.secondary },
-                activeFilter === 'all' && styles.filterPillTextActive,
-              ]}>
-              {tr('chat.filterAll')} ({unifiedChats.length})
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => {
-              haptics.selection();
-              setActiveFilter('shops');
-            }}
-            style={[
-              styles.filterPill,
-              { backgroundColor: activeColors.bg.surfaceMuted },
-              activeFilter === 'shops' && styles.filterPillActive,
-            ]}>
-            <Text
-              style={[
-                styles.filterPillText,
-                { color: activeColors.text.secondary },
-                activeFilter === 'shops' && styles.filterPillTextActive,
-              ]}>
-              {tr('chat.filterShops')}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => {
-              haptics.selection();
-              setActiveFilter('unread');
-            }}
-            style={[
-              styles.filterPill,
-              { backgroundColor: activeColors.bg.surfaceMuted },
-              activeFilter === 'unread' && styles.filterPillActive,
-            ]}>
-            <Text
-              style={[
-                styles.filterPillText,
-                { color: activeColors.text.secondary },
-                activeFilter === 'unread' && styles.filterPillTextActive,
-              ]}>
-              {tr('chat.filterUnread')} {unreadTotal > 0 ? `(${unreadTotal})` : ''}
-            </Text>
-          </Pressable>
-        </View>
       </View>
 
-      {/* Main Chat List Area */}
-      {isLoading ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={activeColors.brand.primary} />
-        </View>
-      ) : !isAuthenticated ? (
-        <View style={styles.centerContainer}>
-          <EmptyState
-            icon={MessageCircle}
-            title={tr('chat.loginTitle')}
-            description={tr('chat.loginDesc')}
-            actionLabel={tr('chat.loginButton')}
-            onAction={() => router.push('/(auth)/phone')}
-          />
-        </View>
-      ) : (
-        <FlatList
-          data={filteredChats}
-          keyExtractor={(item) => item.id}
-          renderItem={renderChatItem}
-          ItemSeparatorComponent={() => (
-            <View style={[styles.separator, { backgroundColor: activeColors.border.subtle }]} />
-          )}
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: insets.bottom + 90 },
-          ]}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              tintColor={activeColors.brand.primary}
+      {/* Telegram Swipeable Folder Tabs: Chatlar & Do'konlar */}
+      <TelegramFolderTabs
+        tabs={folderTabs}
+        activeIndex={activeTabIndex}
+        onSelectTab={handleSelectTab}
+      />
+
+      {/* Swipeable PagerView between Chatlar and Do'konlar */}
+      <PagerView
+        ref={pagerRef}
+        style={styles.pager}
+        initialPage={0}
+        onPageSelected={(e) => setActiveTabIndex(e.nativeEvent.position)}>
+        {/* Page 0: Chatlar */}
+        <View key="chats" style={[styles.page, { backgroundColor: activeColors.bg.canvas }]}>
+          {isLoading ? (
+            <View style={styles.centerContainer}>
+              <ActivityIndicator size="large" color={activeColors.brand.primary} />
+            </View>
+          ) : !isAuthenticated ? (
+            <View style={styles.centerContainer}>
+              <EmptyState
+                icon={MessageCircle}
+                title={tr('chat.loginTitle')}
+                description={tr('chat.loginDesc')}
+                actionLabel={tr('chat.loginButton')}
+                onAction={() => router.push('/(auth)/phone')}
+              />
+            </View>
+          ) : (
+            <FlatList
+              data={filteredChats}
+              keyExtractor={(item) => item.id}
+              renderItem={renderChatItem}
+              ItemSeparatorComponent={() => (
+                <View style={[styles.separator, { backgroundColor: activeColors.border.subtle }]} />
+              )}
+              contentContainerStyle={[
+                styles.listContent,
+                { paddingBottom: insets.bottom + 90 },
+              ]}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={handleRefresh}
+                  tintColor={activeColors.brand.primary}
+                />
+              }
+              ListHeaderComponent={
+                <Pressable
+                  onPress={handleOpenSaved}
+                  style={({ pressed }) => [
+                    styles.chatRow,
+                    styles.savedRow,
+                    {
+                      backgroundColor: activeColors.bg.surface,
+                      borderBottomColor: activeColors.border.subtle,
+                    },
+                    pressed && { backgroundColor: activeColors.bg.surfaceMuted },
+                  ]}>
+                  <View style={styles.avatarContainer}>
+                    <View style={[styles.avatarFallback, { backgroundColor: activeColors.brand.primary }]}>
+                      <Bookmark size={24} color="#FFFFFF" />
+                    </View>
+                  </View>
+                  <View style={styles.contentWrap}>
+                    <View style={styles.topLine}>
+                      <Text style={[styles.chatTitle, { color: activeColors.text.primary }]}>{tr('chat.savedMessages')}</Text>
+                      <Pin size={15} color={activeColors.text.secondary} style={{ transform: [{ rotate: '45deg' }] }} />
+                    </View>
+                    <View style={styles.bottomLine}>
+                      <Text
+                        style={[styles.lastMessageText, { color: activeColors.text.secondary }]}
+                        numberOfLines={1}>
+                        {tr('chat.savedMessagesDesc')}
+                      </Text>
+                    </View>
+                  </View>
+                </Pressable>
+              }
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <View style={[styles.emptyIconCircle, { backgroundColor: activeColors.brand.primarySurface }]}>
+                    <MessageCircle size={44} color={activeColors.brand.primary} />
+                  </View>
+                  <Text style={[styles.emptyTitle, { color: activeColors.text.primary }]}>{tr('chat.emptyTitle')}</Text>
+                  <Text style={[styles.emptyDesc, { color: activeColors.text.secondary }]}>
+                    {tr('chat.emptyDesc')}
+                  </Text>
+                  <Pressable
+                    onPress={() => router.push('/(tabs)')}
+                    style={[styles.exploreButton, { backgroundColor: activeColors.brand.primary }]}>
+                    <ShoppingBag size={18} color="#FFFFFF" />
+                    <Text style={styles.exploreButtonText}>{tr('chat.exploreButton')}</Text>
+                  </Pressable>
+                </View>
+              }
             />
-          }
-          ListHeaderComponent={
-            /* Pinned "Saved Messages" item matching Screenshot 1 */
-            <Pressable
-              onPress={handleOpenSaved}
-              style={({ pressed }) => [
-                styles.chatRow,
-                styles.savedRow,
-                {
-                  backgroundColor: activeColors.bg.surface,
-                  borderBottomColor: activeColors.border.subtle,
-                },
-                pressed && { backgroundColor: activeColors.bg.surfaceMuted },
-              ]}>
-              <View style={styles.avatarContainer}>
-                <View style={[styles.avatarFallback, { backgroundColor: activeColors.brand.primary }]}>
-                  <Bookmark size={24} color="#FFFFFF" />
+          )}
+        </View>
+
+        {/* Page 1: Do'konlar */}
+        <View key="shops" style={[styles.page, { backgroundColor: activeColors.bg.canvas }]}>
+          <FlatList
+            data={filteredShops}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => <TelegramShopRow shop={item} />}
+            ItemSeparatorComponent={() => (
+              <View
+                style={[
+                  styles.separator,
+                  { backgroundColor: activeColors.border.subtle },
+                ]}
+              />
+            )}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: insets.bottom + 90 },
+            ]}
+            ListEmptyComponent={
+              isLoadingShops ? (
+                <View style={styles.centerContainer}>
+                  <ActivityIndicator size="large" color={activeColors.brand.primary} />
                 </View>
-              </View>
-              <View style={styles.contentWrap}>
-                <View style={styles.topLine}>
-                  <Text style={[styles.chatTitle, { color: activeColors.text.primary }]}>{tr('chat.savedMessages')}</Text>
-                  <Pin size={15} color={activeColors.text.secondary} style={{ transform: [{ rotate: '45deg' }] }} />
-                </View>
-                <View style={styles.bottomLine}>
-                  <Text
-                    style={[styles.lastMessageText, { color: activeColors.text.secondary }]}
-                    numberOfLines={1}>
-                    {tr('chat.savedMessagesDesc')}
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <View style={[styles.emptyIconCircle, { backgroundColor: activeColors.brand.primarySurface }]}>
+                    <Store size={44} color={activeColors.brand.primary} />
+                  </View>
+                  <Text style={[styles.emptyTitle, { color: activeColors.text.primary }]}>
+                    Do'konlar topilmadi
+                  </Text>
+                  <Text style={[styles.emptyDesc, { color: activeColors.text.secondary }]}>
+                    {searchQuery.trim()
+                      ? `"${searchQuery}" bo'yicha do'konlar topilmadi`
+                      : "Yaqin-atrofda faol do'konlar mavjud emas"}
                   </Text>
                 </View>
-              </View>
-            </Pressable>
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <View style={[styles.emptyIconCircle, { backgroundColor: activeColors.brand.primarySurface }]}>
-                <MessageCircle size={44} color={activeColors.brand.primary} />
-              </View>
-              <Text style={[styles.emptyTitle, { color: activeColors.text.primary }]}>{tr('chat.emptyTitle')}</Text>
-              <Text style={[styles.emptyDesc, { color: activeColors.text.secondary }]}>
-                {tr('chat.emptyDesc')}
-              </Text>
-              <Pressable
-                onPress={() => router.push('/(tabs)')}
-                style={[styles.exploreButton, { backgroundColor: activeColors.brand.primary }]}>
-                <ShoppingBag size={18} color="#FFFFFF" />
-                <Text style={styles.exploreButtonText}>{tr('chat.exploreButton')}</Text>
-              </Pressable>
-            </View>
-          }
-        />
-      )}
+              )
+            }
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefetchingShops}
+                onRefresh={() => void refetchShops()}
+                tintColor={activeColors.brand.primary}
+              />
+            }
+          />
+        </View>
+      </PagerView>
     </SafeAreaView>
   );
 }
@@ -521,6 +566,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
+  },
+  pager: {
+    flex: 1,
+  },
+  page: {
+    flex: 1,
   },
   header: {
     backgroundColor: '#0E1621',

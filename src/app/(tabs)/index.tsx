@@ -32,7 +32,6 @@ import {
   TelegramFolderTabs,
 } from '@/components/telegram/TelegramFolderTabs';
 import { ProductCard } from '@/components/ProductCard';
-import { TelegramShopRow } from '@/components/telegram/TelegramShopRow';
 import { EmptyState } from '@/components/ui';
 import { api } from '@/lib/api';
 import { Category, FeedProduct, FeedResponse, PublicShop } from '@/lib/types';
@@ -175,7 +174,6 @@ export default function TelegramHomeScreen() {
   const folderTabs = useMemo<FolderTabItem[]>(() => {
     const list: FolderTabItem[] = [
       { id: 'all', title: 'Barchasi' },
-      { id: 'shops', title: 'Do\'konlar', badge: shops.length },
     ];
     for (const cat of leafCategories) {
       list.push({
@@ -184,7 +182,7 @@ export default function TelegramHomeScreen() {
       });
     }
     return list;
-  }, [shops.length, leafCategories]);
+  }, [leafCategories]);
 
   const handleSelectTab = useCallback((index: number) => {
     setActiveTabIndex(index);
@@ -412,55 +410,7 @@ export default function TelegramHomeScreen() {
           />
         </View>
 
-        {/* Tab 1: Do'konlar (Telegram Shop Rows) */}
-        <View
-          key="shops"
-          style={[styles.page, { backgroundColor: activeColors.bg.canvas }]}>
-          <FlatList
-            data={shops}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <TelegramShopRow shop={item} />}
-            ItemSeparatorComponent={() => (
-              <View
-                style={[
-                  styles.separator,
-                  { backgroundColor: activeColors.border.subtle },
-                ]}
-              />
-            )}
-            contentContainerStyle={[
-              styles.listContent,
-              { paddingBottom: insets.bottom + 85 },
-            ]}
-            ListEmptyComponent={
-              shopsQuery.isLoading ? (
-                <View style={styles.centerLoading}>
-                  <ActivityIndicator
-                    size="large"
-                    color={activeColors.brand.primary}
-                  />
-                </View>
-              ) : (
-                <View style={styles.centerLoading}>
-                  <EmptyState
-                    icon={Store}
-                    title="Do'konlar topilmadi"
-                    description="Yaqin-atrofda faol do'konlar mavjud emas"
-                  />
-                </View>
-              )
-            }
-            refreshControl={
-              <RefreshControl
-                refreshing={shopsQuery.isRefetching}
-                onRefresh={() => void shopsQuery.refetch()}
-                tintColor={activeColors.brand.primary}
-              />
-            }
-          />
-        </View>
-
-        {/* Tabs 2..N: Dynamic Category Folders */}
+        {/* Dynamic Category Folders */}
         {leafCategories.map((category) => {
           let categoryProducts = allProducts.filter(
             (p) => p.categoryId === category.id,

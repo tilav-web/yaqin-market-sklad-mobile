@@ -30,6 +30,7 @@ import { api } from '@/lib/api';
 import { Category, FeedProduct, FeedResponse } from '@/lib/types';
 import { useEffectiveCoords } from '@/stores/location';
 import { useSearchHistoryStore } from '@/stores/searchHistory';
+import { useTheme } from '@/stores/theme';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -86,6 +87,7 @@ function filterReducer(state: FilterState, action: FilterAction): FilterState {
 
 export default function SearchTab() {
   const { tr, catName } = useTranslation();
+  const { colors: activeColors } = useTheme();
   const coords = useEffectiveCoords();
   const [input, setInput] = useState('');
   const [q, setQ] = useState('');
@@ -225,15 +227,22 @@ export default function SearchTab() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.searchHeader}>
-        <View style={styles.searchBox}>
-          <SearchIcon size={20} color={colors.text.tertiary} strokeWidth={2.4} />
+      <View style={[styles.searchHeader, { backgroundColor: activeColors.bg.surface }]}>
+        <View
+          style={[
+            styles.searchBox,
+            {
+              backgroundColor: activeColors.bg.surfaceMuted,
+              borderColor: activeColors.border.subtle,
+            },
+          ]}>
+          <SearchIcon size={18} color={activeColors.text.secondary} strokeWidth={2.2} />
           <TextInput
-            style={styles.input}
+            style={[styles.input, { color: activeColors.text.primary }]}
             value={input}
             onChangeText={setInput}
             placeholder={tr('search.placeholder')}
-            placeholderTextColor={colors.text.hint}
+            placeholderTextColor={activeColors.text.tertiary}
             autoCapitalize="none"
             returnKeyType="search"
             onSubmitEditing={() => {
@@ -242,26 +251,41 @@ export default function SearchTab() {
           />
           {input.length > 0 && (
             <Pressable onPress={() => setInput('')} hitSlop={8}>
-              <X size={18} color={colors.text.tertiary} />
+              <X size={18} color={activeColors.text.secondary} />
             </Pressable>
           )}
         </View>
       </View>
 
-      <View style={styles.filterBar}>
-        <Pressable style={styles.filterBtn} onPress={() => dispatch({ type: 'OPEN_FILTER' })}>
-          <SlidersHorizontal size={16} color={colors.brand.primary} strokeWidth={2.4} />
-          <Text style={styles.filterBtnText}>{tr('filter.button')}</Text>
+      <View
+        style={[
+          styles.filterBar,
+          {
+            backgroundColor: activeColors.bg.surface,
+            borderBottomColor: activeColors.border.subtle,
+          },
+        ]}>
+        <Pressable
+          style={[
+            styles.filterBtn,
+            {
+              backgroundColor: activeColors.brand.primarySurface,
+              borderColor: activeColors.brand.primaryBorder,
+            },
+          ]}
+          onPress={() => dispatch({ type: 'OPEN_FILTER' })}>
+          <SlidersHorizontal size={15} color={activeColors.brand.primary} strokeWidth={2.4} />
+          <Text style={[styles.filterBtnText, { color: activeColors.brand.primary }]}>{tr('filter.button')}</Text>
           {activeCount > 0 && (
-            <View style={styles.filterBadge}>
+            <View style={[styles.filterBadge, { backgroundColor: activeColors.brand.primary }]}>
               <Text style={styles.filterBadgeText}>{activeCount}</Text>
             </View>
           )}
         </Pressable>
 
         {activeCount === 0 ? (
-          <Text style={styles.filterHint} numberOfLines={1}>
-            {tr('filter.hint')}
+          <Text style={[styles.filterHint, { color: activeColors.text.tertiary }]} numberOfLines={1}>
+            Narx va toifa bo'yicha saralash
           </Text>
         ) : (
           <ScrollView

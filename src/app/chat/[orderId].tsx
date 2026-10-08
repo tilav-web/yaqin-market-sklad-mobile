@@ -30,11 +30,13 @@ import { api, extractErrorMessage } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { ChatMessage, ChatTemplate, ConversationMessage, PublicProductVariant } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
+import { useTheme } from '@/stores/theme';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 import { formatMoney } from '@/utils/formatMoney';
 import { haptics } from '@/utils/haptics';
 
 export default function ChatScreen() {
+  const { colors: activeColors } = useTheme();
   const params = useLocalSearchParams<{
     orderId: string;
     conversationId?: string;
@@ -198,15 +200,15 @@ export default function ChatScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: activeColors.bg.canvas }]} edges={['top', 'bottom']}>
       {/* Telegram Style Chat Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: activeColors.bg.surface, borderBottomColor: activeColors.border.subtle }]}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
-          <ArrowLeft size={22} color={colors.text.primary} />
+          <ArrowLeft size={22} color={activeColors.text.primary} />
         </Pressable>
 
         <View style={styles.headerTitleWrap}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
+          <Text style={[styles.headerTitle, { color: activeColors.text.primary }]} numberOfLines={1}>
             {chatTitle || (shopId ? tr('nav.shop') : tr('nav.chat'))}
           </Text>
           <Text style={styles.headerStatus}>{tr('chat.online')}</Text>
@@ -215,8 +217,8 @@ export default function ChatScreen() {
         {shopId ? (
           <Pressable
             onPress={() => router.push(`/shop/${shopId}` as any)}
-            style={styles.shopNavBtn}>
-            <Store size={20} color={colors.brand.primary} />
+            style={[styles.shopNavBtn, { backgroundColor: activeColors.brand.primarySurface }]}>
+            <Store size={20} color={activeColors.brand.primary} />
           </Pressable>
         ) : (
           <View style={{ width: 32 }} />
@@ -317,34 +319,34 @@ export default function ChatScreen() {
         )}
 
         {/* Telegram Input Bar */}
-        <View style={styles.inputBar}>
+        <View style={[styles.inputBar, { backgroundColor: activeColors.bg.surface, borderTopColor: activeColors.border.subtle }]}>
           {shopId && (
             <Pressable
               style={[styles.templateBtn, templatesOpen && styles.templateBtnActive]}
               onPress={() => setTemplatesOpen((v) => !v)}>
               <Zap
                 size={18}
-                color={templatesOpen ? colors.text.onPrimary : colors.brand.primary}
+                color={templatesOpen ? activeColors.text.onPrimary : activeColors.brand.primary}
                 strokeWidth={2.2}
               />
             </Pressable>
           )}
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, { color: activeColors.text.primary, backgroundColor: activeColors.bg.surfaceMuted }]}
             value={text}
             onChangeText={setText}
             placeholder={tr('chat.placeholder')}
-            placeholderTextColor={colors.text.hint}
+            placeholderTextColor={activeColors.text.tertiary}
             multiline
             onSubmitEditing={handleSend}
           />
 
           <Pressable
-            style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
+            style={[styles.sendBtn, { backgroundColor: activeColors.brand.primary }, !text.trim() && styles.sendBtnDisabled]}
             onPress={handleSend}
             disabled={!text.trim() || send.isPending}>
-            <Send size={18} color={colors.text.onPrimary} strokeWidth={2.4} />
+            <Send size={18} color="#FFFFFF" strokeWidth={2.4} />
           </Pressable>
         </View>
       </KeyboardAvoidingView>

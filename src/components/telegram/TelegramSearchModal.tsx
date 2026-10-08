@@ -178,19 +178,156 @@ export function TelegramSearchModal() {
       animationType="fade"
       transparent={false}
       onRequestClose={close}>
-      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: isDark ? '#0E1621' : '#FFFFFF' }]}>
-        <KeyboardAvoidingView
-          style={styles.keyboardContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          
-          {/* Main Results / Content Area */}
-          <View style={styles.resultsArea}>
-            {/* Top header title: CHATS AND CONTACTS */}
-            <View style={[styles.sectionHeader, { backgroundColor: isDark ? '#111923' : '#F8FAFC' }]}>
-              <Text style={[styles.sectionHeaderText, { color: isDark ? '#6B7280' : '#94A3B8' }]}>
-                {isSearching ? 'NATIJALAR VA DO\'KONLAR' : 'SAQLANGANLAR VA DO\'KONLAR'}
-              </Text>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.bg.canvas }]}>
+        {/* Top Search Header */}
+        <View
+          style={[
+            styles.topHeader,
+            {
+              backgroundColor: themeColors.bg.surface,
+              borderBottomColor: themeColors.border.subtle,
+            },
+          ]}>
+          {/* Input Row */}
+          <View style={styles.inputRow}>
+            <View
+              style={[
+                styles.searchBarBox,
+                {
+                  backgroundColor: themeColors.bg.surfaceMuted,
+                  borderColor: themeColors.border.subtle,
+                },
+              ]}>
+              <SearchIcon
+                size={18}
+                color={themeColors.text.secondary}
+                style={styles.searchIcon}
+              />
+              <TextInput
+                ref={inputRef}
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Qidirish..."
+                placeholderTextColor={themeColors.text.tertiary}
+                style={[styles.searchInput, { color: themeColors.text.primary }]}
+                returnKeyType="search"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {query.length > 0 && (
+                <Pressable
+                  onPress={() => {
+                    haptics.selection();
+                    setQuery('');
+                  }}
+                  style={styles.clearBtn}
+                  hitSlop={8}>
+                  <View style={[styles.clearCircle, { backgroundColor: themeColors.border.default }]}>
+                    <X size={12} color={themeColors.text.secondary} />
+                  </View>
+                </Pressable>
+              )}
             </View>
+
+            <Pressable
+              onPress={() => {
+                haptics.selection();
+                close();
+              }}
+              style={styles.cancelTextBtn}
+              hitSlop={8}>
+              <Text style={[styles.cancelBtnText, { color: themeColors.brand.primary }]}>
+                {tr('common.cancel')}
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Filter Tabs */}
+          <View style={styles.pillRow}>
+            <Pressable
+              onPress={() => {
+                haptics.selection();
+                setActiveTab('all');
+              }}
+              style={[
+                styles.tabPill,
+                { backgroundColor: themeColors.bg.surfaceMuted },
+                activeTab === 'all' && { backgroundColor: themeColors.brand.primary },
+              ]}>
+              <Text
+                style={[
+                  styles.tabPillText,
+                  { color: themeColors.text.secondary },
+                  activeTab === 'all' && styles.tabPillTextActive,
+                ]}>
+                {tr('filter.all')}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                haptics.selection();
+                setActiveTab('products');
+              }}
+              style={[
+                styles.tabPill,
+                { backgroundColor: themeColors.bg.surfaceMuted },
+                activeTab === 'products' && { backgroundColor: themeColors.brand.primary },
+              ]}>
+              <Text
+                style={[
+                  styles.tabPillText,
+                  { color: themeColors.text.secondary },
+                  activeTab === 'products' && styles.tabPillTextActive,
+                ]}>
+                Mahsulotlar
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                haptics.selection();
+                setActiveTab('shops');
+              }}
+              style={[
+                styles.tabPill,
+                { backgroundColor: themeColors.bg.surfaceMuted },
+                activeTab === 'shops' && { backgroundColor: themeColors.brand.primary },
+              ]}>
+              <Text
+                style={[
+                  styles.tabPillText,
+                  { color: themeColors.text.secondary },
+                  activeTab === 'shops' && styles.tabPillTextActive,
+                ]}>
+                Do'konlar
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                haptics.selection();
+                setActiveTab('chats');
+              }}
+              style={[
+                styles.tabPill,
+                { backgroundColor: themeColors.bg.surfaceMuted },
+                activeTab === 'chats' && { backgroundColor: themeColors.brand.primary },
+              ]}>
+              <Text
+                style={[
+                  styles.tabPillText,
+                  { color: themeColors.text.secondary },
+                  activeTab === 'chats' && styles.tabPillTextActive,
+                ]}>
+                Chatlar
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Main Results / Content Area */}
+        <View style={styles.resultsArea}>
 
             {isLoading ? (
               <View style={styles.centerLoading}>
@@ -390,154 +527,7 @@ export function TelegramSearchModal() {
                 }
               />
             )}
-          </View>
-
-          {/* Bottom Bar: Filter Pills + Search Input Bar */}
-          <View
-            style={[
-              styles.bottomControlBar,
-              {
-                paddingBottom: Math.max(insets.bottom, 12),
-                backgroundColor: isDark ? '#0E1621' : '#FFFFFF',
-                borderTopColor: isDark ? '#1F2937' : '#E2E8F0',
-              },
-            ]}>
-            {/* Category Filter Pills */}
-            <View style={styles.pillRow}>
-              <Pressable
-                onPress={() => {
-                  haptics.selection();
-                  setActiveTab('all');
-                }}
-                style={[
-                  styles.tabPill,
-                  { backgroundColor: isDark ? '#1A232E' : '#F1F5F9' },
-                  activeTab === 'all' && styles.tabPillActive,
-                ]}>
-                <Text
-                  style={[
-                    styles.tabPillText,
-                    { color: isDark ? '#8E8E93' : '#64748B' },
-                    activeTab === 'all' && styles.tabPillTextActive,
-                  ]}>
-                  {tr('filter.all')}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => {
-                  haptics.selection();
-                  setActiveTab('products');
-                }}
-                style={[
-                  styles.tabPill,
-                  { backgroundColor: isDark ? '#1A232E' : '#F1F5F9' },
-                  activeTab === 'products' && styles.tabPillActive,
-                ]}>
-                <Text
-                  style={[
-                    styles.tabPillText,
-                    { color: isDark ? '#8E8E93' : '#64748B' },
-                    activeTab === 'products' && styles.tabPillTextActive,
-                  ]}>
-                  {tr('tab.home')}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => {
-                  haptics.selection();
-                  setActiveTab('shops');
-                }}
-                style={[
-                  styles.tabPill,
-                  { backgroundColor: isDark ? '#1A232E' : '#F1F5F9' },
-                  activeTab === 'shops' && styles.tabPillActive,
-                ]}>
-                <Text
-                  style={[
-                    styles.tabPillText,
-                    { color: isDark ? '#8E8E93' : '#64748B' },
-                    activeTab === 'shops' && styles.tabPillTextActive,
-                  ]}>
-                  {tr('chat.filterShops')}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => {
-                  haptics.selection();
-                  setActiveTab('chats');
-                }}
-                style={[
-                  styles.tabPill,
-                  { backgroundColor: isDark ? '#1A232E' : '#F1F5F9' },
-                  activeTab === 'chats' && styles.tabPillActive,
-                ]}>
-                <Text
-                  style={[
-                    styles.tabPillText,
-                    { color: isDark ? '#8E8E93' : '#64748B' },
-                    activeTab === 'chats' && styles.tabPillTextActive,
-                  ]}>
-                  {tr('chat.title')}
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* Input Row */}
-            <View style={styles.inputRow}>
-              <View
-                style={[
-                  styles.searchBarBox,
-                  { backgroundColor: isDark ? '#1E2C3A' : '#F1F5F9' },
-                ]}>
-                <SearchIcon
-                  size={18}
-                  color={isDark ? '#8E8E93' : '#64748B'}
-                  style={styles.searchIcon}
-                />
-                <TextInput
-                  ref={inputRef}
-                  value={query}
-                  onChangeText={setQuery}
-                  placeholder={`${tr('common.search')}...`}
-                  placeholderTextColor={isDark ? '#8E8E93' : '#94A3B8'}
-                  style={[styles.searchInput, { color: isDark ? '#FFFFFF' : '#0F172A' }]}
-                  returnKeyType="search"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {query.length > 0 && (
-                  <Pressable
-                    onPress={() => {
-                      haptics.selection();
-                      setQuery('');
-                    }}
-                    style={styles.clearBtn}
-                    hitSlop={8}>
-                    <View style={styles.clearCircle}>
-                      <X size={12} color="#FFF" />
-                    </View>
-                  </Pressable>
-                )}
-              </View>
-
-              <Pressable
-                onPress={() => {
-                  haptics.selection();
-                  close();
-                }}
-                style={[
-                  styles.cancelBtn,
-                  { backgroundColor: isDark ? '#1E2C3A' : '#F1F5F9' },
-                ]}
-                hitSlop={8}>
-                <X size={20} color={isDark ? '#FFFFFF' : '#0F172A'} />
-              </Pressable>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
+        </View>
       </View>
     </Modal>
   );
@@ -652,13 +642,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 30,
   },
-  bottomControlBar: {
-    backgroundColor: '#0E1621',
-    borderTopWidth: 1,
-    borderTopColor: '#1F2937',
-    paddingHorizontal: 12,
+  topHeader: {
+    paddingHorizontal: 16,
     paddingTop: 8,
-    gap: 8,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 10,
   },
   pillRow: {
     flexDirection: 'row',
@@ -693,6 +682,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#1E2C3A',
     borderRadius: 22,
+    borderWidth: 1,
     paddingHorizontal: 12,
     height: 42,
   },
@@ -701,8 +691,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
-    color: '#FFFFFF',
+    fontSize: 15,
     paddingVertical: 0,
   },
   clearBtn: {
@@ -712,16 +701,15 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#4B5563',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cancelBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#1E2C3A',
-    alignItems: 'center',
-    justifyContent: 'center',
+  cancelTextBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+  },
+  cancelBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
