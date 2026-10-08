@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import {
   Bell,
   ChevronDown,
@@ -7,16 +7,19 @@ import {
   Search as SearchIcon,
   ShoppingBag,
   Store,
+  X,
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  LayoutAnimation,
+  Platform,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
+  UIManager,
   View,
 } from 'react-native';
 import PagerView from 'react-native-pager-view';
@@ -29,23 +32,29 @@ import {
 } from '@/components/telegram/TelegramFolderTabs';
 import { TelegramProductRow } from '@/components/telegram/TelegramProductRow';
 import { TelegramShopRow } from '@/components/telegram/TelegramShopRow';
-import { TelegramShopStoryAvatar } from '@/components/telegram/TelegramShopStoryAvatar';
 import { EmptyState } from '@/components/ui';
-import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { Category, FeedProduct, FeedResponse, PublicShop } from '@/lib/types';
+import { useCartStore } from '@/stores/cart';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { useTheme } from '@/stores/theme';
+import { radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 export default function TelegramHomeScreen() {
-  const { tr } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { colors: activeColors } = useTheme();
   const coords = useEffectiveCoords();
   const selectedAddress = useLocationStore((s) => s.selectedAddress);
   const requestPermission = useLocationStore((s) => s.requestPermission);
   const refresh = useLocationStore((s) => s.refresh);
   const permissionStatus = useLocationStore((s) => s.permissionStatus);
+  const carts = useCartStore((s) => s.carts);
+  const clearAll = useCartStore((s) => s.clearAll);
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activeTabIndex, setActiveTabIndex] = useState(0);
@@ -117,6 +126,38 @@ export default function TelegramHomeScreen() {
 
   const shops = shopsQuery.data ?? [];
 
+  // Active shop restriction: when items are added to cart from a shop,
+  // we filter displayed products solely to that shop.
+  const cartShopIds = useMemo(
+    () => Object.keys(carts).filter((id) => (carts[id]?.length ?? 0) > 0),
+    [carts],
+  );
+  const activeShopId = cartShopIds.length > 0 ? cartShopIds[0] : null;
+
+  const activeShopName = useMemo(() => {
+    if (!activeShopId) return null;
+    const lines = carts[activeShopId];
+    if (lines && lines.length > 0 && lines[0].shopName) {
+      return lines[0].shopName;
+    }
+    const found = shops.find((s) => s.id === activeShopId);
+    return found?.name ?? "Tanlangan do'kon";
+  }, [activeShopId, carts, shops]);
+
+  // Animate product list filtering on cart changes
+  const prevShopIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (prevShopIdRef.current !== activeShopId) {
+      prevShopIdRef.current = activeShopId;
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    }
+  }, [activeShopId]);
+
+  const displayedProducts = useMemo(() => {
+    if (!activeShopId) return allProducts;
+    return allProducts.filter((p) => p.shop.id === activeShopId);
+  }, [allProducts, activeShopId]);
+
   // Telegram Top Folder Tabs List
   const folderTabs = useMemo<FolderTabItem[]>(() => {
     const list: FolderTabItem[] = [
@@ -138,32 +179,97 @@ export default function TelegramHomeScreen() {
   }, []);
 
   const locationLabel = useMemo(() => {
-    if (selectedAddress?.name) return selectedAddress.name;
-    if (coords?.address) return coords.address;
+    if (selectedAddress?.label) return selectedAddress.label;
+    if (selectedAddress?.address) return selectedAddress.address;
+    if (coords) return 'Joriy joylashuv';
     return 'Manzilni tanlang';
   }, [selectedAddress, coords]);
 
+  // Active Shop Filter Banner Component
+  const renderShopFilterNotice = () => {
+    if (!activeShopId) return null;
+    return (
+      <View
+        style={[
+          styles.shopFilterBanner,
+          {
+            backgroundColor: activeColors.brand.primarySurface,
+            borderColor: activeColors.brand.primaryBorder,
+          },
+        ]}>
+        <View style={styles.shopFilterInfo}>
+          <Store size={15} color={activeColors.brand.primary} />
+          <Text
+            style={[styles.shopFilterText, { color: activeColors.text.primary }]}
+            numberOfLines={1}>
+            Faqat{' '}
+            <Text style={{ fontWeight: '800', color: activeColors.brand.primary }}>
+              {activeShopName}
+            </Text>{' '}
+            tovarlari ko'rsatilmoqda
+          </Text>
+        </View>
+        <Pressable
+          onPress={() => {
+            haptics.selection();
+            clearAll();
+          }}
+          hitSlop={8}
+          style={[
+            styles.shopFilterClearBtn,
+            { backgroundColor: activeColors.bg.surface },
+          ]}>
+          <X size={12} color={activeColors.text.secondary} />
+          <Text
+            style={[
+              styles.shopFilterClearText,
+              { color: activeColors.text.secondary },
+            ]}>
+            Barchasi
+          </Text>
+        </Pressable>
+      </View>
+    );
+  };
+
   return (
-    <SafeAreaView edges={['top']} style={styles.safe}>
+    <SafeAreaView
+      edges={['top']}
+      style={[styles.safe, { backgroundColor: activeColors.bg.canvas }]}>
       {/* Telegram Style Top Header */}
-      <View style={styles.header}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: activeColors.bg.surface,
+            borderBottomColor: activeColors.border.subtle,
+          },
+        ]}>
         {/* Left: Location Picker */}
         <Pressable
           onPress={() => {
             haptics.selection();
             setPickerOpen(true);
           }}
-          style={styles.locationPill}>
-          <MapPin size={15} color={colors.brand.primary} />
-          <Text style={styles.locationText} numberOfLines={1}>
+          style={[
+            styles.locationPill,
+            { backgroundColor: activeColors.bg.surfaceMuted },
+          ]}>
+          <MapPin size={15} color={activeColors.brand.primary} />
+          <Text
+            style={[styles.locationText, { color: activeColors.text.primary }]}
+            numberOfLines={1}>
             {locationLabel}
           </Text>
-          <ChevronDown size={14} color={colors.text.secondary} />
+          <ChevronDown size={14} color={activeColors.text.secondary} />
         </Pressable>
 
         {/* Center: Brand Name */}
         <View style={styles.brandContainer}>
-          <Text style={styles.brandTitle}>Yaqin</Text>
+          <Text
+            style={[styles.brandTitle, { color: activeColors.brand.primary }]}>
+            Yaqin
+          </Text>
         </View>
 
         {/* Right: Search & Notifications */}
@@ -173,8 +279,11 @@ export default function TelegramHomeScreen() {
               haptics.selection();
               router.push('/(tabs)/search');
             }}
-            style={styles.iconButton}>
-            <SearchIcon size={19} color={colors.text.primary} />
+            style={[
+              styles.iconButton,
+              { backgroundColor: activeColors.bg.surfaceMuted },
+            ]}>
+            <SearchIcon size={19} color={activeColors.text.primary} />
           </Pressable>
 
           <Pressable
@@ -182,8 +291,11 @@ export default function TelegramHomeScreen() {
               haptics.selection();
               router.push('/notifications');
             }}
-            style={styles.iconButton}>
-            <Bell size={19} color={colors.text.primary} />
+            style={[
+              styles.iconButton,
+              { backgroundColor: activeColors.bg.surfaceMuted },
+            ]}>
+            <Bell size={19} color={activeColors.text.primary} />
           </Pressable>
         </View>
       </View>
@@ -203,43 +315,45 @@ export default function TelegramHomeScreen() {
         onPageSelected={(e) => {
           setActiveTabIndex(e.nativeEvent.position);
         }}>
-        {/* Tab 0: Barchasi (Story Shops + Telegram Product Rows) */}
-        <View key="all" style={styles.page}>
+        {/* Tab 0: Barchasi (Telegram Product Rows with single shop filter) */}
+        <View
+          key="all"
+          style={[styles.page, { backgroundColor: activeColors.bg.canvas }]}>
           <FlatList
-            data={allProducts}
+            data={displayedProducts}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => <TelegramProductRow item={item} />}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            ItemSeparatorComponent={() => (
+              <View
+                style={[
+                  styles.separator,
+                  { backgroundColor: activeColors.border.subtle },
+                ]}
+              />
+            )}
             contentContainerStyle={[
               styles.listContent,
               { paddingBottom: insets.bottom + 85 },
             ]}
-            ListHeaderComponent={
-              shops.length > 0 ? (
-                <View style={styles.storiesSection}>
-                  <Text style={styles.sectionTitle}>Do'konlar</Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.storiesScroll}>
-                    {shops.map((shop) => (
-                      <TelegramShopStoryAvatar key={shop.id} shop={shop} />
-                    ))}
-                  </ScrollView>
-                  <View style={styles.storiesDivider} />
-                </View>
-              ) : null
-            }
+            ListHeaderComponent={renderShopFilterNotice}
             ListEmptyComponent={
               feedQuery.isLoading ? (
                 <View style={styles.centerLoading}>
-                  <ActivityIndicator size="large" color={colors.brand.primary} />
+                  <ActivityIndicator
+                    size="large"
+                    color={activeColors.brand.primary}
+                  />
                 </View>
               ) : (
                 <View style={styles.centerLoading}>
                   <EmptyState
+                    icon={ShoppingBag}
                     title="Mahsulotlar topilmadi"
-                    description="Hududingizda hozircha faol tovarlar yo'q"
+                    description={
+                      activeShopId
+                        ? "Ushbu do'konda boshqa mahsulot topilmadi"
+                        : "Hududingizda hozircha faol tovarlar yo'q"
+                    }
                   />
                 </View>
               )
@@ -257,19 +371,28 @@ export default function TelegramHomeScreen() {
                   void feedQuery.refetch();
                   void shopsQuery.refetch();
                 }}
-                tintColor={colors.brand.primary}
+                tintColor={activeColors.brand.primary}
               />
             }
           />
         </View>
 
         {/* Tab 1: Do'konlar (Telegram Shop Rows) */}
-        <View key="shops" style={styles.page}>
+        <View
+          key="shops"
+          style={[styles.page, { backgroundColor: activeColors.bg.canvas }]}>
           <FlatList
             data={shops}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => <TelegramShopRow shop={item} />}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            ItemSeparatorComponent={() => (
+              <View
+                style={[
+                  styles.separator,
+                  { backgroundColor: activeColors.border.subtle },
+                ]}
+              />
+            )}
             contentContainerStyle={[
               styles.listContent,
               { paddingBottom: insets.bottom + 85 },
@@ -277,11 +400,15 @@ export default function TelegramHomeScreen() {
             ListEmptyComponent={
               shopsQuery.isLoading ? (
                 <View style={styles.centerLoading}>
-                  <ActivityIndicator size="large" color={colors.brand.primary} />
+                  <ActivityIndicator
+                    size="large"
+                    color={activeColors.brand.primary}
+                  />
                 </View>
               ) : (
                 <View style={styles.centerLoading}>
                   <EmptyState
+                    icon={Store}
                     title="Do'konlar topilmadi"
                     description="Yaqin-atrofda faol do'konlar mavjud emas"
                   />
@@ -292,7 +419,7 @@ export default function TelegramHomeScreen() {
               <RefreshControl
                 refreshing={shopsQuery.isRefetching}
                 onRefresh={() => void shopsQuery.refetch()}
-                tintColor={colors.brand.primary}
+                tintColor={activeColors.brand.primary}
               />
             }
           />
@@ -300,23 +427,39 @@ export default function TelegramHomeScreen() {
 
         {/* Tabs 2..N: Dynamic Category Folders */}
         {leafCategories.map((category) => {
-          const categoryProducts = allProducts.filter(
+          let categoryProducts = allProducts.filter(
             (p) => p.categoryId === category.id,
           );
+          if (activeShopId) {
+            categoryProducts = categoryProducts.filter(
+              (p) => p.shop.id === activeShopId,
+            );
+          }
           return (
-            <View key={category.id} style={styles.page}>
+            <View
+              key={category.id}
+              style={[styles.page, { backgroundColor: activeColors.bg.canvas }]}>
               <FlatList
                 data={categoryProducts}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => <TelegramProductRow item={item} />}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                ItemSeparatorComponent={() => (
+                  <View
+                    style={[
+                      styles.separator,
+                      { backgroundColor: activeColors.border.subtle },
+                    ]}
+                  />
+                )}
                 contentContainerStyle={[
                   styles.listContent,
                   { paddingBottom: insets.bottom + 85 },
                 ]}
+                ListHeaderComponent={renderShopFilterNotice}
                 ListEmptyComponent={
                   <View style={styles.centerLoading}>
                     <EmptyState
+                      icon={ShoppingBag}
                       title={`${category.nameUzLatn} bo'yicha tovar yo'q`}
                       description="Tez orada yangi mahsulotlar qo'shiladi"
                     />
@@ -326,7 +469,7 @@ export default function TelegramHomeScreen() {
                   <RefreshControl
                     refreshing={feedQuery.isRefetching}
                     onRefresh={() => void feedQuery.refetch()}
-                    tintColor={colors.brand.primary}
+                    tintColor={activeColors.brand.primary}
                   />
                 }
               />
@@ -346,7 +489,6 @@ export default function TelegramHomeScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.bg.canvas,
   },
   header: {
     flexDirection: 'row',
@@ -354,15 +496,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
-    backgroundColor: colors.bg.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border.subtle,
   },
   locationPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.bg.surfaceMuted,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: radius.full,
@@ -372,7 +511,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontSize: 12,
     fontWeight: '700',
-    color: colors.text.primary,
     maxWidth: 80,
   },
   brandContainer: {
@@ -382,7 +520,6 @@ const styles = StyleSheet.create({
     ...typography.title,
     fontSize: 20,
     fontWeight: '900',
-    color: colors.brand.primary,
     letterSpacing: -0.5,
   },
   rightActions: {
@@ -394,7 +531,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.full,
-    backgroundColor: colors.bg.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -407,33 +543,44 @@ const styles = StyleSheet.create({
   listContent: {
     paddingTop: 4,
   },
-  storiesSection: {
-    backgroundColor: colors.bg.surface,
-    paddingTop: 10,
-    paddingBottom: 6,
-    marginBottom: 4,
+  shopFilterBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: spacing.md,
+    marginVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.lg,
+    borderWidth: 1,
   },
-  sectionTitle: {
+  shopFilterInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    marginRight: 8,
+  },
+  shopFilterText: {
     ...typography.caption,
     fontSize: 12,
-    fontWeight: '800',
-    color: colors.text.tertiary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    paddingHorizontal: spacing.lg,
-    marginBottom: 8,
+    fontWeight: '600',
   },
-  storiesScroll: {
-    paddingHorizontal: spacing.md,
+  shopFilterClearBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radius.full,
   },
-  storiesDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border.subtle,
-    marginTop: 10,
+  shopFilterClearText: {
+    ...typography.caption,
+    fontSize: 11,
+    fontWeight: '700',
   },
   separator: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border.subtle,
     marginLeft: spacing.lg + 58 + spacing.md, // Telegram inset separator
   },
   centerLoading: {

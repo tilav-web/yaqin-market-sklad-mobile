@@ -1,7 +1,6 @@
 import { router } from 'expo-router';
 import {
   ChevronRight,
-  Clock,
   MapPin,
   MessageCircle,
   Star,
@@ -17,12 +16,11 @@ import {
   View,
 } from 'react-native';
 
-import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { PublicShop } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
-import { formatMoney } from '@/utils/formatMoney';
+import { useTheme } from '@/stores/theme';
+import { colors, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 interface TelegramShopRowProps {
@@ -30,7 +28,7 @@ interface TelegramShopRowProps {
 }
 
 export function TelegramShopRow({ shop }: TelegramShopRowProps) {
-  const { tr } = useTranslation();
+  const { colors: activeColors } = useTheme();
   const isAuthenticated = useAuthStore((s) => !!s.user);
   const [chatLoading, setChatLoading] = useState(false);
 
@@ -80,15 +78,20 @@ export function TelegramShopRow({ shop }: TelegramShopRowProps) {
       onPress={handleOpenShop}
       style={({ pressed }) => [
         styles.row,
-        pressed && styles.rowPressed,
+        { backgroundColor: activeColors.bg.surface },
+        pressed && { backgroundColor: activeColors.bg.surfaceMuted },
       ]}>
       {/* Telegram Shop Avatar */}
       <View style={styles.avatarContainer}>
         {photo ? (
-          <Image source={{ uri: photo }} style={styles.avatar} resizeMode="cover" />
+          <Image
+            source={{ uri: photo }}
+            style={[styles.avatar, { backgroundColor: activeColors.bg.surfaceMuted }]}
+            resizeMode="cover"
+          />
         ) : (
-          <View style={styles.avatarFallback}>
-            <Store size={26} color={colors.brand.primary} />
+          <View style={[styles.avatarFallback, { backgroundColor: activeColors.bg.surfaceMuted }]}>
+            <Store size={26} color={activeColors.brand.primary} />
           </View>
         )}
         <View style={[styles.statusDot, shop.isOpenManual ? styles.dotOpen : styles.dotClosed]} />
@@ -97,7 +100,7 @@ export function TelegramShopRow({ shop }: TelegramShopRowProps) {
       {/* Middle shop details */}
       <View style={styles.infoCol}>
         <View style={styles.nameRow}>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={[styles.name, { color: activeColors.text.primary }]} numberOfLines={1}>
             {shop.name}
           </Text>
         </View>
@@ -106,21 +109,21 @@ export function TelegramShopRow({ shop }: TelegramShopRowProps) {
           {shop.ratingAverage > 0 && (
             <View style={styles.ratingWrap}>
               <Star size={12} color={colors.feedback.warning} fill={colors.feedback.warning} />
-              <Text style={styles.ratingText}>{shop.ratingAverage.toFixed(1)}</Text>
+              <Text style={[styles.ratingText, { color: activeColors.text.primary }]}>{shop.ratingAverage.toFixed(1)}</Text>
             </View>
           )}
 
           {shop.distanceKm !== undefined && (
             <View style={styles.distanceWrap}>
-              <MapPin size={11} color={colors.text.tertiary} />
-              <Text style={styles.distanceText}>
+              <MapPin size={11} color={activeColors.text.tertiary} />
+              <Text style={[styles.distanceText, { color: activeColors.text.tertiary }]}>
                 {shop.distanceKm < 1 ? `${Math.round(shop.distanceKm * 1000)} m` : `${shop.distanceKm.toFixed(1)} km`}
               </Text>
             </View>
           )}
         </View>
 
-        <Text style={styles.address} numberOfLines={1}>
+        <Text style={[styles.address, { color: activeColors.text.tertiary }]} numberOfLines={1}>
           {shop.address}
         </Text>
       </View>
@@ -132,16 +135,20 @@ export function TelegramShopRow({ shop }: TelegramShopRowProps) {
           disabled={chatLoading}
           style={({ pressed }) => [
             styles.chatBtn,
+            {
+              backgroundColor: activeColors.brand.primarySurface,
+              borderColor: activeColors.brand.primaryBorder,
+            },
             pressed && styles.chatBtnPressed,
           ]}>
           {chatLoading ? (
-            <ActivityIndicator size="small" color={colors.brand.primary} />
+            <ActivityIndicator size="small" color={activeColors.brand.primary} />
           ) : (
-            <MessageCircle size={17} color={colors.brand.primary} />
+            <MessageCircle size={16} color={activeColors.brand.primary} />
           )}
         </Pressable>
 
-        <ChevronRight size={18} color={colors.text.tertiary} />
+        <ChevronRight size={18} color={activeColors.text.tertiary} />
       </View>
     </Pressable>
   );

@@ -19,7 +19,7 @@ export const common = {
   'common.close': 'Ёпиш',
   'common.somPerKg': 'сўм/кг',
   'common.som': 'сўм',
-  'tab.home': 'Бош саҳифа',
+  'tab.home': 'Маҳсулотлар',
   'tab.chats': 'Чатлар',
   'tab.map': 'Харита',
   'tab.search': 'Қидирув',

@@ -20,7 +20,6 @@ import {
   MapPin,
   RefreshCw,
   Search,
-  ShieldAlert,
   ShieldCheck,
   Sparkles,
   User,
@@ -82,7 +81,6 @@ export default function SellerApplicationScreen() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Step 2: Soliq biriktiruvi
-  const [soliqConfirmed, setSoliqConfirmed] = useState(false);
   const [copiedStir, setCopiedStir] = useState(false);
   const [isVerifyingSoliq, setIsVerifyingSoliq] = useState(false);
   const [soliqVerifyResult, setSoliqVerifyResult] = useState<{
@@ -259,7 +257,6 @@ export default function SellerApplicationScreen() {
 
       setSoliqVerifyResult(res.data);
       if (res.data.isAttached) {
-        setSoliqConfirmed(true);
         toast.success(tr('sellerApp.toastSoliqSuccess'));
         try {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -267,14 +264,12 @@ export default function SellerApplicationScreen() {
         // Successfully verified commissioner! Proceed directly to Step 3!
         setStep(3);
       } else {
-        setSoliqConfirmed(false);
         toast.warning(res.data.message || tr('sellerApp.toastSoliqWarning'));
         try {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         } catch { }
       }
     } catch (e) {
-      setSoliqConfirmed(false);
       const errMsg = extractErrorMessage(e) || tr('sellerApp.soliqCheckError');
       setSoliqVerifyResult({
         isAttached: false,
@@ -315,7 +310,6 @@ export default function SellerApplicationScreen() {
     !!stirData.companyName &&
     stirData.companyName.trim().length >= 2 &&
     ofertaAccepted;
-  const canGoToStep3 = soliqConfirmed;
   const rawAccount = bankAccountNumber.replace(/\s+/g, '');
   const rawMfo = bankMfo.replace(/\s+/g, '');
   const canSubmit = rawAccount.length === 20 && rawMfo.length === 5 && bankAccountHolderName.trim().length >= 2;

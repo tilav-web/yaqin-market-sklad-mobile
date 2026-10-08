@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   ChevronRight,
   Heart,
+  MessageCircle,
   Minus,
   Plus,
   ShoppingBag,
@@ -29,6 +30,7 @@ import { api, resolveMedia } from '@/lib/api';
 import { ProductOffer, ProductReview, PublicProductVariant, VariantDetail } from '@/lib/types';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
+import { useTheme } from '@/stores/theme';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 import { getLocalizedText } from '@/utils/text';
@@ -42,6 +44,7 @@ const unitLabel = (v: Pick<PublicProductVariant, 'unitSize' | 'unitType'>) =>
 
 export default function ProductDetailScreen() {
   const { tr } = useTranslation();
+  const { colors: activeColors } = useTheme();
   const { id: routeId } = useLocalSearchParams<{ id: string }>();
   // The active variant is local state so switching variants (0.5L/1L/1.5L)
   // swaps content in place instead of re-opening the whole screen.
@@ -127,7 +130,6 @@ export default function ProductDetailScreen() {
   }
 
   const productName = getLocalizedText(product.name);
-  const productDescription = getLocalizedText(product.description);
   const finalPrice = product.discountPrice ?? product.price;
   const hasDiscount =
     product.discountPrice != null && product.discountPrice < product.price;
@@ -148,14 +150,14 @@ export default function ProductDetailScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: activeColors.bg.surface }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.imageWrap}>
           {product.photos[0] ? (
             <Image source={{ uri: resolveMedia(product.photos[0]) }} style={styles.image} />
           ) : (
             <View style={[styles.image, styles.imagePlaceholder]}>
-              <ShoppingBag size={56} color={colors.brand.primary} strokeWidth={1.3} />
+              <ShoppingBag size={56} color={activeColors.brand.primary} strokeWidth={1.3} />
             </View>
           )}
           {/* Small info chips over the image */}
@@ -190,15 +192,15 @@ export default function ProductDetailScreen() {
           >
             <Heart
               size={20}
-              color={isFav ? colors.brand.primary : colors.text.onPrimary}
-              fill={isFav ? colors.brand.primary : 'transparent'}
+              color={isFav ? activeColors.brand.primary : colors.text.onPrimary}
+              fill={isFav ? activeColors.brand.primary : 'transparent'}
               strokeWidth={2.2}
             />
           </Pressable>
         </View>
 
-        <View style={styles.body}>
-          <Text style={styles.name}>{productName}</Text>
+        <View style={[styles.body, { backgroundColor: activeColors.bg.surface }]}>
+          <Text style={[styles.name, { color: activeColors.text.primary }]}>{productName}</Text>
 
           <View style={styles.priceRow}>
             {hasDiscount && (
@@ -259,24 +261,58 @@ export default function ProductDetailScreen() {
           ) : null}
 
           {product.shop && (
-            <Pressable
-              style={styles.shopRow}
-              onPress={() => {
-                haptics.selection();
-                router.push(`/shop/${product.shop!.id}`);
-              }}>
-              <View style={styles.shopIcon}>
-                <Store size={18} color={colors.brand.primary} strokeWidth={2.2} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.shopName}>{product.shop.name}</Text>
-                <Text style={styles.shopSub}>
-                  {product.shop.isOpenManual ? tr('shop.open') : tr('shop.closed')} ·{' '}
-                  {tr('product.goToShop')}
-                </Text>
-              </View>
-              <ChevronRight size={20} color={colors.text.hint} />
-            </Pressable>
+            <View style={styles.shopRowWrap}>
+              <Pressable
+                style={[
+                  styles.shopRow,
+                  {
+                    backgroundColor: activeColors.bg.surfaceMuted,
+                    borderColor: activeColors.border.subtle,
+                  },
+                ]}
+                onPress={() => {
+                  haptics.selection();
+                  router.push(`/shop/${product.shop!.id}`);
+                }}>
+                <View
+                  style={[
+                    styles.shopIcon,
+                    { backgroundColor: activeColors.brand.primarySurface },
+                  ]}>
+                  <Store size={18} color={activeColors.brand.primary} strokeWidth={2.2} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.shopName, { color: activeColors.text.primary }]}>
+                    {product.shop.name}
+                  </Text>
+                  <Text style={[styles.shopSub, { color: activeColors.text.secondary }]}>
+                    {product.shop.isOpenManual ? tr('shop.open') : tr('shop.closed')} ·{' '}
+                    {tr('product.goToShop')}
+                  </Text>
+                </View>
+                <ChevronRight size={20} color={activeColors.text.hint} />
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.shopChatBtn,
+                  { backgroundColor: activeColors.brand.primary },
+                ]}
+                onPress={() => {
+                  haptics.selection();
+                  router.push({
+                    pathname: '/chat/[orderId]',
+                    params: {
+                      orderId: `shop_${product.shop!.id}`,
+                      shopId: product.shop!.id,
+                      title: product.shop!.name,
+                      productId: product.id,
+                    },
+                  });
+                }}>
+                <MessageCircle size={16} color="#FFFFFF" strokeWidth={2.4} />
+                <Text style={styles.shopChatBtnText}>{tr('nav.chat') || 'Chat'}</Text>
+              </Pressable>
+            </View>
           )}
 
           <OffersSection
@@ -287,30 +323,63 @@ export default function ProductDetailScreen() {
           />
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
+            <Text style={[styles.sectionTitle, { color: activeColors.text.primary }]}>
               {tr('product.reviews')}{' '}
               {reviewsQuery.data?.length ? `(${reviewsQuery.data.length})` : ''}
             </Text>
             {reviewsQuery.isLoading ? (
-              <ActivityIndicator color={colors.brand.primary} />
+              <ActivityIndicator color={activeColors.brand.primary} />
             ) : reviewsQuery.data && reviewsQuery.data.length > 0 ? (
               reviewsQuery.data.map((r) => (
-                <View key={r.id} style={styles.review}>
+                <View
+                  key={r.id}
+                  style={[
+                    styles.review,
+                    { borderTopColor: activeColors.border.subtle },
+                  ]}>
                   <View style={styles.reviewHead}>
-                    <Text style={styles.reviewName}>{r.userName}</Text>
+                    <Text
+                      style={[
+                        styles.reviewName,
+                        { color: activeColors.text.primary },
+                      ]}>
+                      {r.userName}
+                    </Text>
                     <Stars value={r.stars} size={12} />
                   </View>
-                  {r.text ? <Text style={styles.reviewText}>{r.text}</Text> : null}
+                  {r.text ? (
+                    <Text
+                      style={[
+                        styles.reviewText,
+                        { color: activeColors.text.secondary },
+                      ]}>
+                      {r.text}
+                    </Text>
+                  ) : null}
                 </View>
               ))
             ) : (
-              <Text style={styles.reviewEmpty}>{tr('product.noReviews')}</Text>
+              <Text
+                style={[
+                  styles.reviewEmpty,
+                  { color: activeColors.text.tertiary },
+                ]}>
+                {tr('product.noReviews')}
+              </Text>
             )}
           </View>
         </View>
       </ScrollView>
 
-      <SafeAreaView edges={['bottom']} style={styles.footer}>
+      <SafeAreaView
+        edges={['bottom']}
+        style={[
+          styles.footer,
+          {
+            backgroundColor: activeColors.bg.surface,
+            borderTopColor: activeColors.border.subtle,
+          },
+        ]}>
         {outOfStock ? (
           <View style={[styles.addBtn, styles.addBtnDisabled]}>
             <Text style={styles.addBtnText}>{tr('product.outOfStock')}</Text>
@@ -576,16 +645,38 @@ const styles = StyleSheet.create({
   variantChipPrice: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
   variantChipTextActive: { color: colors.brand.primary },
   description: { ...typography.body, color: colors.text.secondary },
+  shopRowWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
   shopRow: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    marginTop: spacing.lg,
     padding: spacing.md,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border.subtle,
     backgroundColor: colors.bg.surfaceMuted,
+  },
+  shopChatBtn: {
+    height: '100%',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.brand.primary,
+    borderRadius: radius.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  shopChatBtnText: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   shopIcon: {
     width: 38,

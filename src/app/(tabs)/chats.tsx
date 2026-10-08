@@ -1,16 +1,17 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import {
+  Bookmark,
   Check,
   CheckCheck,
   MessageCircle,
-  MessageSquare,
+  Pin,
   Search as SearchIcon,
   ShoppingBag,
   Store,
   X,
 } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -28,9 +29,10 @@ import { EmptyState } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
-import { Conversation } from '@/lib/types';
+import { Conversation, Order } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { useTheme } from '@/stores/theme';
+import { colors, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 function formatTelegramTime(dateString: string | null): string {
@@ -58,30 +60,65 @@ function formatTelegramTime(dateString: string | null): string {
   return date.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
+interface UnifiedChat {
+  id: string;
+  shopId?: string;
+  title: string;
+  avatarUrl: string | null;
+  subtitle: string;
+  time: string;
+  rawDate: string | null;
+  unreadCount: number;
+  isOrder: boolean;
+  isSellerSide?: boolean;
+}
+
 export default function ChatsTabScreen() {
   const { tr } = useTranslation();
+  const { colors: activeColors } = useTheme();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const isAuthenticated = useAuthStore((s) => !!s.user);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'unread'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'shops'>('all');
 
+  // Query conversation threads
   const {
     data: conversations = [],
-    isLoading,
-    isRefetching,
-    refetch,
+    isLoading: isLoadingConvs,
+    isRefetching: isRefetchingConvs,
+    refetch: refetchConvs,
   } = useQuery<Conversation[]>({
     queryKey: ['conversations'],
     queryFn: async () => {
       const res = await api.get<Conversation[]>('/conversations');
-      return res.data;
+      return res.data ?? [];
     },
     enabled: isAuthenticated,
     staleTime: 15_000,
   });
 
-  // Realtime updates: listen for incoming conversation messages
+  // Query user orders to auto-populate chat history with every shop
+  const {
+    data: orders = [],
+    isLoading: isLoadingOrders,
+    isRefetching: isRefetchingOrders,
+    refetch: refetchOrders,
+  } = useQuery<Order[]>({
+    queryKey: ['my-orders-for-chats'],
+    queryFn: async () => {
+      try {
+        const res = await api.get<Order[]>('/orders/mine');
+        return res.data ?? [];
+      } catch {
+        return [];
+      }
+    },
+    enabled: isAuthenticated,
+    staleTime: 20_000,
+  });
+
+  // Realtime updates: listen for incoming messages
   useEffect(() => {
     let cancelled = false;
     getSocket()
@@ -102,48 +139,107 @@ export default function ChatsTabScreen() {
     };
   }, [qc]);
 
-  const filteredConversations = useMemo(() => {
-    return conversations.filter((item) => {
-      if (activeFilter === 'unread' && item.unreadCount <= 0) {
-        return false;
+  // Merge conversations and order history into unified Telegram chat list
+  const unifiedChats = useMemo<UnifiedChat[]>(() => {
+    const map = new Map<string, UnifiedChat>();
+
+    // 1. Add active conversation threads
+    for (const conv of conversations) {
+      const key = conv.shopId || conv.id;
+      map.set(key, {
+        id: conv.id,
+        shopId: conv.shopId,
+        title: conv.isSellerSide ? conv.customerName : conv.shopName,
+        avatarUrl: conv.isSellerSide
+          ? conv.customerAvatarUrl ?? null
+          : conv.shopPhotos && conv.shopPhotos.length > 0
+            ? conv.shopPhotos[0]
+            : null,
+        subtitle: conv.lastMessageText || tr('chat.historyDefault'),
+        time: formatTelegramTime(conv.lastMessageAt),
+        rawDate: conv.lastMessageAt,
+        unreadCount: conv.unreadCount || 0,
+        isOrder: false,
+        isSellerSide: conv.isSellerSide,
+      });
+    }
+
+    // 2. Synthesize chat history for every shop where an order was placed
+    for (const order of orders) {
+      const key = order.shopId;
+      if (!map.has(key)) {
+        const orderNum = order.orderNumber || order.id.slice(0, 6).toUpperCase();
+        map.set(key, {
+          id: order.id,
+          shopId: order.shopId,
+          title: order.shop?.name || `Do'kon #${order.shopId.slice(0, 6)}`,
+          avatarUrl: order.shop?.photos && order.shop.photos.length > 0 ? order.shop.photos[0] : null,
+          subtitle: `📦 Buyurtma #${orderNum} · ${order.status}`,
+          time: formatTelegramTime(order.createdAt),
+          rawDate: order.createdAt,
+          unreadCount: 0,
+          isOrder: true,
+          isSellerSide: false,
+        });
       }
+    }
+
+    // Convert map to array and sort by most recent date
+    return Array.from(map.values()).sort((a, b) => {
+      const timeA = a.rawDate ? new Date(a.rawDate).getTime() : 0;
+      const timeB = b.rawDate ? new Date(b.rawDate).getTime() : 0;
+      return timeB - timeA;
+    });
+  }, [conversations, orders, tr]);
+
+  // Filter chats by query & tabs
+  const filteredChats = useMemo(() => {
+    return unifiedChats.filter((item) => {
+      if (activeFilter === 'unread' && item.unreadCount <= 0) return false;
+      if (activeFilter === 'shops' && item.isSellerSide) return false;
+
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
-      const name = item.isSellerSide ? item.customerName : item.shopName;
       return (
-        name.toLowerCase().includes(q) ||
-        (item.lastMessageText && item.lastMessageText.toLowerCase().includes(q))
+        item.title.toLowerCase().includes(q) ||
+        item.subtitle.toLowerCase().includes(q)
       );
     });
-  }, [conversations, searchQuery, activeFilter]);
+  }, [unifiedChats, searchQuery, activeFilter]);
 
   const unreadTotal = useMemo(() => {
-    return conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
-  }, [conversations]);
+    return unifiedChats.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
+  }, [unifiedChats]);
 
-  const handleOpenChat = useCallback((conv: Conversation) => {
+  const handleOpenChat = useCallback((chat: UnifiedChat) => {
     haptics.selection();
-    const title = conv.isSellerSide ? conv.customerName : conv.shopName;
     router.push({
-      pathname: '/chat/[conversationId]',
+      pathname: '/chat/[orderId]',
       params: {
-        conversationId: conv.id,
-        shopId: conv.shopId,
-        title,
+        orderId: chat.id,
+        conversationId: chat.isOrder ? undefined : chat.id,
+        shopId: chat.shopId,
+        title: chat.title,
       },
     });
   }, []);
 
-  const renderConversationItem = ({ item }: { item: Conversation }) => {
-    const title = item.isSellerSide ? item.customerName : item.shopName;
-    const photo =
-      item.isSellerSide
-        ? item.customerAvatarUrl
-        : item.shopPhotos && item.shopPhotos.length > 0
-          ? item.shopPhotos[0]
-          : null;
-    const initials = title
-      ? title
+  const handleOpenSaved = useCallback(() => {
+    haptics.selection();
+    router.push('/favorites');
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    void refetchConvs();
+    void refetchOrders();
+  }, [refetchConvs, refetchOrders]);
+
+  const isRefreshing = isRefetchingConvs || isRefetchingOrders;
+  const isLoading = isLoadingConvs && isLoadingOrders;
+
+  const renderChatItem = ({ item }: { item: UnifiedChat }) => {
+    const initials = item.title
+      ? item.title
           .split(' ')
           .map((n) => n[0])
           .slice(0, 2)
@@ -156,18 +252,26 @@ export default function ChatsTabScreen() {
         onPress={() => handleOpenChat(item)}
         style={({ pressed }) => [
           styles.chatRow,
-          pressed && styles.chatRowPressed,
+          { backgroundColor: activeColors.bg.surface },
+          pressed && { backgroundColor: activeColors.bg.surfaceMuted },
         ]}>
-        {/* Telegram Avatar */}
+        {/* Telegram Circle Avatar */}
         <View style={styles.avatarContainer}>
-          {photo ? (
-            <Image source={{ uri: photo }} style={styles.avatarImage} />
+          {item.avatarUrl ? (
+            <Image
+              source={{ uri: item.avatarUrl }}
+              style={[styles.avatarImage, { backgroundColor: activeColors.bg.surfaceMuted }]}
+            />
           ) : (
-            <View style={styles.avatarFallback}>
+            <View
+              style={[
+                styles.avatarFallback,
+                { backgroundColor: item.isSellerSide ? activeColors.bg.surfaceElevated : activeColors.brand.primary },
+              ]}>
               {item.isSellerSide ? (
                 <Text style={styles.avatarInitials}>{initials}</Text>
               ) : (
-                <Store size={22} color={colors.brand.primary} />
+                <Store size={22} color="#FFFFFF" />
               )}
             </View>
           )}
@@ -178,33 +282,42 @@ export default function ChatsTabScreen() {
           )}
         </View>
 
-        {/* Telegram Message Body */}
+        {/* Telegram Chat Content */}
         <View style={styles.contentWrap}>
           <View style={styles.topLine}>
-            <Text style={styles.chatTitle} numberOfLines={1}>
-              {title}
+            <Text
+              style={[styles.chatTitle, { color: activeColors.text.primary }]}
+              numberOfLines={1}>
+              {item.title}
             </Text>
-            <Text style={[styles.timeText, item.unreadCount > 0 && styles.timeTextUnread]}>
-              {formatTelegramTime(item.lastMessageAt)}
-            </Text>
+            <View style={styles.timeWrap}>
+              <Text style={[styles.timeText, { color: activeColors.text.tertiary }, item.unreadCount > 0 && styles.timeTextUnread]}>
+                {item.time}
+              </Text>
+            </View>
           </View>
 
           <View style={styles.bottomLine}>
             <Text
               style={[
                 styles.lastMessageText,
+                { color: activeColors.text.secondary },
                 item.unreadCount > 0 && styles.lastMessageUnread,
               ]}
               numberOfLines={2}>
-              {item.lastMessageText || tr('chat.empty')}
+              {item.subtitle}
             </Text>
 
-            {item.unreadCount > 0 && (
+            {item.unreadCount > 0 ? (
               <View style={styles.unreadBadge}>
                 <Text style={styles.unreadBadgeText}>
                   {item.unreadCount > 99 ? '99+' : item.unreadCount}
                 </Text>
               </View>
+            ) : item.isOrder ? (
+              <CheckCheck size={16} color={activeColors.text.tertiary} />
+            ) : (
+              <Check size={16} color={activeColors.text.tertiary} />
             )}
           </View>
         </View>
@@ -213,11 +326,18 @@ export default function ChatsTabScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={styles.container}>
-      {/* Telegram Style Header */}
-      <View style={styles.header}>
+    <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: activeColors.bg.canvas }]}>
+      {/* Telegram Style Top Header */}
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: activeColors.bg.surface,
+            borderBottomColor: activeColors.border.subtle,
+          },
+        ]}>
         <View style={styles.headerTitleRow}>
-          <Text style={styles.headerTitle}>{tr('chat.title')}</Text>
+          <Text style={[styles.headerTitle, { color: activeColors.text.primary }]}>{tr('chat.title')}</Text>
           {unreadTotal > 0 && (
             <View style={styles.totalBadge}>
               <Text style={styles.totalBadgeText}>{unreadTotal}</Text>
@@ -225,25 +345,25 @@ export default function ChatsTabScreen() {
           )}
         </View>
 
-        {/* Search bar in Telegram style */}
-        <View style={styles.searchBar}>
-          <SearchIcon size={18} color={colors.text.tertiary} />
+        {/* Search Bar matching Telegram */}
+        <View style={[styles.searchBar, { backgroundColor: activeColors.bg.surfaceMuted }]}>
+          <SearchIcon size={17} color={activeColors.text.secondary} />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder={tr('chat.searchPlaceholder')}
-            placeholderTextColor={colors.text.hint}
-            style={styles.searchInput}
+            placeholderTextColor={activeColors.text.secondary}
+            style={[styles.searchInput, { color: activeColors.text.primary }]}
             returnKeyType="search"
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
-              <X size={16} color={colors.text.secondary} />
+              <X size={16} color={activeColors.text.secondary} />
             </Pressable>
           )}
         </View>
 
-        {/* Filter Pills */}
+        {/* Telegram Filter Pills */}
         <View style={styles.filterPills}>
           <Pressable
             onPress={() => {
@@ -252,14 +372,36 @@ export default function ChatsTabScreen() {
             }}
             style={[
               styles.filterPill,
+              { backgroundColor: activeColors.bg.surfaceMuted },
               activeFilter === 'all' && styles.filterPillActive,
             ]}>
             <Text
               style={[
                 styles.filterPillText,
+                { color: activeColors.text.secondary },
                 activeFilter === 'all' && styles.filterPillTextActive,
               ]}>
-              Barchasi ({conversations.length})
+              {tr('chat.filterAll')} ({unifiedChats.length})
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              haptics.selection();
+              setActiveFilter('shops');
+            }}
+            style={[
+              styles.filterPill,
+              { backgroundColor: activeColors.bg.surfaceMuted },
+              activeFilter === 'shops' && styles.filterPillActive,
+            ]}>
+            <Text
+              style={[
+                styles.filterPillText,
+                { color: activeColors.text.secondary },
+                activeFilter === 'shops' && styles.filterPillTextActive,
+              ]}>
+              {tr('chat.filterShops')}
             </Text>
           </Pressable>
 
@@ -270,63 +412,104 @@ export default function ChatsTabScreen() {
             }}
             style={[
               styles.filterPill,
+              { backgroundColor: activeColors.bg.surfaceMuted },
               activeFilter === 'unread' && styles.filterPillActive,
             ]}>
             <Text
               style={[
                 styles.filterPillText,
+                { color: activeColors.text.secondary },
                 activeFilter === 'unread' && styles.filterPillTextActive,
               ]}>
-              O'qilmaganlar {unreadTotal > 0 ? `(${unreadTotal})` : ''}
+              {tr('chat.filterUnread')} {unreadTotal > 0 ? `(${unreadTotal})` : ''}
             </Text>
           </Pressable>
         </View>
       </View>
 
-      {/* List / Content */}
+      {/* Main Chat List Area */}
       {isLoading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.brand.primary} />
+          <ActivityIndicator size="large" color={activeColors.brand.primary} />
         </View>
       ) : !isAuthenticated ? (
         <View style={styles.centerContainer}>
           <EmptyState
-            title="Tizimga kiring"
-            description="Sellerlar bilan yozishish uchun hisobingizga kiring"
-            actionLabel="Kirish"
+            icon={MessageCircle}
+            title={tr('chat.loginTitle')}
+            description={tr('chat.loginDesc')}
+            actionLabel={tr('chat.loginButton')}
             onAction={() => router.push('/(auth)/phone')}
           />
         </View>
-      ) : filteredConversations.length === 0 ? (
-        <View style={styles.centerContainer}>
-          <View style={styles.emptyIconCircle}>
-            <MessageCircle size={44} color={colors.brand.primary} />
-          </View>
-          <Text style={styles.emptyTitle}>{tr('chat.noChats')}</Text>
-          <Text style={styles.emptyDesc}>{tr('chat.noChatsDesc')}</Text>
-          <Pressable
-            onPress={() => router.push('/(tabs)')}
-            style={styles.exploreButton}>
-            <ShoppingBag size={18} color={colors.text.onPrimary} />
-            <Text style={styles.exploreButtonText}>Do'konlarni ko'rish</Text>
-          </Pressable>
-        </View>
       ) : (
         <FlatList
-          data={filteredConversations}
+          data={filteredChats}
           keyExtractor={(item) => item.id}
-          renderItem={renderConversationItem}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          renderItem={renderChatItem}
+          ItemSeparatorComponent={() => (
+            <View style={[styles.separator, { backgroundColor: activeColors.border.subtle }]} />
+          )}
           contentContainerStyle={[
             styles.listContent,
-            { paddingBottom: insets.bottom + 80 },
+            { paddingBottom: insets.bottom + 90 },
           ]}
           refreshControl={
             <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={refetch}
-              tintColor={colors.brand.primary}
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor={activeColors.brand.primary}
             />
+          }
+          ListHeaderComponent={
+            /* Pinned "Saved Messages" item matching Screenshot 1 */
+            <Pressable
+              onPress={handleOpenSaved}
+              style={({ pressed }) => [
+                styles.chatRow,
+                styles.savedRow,
+                {
+                  backgroundColor: activeColors.bg.surface,
+                  borderBottomColor: activeColors.border.subtle,
+                },
+                pressed && { backgroundColor: activeColors.bg.surfaceMuted },
+              ]}>
+              <View style={styles.avatarContainer}>
+                <View style={[styles.avatarFallback, { backgroundColor: activeColors.brand.primary }]}>
+                  <Bookmark size={24} color="#FFFFFF" />
+                </View>
+              </View>
+              <View style={styles.contentWrap}>
+                <View style={styles.topLine}>
+                  <Text style={[styles.chatTitle, { color: activeColors.text.primary }]}>{tr('chat.savedMessages')}</Text>
+                  <Pin size={15} color={activeColors.text.secondary} style={{ transform: [{ rotate: '45deg' }] }} />
+                </View>
+                <View style={styles.bottomLine}>
+                  <Text
+                    style={[styles.lastMessageText, { color: activeColors.text.secondary }]}
+                    numberOfLines={1}>
+                    {tr('chat.savedMessagesDesc')}
+                  </Text>
+                </View>
+              </View>
+            </Pressable>
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <View style={[styles.emptyIconCircle, { backgroundColor: activeColors.brand.primarySurface }]}>
+                <MessageCircle size={44} color={activeColors.brand.primary} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: activeColors.text.primary }]}>{tr('chat.emptyTitle')}</Text>
+              <Text style={[styles.emptyDesc, { color: activeColors.text.secondary }]}>
+                {tr('chat.emptyDesc')}
+              </Text>
+              <Pressable
+                onPress={() => router.push('/(tabs)')}
+                style={[styles.exploreButton, { backgroundColor: activeColors.brand.primary }]}>
+                <ShoppingBag size={18} color="#FFFFFF" />
+                <Text style={styles.exploreButtonText}>{tr('chat.exploreButton')}</Text>
+              </Pressable>
+            </View>
           }
         />
       )}
@@ -337,27 +520,27 @@ export default function ChatsTabScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg.canvas,
+    backgroundColor: '#000000',
   },
   header: {
-    backgroundColor: colors.bg.surface,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
+    backgroundColor: '#0E1621',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border.subtle,
+    borderBottomColor: '#1F2937',
   },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.sm,
+    gap: 8,
+    marginBottom: 10,
   },
   headerTitle: {
     ...typography.title,
     fontSize: 24,
     fontWeight: '800',
-    color: colors.text.primary,
+    color: '#FFFFFF',
   },
   totalBadge: {
     backgroundColor: colors.brand.primary,
@@ -366,102 +549,98 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   totalBadgeText: {
-    color: colors.text.onPrimary,
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.bg.surfaceMuted,
-    borderRadius: radius.xl,
-    paddingHorizontal: spacing.md,
-    height: 40,
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
+    backgroundColor: '#1E2C3A',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    height: 38,
+    gap: 8,
+    marginBottom: 10,
   },
   searchInput: {
     flex: 1,
-    ...typography.body,
     fontSize: 14,
-    color: colors.text.primary,
+    color: '#FFFFFF',
     paddingVertical: 0,
   },
   filterPills: {
     flexDirection: 'row',
-    gap: spacing.xs,
+    gap: 8,
   },
   filterPill: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 13,
     paddingVertical: 6,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surfaceMuted,
+    borderRadius: 16,
+    backgroundColor: '#1A232E',
   },
   filterPillActive: {
-    backgroundColor: colors.brand.primarySurface,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
+    backgroundColor: colors.brand.primary,
   },
   filterPillText: {
-    ...typography.caption,
     fontSize: 12.5,
     fontWeight: '600',
-    color: colors.text.secondary,
+    color: '#8E8E93',
   },
   filterPillTextActive: {
-    color: colors.brand.primary,
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   listContent: {
-    paddingTop: spacing.xs,
+    paddingTop: 2,
+  },
+  savedRow: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#1F2937',
   },
   chatRow: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: colors.bg.surface,
+    backgroundColor: '#000000',
     alignItems: 'center',
   },
   chatRowPressed: {
-    backgroundColor: colors.bg.surfaceMuted,
+    backgroundColor: '#111827',
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: spacing.md,
+    marginRight: 14,
   },
   avatarImage: {
-    width: 54,
-    height: 54,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surfaceMuted,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#1F2937',
   },
   avatarFallback: {
-    width: 54,
-    height: 54,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
   },
   avatarInitials: {
-    ...typography.body,
     fontWeight: '800',
     fontSize: 18,
-    color: colors.brand.primary,
+    color: '#FFFFFF',
   },
   roleBadge: {
     position: 'absolute',
     bottom: -2,
     right: -4,
-    backgroundColor: colors.palette.gray800,
+    backgroundColor: '#374151',
     borderRadius: radius.full,
-    paddingHorizontal: 4,
+    paddingHorizontal: 5,
     paddingVertical: 1,
   },
   roleBadgeText: {
-    color: colors.text.onDark,
+    color: '#FFFFFF',
     fontSize: 8.5,
     fontWeight: '700',
   },
@@ -472,21 +651,24 @@ const styles = StyleSheet.create({
   topLine: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
+    alignItems: 'center',
     marginBottom: 4,
   },
   chatTitle: {
-    ...typography.body,
-    fontWeight: '700',
     fontSize: 16,
-    color: colors.text.primary,
+    fontWeight: '700',
+    color: '#FFFFFF',
     flex: 1,
-    marginRight: spacing.sm,
+    marginRight: 8,
+  },
+  timeWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   timeText: {
-    ...typography.caption,
     fontSize: 12,
-    color: colors.text.tertiary,
+    color: '#8E8E93',
     fontWeight: '500',
   },
   timeTextUnread: {
@@ -497,83 +679,85 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing.sm,
+    gap: 8,
   },
   lastMessageText: {
-    ...typography.caption,
     fontSize: 13.5,
-    color: colors.text.secondary,
+    color: '#9CA3AF',
     flex: 1,
     lineHeight: 18,
   },
   lastMessageUnread: {
-    color: colors.text.primary,
+    color: '#FFFFFF',
     fontWeight: '600',
   },
   unreadBadge: {
     minWidth: 20,
     height: 20,
-    borderRadius: radius.full,
+    borderRadius: 10,
     backgroundColor: colors.brand.primary,
     paddingHorizontal: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
   unreadBadgeText: {
-    color: colors.text.onPrimary,
+    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '800',
     lineHeight: 14,
   },
   separator: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border.subtle,
-    marginLeft: spacing.lg + 54 + spacing.md, // Telegram inset separator
+    backgroundColor: '#1F2937',
+    marginLeft: 16 + 52 + 14, // Telegram inset
   },
   centerContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing['2xl'],
+    paddingHorizontal: 32,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 24,
   },
   emptyIconCircle: {
     width: 80,
     height: 80,
-    borderRadius: radius.full,
+    borderRadius: 40,
     backgroundColor: colors.brand.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: 16,
   },
   emptyTitle: {
-    ...typography.title,
     fontSize: 18,
     fontWeight: '700',
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
+    color: '#FFFFFF',
+    marginBottom: 6,
     textAlign: 'center',
   },
   emptyDesc: {
-    ...typography.body,
     fontSize: 14,
-    color: colors.text.secondary,
+    color: '#9CA3AF',
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: spacing.lg,
+    marginBottom: 24,
   },
   exploreButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 8,
     backgroundColor: colors.brand.primary,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: radius.full,
+    borderRadius: 24,
   },
   exploreButtonText: {
-    ...typography.body,
     fontWeight: '700',
-    color: colors.text.onPrimary,
+    color: '#FFFFFF',
     fontSize: 14,
   },
 });

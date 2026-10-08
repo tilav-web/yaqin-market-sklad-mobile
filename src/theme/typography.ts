@@ -29,6 +29,7 @@ const baseBold = Platform.select({
 
 type Variant =
   | 'display'
+  | 'title'
   | 'h1'
   | 'h2'
   | 'h3'
@@ -51,6 +52,13 @@ export const typography: Record<Variant, TextStyle> = {
     fontWeight: '800',
     letterSpacing: -0.8,
     lineHeight: 40,
+    color: colors.text.primary,
+  },
+  title: {
+    fontFamily: baseSemiBold,
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 24,
     color: colors.text.primary,
   },
   h1: {

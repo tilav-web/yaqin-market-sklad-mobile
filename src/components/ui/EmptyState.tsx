@@ -1,23 +1,25 @@
-import { LucideIcon } from 'lucide-react-native';
+import { Inbox, LucideIcon } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from './Button';
 import { colors, radius, spacing, typography } from '@/theme';
 
 interface Props {
-  icon: LucideIcon;
+  icon?: LucideIcon;
   title: string;
   description?: string;
   actionLabel?: string;
   onAction?: () => void;
 }
 
-export function EmptyState({ icon: Icon, title, description, actionLabel, onAction }: Props) {
+export function EmptyState({ icon: Icon = Inbox, title, description, actionLabel, onAction }: Props) {
   return (
     <View style={styles.wrap}>
-      <View style={styles.iconWrap}>
-        <Icon size={48} color={colors.brand.primary} strokeWidth={1.4} />
-      </View>
+      {Icon ? (
+        <View style={styles.iconWrap}>
+          <Icon size={48} color={colors.brand.primary} strokeWidth={1.4} />
+        </View>
+      ) : null}
       <Text style={styles.title}>{title}</Text>
       {description && <Text style={styles.desc}>{description}</Text>}
       {actionLabel && onAction && (

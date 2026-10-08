@@ -10,11 +10,13 @@ import {
   Heart,
   LogIn,
   MapPin,
+  Moon,
   Plus,
   QrCode,
   Settings,
   ShieldAlert,
   Store,
+  Sun,
   XCircle,
 } from 'lucide-react-native';
 import { useState } from 'react';
@@ -22,6 +24,7 @@ import { Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LanguagePickerSheet, LANG_LABELS } from '@/components/LanguagePickerSheet';
+import { ThemePickerSheet } from '@/components/ThemePickerSheet';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { avatarSource } from '@/constants/avatars';
@@ -31,6 +34,7 @@ import { useIsGuest, useRequireAuth } from '@/lib/useRequireAuth';
 import type { WorkingForMeEntry } from '@/lib/useIsShopOwner';
 import { MeUser, MyShop } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
+import { useTheme } from '@/stores/theme';
 import { colors, hitSlop, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -42,12 +46,14 @@ interface SellerApplication {
 
 export default function ProfileTab() {
   const { tr } = useTranslation();
+  const { mode, setMode, isDark, colors: activeColors } = useTheme();
   const lang = useLangStore((s) => s.lang);
   const setLang = useLangStore((s) => s.setLang);
   const signOut = useAuthStore((s) => s.signOut);
   const isGuest = useIsGuest();
   const requireAuth = useRequireAuth();
   const [langSheetVisible, setLangSheetVisible] = useState(false);
+  const [themeSheetVisible, setThemeSheetVisible] = useState(false);
 
   const meQuery = useQuery({
     queryKey: ['me'],
@@ -103,7 +109,7 @@ export default function ProfileTab() {
   const myShops = myShopsQuery.data ?? [];
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: activeColors.bg.canvas }]} edges={['top']}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.scroll}
@@ -125,19 +131,45 @@ export default function ProfileTab() {
         }>
         {isGuest ? (
           <Pressable
-            style={styles.guestCard}
+            style={[
+              styles.guestCard,
+              {
+                backgroundColor: activeColors.bg.surface,
+                borderColor: activeColors.brand.primaryBorder,
+              },
+            ]}
             onPress={() => {
               haptics.medium();
               router.push('/(auth)/phone');
             }}>
-            <View style={styles.guestIcon}>
-              <LogIn size={24} color={colors.brand.primary} strokeWidth={2.4} />
+            <View
+              style={[
+                styles.guestIcon,
+                { backgroundColor: activeColors.brand.primarySurface },
+              ]}>
+              <LogIn size={24} color={activeColors.brand.primary} strokeWidth={2.4} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.guestTitle}>{tr('profile.guest.title')}</Text>
-              <Text style={styles.guestSub}>{tr('profile.guest.sub')}</Text>
+              <Text
+                style={[
+                  styles.guestTitle,
+                  { color: activeColors.brand.primary },
+                ]}>
+                {tr('profile.guest.title')}
+              </Text>
+              <Text
+                style={[
+                  styles.guestSub,
+                  { color: activeColors.text.secondary },
+                ]}>
+                {tr('profile.guest.sub')}
+              </Text>
             </View>
-            <ChevronRight size={18} color={colors.brand.primary} strokeWidth={2.4} />
+            <ChevronRight
+              size={18}
+              color={activeColors.brand.primary}
+              strokeWidth={2.4}
+            />
           </Pressable>
         ) : (
           <View style={styles.headerBanner}>
@@ -202,6 +234,7 @@ export default function ProfileTab() {
             icon={Bell}
             title={tr('notifications.title')}
             badge={isGuest ? undefined : unreadQuery.data}
+            borderBottom={false}
             onPress={() => router.push('/notifications')}
           />
         </Section>
@@ -216,6 +249,7 @@ export default function ProfileTab() {
             <Row
               icon={QrCode}
               title={tr('profile.joinAsStaff')}
+              borderBottom={false}
               onPress={() => requireAuth(() => router.push('/staff-scan'))}
             />
           </Section>
@@ -235,7 +269,7 @@ export default function ProfileTab() {
                     onPress={() => router.push(`/seller/${shop.id}/orders`)}
                   />
                 ))}
-                <Row icon={Plus} title={tr('nav.newShop')} onPress={() => router.push('/seller/new')} />
+                <Row icon={Plus} title={tr('nav.newShop')} borderBottom={false} onPress={() => router.push('/seller/new')} />
               </Section>
             ) : latestApp?.status === 'pending' ? (
               <Section>
@@ -271,6 +305,7 @@ export default function ProfileTab() {
                 <Row
                   icon={Store}
                   title={tr('profile.openShopShort')}
+                  borderBottom={false}
                   onPress={() => requireAuth(() => router.push('/seller-application'))}
                 />
               </Section>
@@ -278,12 +313,13 @@ export default function ProfileTab() {
 
             {staffShops.length > 0 ? (
               <Section>
-                {staffShops.map(({ shop, role }) => (
+                {staffShops.map(({ shop, role }, idx) => (
                   <Row
                     key={shop.id}
                     icon={Store}
                     title={shop.name}
                     subtitle={`${role ?? tr('profile.staffRole')} · ${shop.address}`}
+                    borderBottom={idx !== staffShops.length - 1}
                     onPress={() => router.push(`/seller/${shop.id}/orders`)}
                   />
                 ))}
@@ -295,7 +331,12 @@ export default function ProfileTab() {
               <Row icon={CreditCard} title={tr('cards.title')} onPress={() => router.push('/saved-cards')} />
               <Row icon={ClipboardList} title={tr('profile.orders')} onPress={() => router.push('/orders')} />
               <Row icon={Heart} title={tr('nav.favorites')} onPress={() => router.push('/favorites')} />
-              <Row icon={QrCode} title={tr('profile.joinAsStaff')} onPress={() => router.push('/staff-scan')} />
+              <Row
+                icon={QrCode}
+                title={tr('profile.joinAsStaff')}
+                borderBottom={false}
+                onPress={() => router.push('/staff-scan')}
+              />
             </Section>
           </>
         ) : null}
@@ -307,11 +348,25 @@ export default function ProfileTab() {
             value={LANG_LABELS[lang]}
             onPress={() => setLangSheetVisible(true)}
           />
+          <Row
+            icon={isDark ? Moon : Sun}
+            title={tr('profile.theme')}
+            value={
+              mode === 'dark'
+                ? tr('theme.dark')
+                : mode === 'light'
+                ? tr('theme.light')
+                : tr('theme.system')
+            }
+            borderBottom={!isGuest}
+            onPress={() => setThemeSheetVisible(true)}
+          />
           {!isGuest && (
             <Row
               icon={ShieldAlert}
               title={tr('deleteAccount.title')}
-              titleColor={colors.feedback.danger}
+              titleColor={activeColors.feedback.danger}
+              borderBottom={false}
               onPress={() => router.push('/profile/delete-account')}
             />
           )}
@@ -347,6 +402,13 @@ export default function ProfileTab() {
         onSelect={setLang}
         onClose={() => setLangSheetVisible(false)}
       />
+
+      <ThemePickerSheet
+        visible={themeSheetVisible}
+        value={mode}
+        onSelect={setMode}
+        onClose={() => setThemeSheetVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -371,9 +433,21 @@ interface RowProps {
   value?: string;
   /** Optional count badge shown before the chevron (e.g. pending orders). */
   badge?: number;
+  /** Show bottom divider border? Defaults to true. Pass false for last item in a section. */
+  borderBottom?: boolean;
   onPress: () => void;
 }
-function Row({ icon: Icon, title, subtitle, titleColor, value, badge, onPress }: RowProps) {
+function Row({
+  icon: Icon,
+  title,
+  subtitle,
+  titleColor,
+  value,
+  badge,
+  borderBottom = true,
+  onPress,
+}: RowProps) {
+  const { colors: activeColors } = useTheme();
   return (
     <Pressable
       onPress={() => {
@@ -381,25 +455,34 @@ function Row({ icon: Icon, title, subtitle, titleColor, value, badge, onPress }:
         onPress();
       }}
       hitSlop={hitSlop}
-      style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.bg.surfaceMuted }]}>
+      style={({ pressed }) => [
+        styles.row,
+        {
+          borderBottomWidth: borderBottom ? 1 : 0,
+          borderBottomColor: activeColors.border.subtle,
+        },
+        pressed && { backgroundColor: activeColors.bg.surfaceMuted },
+      ]}>
       <View style={styles.rowIconWrap}>
-        <Icon size={21} color={colors.text.secondary} strokeWidth={1.8} />
+        <Icon size={21} color={activeColors.text.secondary} strokeWidth={1.8} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.rowTitle, titleColor && { color: titleColor }]}>{title}</Text>
+        <Text style={[styles.rowTitle, { color: activeColors.text.primary }, titleColor && { color: titleColor }]}>
+          {title}
+        </Text>
         {subtitle && (
-          <Text style={styles.rowSub} numberOfLines={1}>
+          <Text style={[styles.rowSub, { color: activeColors.text.secondary }]} numberOfLines={1}>
             {subtitle}
           </Text>
         )}
       </View>
-      {value && <Text style={styles.rowValue}>{value}</Text>}
+      {value && <Text style={[styles.rowValue, { color: activeColors.text.secondary }]}>{value}</Text>}
       {badge && badge > 0 ? (
         <View style={styles.rowBadge}>
           <Text style={styles.rowBadgeText}>{badge}</Text>
         </View>
       ) : null}
-      <ChevronRight size={18} color={colors.text.tertiary} strokeWidth={2.2} />
+      <ChevronRight size={18} color={activeColors.text.tertiary} strokeWidth={2.2} />
     </Pressable>
   );
 }
@@ -491,8 +574,6 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
   },
   rowIconWrap: { width: 26, alignItems: 'center' },
   rowTitle: { ...typography.bodyStrong },

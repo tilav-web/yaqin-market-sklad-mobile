@@ -1,6 +1,7 @@
 import { Pressable, PressableProps, StyleSheet, View, ViewStyle } from 'react-native';
 
 import { colors, radius, shadow as shadowTokens, spacing } from '@/theme';
+import { useTheme } from '@/stores/theme';
 
 interface Props extends Omit<PressableProps, 'style' | 'children'> {
   children: React.ReactNode;
@@ -19,11 +20,13 @@ export function Card({
   onPress,
   ...rest
 }: Props) {
+  const { colors: activeColors } = useTheme();
   const content = (
     <View
       style={[
         styles.base,
-        bordered && { borderWidth: 1, borderColor: colors.border.subtle },
+        { backgroundColor: activeColors.bg.surface },
+        bordered && { borderWidth: 1, borderColor: activeColors.border.subtle },
         shadowTokens[elevation],
         padding !== 'none' && { padding: spacing[padding] },
         style,
@@ -34,7 +37,7 @@ export function Card({
 
   if (onPress) {
     return (
-      <Pressable onPress={onPress} {...rest} android_ripple={{ color: colors.border.subtle }}>
+      <Pressable onPress={onPress} {...rest} android_ripple={{ color: activeColors.border.subtle }}>
         {content}
       </Pressable>
     );

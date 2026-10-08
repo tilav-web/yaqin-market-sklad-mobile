@@ -19,7 +19,7 @@ export const common = {
   'common.close': 'Закрыть',
   'common.somPerKg': 'сум/кг',
   'common.som': 'сум',
-  'tab.home': 'Главная',
+  'tab.home': 'Товары',
   'tab.chats': 'Чаты',
   'tab.map': 'Карта',
   'tab.search': 'Поиск',

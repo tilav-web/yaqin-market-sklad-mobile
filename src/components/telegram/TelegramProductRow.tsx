@@ -3,8 +3,6 @@ import {
   MessageCircle,
   Package,
   Plus,
-  ShoppingBag,
-  Star,
   Store,
 } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
@@ -23,7 +21,8 @@ import { api } from '@/lib/api';
 import { FeedProduct } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { useTheme } from '@/stores/theme';
+import { colors, radius, shadow, spacing, typography } from '@/theme';
 import { formatMoney } from '@/utils/formatMoney';
 import { haptics } from '@/utils/haptics';
 
@@ -33,6 +32,7 @@ interface TelegramProductRowProps {
 
 export function TelegramProductRow({ item }: TelegramProductRowProps) {
   const { tr } = useTranslation();
+  const { colors: activeColors } = useTheme();
   const toast = useToast();
   const addItem = useCartStore((s) => s.addItem);
   const isAuthenticated = useAuthStore((s) => !!s.user);
@@ -104,15 +104,20 @@ export function TelegramProductRow({ item }: TelegramProductRowProps) {
       onPress={handleOpenProduct}
       style={({ pressed }) => [
         styles.row,
-        pressed && styles.rowPressed,
+        { backgroundColor: activeColors.bg.surface },
+        pressed && { backgroundColor: activeColors.bg.surfaceMuted },
       ]}>
       {/* Telegram Avatar / Product Image */}
       <View style={styles.imageContainer}>
         {photo ? (
-          <Image source={{ uri: photo }} style={styles.image} resizeMode="cover" />
+          <Image
+            source={{ uri: photo }}
+            style={[styles.image, { backgroundColor: activeColors.bg.surfaceMuted }]}
+            resizeMode="cover"
+          />
         ) : (
-          <View style={styles.imageFallback}>
-            <Package size={24} color={colors.text.tertiary} />
+          <View style={[styles.imageFallback, { backgroundColor: activeColors.bg.surfaceMuted }]}>
+            <Package size={24} color={activeColors.text.tertiary} />
           </View>
         )}
         {hasDiscount && (
@@ -124,7 +129,7 @@ export function TelegramProductRow({ item }: TelegramProductRowProps) {
 
       {/* Middle info */}
       <View style={styles.infoCol}>
-        <Text style={styles.title} numberOfLines={1}>
+        <Text style={[styles.title, { color: activeColors.text.primary }]} numberOfLines={1}>
           {item.name}
         </Text>
 
@@ -134,18 +139,18 @@ export function TelegramProductRow({ item }: TelegramProductRowProps) {
             router.push(`/shop/${item.shop.id}` as any);
           }}
           style={styles.shopRow}>
-          <Store size={12} color={colors.text.tertiary} />
-          <Text style={styles.shopName} numberOfLines={1}>
+          <Store size={12} color={activeColors.text.tertiary} />
+          <Text style={[styles.shopName, { color: activeColors.text.secondary }]} numberOfLines={1}>
             {item.shop.name}
           </Text>
           {item.shop.distanceKm !== undefined && (
-            <Text style={styles.shopDistance}>
+            <Text style={[styles.shopDistance, { color: activeColors.text.tertiary }]}>
               • {item.shop.distanceKm < 1 ? `${Math.round(item.shop.distanceKm * 1000)}m` : `${item.shop.distanceKm.toFixed(1)}km`}
             </Text>
           )}
         </Pressable>
 
-        <Text style={styles.unitSize}>
+        <Text style={[styles.unitSize, { color: activeColors.text.tertiary }]}>
           {item.unitSize} {item.unitType}
         </Text>
       </View>
@@ -154,12 +159,12 @@ export function TelegramProductRow({ item }: TelegramProductRowProps) {
       <View style={styles.actionCol}>
         <View style={styles.priceWrap}>
           {hasDiscount && (
-            <Text style={styles.oldPrice}>
+            <Text style={[styles.oldPrice, { color: activeColors.text.tertiary }]}>
               {formatMoney(item.price)}
             </Text>
           )}
-          <Text style={styles.price}>
-            {formatMoney(price)} <Text style={styles.currency}>{tr('common.som')}</Text>
+          <Text style={[styles.price, { color: activeColors.text.primary }]}>
+            {formatMoney(price)} <Text style={[styles.currency, { color: activeColors.text.secondary }]}>{tr('common.som')}</Text>
           </Text>
         </View>
 
@@ -170,12 +175,16 @@ export function TelegramProductRow({ item }: TelegramProductRowProps) {
             disabled={chatLoading}
             style={({ pressed }) => [
               styles.chatBtn,
+              {
+                backgroundColor: activeColors.brand.primarySurface,
+                borderColor: activeColors.brand.primaryBorder,
+              },
               pressed && styles.chatBtnPressed,
             ]}>
             {chatLoading ? (
-              <ActivityIndicator size="small" color={colors.brand.primary} />
+              <ActivityIndicator size="small" color={activeColors.brand.primary} />
             ) : (
-              <MessageCircle size={16} color={colors.brand.primary} />
+              <MessageCircle size={16} color={activeColors.brand.primary} />
             )}
           </Pressable>
 

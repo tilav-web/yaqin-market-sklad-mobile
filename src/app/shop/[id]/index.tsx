@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ChevronRight, Heart, MapPin, Navigation, Phone, Store, Truck } from 'lucide-react-native';
+import { ChevronRight, Heart, MapPin, MessageCircle, Navigation, Phone, Store, Truck } from 'lucide-react-native';
 import { useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -122,6 +122,31 @@ export default function ShopDetailScreen() {
     if (shop.phone) void Linking.openURL(`tel:${shop.phone}`);
   };
 
+  const handleChat = async () => {
+    haptics.selection();
+    try {
+      const res = await api.post(`/conversations/with-shop/${shop.id}`);
+      router.push({
+        pathname: '/chat/[orderId]',
+        params: {
+          orderId: res.data.id,
+          conversationId: res.data.id,
+          shopId: shop.id,
+          title: shop.name,
+        },
+      });
+    } catch {
+      router.push({
+        pathname: '/chat/[orderId]',
+        params: {
+          orderId: `shop_${shop.id}`,
+          shopId: shop.id,
+          title: shop.name,
+        },
+      });
+    }
+  };
+
   const handleRoute = () => {
     const url = Platform.select({
       ios: `maps:0,0?q=${shop.latitude},${shop.longitude}`,
@@ -217,8 +242,12 @@ export default function ShopDetailScreen() {
                 )}
               </View>
 
-              {/* Action buttons (phone + maps) */}
+              {/* Action buttons (Chat + phone + maps) */}
               <View style={styles.actionRow}>
+                <Pressable style={[styles.actionBtn, styles.actionBtnChat]} onPress={handleChat}>
+                  <MessageCircle size={15} color="#FFFFFF" strokeWidth={2.4} />
+                  <Text style={[styles.actionBtnText, styles.actionBtnChatText]}>{tr('nav.chat') || 'Chat'}</Text>
+                </Pressable>
                 {shop.phone ? (
                   <Pressable style={styles.actionBtn} onPress={handleCall}>
                     <Phone size={14} color={colors.brand.primary} />
@@ -342,7 +371,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border.subtle,
   },
+  actionBtnChat: {
+    backgroundColor: colors.brand.primary,
+    borderColor: colors.brand.primary,
+  },
   actionBtnText: { ...typography.caption, fontWeight: '700', color: colors.text.primary },
+  actionBtnChatText: { color: '#FFFFFF' },
   closedAlert: {
     backgroundColor: colors.feedback.dangerSurface,
     padding: spacing.sm,

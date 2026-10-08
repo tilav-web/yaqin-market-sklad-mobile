@@ -22,20 +22,40 @@ import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { District, FeedResponse, PublicShop } from '@/lib/types';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
+import { useTheme } from '@/stores/theme';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 import { createShopClusterIndex, getClustersForRegion } from '@/utils/mapClustering';
 
-// Clean custom map style: hide standard Google POIs/transit so our delivery shops take center stage
-const MAP_STYLE = [
+// Clean light map style: hide standard Google POIs/transit
+const LIGHT_MAP_STYLE = [
   { featureType: 'poi', elementType: 'all', stylers: [{ visibility: 'off' }] },
   { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
   { featureType: 'transit', stylers: [{ visibility: 'off' }] },
 ];
 
+// Premium dark map style matching Telegram Dark theme
+const DARK_MAP_STYLE = [
+  { elementType: 'geometry', stylers: [{ color: '#18222D' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#8E9AA8' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#131B24' }] },
+  { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#D1D5DB' }] },
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#22303F' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#17222D' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9CA3AF' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2E3F52' }] },
+  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1C2733' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0F1720' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#51657D' }] },
+];
+
 export default function MapTab() {
   const insets = useSafeAreaInsets();
   const { tr, t } = useTranslation();
+  const { isDark } = useTheme();
   const coords = useEffectiveCoords();
   const selectedAddress = useLocationStore((s) => s.selectedAddress);
   const refresh = useLocationStore((s) => s.refresh);
@@ -237,7 +257,7 @@ export default function MapTab() {
         provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
-        customMapStyle={MAP_STYLE}
+        customMapStyle={isDark ? DARK_MAP_STYLE : LIGHT_MAP_STYLE}
         showsUserLocation
         showsMyLocationButton={false}
         toolbarEnabled={false}
@@ -290,7 +310,7 @@ export default function MapTab() {
         <View style={styles.topBar}>
           {/* District Name Badge */}
           {districtQuery.data && !q && (
-            <View style={styles.districtBadge}>
+            <View style={[styles.districtBadge, isDark && styles.districtBadgeDark]}>
               <MapPin size={13} color={colors.brand.primary} strokeWidth={2.6} />
               <Text style={styles.districtBadgeText} numberOfLines={1}>
                 {t(districtQuery.data.name)}
@@ -300,7 +320,7 @@ export default function MapTab() {
 
           {/* Product Search Pill */}
           {q && (
-            <View style={styles.searchPill}>
+            <View style={[styles.searchPill, isDark && styles.searchPillDark]}>
               <Text style={styles.searchPillText} numberOfLines={1}>
                 “{q}”
               </Text>
@@ -317,6 +337,7 @@ export default function MapTab() {
           <Pressable
             style={[
               styles.freeToggleBtn,
+              isDark && styles.freeToggleBtnDark,
               onlyFreeDelivery && styles.freeToggleBtnActive,
             ]}
             onPress={() => {
@@ -350,7 +371,7 @@ export default function MapTab() {
         style={[styles.recenterWrap, { bottom: recenterBottom }]}
         pointerEvents="box-none">
         <Pressable
-          style={styles.recenterBtn}
+          style={[styles.recenterBtn, isDark && styles.recenterBtnDark]}
           onPress={recenter}
           hitSlop={8}
           accessibilityLabel="Recenter map">
@@ -540,6 +561,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     ...shadow.lg,
+  },
+  recenterBtnDark: {
+    backgroundColor: '#1C2733',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  districtBadgeDark: {
+    backgroundColor: '#1C2733',
+    borderColor: 'rgba(232, 57, 46, 0.4)',
+  },
+  searchPillDark: {
+    backgroundColor: '#1C2733',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  freeToggleBtnDark: {
+    backgroundColor: '#1C2733',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
 });
 

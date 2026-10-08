@@ -1,6 +1,5 @@
 import React, { useRef, useEffect } from 'react';
 import {
-  FlatList,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -8,7 +7,8 @@ import {
   View,
 } from 'react-native';
 
-import { colors, radius, spacing, typography } from '@/theme';
+import { useTheme } from '@/stores/theme';
+import { radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 export interface FolderTabItem {
@@ -28,6 +28,7 @@ export function TelegramFolderTabs({
   activeIndex,
   onSelectTab,
 }: TelegramFolderTabsProps) {
+  const { colors } = useTheme();
   const scrollRef = useRef<ScrollView>(null);
 
   // Auto-scroll the active tab into view
@@ -40,7 +41,7 @@ export function TelegramFolderTabs({
   }, [activeIndex, tabs.length]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bg.surface, borderBottomColor: colors.border.subtle }]}>
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -57,11 +58,13 @@ export function TelegramFolderTabs({
               }}
               style={[
                 styles.tabPill,
-                isActive && styles.tabPillActive,
+                { backgroundColor: isActive ? colors.brand.primarySurface : colors.bg.surfaceMuted },
+                isActive && { borderWidth: 1, borderColor: colors.brand.primaryBorder },
               ]}>
               <Text
                 style={[
                   styles.tabText,
+                  { color: isActive ? colors.brand.primary : colors.text.secondary },
                   isActive && styles.tabTextActive,
                 ]}>
                 {tab.title}
@@ -71,11 +74,12 @@ export function TelegramFolderTabs({
                 <View
                   style={[
                     styles.badge,
-                    isActive && styles.badgeActive,
+                    { backgroundColor: isActive ? colors.brand.primary : colors.border.default },
                   ]}>
                   <Text
                     style={[
                       styles.badgeText,
+                      { color: isActive ? colors.text.onPrimary : colors.text.secondary },
                       isActive && styles.badgeTextActive,
                     ]}>
                     {tab.badge > 99 ? '99+' : tab.badge}
@@ -92,9 +96,7 @@ export function TelegramFolderTabs({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.bg.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border.subtle,
     paddingVertical: 8,
   },
   scrollContent: {
@@ -109,25 +111,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: radius.full,
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  tabPillActive: {
-    backgroundColor: colors.brand.primarySurface,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
   },
   tabText: {
     ...typography.caption,
     fontSize: 13,
     fontWeight: '600',
-    color: colors.text.secondary,
   },
   tabTextActive: {
-    color: colors.brand.primary,
     fontWeight: '800',
   },
   badge: {
-    backgroundColor: colors.border.default,
     borderRadius: radius.full,
     paddingHorizontal: 5,
     paddingVertical: 1,
@@ -135,15 +128,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badgeActive: {
-    backgroundColor: colors.brand.primary,
-  },
   badgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: colors.text.secondary,
   },
-  badgeTextActive: {
-    color: colors.text.onPrimary,
-  },
+  badgeTextActive: {},
 });

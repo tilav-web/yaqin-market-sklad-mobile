@@ -19,6 +19,7 @@ import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from '@/i18n';
 import { resolveMedia } from '@/lib/api';
 import { PublicShop } from '@/lib/types';
+import { useTheme } from '@/stores/theme';
 import { colors, radius, shadow, spacing } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -59,6 +60,7 @@ export const MapShopCard = React.memo(function MapShopCard({
   onOpenPreview,
 }: Props) {
   const { tr } = useTranslation();
+  const { isDark, colors: activeColors } = useTheme();
   const [imgError, setImgError] = useState(false);
 
   const isClosed = !shop.isOpenManual;
@@ -83,6 +85,10 @@ export const MapShopCard = React.memo(function MapShopCard({
     <Pressable
       style={[
         styles.card,
+        {
+          backgroundColor: isDark ? '#1C2733' : '#FFFFFF',
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#E2E8F0',
+        },
         selected && styles.cardSelected,
         isPrime && styles.cardPrime,
       ]}
@@ -121,7 +127,9 @@ export const MapShopCard = React.memo(function MapShopCard({
         {/* Shop Details */}
         <View style={styles.infoCol}>
           <View style={styles.titleRow}>
-            <Text style={styles.shopName} numberOfLines={1}>
+            <Text
+              style={[styles.shopName, { color: isDark ? '#FFFFFF' : '#0F172A' }]}
+              numberOfLines={1}>
               {shop.name}
             </Text>
             {shop.ratingAverage > 0 && (
@@ -135,17 +143,18 @@ export const MapShopCard = React.memo(function MapShopCard({
           {/* Address / Distance */}
           <View style={styles.metaRow}>
             {shop.distanceKm !== undefined && (
-              <View style={styles.metaPill}>
-                <MapPin size={10} color={colors.text.secondary} />
-                <Text style={styles.metaText}>{shop.distanceKm.toFixed(1)} km</Text>
+              <View style={[styles.metaPill, { backgroundColor: isDark ? '#243242' : '#F1F5F9' }]}>
+                <MapPin size={10} color={activeColors.text.secondary} />
+                <Text style={[styles.metaText, { color: activeColors.text.secondary }]}>{shop.distanceKm.toFixed(1)} km</Text>
               </View>
             )}
 
-            <View style={styles.metaPill}>
-              <Truck size={10} color={isFreeDelivery ? colors.feedback.success : colors.text.secondary} />
+            <View style={[styles.metaPill, { backgroundColor: isDark ? '#243242' : '#F1F5F9' }]}>
+              <Truck size={10} color={isFreeDelivery ? colors.feedback.success : activeColors.text.secondary} />
               <Text
                 style={[
                   styles.metaText,
+                  { color: activeColors.text.secondary },
                   isFreeDelivery && styles.metaTextFree,
                 ]}>
                 {isFreeDelivery
@@ -158,16 +167,19 @@ export const MapShopCard = React.memo(function MapShopCard({
           {/* Action Buttons Row */}
           <View style={styles.actionRow}>
             <Pressable
-              style={styles.previewBtn}
+              style={[
+                styles.previewBtn,
+                { backgroundColor: isDark ? 'rgba(232, 57, 46, 0.18)' : '#FEE2E2' },
+              ]}
               onPress={handlePreviewPress}
               hitSlop={4}>
-              <ShoppingBag size={11} color={colors.brand.primary} strokeWidth={2.2} />
+              <ShoppingBag size={11} color={activeColors.brand.primary} strokeWidth={2.2} />
               <Text style={styles.previewBtnText}>{tr('shop.products')}</Text>
             </Pressable>
 
             <View style={styles.enterLink}>
-              <Text style={styles.enterLinkText}>{tr('shop.enter')}</Text>
-              <ChevronRight size={13} color={colors.text.tertiary} strokeWidth={2.4} />
+              <Text style={[styles.enterLinkText, { color: activeColors.text.tertiary }]}>{tr('shop.enter')}</Text>
+              <ChevronRight size={13} color={activeColors.text.tertiary} strokeWidth={2.4} />
             </View>
           </View>
         </View>

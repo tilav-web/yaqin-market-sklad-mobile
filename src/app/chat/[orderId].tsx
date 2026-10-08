@@ -5,7 +5,6 @@ import {
   ChevronRight,
   Package,
   Send,
-  ShoppingBag,
   Store,
   Zap,
 } from 'lucide-react-native';
@@ -31,7 +30,7 @@ import { api, extractErrorMessage } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { ChatMessage, ChatTemplate, ConversationMessage, PublicProductVariant } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { colors, layout, radius, spacing, typography } from '@/theme';
 import { formatMoney } from '@/utils/formatMoney';
 import { haptics } from '@/utils/haptics';
 
@@ -93,7 +92,7 @@ export default function ChatScreen() {
           const res = await api.get<ChatMessage[]>(`/orders/${effectiveId}/messages`);
           return res.data;
         }
-      } catch (err) {
+      } catch {
         // Fallback try the other endpoint if first fails
         try {
           const res = await api.get<ChatMessage[]>(`/orders/${effectiveId}/messages`);
