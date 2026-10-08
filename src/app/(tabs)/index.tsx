@@ -12,6 +12,7 @@ import {
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   FlatList,
   LayoutAnimation,
   Platform,
@@ -30,7 +31,7 @@ import {
   FolderTabItem,
   TelegramFolderTabs,
 } from '@/components/telegram/TelegramFolderTabs';
-import { TelegramProductRow } from '@/components/telegram/TelegramProductRow';
+import { ProductCard } from '@/components/ProductCard';
 import { TelegramShopRow } from '@/components/telegram/TelegramShopRow';
 import { EmptyState } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -44,6 +45,11 @@ import { haptics } from '@/utils/haptics';
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
+
+const SCREEN_W = Dimensions.get('window').width;
+const GRID_PADDING = 14;
+const GRID_GAP = 10;
+const CARD_WIDTH = (SCREEN_W - GRID_PADDING * 2 - GRID_GAP) / 2;
 
 export default function TelegramHomeScreen() {
   const insets = useSafeAreaInsets();
@@ -143,6 +149,13 @@ export default function TelegramHomeScreen() {
     const found = shops.find((s) => s.id === activeShopId);
     return found?.name ?? "Tanlangan do'kon";
   }, [activeShopId, carts, shops]);
+
+  const totalCartCount = useMemo(() => {
+    return Object.values(carts).reduce(
+      (acc, lines) => acc + lines.reduce((sum, l) => sum + l.quantity, 0),
+      0,
+    );
+  }, [carts]);
 
   // Animate product list filtering on cart changes
   const prevShopIdRef = useRef<string | null>(null);
@@ -272,18 +285,32 @@ export default function TelegramHomeScreen() {
           </Text>
         </View>
 
-        {/* Right: Search & Notifications */}
+        {/* Right: Cart & Notifications */}
         <View style={styles.rightActions}>
           <Pressable
             onPress={() => {
               haptics.selection();
-              router.push('/(tabs)/search');
+              router.push('/(tabs)/carts');
             }}
             style={[
               styles.iconButton,
               { backgroundColor: activeColors.bg.surfaceMuted },
             ]}>
-            <SearchIcon size={19} color={activeColors.text.primary} />
+            <ShoppingBag size={19} color={activeColors.text.primary} />
+            {totalCartCount > 0 && (
+              <View
+                style={[
+                  styles.cartBadge,
+                  {
+                    backgroundColor: activeColors.brand.primary,
+                    borderColor: activeColors.bg.surface,
+                  },
+                ]}>
+                <Text style={styles.cartBadgeText}>
+                  {totalCartCount > 99 ? '99+' : totalCartCount}
+                </Text>
+              </View>
+            )}
           </Pressable>
 
           <Pressable
@@ -315,22 +342,23 @@ export default function TelegramHomeScreen() {
         onPageSelected={(e) => {
           setActiveTabIndex(e.nativeEvent.position);
         }}>
-        {/* Tab 0: Barchasi (Telegram Product Rows with single shop filter) */}
+        {/* Tab 0: Barchasi (2-column product grid with single shop filter) */}
         <View
           key="all"
           style={[styles.page, { backgroundColor: activeColors.bg.canvas }]}>
           <FlatList
             data={displayedProducts}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <TelegramProductRow item={item} />}
-            ItemSeparatorComponent={() => (
-              <View
-                style={[
-                  styles.separator,
-                  { backgroundColor: activeColors.border.subtle },
-                ]}
+            numColumns={2}
+            columnWrapperStyle={styles.gridColumnWrapper}
+            renderItem={({ item }) => (
+              <ProductCard
+                product={item}
+                cardWidth={CARD_WIDTH}
+                onPress={() => router.push(`/product/${item.id}` as any)}
               />
             )}
+            ItemSeparatorComponent={() => <View style={styles.gridSeparator} />}
             contentContainerStyle={[
               styles.listContent,
               { paddingBottom: insets.bottom + 85 },
@@ -357,6 +385,13 @@ export default function TelegramHomeScreen() {
                   />
                 </View>
               )
+            }
+            ListFooterComponent={
+              feedQuery.isFetchingNextPage ? (
+                <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+                  <ActivityIndicator size="small" color={activeColors.brand.primary} />
+                </View>
+              ) : null
             }
             onEndReached={() => {
               if (feedQuery.hasNextPage && !feedQuery.isFetchingNextPage) {
@@ -442,15 +477,16 @@ export default function TelegramHomeScreen() {
               <FlatList
                 data={categoryProducts}
                 keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <TelegramProductRow item={item} />}
-                ItemSeparatorComponent={() => (
-                  <View
-                    style={[
-                      styles.separator,
-                      { backgroundColor: activeColors.border.subtle },
-                    ]}
+                numColumns={2}
+                columnWrapperStyle={styles.gridColumnWrapper}
+                renderItem={({ item }) => (
+                  <ProductCard
+                    product={item}
+                    cardWidth={CARD_WIDTH}
+                    onPress={() => router.push(`/product/${item.id}` as any)}
                   />
                 )}
+                ItemSeparatorComponent={() => <View style={styles.gridSeparator} />}
                 contentContainerStyle={[
                   styles.listContent,
                   { paddingBottom: insets.bottom + 85 },
@@ -582,6 +618,31 @@ const styles = StyleSheet.create({
   separator: {
     height: StyleSheet.hairlineWidth,
     marginLeft: spacing.lg + 58 + spacing.md, // Telegram inset separator
+  },
+  gridColumnWrapper: {
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  gridSeparator: {
+    height: 10,
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 17,
+    height: 17,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+  },
+  cartBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9.5,
+    fontWeight: '800',
+    lineHeight: 12,
   },
   centerLoading: {
     paddingTop: 60,

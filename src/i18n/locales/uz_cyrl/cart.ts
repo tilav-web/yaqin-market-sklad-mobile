@@ -1,4 +1,5 @@
 export const cart = {
+  'cart.addedToCart': 'саватга қўшилди',
   'cart.empty.title': 'Саватларингиз бўш',
   'cart.empty.desc': 'Ҳар бир дўкондан танлаган маҳсулотларингиз алоҳида саватга йиғилади',
   'cart.itemsCount': '{n} та маҳсулот',

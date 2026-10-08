@@ -1,4 +1,5 @@
 export const cart = {
+  'cart.addedToCart': 'добавлен в корзину',
   'cart.empty.title': 'Ваши корзины пусты',
   'cart.empty.desc': 'Товары из каждого магазина собираются в отдельную корзину',
   'cart.itemsCount': '{n} товаров',

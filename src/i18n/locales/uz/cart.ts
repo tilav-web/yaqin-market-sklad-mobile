@@ -1,4 +1,5 @@
 export const cart = {
+  'cart.addedToCart': "savatga qo'shildi",
   'cart.empty.title': 'Savatlaringiz bo\'sh',
   'cart.empty.desc': 'Har bir do\'kondan tanlagan mahsulotlaringiz alohida savatga yig\'iladi',
   'cart.itemsCount': '{n} ta mahsulot',
