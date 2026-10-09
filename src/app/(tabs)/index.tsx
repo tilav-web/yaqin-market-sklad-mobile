@@ -4,7 +4,6 @@ import {
   Bell,
   ChevronDown,
   MapPin,
-  Search as SearchIcon,
   ShoppingBag,
   Store,
   X,

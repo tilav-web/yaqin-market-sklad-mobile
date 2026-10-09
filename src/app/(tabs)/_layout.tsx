@@ -2,7 +2,6 @@ import { TopTabs } from 'expo-router/js-top-tabs';
 
 import { CustomTabBar } from '@/components/CustomTabBar';
 import { TelegramSearchModal } from '@/components/telegram/TelegramSearchModal';
-import { colors } from '@/theme';
 
 import { useTheme } from '@/stores/theme';
 

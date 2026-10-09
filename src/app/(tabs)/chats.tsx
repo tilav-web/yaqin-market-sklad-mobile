@@ -39,7 +39,7 @@ import { Conversation, Order, PublicShop } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
 import { useEffectiveCoords } from '@/stores/location';
 import { useTheme } from '@/stores/theme';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 function formatTelegramTime(dateString: string | null): string {
