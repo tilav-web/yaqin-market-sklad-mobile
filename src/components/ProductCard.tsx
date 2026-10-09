@@ -159,8 +159,11 @@ export function ProductCard({
           )}
 
           {product.unitSize ? (
-            <View className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded-md bg-black/60">
-              <Text className="text-white font-bold text-[9.5px]">
+            <View
+              style={{ zIndex: 10, elevation: 5 }}
+              className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/80 border border-white/15"
+            >
+              <Text className="text-white font-bold text-[10px] tracking-tight">
                 {product.unitSize} {product.unitType || ''}
               </Text>
             </View>
