@@ -1,26 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useGlobalSearchParams } from 'expo-router';
-import { ArrowDownCircle, CreditCard, Star } from 'lucide-react-native';
-import { useState } from 'react';
+import { ArrowDownCircle, Star } from 'lucide-react-native';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Pressable,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { tr, useTranslation, type TranslationKey } from '@/i18n';
 import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
+import { SellerWithdrawForm } from '@/components/seller/SellerWithdrawForm';
+import { tr, useTranslation, type TranslationKey } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
 import { useIsShopOwner } from '@/lib/useIsShopOwner';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 interface SellerBalance {
   pendingBalance: string;
@@ -61,8 +60,6 @@ export default function SellerBalanceScreen() {
   const [cardNum, setCardNum] = useState('');
   const [cardName, setCardName] = useState('');
   const [showWithdraw, setShowWithdraw] = useState(false);
-  // Balance/withdrawal is scoped to the seller (owner) identity, not to shop
-  // staff — skip the calls once confirmed non-owner and explain why.
   const isOwner = useIsShopOwner(shopId);
 
   const balQ = useQuery<SellerBalance>({
@@ -104,9 +101,9 @@ export default function SellerBalanceScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 64 }}
         refreshControl={
           <RefreshControl
             refreshing={balQ.isFetching && !balQ.isLoading}
@@ -119,114 +116,102 @@ export default function SellerBalanceScreen() {
       >
         {/* Balance cards */}
         {balQ.isLoading ? (
-          <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 24 }} />
+          <ActivityIndicator color={colors.brand.primary} className="mt-6" />
         ) : balQ.isError ? (
-          <Text style={{ color: colors.feedback.danger, textAlign: 'center', marginTop: 24 }}>
+          <Text className="text-sm text-red-500 text-center mt-6">
             {tr('balance.loadError')}
           </Text>
         ) : bal ? (
           <>
-            <View style={styles.cards}>
-              <View style={[styles.card, styles.cardAvailable]}>
-                <Text style={styles.cardLabel}>{tr('balance.available')}</Text>
-                <Text style={[styles.cardValue, { color: colors.feedback.success }]}>{fmt(bal.availableBalance)}</Text>
-                <Text style={styles.cardSub}>{tr('balance.availableSub')}</Text>
+            <View className="flex-row gap-3">
+              <View className="flex-1 rounded-2xl p-4 bg-surface border border-border-subtle shadow-sm gap-1">
+                <Text className="text-xs text-text-secondary">{tr('balance.available')}</Text>
+                <Text className="text-xl font-extrabold text-emerald-600 mt-1">{fmt(bal.availableBalance)}</Text>
+                <Text className="text-[11px] text-text-tertiary">{tr('balance.availableSub')}</Text>
               </View>
-              <View style={[styles.card, styles.cardPending]}>
-                <Text style={styles.cardLabel}>{tr('balance.pending')}</Text>
-                <Text style={[styles.cardValue, { color: '#F59E0B' }]}>{fmt(bal.pendingBalance)}</Text>
-                <Text style={styles.cardSub}>{tr('balance.pendingSub')}</Text>
+              <View className="flex-1 rounded-2xl p-4 bg-surface border border-border-subtle shadow-sm gap-1">
+                <Text className="text-xs text-text-secondary">{tr('balance.pending')}</Text>
+                <Text className="text-xl font-extrabold text-amber-500 mt-1">{fmt(bal.pendingBalance)}</Text>
+                <Text className="text-[11px] text-text-tertiary">{tr('balance.pendingSub')}</Text>
               </View>
             </View>
 
             {parseFloat(bal.debtBalance) > 0 && (
-              <View style={styles.debtCard}>
-                <Text style={styles.debtTitle}>{tr('balance.debt', { amount: fmt(bal.debtBalance) })}</Text>
+              <View className="bg-red-50 rounded-2xl p-4 border border-red-300 gap-1">
+                <Text className="text-sm font-bold text-red-700">
+                  {tr('balance.debt', { amount: fmt(bal.debtBalance) })}
+                </Text>
                 {bal.debtDueDate && (
-                  <Text style={styles.debtSub}>{tr('balance.debtDue', { date: bal.debtDueDate })}</Text>
+                  <Text className="text-xs text-red-600">
+                    {tr('balance.debtDue', { date: bal.debtDueDate })}
+                  </Text>
                 )}
               </View>
             )}
 
             {/* Actions */}
-            <View style={styles.actions}>
+            <View className="flex-row gap-3">
               <Pressable
-                style={styles.actionBtn}
-                onPress={() => setShowWithdraw((v) => !v)}>
+                className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-brand-primary py-3 active:opacity-75"
+                onPress={() => setShowWithdraw((v) => !v)}
+              >
                 <ArrowDownCircle size={20} color={colors.brand.primary} />
-                <Text style={styles.actionText}>{tr('balance.withdraw')}</Text>
+                <Text className="text-sm font-bold text-brand-primary">{tr('balance.withdraw')}</Text>
               </Pressable>
               <Pressable
-                style={styles.actionBtn}
-                onPress={() => router.push(`/seller/${shopId}/prime`)}>
+                className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-brand-primary py-3 active:opacity-75"
+                onPress={() => router.push(`/seller/${shopId}/prime`)}
+              >
                 <Star size={20} color={colors.brand.primary} />
-                <Text style={styles.actionText}>Prime</Text>
+                <Text className="text-sm font-bold text-brand-primary">Prime</Text>
               </Pressable>
             </View>
 
             {/* Withdrawal form */}
             {showWithdraw && (
-              <View style={styles.withdrawForm}>
-                <Text style={styles.sectionTitle}>{tr('balance.withdrawTitle')}</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder={tr('balance.amountPlaceholder')}
-                  keyboardType="numeric"
-                  value={amount}
-                  onChangeText={setAmount}
-                  placeholderTextColor={colors.text.tertiary}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder={tr('balance.cardNumber')}
-                  keyboardType="numeric"
-                  value={cardNum}
-                  onChangeText={setCardNum}
-                  placeholderTextColor={colors.text.tertiary}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder={tr('balance.cardHolder')}
-                  value={cardName}
-                  onChangeText={setCardName}
-                  placeholderTextColor={colors.text.tertiary}
-                />
-                <Pressable
-                  style={[styles.submitBtn, withdraw.isPending && { opacity: 0.6 }]}
-                  disabled={withdraw.isPending}
-                  onPress={() => withdraw.mutate()}
-                >
-                  <CreditCard size={18} color="#fff" />
-                  <Text style={styles.submitText}>{tr('balance.submitRequest')}</Text>
-                </Pressable>
-              </View>
+              <SellerWithdrawForm
+                amount={amount}
+                onChangeAmount={setAmount}
+                cardNum={cardNum}
+                onChangeCardNum={setCardNum}
+                cardName={cardName}
+                onChangeCardName={setCardName}
+                onSubmit={() => withdraw.mutate()}
+                isPending={withdraw.isPending}
+              />
             )}
           </>
         ) : null}
 
         {/* Transaction history */}
-        <Text style={styles.sectionTitle}>{tr('balance.transactions')}</Text>
+        <Text className="text-xs font-bold text-text-secondary uppercase tracking-wider ml-1 mt-2">
+          {tr('balance.transactions')}
+        </Text>
         {txQ.isLoading ? (
           <ActivityIndicator color={colors.brand.primary} />
         ) : txQ.isError ? (
-          <Text style={{ color: colors.feedback.danger, textAlign: 'center' }}>
-            {tr('balance.historyError')}
-          </Text>
+          <Text className="text-sm text-red-500 text-center">{tr('balance.historyError')}</Text>
         ) : (
           (txQ.data ?? []).map((tx) => {
             const isPositive = parseFloat(tx.amount) >= 0;
             return (
-              <View key={tx.id} style={styles.txRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.txType}>{TX_LABEL[tx.type] ? tr(TX_LABEL[tx.type]) : tx.type}</Text>
+              <View key={tx.id} className="flex-row items-start gap-3 bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm">
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-text-primary">
+                    {TX_LABEL[tx.type] ? tr(TX_LABEL[tx.type]) : tx.type}
+                  </Text>
                   {tx.description && (
-                    <Text style={styles.txDesc} numberOfLines={2}>{tx.description}</Text>
+                    <Text className="text-xs text-text-secondary mt-0.5" numberOfLines={2}>
+                      {tx.description}
+                    </Text>
                   )}
-                  <Text style={styles.txDate}>
+                  <Text className="text-[11px] text-text-tertiary mt-1">
                     {new Date(tx.createdAt).toLocaleDateString('uz-UZ')}
                   </Text>
                 </View>
-                <Text style={[styles.txAmount, { color: isPositive ? colors.feedback.success : colors.text.danger }]}>
+                <Text className={`text-sm font-bold min-w-[90px] text-right ${
+                  isPositive ? 'text-emerald-600' : 'text-red-500'
+                }`}>
                   {isPositive ? '+' : ''}{fmt(tx.amount)}
                 </Text>
               </View>
@@ -234,92 +219,9 @@ export default function SellerBalanceScreen() {
           })
         )}
         {!txQ.isLoading && (txQ.data ?? []).length === 0 && (
-          <Text style={styles.empty}>{tr('balance.noTransactions')}</Text>
+          <Text className="text-sm text-text-tertiary text-center py-6">{tr('balance.noTransactions')}</Text>
         )}
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
-  scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['3xl'] },
-  cards: { flexDirection: 'row', gap: spacing.sm },
-  card: {
-    flex: 1,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  cardAvailable: { backgroundColor: colors.bg.surface },
-  cardPending: { backgroundColor: colors.bg.surface },
-  cardLabel: { ...typography.caption, color: colors.text.secondary },
-  cardValue: { ...typography.h3, marginTop: 4 },
-  cardSub: { ...typography.caption, color: colors.text.tertiary, marginTop: 2 },
-  debtCard: {
-    backgroundColor: '#FEF2F2',
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-  },
-  debtTitle: { ...typography.bodyStrong, color: colors.text.danger },
-  debtSub: { ...typography.caption, color: colors.text.danger, marginTop: 2 },
-  actions: { flexDirection: 'row', gap: spacing.sm },
-  actionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.brand.primary,
-    paddingVertical: spacing.sm,
-  },
-  actionText: { ...typography.bodyStrong, color: colors.brand.primary },
-  withdrawForm: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  sectionTitle: { ...typography.overline, color: colors.text.secondary },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    ...typography.body,
-    color: colors.text.primary,
-  },
-  submitBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.brand.primary,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
-  },
-  submitText: { ...typography.bodyStrong, color: '#fff' },
-  txRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  txType: { ...typography.bodyStrong, color: colors.text.primary },
-  txDesc: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
-  txDate: { ...typography.caption, color: colors.text.tertiary, marginTop: 2 },
-  txAmount: { ...typography.bodyStrong, minWidth: 90, textAlign: 'right' },
-  empty: { ...typography.body, color: colors.text.tertiary, textAlign: 'center', paddingVertical: spacing.xl },
-});

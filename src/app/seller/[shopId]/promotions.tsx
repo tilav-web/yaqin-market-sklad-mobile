@@ -1,33 +1,26 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useGlobalSearchParams } from 'expo-router';
-import { CalendarDays, Plus, Tag } from 'lucide-react-native';
-import { useState } from 'react';
+import { Plus, Tag } from 'lucide-react-native';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Modal,
   Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useTranslation, type TranslationKey } from '@/i18n';
+import { CreatePromotionModal } from '@/components/seller/CreatePromotionModal';
 import { NoPermissionNotice } from '@/components/seller/OwnerOnlyNotice';
-import { DatePickerModal } from '@/components/ui';
+import { useTranslation, type TranslationKey } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
-import { parseAmount } from '@/lib/parseAmount';
+import { Promotion } from '@/lib/types';
 import { useShopAccess } from '@/lib/useIsShopOwner';
-import { Category, Promotion } from '@/lib/types';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 type PromType = 'product_discount' | 'category_discount' | 'free_delivery';
-type DiscountType = 'percent' | 'fixed';
 
 const TYPE_LABELS: Record<PromType, TranslationKey> = {
   product_discount: 'promo.typeProductDiscount',
@@ -49,8 +42,7 @@ export default function PromotionsScreen() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<'active' | 'scheduled' | 'ended'>('active');
   const [createOpen, setCreateOpen] = useState(false);
-  // Gated by `promotions.view` (list/stats) and `promotions.manage`
-  // (create/stop) server-side (promotions.service.ts) — owners always pass.
+
   const access = useShopAccess(shopId);
   const canView = access.has('promotions.view') || access.has('promotions.manage');
   const canManage = access.has('promotions.manage');
@@ -70,7 +62,7 @@ export default function PromotionsScreen() {
   const categoriesQuery = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-      const res = await api.get<Category[]>('/categories');
+      const res = await api.get('/categories');
       return res.data;
     },
     staleTime: 5 * 60_000,
@@ -96,34 +88,41 @@ export default function PromotionsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.segments}>
-        {FILTERS.map((f) => (
-          <Pressable
-            key={f.key}
-            onPress={() => setFilter(f.key)}
-            style={[styles.segment, filter === f.key && styles.segmentActive]}>
-            <Text style={[styles.segmentText, filter === f.key && styles.segmentTextActive]}>
-              {f.label}
-            </Text>
-          </Pressable>
-        ))}
+    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
+      {/* Segment Tabs */}
+      <View className="flex-row gap-1.5 px-4 pt-2 pb-1.5">
+        {FILTERS.map((f) => {
+          const active = filter === f.key;
+          return (
+            <Pressable
+              key={f.key}
+              onPress={() => setFilter(f.key)}
+              className={`flex-1 py-2 rounded-full border items-center ${
+                active ? 'bg-brand-primary border-brand-primary' : 'bg-surface border-border-default'
+              }`}
+            >
+              <Text className={`text-xs font-bold ${active ? 'text-white' : 'text-text-secondary'}`}>
+                {f.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       {promoQuery.isLoading ? (
-        <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />
+        <ActivityIndicator color={colors.brand.primary} className="mt-10" />
       ) : (
         <FlatList
           data={items}
           keyExtractor={(p) => p.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={{ padding: 16, paddingBottom: 96, gap: 14 }}
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <View style={styles.emptyIcon}>
+            <View className="flex-1 items-center pt-20 gap-3">
+              <View className="w-16 h-16 rounded-full bg-brand-primary-surface items-center justify-center">
                 <Tag size={28} color={colors.brand.primary} strokeWidth={1.8} />
               </View>
-              <Text style={styles.emptyTitle}>{tr('promo.emptyTitle')}</Text>
-              <Text style={styles.emptyDesc}>{tr('promo.emptyDesc')}</Text>
+              <Text className="text-lg font-bold text-text-primary">{tr('promo.emptyTitle')}</Text>
+              <Text className="text-sm text-text-secondary text-center px-4">{tr('promo.emptyDesc')}</Text>
             </View>
           }
           renderItem={({ item }) => {
@@ -134,33 +133,34 @@ export default function PromotionsScreen() {
                 ? `${fmt(item.discountValue ?? 0)} ${tr('common.som')}`
                 : null;
             return (
-              <View style={styles.card}>
-                <View style={styles.cardTop}>
-                  <Text style={styles.cardName}>{item.name}</Text>
-                  <View style={[styles.typeBadge, !item.isActive && styles.typeBadgeInactive]}>
-                    <Text style={styles.typeBadgeText}>{tr(TYPE_LABELS[item.type])}</Text>
+              <View className="bg-surface rounded-2xl p-4 gap-2 border border-border-subtle shadow-sm">
+                <View className="flex-row items-start justify-between gap-2">
+                  <Text className="text-base font-bold text-text-primary flex-1">{item.name}</Text>
+                  <View className={`px-2 py-0.5 rounded-full ${item.isActive ? 'bg-brand-primary-surface' : 'bg-surface-muted'}`}>
+                    <Text className="text-[10px] font-bold text-brand-primary">{tr(TYPE_LABELS[item.type])}</Text>
                   </View>
                 </View>
                 {discount ? (
-                  <Text style={styles.discountText}>{tr('promo.discountLabel', { value: discount })}</Text>
+                  <Text className="text-base font-extrabold text-brand-primary">{tr('promo.discountLabel', { value: discount })}</Text>
                 ) : item.freeDeliveryMinAmount ? (
-                  <Text style={styles.discountText}>
+                  <Text className="text-base font-extrabold text-brand-primary">
                     {tr('promo.freeDeliveryFrom', { amount: fmt(item.freeDeliveryMinAmount) })}
                   </Text>
                 ) : null}
-                <Text style={styles.dateText}>
+                <Text className="text-xs text-text-secondary">
                   {dateLabel(item.startAt)} — {item.endAt ? dateLabel(item.endAt) : tr('promo.noEndDate')}
                 </Text>
                 {item.isActive && canManage && (
                   <Pressable
-                    style={styles.stopBtn}
+                    className="items-center py-2 rounded-xl bg-red-500/10 active:opacity-70 mt-1"
                     onPress={() =>
                       Alert.alert(tr('promo.stopTitle'), tr('promo.stopConfirm'), [
                         { text: tr('common.no'), style: 'cancel' },
                         { text: tr('promo.stop'), style: 'destructive', onPress: () => stop.mutate(item.id) },
                       ])
-                    }>
-                    <Text style={styles.stopBtnText}>{tr('promo.stop')}</Text>
+                    }
+                  >
+                    <Text className="text-xs font-bold text-red-600">{tr('promo.stop')}</Text>
                   </Pressable>
                 )}
               </View>
@@ -170,15 +170,18 @@ export default function PromotionsScreen() {
       )}
 
       {canManage && (
-        <Pressable style={styles.fab} onPress={() => setCreateOpen(true)}>
-          <Plus size={20} color={colors.text.onPrimary} strokeWidth={2.8} />
-          <Text style={styles.fabText}>{tr('promo.fab')}</Text>
+        <Pressable
+          className="absolute bottom-6 right-6 flex-row items-center gap-1.5 px-6 h-13 rounded-full bg-brand-primary shadow-xl active:opacity-90"
+          onPress={() => setCreateOpen(true)}
+        >
+          <Plus size={20} color="#ffffff" strokeWidth={2.8} />
+          <Text className="text-base font-extrabold text-white">{tr('promo.fab')}</Text>
         </Pressable>
       )}
 
       <CreatePromotionModal
         visible={createOpen}
-        shopId={shopId}
+        shopId={shopId ?? ''}
         categories={categoriesQuery.data ?? []}
         onClose={() => setCreateOpen(false)}
         onCreated={() => {
@@ -189,304 +192,3 @@ export default function PromotionsScreen() {
     </SafeAreaView>
   );
 }
-
-function CreatePromotionModal({
-  visible,
-  shopId,
-  categories,
-  onClose,
-  onCreated,
-}: {
-  visible: boolean;
-  shopId: string;
-  categories: Category[];
-  onClose: () => void;
-  onCreated: () => void;
-}) {
-  const { tr } = useTranslation();
-  const [name, setName] = useState('');
-  const [type, setType] = useState<PromType>('product_discount');
-  const [discountType, setDiscountType] = useState<DiscountType>('percent');
-  const [discountValue, setDiscountValue] = useState('');
-  const [freeMinAmount, setFreeMinAmount] = useState('');
-  const [startAt, setStartAt] = useState('');
-  const [endAt, setEndAt] = useState('');
-  const [hasEndDate, setHasEndDate] = useState(true);
-  const [pickingDate, setPickingDate] = useState<'start' | 'end' | null>(null);
-
-  const create = useMutation({
-    mutationFn: async () => {
-      const payload: Record<string, unknown> = { name, type, startAt };
-      if (hasEndDate && endAt) payload.endAt = endAt;
-      if (type !== 'free_delivery') {
-        payload.discountType = discountType;
-        // Percent discounts may legitimately use a decimal point (12.5%) —
-        // only fixed so'm amounts are displayed/entered as whole numbers
-        // grouped by spaces, where a "." is virtually always a mis-typed
-        // thousands separator (e.g. "50.000" meaning 50 000 so'm).
-        payload.discountValue = discountType === 'fixed' ? parseAmount(discountValue) : parseFloat(discountValue);
-      }
-      if (type === 'free_delivery' && freeMinAmount) {
-        payload.freeDeliveryMinAmount = parseAmount(freeMinAmount);
-      }
-      await api.post(`/seller/shops/${shopId}/promotions`, payload);
-    },
-    onSuccess: onCreated,
-    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
-  });
-
-  const reset = () => {
-    setName(''); setType('product_discount'); setDiscountType('percent');
-    setDiscountValue(''); setFreeMinAmount(''); setStartAt(''); setEndAt(''); setHasEndDate(true);
-  };
-
-  const handleClose = () => { reset(); onClose(); };
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <Text style={styles.sheetTitle}>{tr('promo.newTitle')}</Text>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={styles.fieldLabel}>{tr('promo.nameLabel')}</Text>
-            <TextInput style={styles.textField} value={name} onChangeText={setName} placeholder={tr('promo.namePlaceholder')} placeholderTextColor={colors.text.hint} />
-
-            <Text style={styles.fieldLabel}>{tr('promo.typeLabel')}</Text>
-            {(['product_discount', 'category_discount', 'free_delivery'] as PromType[]).map((t) => (
-              <Pressable key={t} style={[styles.radioRow, type === t && styles.radioRowActive]} onPress={() => setType(t)}>
-                <View style={[styles.radio, type === t && styles.radioActive]} />
-                <Text style={styles.radioLabel}>{tr(TYPE_LABELS[t])}</Text>
-              </Pressable>
-            ))}
-
-            {type !== 'free_delivery' && (
-              <>
-                <Text style={styles.fieldLabel}>{tr('promo.discountTypeLabel')}</Text>
-                <View style={styles.row2}>
-                  {(['percent', 'fixed'] as DiscountType[]).map((dt) => (
-                    <Pressable key={dt} style={[styles.chip, discountType === dt && styles.chipActive]} onPress={() => setDiscountType(dt)}>
-                      <Text style={[styles.chipText, discountType === dt && styles.chipTextActive]}>
-                        {dt === 'percent' ? tr('promo.discountPercent') : tr('promo.discountFixed')}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <TextInput
-                  style={styles.textField}
-                  value={discountValue}
-                  onChangeText={setDiscountValue}
-                  keyboardType="numeric"
-                  placeholder={discountType === 'percent' ? '10' : '5000'}
-                  placeholderTextColor={colors.text.hint}
-                />
-              </>
-            )}
-
-            {type === 'free_delivery' && (
-              <>
-                <Text style={styles.fieldLabel}>{tr('promo.minOrderLabel')}</Text>
-                <TextInput style={styles.textField} value={freeMinAmount} onChangeText={setFreeMinAmount} keyboardType="numeric" placeholder="50000" placeholderTextColor={colors.text.hint} />
-              </>
-            )}
-
-            <Text style={styles.fieldLabel}>{tr('promo.startDate')}</Text>
-            <Pressable style={styles.dateField} onPress={() => setPickingDate('start')}>
-              <CalendarDays size={16} color={colors.brand.primary} strokeWidth={2.2} />
-              <Text style={[styles.dateFieldText, !startAt && styles.dateFieldPlaceholder]}>
-                {startAt || tr('promo.pickDate')}
-              </Text>
-            </Pressable>
-
-            <View style={styles.switchRow}>
-              <Text style={styles.fieldLabel}>{tr('promo.hasEndDate')}</Text>
-              <Switch value={hasEndDate} onValueChange={setHasEndDate} trackColor={{ true: colors.brand.primary }} />
-            </View>
-            {hasEndDate && (
-              <Pressable style={styles.dateField} onPress={() => setPickingDate('end')}>
-                <CalendarDays size={16} color={colors.brand.primary} strokeWidth={2.2} />
-                <Text style={[styles.dateFieldText, !endAt && styles.dateFieldPlaceholder]}>
-                  {endAt || tr('promo.pickDate')}
-                </Text>
-              </Pressable>
-            )}
-
-            <Pressable
-              style={[styles.confirmBtn, create.isPending && { opacity: 0.6 }]}
-              onPress={() => create.mutate()}
-              disabled={create.isPending}>
-              {create.isPending ? (
-                <ActivityIndicator color={colors.text.onPrimary} />
-              ) : (
-                <Text style={styles.confirmBtnText}>{tr('promo.create')}</Text>
-              )}
-            </Pressable>
-            <Pressable style={styles.cancelBtn} onPress={handleClose}>
-              <Text style={styles.cancelBtnText}>{tr('common.cancel')}</Text>
-            </Pressable>
-          </ScrollView>
-        </View>
-      </View>
-
-      <DatePickerModal
-        visible={pickingDate !== null}
-        value={pickingDate === 'start' ? startAt : endAt}
-        title={pickingDate === 'start' ? tr('promo.startDate') : tr('promo.endDate')}
-        onClose={() => setPickingDate(null)}
-        onConfirm={(iso) => {
-          if (pickingDate === 'start') setStartAt(iso);
-          else setEndAt(iso);
-          setPickingDate(null);
-        }}
-      />
-    </Modal>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
-  segments: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
-  },
-  segment: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surface,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    alignItems: 'center',
-  },
-  segmentActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
-  segmentText: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
-  segmentTextActive: { color: colors.text.onPrimary },
-  list: { padding: layout.screenPadding, paddingBottom: 96, gap: spacing.md },
-  card: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    ...shadow.xs,
-  },
-  cardTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm },
-  cardName: { ...typography.bodyStrong, color: colors.text.primary, flex: 1 },
-  typeBadge: { backgroundColor: colors.brand.primarySurface, paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.full },
-  typeBadgeInactive: { backgroundColor: colors.bg.surfaceMuted },
-  typeBadgeText: { ...typography.caption, fontSize: 10, color: colors.brand.primary, fontWeight: '700' },
-  discountText: { ...typography.body, color: colors.text.primary },
-  dateText: { ...typography.caption, color: colors.text.secondary },
-  stopBtn: {
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.feedback.dangerSurface,
-  },
-  stopBtnText: { ...typography.caption, color: colors.feedback.danger, fontWeight: '700' },
-  empty: { flex: 1, alignItems: 'center', paddingTop: 80, gap: spacing.md },
-  emptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyTitle: { ...typography.h4, color: colors.text.primary },
-  emptyDesc: { ...typography.bodySmall, color: colors.text.secondary, textAlign: 'center' },
-  fab: {
-    position: 'absolute',
-    bottom: spacing.lg,
-    right: spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.lg,
-    height: 52,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primary,
-    ...shadow.lg,
-  },
-  fabText: { ...typography.body, fontWeight: '800', color: colors.text.onPrimary },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.bg.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    padding: spacing.xl,
-    maxHeight: '90%',
-    gap: spacing.sm,
-  },
-  sheetTitle: { ...typography.h3, color: colors.text.primary, marginBottom: spacing.sm },
-  fieldLabel: { ...typography.caption, fontWeight: '700', color: colors.text.secondary, marginBottom: spacing.xs, marginTop: spacing.sm },
-  textField: {
-    ...typography.body,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  dateField: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  dateFieldText: { ...typography.body, color: colors.text.primary },
-  dateFieldPlaceholder: { color: colors.text.hint },
-  radioRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    marginBottom: spacing.xs,
-  },
-  radioRowActive: { backgroundColor: colors.brand.primarySurface },
-  radio: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: colors.text.tertiary,
-  },
-  radioActive: { borderColor: colors.brand.primary, backgroundColor: colors.brand.primary },
-  radioLabel: { ...typography.body, color: colors.text.primary },
-  row2: { flexDirection: 'row', gap: spacing.sm },
-  chip: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    alignItems: 'center',
-  },
-  chipActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
-  chipText: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
-  chipTextActive: { color: colors.text.onPrimary },
-  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  confirmBtn: {
-    height: 52,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.lg,
-  },
-  confirmBtnText: { ...typography.button, color: colors.text.onPrimary },
-  cancelBtn: { alignItems: 'center', paddingVertical: spacing.md },
-  cancelBtnText: { ...typography.body, color: colors.text.secondary },
-});
