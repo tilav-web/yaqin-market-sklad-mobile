@@ -1,20 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  ChevronRight,
-  Heart,
-  MessageCircle,
-  Minus,
-  Plus,
-  ShoppingBag,
-  ShoppingCart,
-  Star,
-  Store,
-} from 'lucide-react-native';
-import {
-  ActivityIndicator,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -23,31 +10,31 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import {
+  ProductBottomBar,
+  ProductImageHero,
+  ProductOffersSection,
+  ProductReviewsSection,
+  ProductShopCard,
+  UNIT_SHORT,
+  unitLabel,
+} from '@/components/product';
 import { Skeleton } from '@/components/ui';
-import { tr as trStatic, useTranslation } from '@/i18n';
+import { useTranslation } from '@/i18n';
 import { trackAddToCart, trackProductView } from '@/lib/analyticsQueue';
-import { api, resolveMedia } from '@/lib/api';
-import { ProductOffer, ProductReview, PublicProductVariant, VariantDetail } from '@/lib/types';
+import { api } from '@/lib/api';
+import { ProductOffer, ProductReview, VariantDetail } from '@/lib/types';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
 import { useTheme } from '@/stores/theme';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 import { getLocalizedText } from '@/utils/text';
-
-const UNIT_SHORT = (u: PublicProductVariant['unitType']): string =>
-  u === 'piece'
-    ? trStatic('prodDet.unitPiece')
-    : ({ kg: 'kg', liter: 'L', gram: 'g', pack: 'pack' } as const)[u];
-const unitLabel = (v: Pick<PublicProductVariant, 'unitSize' | 'unitType'>) =>
-  `${v.unitSize % 1 === 0 ? v.unitSize : v.unitSize.toFixed(1)} ${UNIT_SHORT(v.unitType)}`;
 
 export default function ProductDetailScreen() {
   const { tr } = useTranslation();
   const { colors: activeColors } = useTheme();
   const { id: routeId } = useLocalSearchParams<{ id: string }>();
-  // The active variant is local state so switching variants (0.5L/1L/1.5L)
-  // swaps content in place instead of re-opening the whole screen.
   const [activeId, setActiveId] = useState(routeId);
   const id = activeId;
 
@@ -58,7 +45,6 @@ export default function ProductDetailScreen() {
       return res.data;
     },
     enabled: !!id,
-    // Keep showing the previous variant while the new one loads — no skeleton flash.
     placeholderData: keepPreviousData,
   });
 
@@ -102,15 +88,12 @@ export default function ProductDetailScreen() {
     enabled: !!product?.globalProductId,
     staleTime: 60_000,
   });
+
   const lines = useCartStore((s) => s.carts[shopId] ?? EMPTY_CART);
   const addItem = useCartStore((s) => s.addItem);
   const updateQty = useCartStore((s) => s.updateQty);
   const inCart = lines.find((l) => l.variantId === id);
 
-  // Batched, fire-and-forget product-view logging for the view→cart→order
-  // funnel (SPEC.md §5.3) — one event per variant actually loaded, not per
-  // render (react-query keeps `product` referentially stable across
-  // unchanged refetches, but the id/shopId deps make that explicit anyway).
   useEffect(() => {
     if (!product) return;
     trackProductView(product.shopId, product.id);
@@ -131,8 +114,7 @@ export default function ProductDetailScreen() {
 
   const productName = getLocalizedText(product.name);
   const finalPrice = product.discountPrice ?? product.price;
-  const hasDiscount =
-    product.discountPrice != null && product.discountPrice < product.price;
+  const hasDiscount = product.discountPrice != null && product.discountPrice < product.price;
   const outOfStock = product.stock <= 0;
 
   const handleAdd = () => {
@@ -152,52 +134,16 @@ export default function ProductDetailScreen() {
   return (
     <View style={[styles.root, { backgroundColor: activeColors.bg.surface }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.imageWrap}>
-          {product.photos[0] ? (
-            <Image source={{ uri: resolveMedia(product.photos[0]) }} style={styles.image} />
-          ) : (
-            <View style={[styles.image, styles.imagePlaceholder]}>
-              <ShoppingBag size={56} color={activeColors.brand.primary} strokeWidth={1.3} />
-            </View>
-          )}
-          {/* Small info chips over the image */}
-          {product.brand ? (
-            <View style={styles.brandChip}>
-              <Text style={styles.brandChipText}>{product.brand}</Text>
-            </View>
-          ) : null}
-          <View style={styles.unitBadge}>
-            <Text style={styles.unitBadgeText}>{unitLabel(product)}</Text>
-          </View>
-          {product.ratingCount > 0 && (
-            <View style={styles.ratingChip}>
-              <Star size={12} color={colors.feedback.warning} fill={colors.feedback.warning} strokeWidth={2} />
-              <Text style={styles.ratingChipText}>
-                {product.ratingAverage.toFixed(1)} ·{' '}
-                {tr('product.reviewsN', { n: product.ratingCount })}
-              </Text>
-            </View>
-          )}
-          {outOfStock && (
-            <View style={styles.outOverlay}>
-              <View style={styles.outBadge}>
-                <Text style={styles.outBadgeText}>{tr('product.outOfStock')}</Text>
-              </View>
-            </View>
-          )}
-          <Pressable
-            style={styles.favBtn}
-            hitSlop={12}
-            onPress={() => { haptics.medium(); favMut.mutate(!isFav); }}
-          >
-            <Heart
-              size={20}
-              color={isFav ? activeColors.brand.primary : colors.text.onPrimary}
-              fill={isFav ? activeColors.brand.primary : 'transparent'}
-              strokeWidth={2.2}
-            />
-          </Pressable>
-        </View>
+        <ProductImageHero
+          product={product}
+          isFav={isFav}
+          outOfStock={outOfStock}
+          onToggleFav={() => {
+            haptics.medium();
+            favMut.mutate(!isFav);
+          }}
+          activeColors={activeColors}
+        />
 
         <View style={[styles.body, { backgroundColor: activeColors.bg.surface }]}>
           <Text style={[styles.name, { color: activeColors.text.primary }]}>{productName}</Text>
@@ -234,16 +180,19 @@ export default function ProductDetailScreen() {
                         haptics.selection();
                         setActiveId(v.id);
                       }}
-                      style={[styles.variantChip, active && styles.variantChipActive]}>
+                      style={[styles.variantChip, active && styles.variantChipActive]}
+                    >
                       <Text
-                        style={[styles.variantChipText, active && styles.variantChipTextActive]}>
+                        style={[styles.variantChipText, active && styles.variantChipTextActive]}
+                      >
                         {unitLabel(v)}
                       </Text>
                       <Text
                         style={[
                           styles.variantChipPrice,
                           active && styles.variantChipTextActive,
-                        ]}>
+                        ]}
+                      >
                         {(v.discountPrice ?? v.price).toLocaleString()}
                       </Text>
                     </Pressable>
@@ -261,259 +210,39 @@ export default function ProductDetailScreen() {
           ) : null}
 
           {product.shop && (
-            <View style={styles.shopRowWrap}>
-              <Pressable
-                style={[
-                  styles.shopRow,
-                  {
-                    backgroundColor: activeColors.bg.surfaceMuted,
-                    borderColor: activeColors.border.subtle,
-                  },
-                ]}
-                onPress={() => {
-                  haptics.selection();
-                  router.push(`/shop/${product.shop!.id}`);
-                }}>
-                <View
-                  style={[
-                    styles.shopIcon,
-                    { backgroundColor: activeColors.brand.primarySurface },
-                  ]}>
-                  <Store size={18} color={activeColors.brand.primary} strokeWidth={2.2} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.shopName, { color: activeColors.text.primary }]}>
-                    {product.shop.name}
-                  </Text>
-                  <Text style={[styles.shopSub, { color: activeColors.text.secondary }]}>
-                    {product.shop.isOpenManual ? tr('shop.open') : tr('shop.closed')} ·{' '}
-                    {tr('product.goToShop')}
-                  </Text>
-                </View>
-                <ChevronRight size={20} color={activeColors.text.hint} />
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.shopChatBtn,
-                  { backgroundColor: activeColors.brand.primary },
-                ]}
-                onPress={() => {
-                  haptics.selection();
-                  router.push({
-                    pathname: '/chat/[orderId]',
-                    params: {
-                      orderId: `shop_${product.shop!.id}`,
-                      shopId: product.shop!.id,
-                      title: product.shop!.name,
-                      productId: product.id,
-                    },
-                  });
-                }}>
-                <MessageCircle size={16} color="#FFFFFF" strokeWidth={2.4} />
-                <Text style={styles.shopChatBtnText}>{tr('nav.chat') || 'Chat'}</Text>
-              </Pressable>
-            </View>
+            <ProductShopCard
+              shop={product.shop}
+              productId={product.id}
+              activeColors={activeColors}
+            />
           )}
 
-          <OffersSection
+          <ProductOffersSection
             offers={offersQuery.data ?? []}
             currentVariantId={id}
             currentPrice={finalPrice}
             isLoading={offersQuery.isLoading}
           />
 
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: activeColors.text.primary }]}>
-              {tr('product.reviews')}{' '}
-              {reviewsQuery.data?.length ? `(${reviewsQuery.data.length})` : ''}
-            </Text>
-            {reviewsQuery.isLoading ? (
-              <ActivityIndicator color={activeColors.brand.primary} />
-            ) : reviewsQuery.data && reviewsQuery.data.length > 0 ? (
-              reviewsQuery.data.map((r) => (
-                <View
-                  key={r.id}
-                  style={[
-                    styles.review,
-                    { borderTopColor: activeColors.border.subtle },
-                  ]}>
-                  <View style={styles.reviewHead}>
-                    <Text
-                      style={[
-                        styles.reviewName,
-                        { color: activeColors.text.primary },
-                      ]}>
-                      {r.userName}
-                    </Text>
-                    <Stars value={r.stars} size={12} />
-                  </View>
-                  {r.text ? (
-                    <Text
-                      style={[
-                        styles.reviewText,
-                        { color: activeColors.text.secondary },
-                      ]}>
-                      {r.text}
-                    </Text>
-                  ) : null}
-                </View>
-              ))
-            ) : (
-              <Text
-                style={[
-                  styles.reviewEmpty,
-                  { color: activeColors.text.tertiary },
-                ]}>
-                {tr('product.noReviews')}
-              </Text>
-            )}
-          </View>
+          <ProductReviewsSection
+            reviews={reviewsQuery.data}
+            isLoading={reviewsQuery.isLoading}
+            activeColors={activeColors}
+          />
         </View>
       </ScrollView>
 
-      <SafeAreaView
-        edges={['bottom']}
-        style={[
-          styles.footer,
-          {
-            backgroundColor: activeColors.bg.surface,
-            borderTopColor: activeColors.border.subtle,
-          },
-        ]}>
-        {outOfStock ? (
-          <View style={[styles.addBtn, styles.addBtnDisabled]}>
-            <Text style={styles.addBtnText}>{tr('product.outOfStock')}</Text>
-          </View>
-        ) : inCart ? (
-          <View style={styles.footerRow}>
-            <View style={styles.qtyControl}>
-              <Pressable
-                onPress={() => {
-                  haptics.light();
-                  updateQty(product.shopId, product.id, inCart.quantity - 1);
-                }}
-                style={styles.qtyBtn}>
-                <Minus size={18} color={colors.brand.primary} strokeWidth={3} />
-              </Pressable>
-              <Text style={styles.qtyValue}>{inCart.quantity}</Text>
-              <Pressable
-                onPress={() => {
-                  haptics.light();
-                  updateQty(product.shopId, product.id, inCart.quantity + 1);
-                }}
-                style={styles.qtyBtn}>
-                <Plus size={18} color={colors.brand.primary} strokeWidth={3} />
-              </Pressable>
-            </View>
-            <Pressable
-              style={styles.goCartBtn}
-              onPress={() => {
-                haptics.selection();
-                router.push(`/shop/${product.shopId}/checkout`);
-              }}>
-              <ShoppingCart size={18} color={colors.text.onPrimary} strokeWidth={2.4} />
-              <Text style={styles.goCartText}>{tr('product.goToCart')}</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <Pressable
-            onPress={handleAdd}
-            disabled={outOfStock}
-            style={[styles.addBtn, outOfStock && styles.addBtnDisabled]}>
-            <ShoppingBag size={18} color={colors.text.onPrimary} strokeWidth={2.4} />
-            <Text style={styles.addBtnText}>
-              {outOfStock ? tr('shop.outOfStock') : tr('prodDet.addToCart')}
-            </Text>
-          </Pressable>
-        )}
-      </SafeAreaView>
-    </View>
-  );
-}
-
-function OffersSection({
-  offers,
-  currentVariantId,
-  currentPrice,
-  isLoading,
-}: {
-  offers: ProductOffer[];
-  currentVariantId: string;
-  currentPrice: number;
-  isLoading: boolean;
-}) {
-  const { tr } = useTranslation();
-  const others = offers.filter((o) => o.variantId !== currentVariantId);
-  if (isLoading || others.length === 0) return null;
-
-  const cheapestPrice = Math.min(...offers.map((o) => o.discountPrice ?? o.price));
-  const SHOW = 5;
-  const visible = others.slice(0, SHOW);
-
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{tr('prodDet.otherShops')}</Text>
-      {visible.map((o, idx) => {
-        const effectivePrice = o.discountPrice ?? o.price;
-        const isCheapest = effectivePrice === cheapestPrice && idx === 0;
-        const saving = currentPrice - effectivePrice;
-        return (
-          <Pressable
-            key={o.variantId}
-            style={styles.offerRow}
-            onPress={() => {
-              haptics.selection();
-              router.push(`/product/${o.variantId}`);
-            }}>
-            <View style={styles.offerLeft}>
-              <Text style={styles.offerShop} numberOfLines={1}>{o.shopName}</Text>
-              <Text style={styles.offerMeta}>
-                {o.isOpen ? tr('shop.open') : tr('shop.closed')}
-                {o.distanceKm != null ? ` · ${o.distanceKm < 1 ? `${Math.round(o.distanceKm * 1000)} m` : `${o.distanceKm.toFixed(1)} km`}` : ''}
-              </Text>
-            </View>
-            <View style={styles.offerRight}>
-              {isCheapest && (
-                <View style={styles.cheapBadge}>
-                  <Text style={styles.cheapBadgeText}>{tr('prodDet.cheapest')}</Text>
-                </View>
-              )}
-              {saving > 0 && (
-                <Text style={styles.savingText}>
-                  −{saving.toLocaleString()} {tr('common.som')}
-                </Text>
-              )}
-              <Text style={[styles.offerPrice, isCheapest && styles.offerPriceCheap]}>
-                {effectivePrice.toLocaleString()}
-              </Text>
-            </View>
-          </Pressable>
-        );
-      })}
-      {others.length > SHOW && (
-        <Text style={styles.offersMore}>
-          {tr('prodDet.moreShops', { n: others.length - SHOW })}
-        </Text>
-      )}
-    </View>
-  );
-}
-
-function Stars({ value, size = 15 }: { readonly value: number; readonly size?: number }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 1 }}>
-      {[1, 2, 3, 4, 5].map((i) => {
-        const filled = i <= Math.round(value);
-        return (
-          <Star
-            key={i}
-            size={size}
-            color={filled ? colors.feedback.warning : colors.border.default}
-            fill={filled ? colors.feedback.warning : 'transparent'}
-            strokeWidth={2}
-          />
-        );
-      })}
+      <ProductBottomBar
+        outOfStock={outOfStock}
+        quantityInCart={inCart?.quantity}
+        onAddToCart={handleAdd}
+        onUpdateQty={(delta) => updateQty(product.shopId, product.id, (inCart?.quantity ?? 0) + delta)}
+        onGoToCart={() => {
+          haptics.selection();
+          router.push(`/shop/${product.shopId}/checkout`);
+        }}
+        activeColors={activeColors}
+      />
     </View>
   );
 }
@@ -522,257 +251,96 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg.canvas },
   safe: { flex: 1, backgroundColor: colors.bg.canvas },
   scroll: { paddingBottom: spacing['4xl'] },
-  imageWrap: {
-    width: '100%',
-    aspectRatio: 1,
-    maxHeight: 380,
-    backgroundColor: colors.bg.surfaceMuted,
-    position: 'relative',
-  },
-  image: { width: '100%', height: '100%' },
-  imagePlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.brand.primarySurface,
-  },
-  brandChip: {
-    position: 'absolute',
-    top: spacing.lg,
-    left: spacing.lg,
-    backgroundColor: colors.bg.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.full,
-  },
-  brandChipText: { ...typography.overline, color: colors.brand.primary },
-  favBtn: {
-    position: 'absolute',
-    top: spacing.lg + 48,
-    right: spacing.lg,
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  unitBadge: {
-    position: 'absolute',
-    top: spacing.lg,
-    right: spacing.lg,
-    backgroundColor: colors.overlay.light,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: radius.full,
-  },
-  unitBadgeText: { ...typography.caption, fontWeight: '800', color: colors.text.primary },
-  ratingChip: {
-    position: 'absolute',
-    bottom: spacing.xl + spacing.sm,
-    left: spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: colors.overlay.light,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: radius.full,
-  },
-  ratingChipText: { ...typography.caption, fontWeight: '800', color: colors.text.primary },
-  outOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.55)',
-  },
-  outBadge: {
-    backgroundColor: colors.text.primary,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-  },
-  outBadgeText: { ...typography.bodyStrong, color: colors.text.onPrimary, fontWeight: '800' },
   body: {
     padding: layout.screenPadding,
-    gap: spacing.sm,
-    backgroundColor: colors.bg.surface,
-    borderTopLeftRadius: radius['2xl'],
-    borderTopRightRadius: radius['2xl'],
-    marginTop: -spacing.xl,
-    paddingTop: spacing.xl,
+    gap: spacing.md,
   },
-  name: { ...typography.h2 },
-  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm, marginTop: spacing.xs },
+  name: {
+    ...typography.h3,
+    lineHeight: 28,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.xs,
+  },
   oldPrice: {
     ...typography.body,
     color: colors.text.hint,
     textDecorationLine: 'line-through',
+    marginRight: spacing.xs,
   },
-  price: { ...typography.h2, color: colors.brand.primary },
-  currency: { ...typography.subtitle, color: colors.text.secondary, fontWeight: '700' },
-  stockRow: { flexDirection: 'row', marginTop: spacing.xs },
+  price: {
+    ...typography.h2,
+    color: colors.brand.primary,
+  },
+  currency: {
+    ...typography.body,
+    fontWeight: '700',
+    color: colors.brand.primary,
+  },
+  stockRow: {
+    flexDirection: 'row',
+  },
   stockBadge: {
     ...typography.caption,
     fontWeight: '700',
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
-    borderRadius: radius.sm,
-    overflow: 'hidden',
+    borderRadius: radius.full,
   },
-  stockLow: { color: colors.feedback.warning, backgroundColor: colors.feedback.warningSurface },
-  section: { marginTop: spacing.lg, gap: spacing.sm },
-  sectionTitle: { ...typography.h4 },
-  variantRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  stockLow: {
+    backgroundColor: colors.feedback.warningSurface,
+    color: colors.feedback.warning,
+  },
+  section: {
+    marginTop: spacing.md,
+    gap: spacing.xs,
+  },
+  sectionTitle: {
+    ...typography.caption,
+    fontWeight: '800',
+    color: colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  description: {
+    ...typography.body,
+    color: colors.text.secondary,
+    lineHeight: 22,
+  },
+  variantRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
   variantChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
     borderWidth: 1.5,
     borderColor: colors.border.default,
-    backgroundColor: colors.bg.surface,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     alignItems: 'center',
-    minWidth: 72,
+    gap: 2,
+    backgroundColor: colors.bg.surfaceMuted,
   },
   variantChipActive: {
     borderColor: colors.brand.primary,
     backgroundColor: colors.brand.primarySurface,
   },
-  variantChipText: { ...typography.bodyStrong, color: colors.text.primary },
-  variantChipPrice: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
-  variantChipTextActive: { color: colors.brand.primary },
-  description: { ...typography.body, color: colors.text.secondary },
-  shopRowWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-  },
-  shopRow: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  shopChatBtn: {
-    height: '100%',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.brand.primary,
-    borderRadius: radius.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  shopChatBtnText: {
+  variantChipText: {
     ...typography.caption,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.text.primary,
   },
-  shopIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shopName: { ...typography.bodyStrong },
-  shopSub: { ...typography.caption, color: colors.text.secondary },
-  review: {
-    paddingVertical: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    gap: 4,
-  },
-  reviewHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  reviewName: { ...typography.bodyStrong, fontSize: 13 },
-  reviewText: { ...typography.bodySmall },
-  reviewEmpty: { ...typography.bodySmall, color: colors.text.tertiary },
-  offerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    gap: spacing.sm,
-  },
-  offerLeft: { flex: 1, gap: 2 },
-  offerShop: { ...typography.bodyStrong, fontSize: 13, color: colors.text.primary },
-  offerMeta: { ...typography.caption, color: colors.text.tertiary },
-  offerRight: { alignItems: 'flex-end', gap: 2 },
-  offerPrice: { ...typography.bodyStrong, color: colors.text.primary },
-  offerPriceCheap: { color: colors.feedback.success },
-  savingText: { ...typography.caption, color: colors.feedback.success, fontWeight: '700' },
-  cheapBadge: {
-    backgroundColor: colors.feedback.successSurface,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-  },
-  cheapBadgeText: { ...typography.overline, color: colors.feedback.success, fontWeight: '800' },
-  offersMore: {
+  variantChipPrice: {
     ...typography.caption,
-    color: colors.text.tertiary,
-    textAlign: 'center',
-    paddingTop: spacing.sm,
+    color: colors.text.secondary,
+    fontWeight: '600',
   },
-  footer: {
-    backgroundColor: colors.bg.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    ...shadow.lg,
+  variantChipTextActive: {
+    color: colors.brand.primary,
+    fontWeight: '800',
   },
-  footerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    height: layout.buttonHeight.lg,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-  },
-  addBtnDisabled: { backgroundColor: colors.text.hint },
-  addBtnText: { ...typography.button, color: colors.text.onPrimary },
-  qtyControl: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    height: layout.buttonHeight.lg,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primarySurface,
-    paddingHorizontal: spacing.xs,
-  },
-  qtyBtn: {
-    width: 40,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qtyValue: { ...typography.h3, color: colors.brand.primary, minWidth: 32, textAlign: 'center' },
-  goCartBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    height: layout.buttonHeight.lg,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-  },
-  goCartText: { ...typography.button, color: colors.text.onPrimary },
 });
