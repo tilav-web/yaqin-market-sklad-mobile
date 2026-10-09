@@ -108,7 +108,11 @@ export function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
                     canPreventDefault: true,
                   });
                   if (!isFocused && !event.defaultPrevented) {
-                    navigation.navigate(route.name);
+                    if ((navigation as any).jumpTo) {
+                      (navigation as any).jumpTo(route.name);
+                    } else {
+                      navigation.navigate(route.name);
+                    }
                   }
                 }}
               />

@@ -39,6 +39,7 @@ export function HomeProductGrid({
 
   return (
     <FlatList
+      key="home-grid-2col"
       data={products}
       keyExtractor={(item) => item.id}
       numColumns={2}

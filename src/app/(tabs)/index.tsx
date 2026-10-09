@@ -1,10 +1,10 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Dimensions,
   LayoutAnimation,
   Platform,
   UIManager,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import PagerView from 'react-native-pager-view';
@@ -30,15 +30,16 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const SCREEN_W = Dimensions.get('window').width;
-const GRID_PADDING = 14;
-const GRID_GAP = 10;
-const CARD_WIDTH = (SCREEN_W - GRID_PADDING * 2 - GRID_GAP) / 2;
-
 export default function TelegramHomeScreen() {
+  const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { colors: activeColors } = useTheme();
   const coords = useEffectiveCoords();
+
+  const cardWidth = useMemo(
+    () => Math.floor((screenWidth - 14 * 2 - 10) / 2),
+    [screenWidth],
+  );
   const selectedAddress = useLocationStore((s) => s.selectedAddress);
   const requestPermission = useLocationStore((s) => s.requestPermission);
   const refresh = useLocationStore((s) => s.refresh);
@@ -187,7 +188,7 @@ export default function TelegramHomeScreen() {
   );
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1" style={{ backgroundColor: activeColors.bg.canvas }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: activeColors.bg.canvas }}>
       {/* Top Header */}
       <HomeTopBar
         locationLabel={locationLabel}
@@ -205,15 +206,15 @@ export default function TelegramHomeScreen() {
       {/* Horizontal Pager for category folders */}
       <PagerView
         ref={pagerRef}
-        className="flex-1"
+        style={{ flex: 1 }}
         initialPage={0}
         onPageSelected={(e) => setActiveTabIndex(e.nativeEvent.position)}
       >
         {/* Tab 0: Barchasi */}
-        <View key="all" className="flex-1" style={{ backgroundColor: activeColors.bg.canvas }}>
+        <View key="all" style={{ flex: 1, backgroundColor: activeColors.bg.canvas }}>
           <HomeProductGrid
             products={displayedProducts}
-            cardWidth={CARD_WIDTH}
+            cardWidth={cardWidth}
             isLoading={feedQuery.isLoading}
             emptyTitle="Mahsulotlar topilmadi"
             emptyDescription={
@@ -244,10 +245,10 @@ export default function TelegramHomeScreen() {
             categoryProducts = categoryProducts.filter((p) => p.shop.id === activeShopId);
           }
           return (
-            <View key={category.id} className="flex-1" style={{ backgroundColor: activeColors.bg.canvas }}>
+            <View key={category.id} style={{ flex: 1, backgroundColor: activeColors.bg.canvas }}>
               <HomeProductGrid
                 products={categoryProducts}
-                cardWidth={CARD_WIDTH}
+                cardWidth={cardWidth}
                 emptyTitle={`${category.nameUzLatn} bo'yicha tovar yo'q`}
                 emptyDescription="Tez orada yangi mahsulotlar qo'shiladi"
                 isRefetching={feedQuery.isRefetching}

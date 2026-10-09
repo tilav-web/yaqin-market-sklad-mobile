@@ -100,9 +100,9 @@ export default function ProfileTab() {
   const myShops = myShopsQuery.data ?? [];
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: activeColors.bg.canvas }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: activeColors.bg.canvas }} edges={['top']}>
       <ScrollView
-        className="flex-1"
+        style={{ flex: 1 }}
         contentContainerStyle={{ padding: 16, paddingBottom: 130, gap: 16 }}
         showsVerticalScrollIndicator={false}
         refreshControl={

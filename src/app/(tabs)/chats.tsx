@@ -224,7 +224,7 @@ export default function ChatsTabScreen() {
   const isLoading = isLoadingConvs && isLoadingOrders;
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-black">
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: activeColors.bg.canvas }}>
       {/* Top Header */}
       <TelegramChatsHeader
         unreadTotal={unreadTotal}
@@ -244,7 +244,7 @@ export default function ChatsTabScreen() {
       {/* Swipeable PagerView */}
       <PagerView
         ref={pagerRef}
-        className="flex-1"
+        style={{ flex: 1 }}
         initialPage={0}
         onPageSelected={(e) => setActiveTabIndex(e.nativeEvent.position)}
       >

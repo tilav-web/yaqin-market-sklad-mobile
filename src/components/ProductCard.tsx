@@ -77,21 +77,21 @@ export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props
       : null;
 
   return (
-    <Pressable
-      onPress={() => {
-        haptics.selection();
-        onPress();
-      }}
-      className="rounded-2xl border overflow-hidden"
-      style={({ pressed }) => [
-        {
-          backgroundColor: activeColors.bg.surface,
-          borderColor: activeColors.border.subtle,
-        },
-        shadow.sm,
-        cardWidth ? { width: cardWidth } : { flex: 1, maxWidth: '48.8%' },
-        pressed && { opacity: 0.94, transform: [{ scale: 0.985 }] },
-      ]}>
+    <View style={cardWidth ? { width: cardWidth } : { flex: 1, maxWidth: '48.8%' }}>
+      <Pressable
+        onPress={() => {
+          haptics.selection();
+          onPress();
+        }}
+        className="w-full rounded-2xl border overflow-hidden"
+        style={({ pressed }) => [
+          {
+            backgroundColor: activeColors.bg.surface,
+            borderColor: activeColors.border.subtle,
+          },
+          shadow.sm,
+          pressed && { opacity: 0.94, transform: [{ scale: 0.985 }] },
+        ]}>
       {/* Product Image Area */}
       <View
         className="w-full aspect-square relative"
@@ -232,5 +232,6 @@ export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props
         </View>
       </View>
     </Pressable>
-  );
+  </View>
+);
 }
