@@ -164,22 +164,20 @@ export function ProductCard({
           ) : null}
         </View>
 
-        {/* Card Details Body with Guaranteed Fixed Slot Heights */}
-        <View className="p-2.5">
-          {/* Product Name (exact 36px slot for 2 lines) */}
-          <View className="h-9 justify-center">
+        {/* Card Details Body */}
+        <View className="p-2.5 flex-1 justify-between">
+          <View>
+            {/* Product Name */}
             <Text
               className="text-[13px] leading-[18px] font-bold text-text-primary"
               numberOfLines={2}
             >
               {productName}
             </Text>
-          </View>
 
-          {/* Shop Name & Distance (exact 18px slot) */}
-          <View className="h-[18px] justify-center mt-0.5">
+            {/* Shop Name & Distance */}
             {!hideShopChip && product.shop ? (
-              <View className="flex-row items-center gap-1">
+              <View className="flex-row items-center gap-1 mt-1">
                 <Store size={11} color={activeColors.text.tertiary} strokeWidth={2.2} />
                 <Text
                   className="text-[11px] font-semibold text-text-secondary flex-shrink"
@@ -199,12 +197,12 @@ export function ProductCard({
             ) : null}
           </View>
 
-          {/* Price & Action Row (exact 34px slot) */}
-          <View className="h-[34px] flex-row items-center justify-between mt-1.5">
-            <View className="flex-1 mr-1 justify-center">
+          {/* Price & Action Row */}
+          <View className="flex-row items-end justify-between mt-2 pt-0.5">
+            <View className="flex-1 mr-1 justify-end">
               {hasDiscount && (
                 <Text
-                  className="text-[10px] line-through leading-3 text-text-hint"
+                  className="text-[10px] line-through leading-3 text-text-hint mb-0.5"
                   numberOfLines={1}
                 >
                   {formatMoney(product.price)}
