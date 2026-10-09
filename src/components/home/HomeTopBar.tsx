@@ -21,9 +21,10 @@ export function HomeTopBar({
 
   return (
     <View
-      className="flex-row items-center justify-between px-4 py-2.5 border-b"
+      className="flex-row items-center justify-between px-4 py-2.5"
       style={{
         backgroundColor: activeColors.bg.surface,
+        borderBottomWidth: 1,
         borderBottomColor: activeColors.border.subtle,
       }}
     >

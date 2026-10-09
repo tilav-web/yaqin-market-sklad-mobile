@@ -83,11 +83,15 @@ export function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
       <View className="flex-row items-center gap-2.5">
         {/* Telegram Pill Capsule */}
         <View
-          style={{ borderRadius: 29, overflow: 'hidden' }}
+          style={{
+            borderRadius: 29,
+            overflow: 'hidden',
+            backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+            borderWidth: 1,
+            borderColor: activeThemeColors.border.subtle,
+          }}
           className={`flex-1 h-[58px] flex-row items-center justify-around px-1 ${
-            isDark
-              ? 'bg-[#1C1C1E] border border-white/10 shadow-lg'
-              : 'bg-white border border-black/10 shadow-md'
+            isDark ? 'shadow-lg' : 'shadow-md'
           }`}>
           {tabs.map((route: TabRoute) => {
             const isFocused = route.key === activeKey;
@@ -126,11 +130,15 @@ export function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
             haptics.selection();
             useSearchModalStore.getState().open();
           }}
-          style={{ borderRadius: 29, overflow: 'hidden' }}
+          style={{
+            borderRadius: 29,
+            overflow: 'hidden',
+            backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+            borderWidth: 1,
+            borderColor: activeThemeColors.border.subtle,
+          }}
           className={`w-[58px] h-[58px] items-center justify-center active:scale-95 ${
-            isDark
-              ? 'bg-[#1C1C1E] border border-white/10 shadow-lg'
-              : 'bg-white border border-black/10 shadow-md'
+            isDark ? 'shadow-lg' : 'shadow-md'
           }`}>
           <SearchIcon size={22} color={activeThemeColors.brand.primary} strokeWidth={2.4} />
         </Pressable>

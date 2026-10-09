@@ -145,9 +145,10 @@ export function TelegramShopRow({ shop }: TelegramShopRowProps) {
         <Pressable
           onPress={handleChatWithShop}
           disabled={chatLoading}
-          className="w-9 h-9 rounded-full border items-center justify-center active:opacity-70"
+          className="w-9 h-9 rounded-full items-center justify-center active:opacity-70"
           style={{
             backgroundColor: activeColors.brand.primarySurface,
+            borderWidth: 1,
             borderColor: activeColors.brand.primaryBorder,
           }}>
           {chatLoading ? (

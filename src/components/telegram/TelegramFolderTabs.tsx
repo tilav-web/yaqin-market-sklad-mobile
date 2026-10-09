@@ -44,8 +44,12 @@ export function TelegramFolderTabs({
 
   return (
     <View
-      className="border-b py-2"
-      style={{ backgroundColor: colors.bg.surface, borderBottomColor: colors.border.subtle }}
+      className="py-2"
+      style={{
+        backgroundColor: colors.bg.surface,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border.subtle,
+      }}
     >
       <ScrollView
         ref={scrollRef}

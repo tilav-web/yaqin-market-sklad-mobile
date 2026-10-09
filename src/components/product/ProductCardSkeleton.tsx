@@ -17,18 +17,16 @@ export function ProductCardSkeleton({ cardWidth }: ProductCardSkeletonProps) {
     <View
       style={[
         cardWidth ? { width: cardWidth } : { flex: 1, maxWidth: '48.8%' },
+        {
+          backgroundColor: activeColors.bg.surface,
+          borderWidth: 1,
+          borderColor: activeColors.border.subtle,
+        },
         shadow.sm,
       ]}
-      className="rounded-2xl border overflow-hidden"
+      className="rounded-2xl overflow-hidden"
     >
-      <View
-        className="w-full rounded-2xl border overflow-hidden"
-        style={{
-          backgroundColor: activeColors.bg.surface,
-          borderColor: activeColors.border.subtle,
-        }}
-      >
-        {/* Image Placeholder Skeleton */}
+      {/* Image Placeholder Skeleton */}
         <Skeleton
           width="100%"
           height={imageSize}
@@ -56,6 +54,5 @@ export function ProductCardSkeleton({ cardWidth }: ProductCardSkeletonProps) {
           </View>
         </View>
       </View>
-    </View>
   );
 }

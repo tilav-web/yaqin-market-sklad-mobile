@@ -99,10 +99,11 @@ export function ProductCard({
           haptics.selection();
           onPress();
         }}
-        className="w-full rounded-2xl border overflow-hidden"
+        className="w-full rounded-2xl overflow-hidden"
         style={({ pressed }) => [
           {
             backgroundColor: activeColors.bg.surface,
+            borderWidth: 1,
             borderColor: activeColors.border.subtle,
           },
           shadow.sm,
