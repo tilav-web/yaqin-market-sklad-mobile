@@ -1,10 +1,10 @@
 import { Bell } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, Switch, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { AlarmMode } from '@/stores/alarmSettings';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 import { Section } from './SectionAndField';
 
 interface ShopAlarmSectionProps {
@@ -26,8 +26,8 @@ export function ShopAlarmSection({
 
   return (
     <Section title={tr('shopSet.alarmSection')} icon={Bell}>
-      <View style={styles.toggleRow}>
-        <Text style={styles.toggleLabel}>
+      <View className="flex-row items-center justify-between">
+        <Text className="text-base font-bold text-text-primary">
           {enabled ? tr('shopSet.alarmOn') : tr('shopSet.alarmOff')}
         </Text>
         <Switch
@@ -39,54 +39,38 @@ export function ShopAlarmSection({
       </View>
       {enabled ? (
         <>
-          <View style={styles.chipRow}>
+          <View className="flex-row gap-2 mt-1">
             {(['short', 'long'] as AlarmMode[]).map((m) => (
               <Pressable
                 key={m}
                 onPress={() => onSelectMode(m)}
-                style={[styles.chip, mode === m && styles.chipActive]}
+                className={`py-1 px-4 rounded-full border ${
+                  mode === m
+                    ? 'border-brand-primary bg-brand-primary/10'
+                    : 'border-border-subtle bg-bg-canvas'
+                }`}
               >
-                <Text style={[styles.chipText, mode === m && styles.chipTextActive]}>
+                <Text
+                  className={`text-xs ${
+                    mode === m ? 'text-brand-primary font-bold' : 'font-semibold text-text-secondary'
+                  }`}
+                >
                   {m === 'short' ? tr('shopSet.alarmShort') : tr('shopSet.alarmLong')}
                 </Text>
               </Pressable>
             ))}
           </View>
-          <Text style={styles.hint}>
+          <Text className="text-xs text-text-tertiary mt-0.5">
             {mode === 'long' ? tr('shopSet.alarmLongHint') : tr('shopSet.alarmShortHint')}
           </Text>
-          <Pressable style={styles.testBtn} onPress={onTestAlarm}>
-            <Text style={styles.testText}>{tr('shopSet.alarmTest')}</Text>
+          <Pressable
+            className="self-start py-1 px-4 rounded-xl bg-brand-primary/10 mt-1 active:opacity-75"
+            onPress={onTestAlarm}
+          >
+            <Text className="text-xs font-bold text-brand-primary">{tr('shopSet.alarmTest')}</Text>
           </Pressable>
         </>
       ) : null}
     </Section>
   );
 }
-
-const styles = StyleSheet.create({
-  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  toggleLabel: { fontSize: 16, fontWeight: '700', color: colors.text.primary },
-  chipRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
-  chip: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    backgroundColor: colors.bg.canvas,
-  },
-  chipActive: { borderColor: colors.brand.primary, backgroundColor: colors.brand.primarySurface },
-  chipText: { ...typography.caption, fontWeight: '600', color: colors.text.secondary },
-  chipTextActive: { color: colors.brand.primary, fontWeight: '700' },
-  hint: { ...typography.caption, color: colors.text.tertiary, marginTop: 2 },
-  testBtn: {
-    alignSelf: 'flex-start',
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.brand.primarySurface,
-    marginTop: spacing.xs,
-  },
-  testText: { ...typography.caption, fontWeight: '700', color: colors.brand.primary },
-});

@@ -1,10 +1,10 @@
 import { router } from 'expo-router';
 import { ChevronRight, Map, Truck } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, Switch, Text, TextInput, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 import { Field, Section } from './SectionAndField';
 import { calcFee, fmtSom, pricingMeta, Pricing } from './types';
 
@@ -43,10 +43,10 @@ export function ShopDeliverySection({
 
   return (
     <Section title={tr('shopSet.deliverySection')} icon={Truck}>
-      <View style={styles.toggleRow}>
-        <View style={{ flex: 1, paddingRight: spacing.md }}>
-          <Text style={styles.toggleLabel}>{tr('shopSet.deliveryToggle')}</Text>
-          <Text style={styles.toggleSub}>{tr('shopSet.deliveryToggleSub')}</Text>
+      <View className="flex-row items-center justify-between">
+        <View className="flex-1 pr-4">
+          <Text className="text-base font-bold text-text-primary">{tr('shopSet.deliveryToggle')}</Text>
+          <Text className="text-[13px] text-text-tertiary mt-0.5">{tr('shopSet.deliveryToggleSub')}</Text>
         </View>
         <Switch
           value={isDeliveryEnabled}
@@ -57,72 +57,80 @@ export function ShopDeliverySection({
       </View>
 
       {!isDeliveryEnabled ? (
-        <View style={styles.showcaseNoticeBox}>
-          <Text style={styles.showcaseNoticeText}>
+        <View className="bg-brand-primary/10 rounded-xl p-4 border border-brand-primary/20">
+          <Text className="text-sm text-brand-primary">
             ℹ️ {tr('shopSet.showcaseNotice')}
           </Text>
         </View>
       ) : (
         <>
           <Pressable
-            style={styles.mapZoneBtn}
+            className="flex-row items-center gap-2 py-3 px-4 rounded-2xl border border-brand-primary/20 bg-brand-primary/10 active:opacity-75"
             onPress={() => router.push({ pathname: '/seller/[shopId]/delivery-zones', params: { shopId } } as never)}
           >
             <Map size={18} color={colors.brand.primary} strokeWidth={2} />
-            <Text style={styles.mapZoneBtnText}>{tr('shopSet.drawZone')}</Text>
+            <Text className="text-sm font-bold text-brand-primary flex-1">{tr('shopSet.drawZone')}</Text>
             <ChevronRight size={16} color={colors.text.tertiary} />
           </Pressable>
 
           <Field label={tr('shopSet.minOrder')}>
             <TextInput
-              style={styles.input}
+              className="bg-bg-canvas rounded-xl border border-border-subtle px-3 py-2 text-base text-text-primary"
               value={minOrder}
               onChangeText={onChangeMinOrder}
               keyboardType="number-pad"
             />
-            <Text style={styles.hint}>{tr('shopSet.minOrderHint')}</Text>
+            <Text className="text-xs text-text-tertiary mt-0.5">{tr('shopSet.minOrderHint')}</Text>
           </Field>
 
           <Field label={tr('shopSet.maxKm')}>
             <TextInput
-              style={styles.input}
+              className="bg-bg-canvas rounded-xl border border-border-subtle px-3 py-2 text-base text-text-primary"
               value={maxKm}
               onChangeText={onChangeMaxKm}
               keyboardType="numeric"
             />
-            <Text style={styles.hint}>{tr('shopSet.maxKmHint')}</Text>
+            <Text className="text-xs text-text-tertiary mt-0.5">{tr('shopSet.maxKmHint')}</Text>
           </Field>
 
           <Field label={tr('shopSet.freeKm')}>
             <TextInput
-              style={styles.input}
+              className="bg-bg-canvas rounded-xl border border-border-subtle px-3 py-2 text-base text-text-primary"
               value={freeKm}
               onChangeText={onChangeFreeKm}
               keyboardType="numeric"
             />
-            <Text style={styles.hint}>{tr('shopSet.freeKmHint')}</Text>
+            <Text className="text-xs text-text-tertiary mt-0.5">{tr('shopSet.freeKmHint')}</Text>
           </Field>
 
           <Field label={tr('shopSet.pricingLabel')}>
-            <View style={styles.chipRow}>
+            <View className="flex-row flex-wrap gap-1.5">
               {(['per_km', 'per_500m', 'per_100m', 'flat'] as Pricing[]).map((t) => (
                 <Pressable
                   key={t}
                   onPress={() => onChangePricingType(t)}
-                  style={[styles.chip, pricingType === t && styles.chipActive]}
+                  className={`py-1 px-4 rounded-full border ${
+                    pricingType === t
+                      ? 'border-brand-primary bg-brand-primary/10'
+                      : 'border-border-subtle bg-bg-canvas'
+                  }`}
                 >
-                  <Text style={[styles.chipText, pricingType === t && styles.chipTextActive]}>
+                  <Text
+                    className={`text-xs ${
+                      pricingType === t ? 'text-brand-primary font-bold' : 'font-semibold text-text-secondary'
+                    }`}
+                  >
                     {pricingMeta(t).label}
                   </Text>
                 </Pressable>
               ))}
             </View>
-            <Text style={styles.hint}>{pricingMeta(pricingType).hint}</Text>
+            <Text className="text-xs text-text-tertiary mt-0.5">{pricingMeta(pricingType).hint}</Text>
           </Field>
 
           <Field label={pricingMeta(pricingType).priceLabel}>
             <TextInput
-              style={styles.input}
+              className="bg-bg-canvas rounded-xl border border-border-subtle px-3 py-2 text-base text-text-primary"
               value={price}
               onChangeText={onChangePrice}
               keyboardType="number-pad"
@@ -160,93 +168,30 @@ function DeliveryExample({
   const midFee = calcFee(midDist, freeKm, pricingType, price);
 
   return (
-    <View style={styles.exampleBox}>
-      <Text style={styles.exampleTitle}>{tr('shopSet.exampleTitle')}</Text>
+    <View className="bg-bg-canvas rounded-xl p-3 border border-border-subtle gap-1 mt-1">
+      <Text className="text-xs font-bold text-text-secondary">{tr('shopSet.exampleTitle')}</Text>
 
       {freeKm > 0 ? (
-        <View style={styles.exampleRow}>
-          <Text style={styles.exampleDist}>0 – {freeKm} km</Text>
-          <Text style={styles.exampleFree}>{tr('shopSet.free')}</Text>
+        <View className="flex-row justify-between items-center">
+          <Text className="text-xs text-text-tertiary">0 – {freeKm} km</Text>
+          <Text className="text-xs font-bold text-feedback-success">{tr('shopSet.free')}</Text>
         </View>
       ) : null}
 
       {freeKm < maxKm ? (
         <>
-          <View style={styles.exampleRow}>
-            <Text style={styles.exampleDist}>{midDist.toFixed(1)} km</Text>
-            <Text style={styles.exampleFee}>{fmtSom(midFee)} {tr('common.som')}</Text>
+          <View className="flex-row justify-between items-center">
+            <Text className="text-xs text-text-tertiary">{midDist.toFixed(1)} km</Text>
+            <Text className="text-xs font-bold text-text-primary">{fmtSom(midFee)} {tr('common.som')}</Text>
           </View>
-          <View style={styles.exampleRow}>
-            <Text style={styles.exampleDist}>{tr('shopSet.edgeDist', { km: maxKm })}</Text>
-            <Text style={styles.exampleFee}>{fmtSom(edgeFee)} {tr('common.som')}</Text>
+          <View className="flex-row justify-between items-center">
+            <Text className="text-xs text-text-tertiary">{tr('shopSet.edgeDist', { km: maxKm })}</Text>
+            <Text className="text-xs font-bold text-text-primary">{fmtSom(edgeFee)} {tr('common.som')}</Text>
           </View>
         </>
       ) : (
-        <Text style={styles.hint}>{tr('shopSet.allFree')}</Text>
+        <Text className="text-xs text-text-tertiary mt-0.5">{tr('shopSet.allFree')}</Text>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  toggleLabel: { fontSize: 16, fontWeight: '700', color: colors.text.primary },
-  toggleSub: { fontSize: 13, color: colors.text.tertiary, marginTop: 2 },
-  showcaseNoticeBox: {
-    backgroundColor: colors.brand.primarySurface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-  },
-  showcaseNoticeText: { ...typography.bodySmall, color: colors.brand.primary },
-  mapZoneBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.brand.primaryBorder,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  mapZoneBtnText: { ...typography.bodySmall, fontWeight: '700', color: colors.brand.primary, flex: 1 },
-  input: {
-    backgroundColor: colors.bg.canvas,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    ...typography.body,
-    color: colors.text.primary,
-  },
-  hint: { ...typography.caption, color: colors.text.tertiary, marginTop: 2 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  chip: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    backgroundColor: colors.bg.canvas,
-  },
-  chipActive: { borderColor: colors.brand.primary, backgroundColor: colors.brand.primarySurface },
-  chipText: { ...typography.caption, fontWeight: '600', color: colors.text.secondary },
-  chipTextActive: { color: colors.brand.primary, fontWeight: '700' },
-  exampleBox: {
-    backgroundColor: colors.bg.canvas,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    gap: spacing.xs,
-    marginTop: spacing.xs,
-  },
-  exampleTitle: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
-  exampleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  exampleDist: { ...typography.caption, color: colors.text.tertiary },
-  exampleFee: { ...typography.caption, fontWeight: '700', color: colors.text.primary },
-  exampleFree: { ...typography.caption, fontWeight: '700', color: colors.feedback.success },
-});

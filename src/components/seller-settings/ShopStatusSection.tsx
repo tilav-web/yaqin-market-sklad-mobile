@@ -1,6 +1,6 @@
 import { Store } from 'lucide-react-native';
 import React from 'react';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { Switch, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { colors } from '@/theme';
@@ -16,10 +16,12 @@ export function ShopStatusSection({ isOpen, onToggleOpen }: ShopStatusSectionPro
 
   return (
     <Section title={tr('shopSet.statusSection')} icon={Store}>
-      <View style={styles.toggleRow}>
+      <View className="flex-row items-center justify-between">
         <View>
-          <Text style={styles.toggleLabel}>{isOpen ? tr('shopSet.open') : tr('shopSet.closed')}</Text>
-          <Text style={styles.toggleSub}>
+          <Text className="text-base font-bold" style={{ color: colors.text.primary }}>
+            {isOpen ? tr('shopSet.open') : tr('shopSet.closed')}
+          </Text>
+          <Text className="text-xs mt-0.5" style={{ color: colors.text.tertiary }}>
             {isOpen ? tr('shopSet.openSub') : tr('shopSet.closedSub')}
           </Text>
         </View>
@@ -33,9 +35,3 @@ export function ShopStatusSection({ isOpen, onToggleOpen }: ShopStatusSectionPro
     </Section>
   );
 }
-
-const styles = StyleSheet.create({
-  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  toggleLabel: { fontSize: 16, fontWeight: '700', color: colors.text.primary },
-  toggleSub: { fontSize: 13, color: colors.text.tertiary, marginTop: 2 },
-});

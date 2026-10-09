@@ -8,7 +8,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Switch,
   Text,
   TextInput,
@@ -18,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { tr, type TranslationKey } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 interface DaySlot {
   dayOfWeek: number;
@@ -91,20 +90,20 @@ export function WorkingHoursModal({ visible, shopId, initialHours, initialHolida
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{tr('workHours.title')}</Text>
-          <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
+      <SafeAreaView className="flex-1 bg-bg-canvas" edges={['top', 'bottom']}>
+        <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
+          <Text className="text-xl font-bold text-text-primary">{tr('workHours.title')}</Text>
+          <Pressable onPress={onClose} hitSlop={8} className="w-8 h-8 rounded-full bg-bg-surface-muted items-center justify-center">
             <X size={20} color={colors.text.secondary} />
           </Pressable>
         </View>
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
             {hours.map((d, i) => (
-              <View key={d.dayOfWeek} style={styles.dayRow}>
-                <View style={styles.dayHead}>
-                  <Text style={styles.dayName}>{tr(DAY_LABEL_KEYS[d.dayOfWeek])}</Text>
+              <View key={d.dayOfWeek} className="bg-bg-surface rounded-xl p-3.5 border border-border-subtle gap-2">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-base font-semibold text-text-primary">{tr(DAY_LABEL_KEYS[d.dayOfWeek])}</Text>
                   <Switch
                     value={d.isOpen}
                     onValueChange={(v) => setDay(i, { isOpen: v })}
@@ -113,18 +112,18 @@ export function WorkingHoursModal({ visible, shopId, initialHours, initialHolida
                   />
                 </View>
                 {d.isOpen ? (
-                  <View style={styles.timeRow}>
+                  <View className="flex-row items-center gap-3">
                     <TextInput
-                      style={styles.timeInput}
+                      className="flex-1 text-center bg-bg-surface-muted rounded-xl py-2.5 text-base font-semibold text-text-primary border border-border-default"
                       value={d.openTime}
                       onChangeText={(t) => setDay(i, { openTime: t })}
                       placeholder="09:00"
                       placeholderTextColor={colors.text.hint}
                       maxLength={5}
                     />
-                    <Text style={styles.dash}>—</Text>
+                    <Text className="text-base text-text-secondary">—</Text>
                     <TextInput
-                      style={styles.timeInput}
+                      className="flex-1 text-center bg-bg-surface-muted rounded-xl py-2.5 text-base font-semibold text-text-primary border border-border-default"
                       value={d.closeTime}
                       onChangeText={(t) => setDay(i, { closeTime: t })}
                       placeholder="21:00"
@@ -133,28 +132,28 @@ export function WorkingHoursModal({ visible, shopId, initialHours, initialHolida
                     />
                   </View>
                 ) : (
-                  <Text style={styles.closedLabel}>{tr('workHours.dayOff')}</Text>
+                  <Text className="text-sm text-text-tertiary">{tr('workHours.dayOff')}</Text>
                 )}
               </View>
             ))}
 
-            <Text style={styles.sectionTitle}>{tr('workHours.holidays')}</Text>
-            <View style={styles.holidayAdd}>
+            <Text className="text-xs uppercase tracking-wider font-bold text-text-secondary mt-3">{tr('workHours.holidays')}</Text>
+            <View className="flex-row gap-2">
               <TextInput
-                style={styles.holidayInput}
+                className="flex-1 bg-bg-surface rounded-xl px-3 py-3 text-base text-text-primary border border-border-default"
                 value={newHoliday}
                 onChangeText={setNewHoliday}
                 placeholder="YYYY-MM-DD"
                 placeholderTextColor={colors.text.hint}
                 maxLength={10}
               />
-              <Pressable style={styles.addBtn} onPress={addHoliday}>
+              <Pressable className="w-12 rounded-xl bg-brand-primary items-center justify-center active:opacity-80" onPress={addHoliday}>
                 <Plus size={18} color={colors.text.onPrimary} strokeWidth={2.6} />
               </Pressable>
             </View>
             {holidays.map((h) => (
-              <View key={h.date} style={styles.holidayRow}>
-                <Text style={styles.holidayDate}>{h.date}</Text>
+              <View key={h.date} className="flex-row items-center justify-between bg-bg-surface rounded-xl p-3 border border-border-subtle">
+                <Text className="text-sm text-text-primary">{h.date}</Text>
                 <Pressable onPress={() => setHolidays((hs) => hs.filter((x) => x.date !== h.date))} hitSlop={8}>
                   <X size={16} color={colors.text.danger} strokeWidth={2.4} />
                 </Pressable>
@@ -163,64 +162,16 @@ export function WorkingHoursModal({ visible, shopId, initialHours, initialHolida
           </ScrollView>
         </KeyboardAvoidingView>
 
-        <View style={styles.footer}>
-          <Pressable style={[styles.saveBtn, save.isPending && { opacity: 0.6 }]} disabled={save.isPending} onPress={() => save.mutate()}>
-            <Text style={styles.saveText}>{save.isPending ? 'Saqlanmoqda…' : 'Saqlash'}</Text>
+        <View className="px-4 pt-3 pb-2 border-t border-border-subtle bg-bg-surface">
+          <Pressable
+            className={`h-12 rounded-2xl bg-brand-primary items-center justify-center ${save.isPending ? 'opacity-60' : 'active:opacity-85'}`}
+            disabled={save.isPending}
+            onPress={() => save.mutate()}
+          >
+            <Text className="text-base font-bold text-text-on-primary">{save.isPending ? 'Saqlanmoqda…' : 'Saqlash'}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  title: { ...typography.h4, color: colors.text.primary },
-  closeBtn: { width: 32, height: 32, borderRadius: radius.full, backgroundColor: colors.bg.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
-  scroll: { padding: layout.screenPadding, gap: spacing.sm, paddingBottom: spacing['3xl'] },
-  dayRow: { backgroundColor: colors.bg.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border.subtle, gap: spacing.sm },
-  dayHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  dayName: { ...typography.bodyStrong, color: colors.text.primary },
-  timeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  timeInput: {
-    flex: 1,
-    textAlign: 'center',
-    backgroundColor: colors.bg.surfaceMuted,
-    borderRadius: radius.md,
-    paddingVertical: 10,
-    ...typography.bodyStrong,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  dash: { ...typography.body, color: colors.text.secondary },
-  closedLabel: { ...typography.bodySmall, color: colors.text.tertiary },
-  sectionTitle: { ...typography.overline, color: colors.text.secondary, marginTop: spacing.md },
-  holidayAdd: { flexDirection: 'row', gap: spacing.sm },
-  holidayInput: {
-    flex: 1,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    ...typography.body,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  addBtn: { width: 48, borderRadius: radius.md, backgroundColor: colors.brand.primary, alignItems: 'center', justifyContent: 'center' },
-  holidayRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.bg.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border.subtle },
-  holidayDate: { ...typography.bodySmall, color: colors.text.primary },
-  footer: { paddingHorizontal: layout.screenPadding, paddingTop: spacing.md, paddingBottom: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border.subtle, backgroundColor: colors.bg.surface },
-  saveBtn: { height: layout.buttonHeight.md, borderRadius: radius.lg, backgroundColor: colors.brand.primary, alignItems: 'center', justifyContent: 'center' },
-  saveText: { ...typography.body, fontWeight: '700', color: colors.text.onPrimary },
-});

@@ -1,10 +1,10 @@
 import { Clock, MapPin, Store } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, Text, TextInput } from 'react-native';
+import { Pressable, Text, TextInput } from 'react-native';
 
 import { ImageUploader } from '@/components/seller/ImageUploader';
 import { useTranslation } from '@/i18n';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 import { Field, Section } from './SectionAndField';
 
 interface ShopInfoSectionProps {
@@ -51,7 +51,7 @@ export function ShopInfoSection({
       />
       <Field label={tr('shopSet.nameLabel')}>
         <TextInput
-          style={styles.input}
+          className="bg-bg-canvas rounded-xl border border-border-subtle px-3 py-2 text-base text-text-primary"
           value={name}
           onChangeText={onChangeName}
           placeholderTextColor={colors.text.hint}
@@ -59,18 +59,19 @@ export function ShopInfoSection({
       </Field>
       <Field label={tr('shopSet.phoneLabel')}>
         <TextInput
-          style={styles.input}
+          className="bg-bg-canvas rounded-xl border border-border-subtle px-3 py-2 text-base text-text-primary"
           value={phone}
           onChangeText={onChangePhone}
           placeholder={tr('shopSet.phonePlaceholder')}
           placeholderTextColor={colors.text.hint}
           keyboardType="phone-pad"
         />
-        <Text style={styles.hint}>{tr('shopSet.phoneHint')}</Text>
+        <Text className="text-xs text-text-tertiary mt-0.5">{tr('shopSet.phoneHint')}</Text>
       </Field>
       <Field label={tr('shopSet.addressLabel')}>
         <TextInput
-          style={[styles.input, styles.multiline]}
+          className="bg-bg-canvas rounded-xl border border-border-subtle px-3 py-2 text-base text-text-primary min-h-[70px]"
+          textAlignVertical="top"
           value={address}
           onChangeText={onChangeAddress}
           multiline
@@ -79,61 +80,40 @@ export function ShopInfoSection({
       </Field>
       <Field label={tr('shopSet.descLabel')}>
         <TextInput
-          style={[styles.input, styles.multiline]}
+          className="bg-bg-canvas rounded-xl border border-border-subtle px-3 py-2 text-base text-text-primary min-h-[70px]"
+          textAlignVertical="top"
           value={description}
           onChangeText={onChangeDescription}
           multiline
           placeholder={tr('shopSet.descPlaceholder')}
           placeholderTextColor={colors.text.hint}
         />
-        <Text style={styles.hint}>{tr('shopSet.descHint')}</Text>
+        <Text className="text-xs text-text-tertiary mt-0.5">{tr('shopSet.descHint')}</Text>
       </Field>
       <Field label={tr('shopSet.locationLabel')}>
-        <Pressable style={styles.mapBtn} onPress={onOpenLocationPicker}>
+        <Pressable
+          className="flex-row items-center gap-1.5 py-2 px-3 rounded-xl border border-border-subtle bg-brand-primary/10 active:opacity-75"
+          onPress={onOpenLocationPicker}
+        >
           <MapPin size={18} color={colors.brand.primary} strokeWidth={2.4} />
-          <Text style={styles.mapBtnText}>{tr('shopSet.changeOnMap')}</Text>
+          <Text className="text-sm font-bold text-brand-primary">{tr('shopSet.changeOnMap')}</Text>
         </Pressable>
         {coords ? (
-          <Text style={styles.coordHint}>
+          <Text className="text-xs text-text-secondary mt-1">
             📍 {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}
           </Text>
         ) : null}
       </Field>
       <Field label={tr('shopSet.workingHours')}>
-        <Pressable style={styles.mapBtn} onPress={onOpenWorkingHours}>
+        <Pressable
+          className="flex-row items-center gap-1.5 py-2 px-3 rounded-xl border border-border-subtle bg-brand-primary/10 active:opacity-75"
+          onPress={onOpenWorkingHours}
+        >
           <Clock size={18} color={colors.brand.primary} strokeWidth={2.4} />
-          <Text style={styles.mapBtnText}>{tr('shopSet.workingHoursBtn')}</Text>
+          <Text className="text-sm font-bold text-brand-primary">{tr('shopSet.workingHoursBtn')}</Text>
         </Pressable>
-        <Text style={styles.hint}>{tr('shopSet.workingHoursHint')}</Text>
+        <Text className="text-xs text-text-tertiary mt-0.5">{tr('shopSet.workingHoursHint')}</Text>
       </Field>
     </Section>
   );
 }
-
-const styles = StyleSheet.create({
-  input: {
-    backgroundColor: colors.bg.canvas,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    ...typography.body,
-    color: colors.text.primary,
-  },
-  multiline: { minHeight: 70, textAlignVertical: 'top' },
-  hint: { ...typography.caption, color: colors.text.tertiary, marginTop: 2 },
-  mapBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  mapBtnText: { ...typography.bodySmall, fontWeight: '700', color: colors.brand.primary },
-  coordHint: { ...typography.caption, color: colors.text.secondary, marginTop: spacing.xs },
-});

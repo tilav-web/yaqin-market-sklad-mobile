@@ -1,8 +1,8 @@
 import { LucideIcon } from 'lucide-react-native';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, typography } from '@/theme';
 
 interface SectionProps {
   title: string;
@@ -12,10 +12,16 @@ interface SectionProps {
 
 export function Section({ title, icon: Icon, children }: SectionProps) {
   return (
-    <View style={styles.section}>
-      <View style={styles.sectionHead}>
+    <View
+      className="p-4 rounded-3xl border gap-3"
+      style={{
+        backgroundColor: colors.bg.surface,
+        borderColor: colors.border.subtle,
+      }}
+    >
+      <View className="flex-row items-center gap-2">
         <Icon size={16} color={colors.brand.primary} strokeWidth={2.4} />
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={[typography.h4, { color: colors.text.primary }]}>{title}</Text>
       </View>
       {children}
     </View>
@@ -30,24 +36,11 @@ interface FieldProps {
 
 export function Field({ label, children, flex }: FieldProps) {
   return (
-    <View style={[styles.field, flex && { flex: 1 }]}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+    <View className={`gap-1 ${flex ? 'flex-1' : ''}`}>
+      <Text className="font-bold text-xs" style={{ color: colors.text.secondary }}>
+        {label}
+      </Text>
       {children}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  section: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    gap: spacing.md,
-  },
-  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  sectionTitle: { ...typography.h4, color: colors.text.primary },
-  field: { gap: spacing.xs },
-  fieldLabel: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
-});
