@@ -1,26 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, MapPin, Pencil, Star, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   Alert,
   FlatList,
   Pressable,
-  StyleSheet,
   Text,
-  TextInput,
-  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AddressCard } from '@/components/addresses/AddressCard';
+import { AddressForm } from '@/components/addresses/AddressForm';
 import { LocationPickerModal, PickedLocation } from '@/components/LocationPickerModal';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { UserAddress } from '@/lib/types';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
-/** "uy" / "UY BOSHQA" → "Uy" / "Uy boshqa" — labels always save this way, regardless of how it was typed. */
 function capitalizeLabel(s: string): string {
   const trimmed = s.trim();
   if (!trimmed) return trimmed;
@@ -100,7 +96,6 @@ export default function AddressesScreen() {
     },
     onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: ['my-addresses'] });
-      // Newly added address becomes the active location right away.
       setSelectedAddress(created);
       resetForm();
     },
@@ -110,9 +105,6 @@ export default function AddressesScreen() {
   const updateMutation = useMutation({
     mutationFn: async () => {
       if (!editingId) return;
-      // Unlike create, an edit sends the trimmed value even when empty (not
-      // `|| undefined`) — otherwise clearing a previously-set field would be
-      // dropped by JSON serialization and silently leave the old value.
       const res = await api.patch<UserAddress>(`/users/me/addresses/${editingId}`, {
         label: capitalizeLabel(label),
         address,
@@ -126,7 +118,6 @@ export default function AddressesScreen() {
     },
     onSuccess: (updated) => {
       qc.invalidateQueries({ queryKey: ['my-addresses'] });
-      // If the edited address is the currently-active one, refresh it too.
       if (updated && selectedAddress?.id === updated.id) setSelectedAddress(updated);
       resetForm();
     },
@@ -148,7 +139,6 @@ export default function AddressesScreen() {
     },
     onSuccess: (id) => {
       qc.invalidateQueries({ queryKey: ['my-addresses'] });
-      // If the deleted address was the active one, fall back to GPS.
       if (selectedAddress?.id === id) switchToCurrentLocation();
     },
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
@@ -158,15 +148,7 @@ export default function AddressesScreen() {
     setPicked(result);
     if (result.address) setAddress(result.address);
     setPickerVisible(false);
-    // Brand-new addresses go map-first: the detail form only appears once a
-    // point has been confirmed. Re-picking from inside an already-open form
-    // (edit, or "choose another spot") leaves `adding` untouched (already true).
     setAdding(true);
-  };
-
-  const selectAsActive = (item: UserAddress) => {
-    haptics.selection();
-    setSelectedAddress(item);
   };
 
   const confirmDelete = (item: UserAddress) =>
@@ -175,159 +157,57 @@ export default function AddressesScreen() {
       { text: tr('addr.delete'), style: 'destructive', onPress: () => deleteMutation.mutate(item.id) },
     ]);
 
-  // Editing an existing address already has coordinates on file — only a
-  // brand-new address requires a location to have been picked (or GPS).
   const canSave = !!label.trim() && !!address.trim() && (!!editingId || !!(picked ?? coords));
+  const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
       <FlatList
         data={addressesQuery.data ?? []}
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.list}
-        ListHeaderComponent={<Text style={styles.hint}>{tr('addr.hint')}</Text>}
-        renderItem={({ item }) => {
-          const active = selectedAddress?.id === item.id;
-          return (
-            <Pressable
-              onPress={() => selectAsActive(item)}
-              style={[styles.card, active && styles.cardActive]}>
-              <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
-                <MapPin
-                  size={20}
-                  color={active ? colors.text.onPrimary : colors.brand.primary}
-                  strokeWidth={2.4}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={styles.labelRow}>
-                  <Text style={styles.label}>{item.label}</Text>
-                  {item.isDefault && (
-                    <View style={styles.defaultTag}>
-                      <Star size={10} color={colors.brand.primary} fill={colors.brand.primary} />
-                      <Text style={styles.defaultTagText}>{tr('picker.main')}</Text>
-                    </View>
-                  )}
-                  {active && (
-                    <View style={styles.activeTag}>
-                      <Check size={11} color={colors.text.onPrimary} strokeWidth={3} />
-                      <Text style={styles.activeTagText}>{tr('addr.active')}</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.address} numberOfLines={2}>
-                  {item.address}
-                </Text>
-                {(item.entrance || item.floor || item.apartment || item.intercom) && (
-                  <Text style={styles.addressDetails} numberOfLines={1}>
-                    {[
-                      item.entrance && `${tr('addr.entrance')} ${item.entrance}`,
-                      item.floor && `${tr('addr.floor')} ${item.floor}`,
-                      item.apartment && `${tr('addr.apartment')} ${item.apartment}`,
-                      item.intercom && `${tr('addr.intercom')} ${item.intercom}`,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </Text>
-                )}
-                <View style={styles.actions}>
-                  {!item.isDefault && (
-                    <Pressable
-                      hitSlop={6}
-                      onPress={() => setDefaultMutation.mutate(item.id)}
-                      style={styles.actionBtn}>
-                      <Star size={14} color={colors.text.tertiary} strokeWidth={2.2} />
-                      <Text style={styles.actionText}>{tr('addr.makeDefault')}</Text>
-                    </Pressable>
-                  )}
-                  <Pressable hitSlop={6} onPress={() => startEdit(item)} style={styles.actionBtn}>
-                    <Pencil size={14} color={colors.text.tertiary} strokeWidth={2.2} />
-                    <Text style={styles.actionText}>{tr('addr.edit')}</Text>
-                  </Pressable>
-                  <Pressable
-                    hitSlop={6}
-                    onPress={() => confirmDelete(item)}
-                    style={styles.actionBtn}>
-                    <Trash2 size={14} color={colors.text.danger} strokeWidth={2.2} />
-                    <Text style={[styles.actionText, { color: colors.text.danger }]}>{tr('addr.delete')}</Text>
-                  </Pressable>
-                </View>
-              </View>
-            </Pressable>
-          );
-        }}
+        contentContainerStyle={{ padding: 16, gap: 12 }}
+        ListHeaderComponent={<Text className="text-xs text-text-secondary mb-1">{tr('addr.hint')}</Text>}
+        renderItem={({ item }) => (
+          <AddressCard
+            item={item}
+            active={selectedAddress?.id === item.id}
+            onSelect={() => {
+              haptics.selection();
+              setSelectedAddress(item);
+            }}
+            onSetDefault={() => setDefaultMutation.mutate(item.id)}
+            onEdit={() => startEdit(item)}
+            onDelete={() => confirmDelete(item)}
+          />
+        )}
         ListFooterComponent={
           adding ? (
-            <View style={styles.form}>
-              <Text style={styles.formTitle}>{tr(editingId ? 'addr.editTitle' : 'addr.new')}</Text>
-              <TextInput
-                style={styles.input}
-                placeholder={tr('addr.label')}
-                value={label}
-                onChangeText={setLabel}
-                placeholderTextColor={colors.text.hint}
-              />
-              <TextInput
-                style={[styles.input, styles.inputMultiline]}
-                placeholder={tr('addr.addressPlaceholder')}
-                value={address}
-                onChangeText={setAddress}
-                multiline
-                placeholderTextColor={colors.text.hint}
-              />
-
-              <Pressable style={styles.mapBtn} onPress={() => setPickerVisible(true)}>
-                <MapPin size={18} color={colors.brand.primary} strokeWidth={2.4} />
-                <Text style={styles.mapBtnText}>{tr('addr.pickOnMapAgain')}</Text>
-              </Pressable>
-
-              <View style={styles.detailsGrid}>
-                <TextInput
-                  style={[styles.input, styles.detailsInput]}
-                  placeholder={tr('addr.entrance')}
-                  value={entrance}
-                  onChangeText={setEntrance}
-                  placeholderTextColor={colors.text.hint}
-                />
-                <TextInput
-                  style={[styles.input, styles.detailsInput]}
-                  placeholder={tr('addr.floor')}
-                  value={floor}
-                  onChangeText={setFloor}
-                  placeholderTextColor={colors.text.hint}
-                />
-                <TextInput
-                  style={[styles.input, styles.detailsInput]}
-                  placeholder={tr('addr.apartment')}
-                  value={apartment}
-                  onChangeText={setApartment}
-                  placeholderTextColor={colors.text.hint}
-                />
-                <TextInput
-                  style={[styles.input, styles.detailsInput]}
-                  placeholder={tr('addr.intercom')}
-                  value={intercom}
-                  onChangeText={setIntercom}
-                  placeholderTextColor={colors.text.hint}
-                />
-              </View>
-
-              <Pressable
-                style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
-                disabled={!canSave || createMutation.isPending || updateMutation.isPending}
-                onPress={() => (editingId ? updateMutation.mutate() : createMutation.mutate())}>
-                <Text style={styles.saveBtnText}>
-                  {createMutation.isPending || updateMutation.isPending ? tr('addr.saving') : tr('addr.save')}
-                </Text>
-              </Pressable>
-              <Pressable onPress={resetForm} style={styles.cancelBtn}>
-                <Text style={styles.cancelText}>{tr('common.cancel')}</Text>
-              </Pressable>
-            </View>
+            <AddressForm
+              isEditing={Boolean(editingId)}
+              label={label}
+              onChangeLabel={setLabel}
+              address={address}
+              onChangeAddress={setAddress}
+              entrance={entrance}
+              onChangeEntrance={setEntrance}
+              floor={floor}
+              onChangeFloor={setFloor}
+              apartment={apartment}
+              onChangeApartment={setApartment}
+              intercom={intercom}
+              onChangeIntercom={setIntercom}
+              onPickMap={() => setPickerVisible(true)}
+              canSave={canSave}
+              isPending={isPending}
+              onSave={() => (editingId ? updateMutation.mutate() : createMutation.mutate())}
+              onCancel={resetForm}
+            />
           ) : (
-            <Pressable style={styles.addBtn} onPress={() => setPickerVisible(true)}>
-              <Text style={styles.addBtnText}>{tr('addr.add')}</Text>
+            <Pressable
+              className="bg-surface rounded-2xl p-4 items-center border-[1.5px] border-dashed border-brand-primary"
+              onPress={() => setPickerVisible(true)}>
+              <Text className="text-base font-bold text-brand-primary">{tr('addr.add')}</Text>
             </Pressable>
           )
         }
@@ -342,112 +222,3 @@ export default function AddressesScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
-  list: { padding: layout.screenPadding, gap: spacing.md },
-  hint: { ...typography.bodySmall, color: colors.text.secondary, marginBottom: spacing.xs },
-  card: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    flexDirection: 'row',
-    gap: spacing.md,
-    borderWidth: 1.5,
-    borderColor: colors.border.subtle,
-    ...shadow.xs,
-  },
-  cardActive: { borderColor: colors.brand.primary, backgroundColor: colors.brand.primarySurface },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconWrapActive: { backgroundColor: colors.brand.primary },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
-  label: { ...typography.bodyStrong, color: colors.text.primary },
-  defaultTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: colors.brand.primarySurface,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-  },
-  defaultTagText: { ...typography.caption, color: colors.brand.primary, fontWeight: '700' },
-  activeTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: colors.brand.primary,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-  },
-  activeTagText: { ...typography.caption, color: colors.text.onPrimary, fontWeight: '700' },
-  address: { ...typography.bodySmall, color: colors.text.secondary, marginTop: 3 },
-  addressDetails: { ...typography.caption, color: colors.text.tertiary, marginTop: 3 },
-  actions: { flexDirection: 'row', gap: spacing.lg, marginTop: spacing.md },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  actionText: { ...typography.caption, color: colors.text.tertiary, fontWeight: '600' },
-
-  addBtn: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.brand.primaryBorder,
-    borderStyle: 'dashed',
-  },
-  addBtnText: { ...typography.body, color: colors.brand.primary, fontWeight: '700' },
-
-  form: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadow.sm,
-  },
-  formTitle: { ...typography.h4, color: colors.text.primary },
-  input: {
-    backgroundColor: colors.bg.surfaceMuted,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    ...typography.body,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  inputMultiline: { height: 76, textAlignVertical: 'top' },
-  detailsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  detailsInput: { flexBasis: '47%', flexGrow: 1 },
-  mapBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: 12,
-    borderWidth: 1.5,
-    borderColor: colors.brand.primaryBorder,
-    borderRadius: radius.md,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  mapBtnText: { ...typography.body, color: colors.brand.primary, fontWeight: '700' },
-  saveBtn: {
-    backgroundColor: colors.brand.primary,
-    height: layout.buttonHeight.md,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveBtnDisabled: { backgroundColor: colors.border.strong },
-  saveBtnText: { ...typography.body, color: colors.text.onPrimary, fontWeight: '700' },
-  cancelBtn: { alignItems: 'center', paddingVertical: spacing.sm },
-  cancelText: { ...typography.body, color: colors.text.secondary },
-});

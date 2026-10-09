@@ -6,7 +6,6 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -25,12 +24,10 @@ import { api, extractErrorMessage } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { ChatMessage, ChatTemplate, ConversationMessage, PublicProductVariant } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
-import { useTheme } from '@/stores/theme';
-import { colors, layout, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 export default function ChatScreen() {
-  const { colors: activeColors } = useTheme();
   const params = useLocalSearchParams<{
     orderId: string;
     conversationId?: string;
@@ -81,7 +78,6 @@ export default function ChatScreen() {
       try {
         if (isDirectConv) {
           const res = await api.get<ConversationMessage[]>(`/conversations/${effectiveId}/messages`);
-          // Mark conversation as read
           void api.post(`/conversations/${effectiveId}/read`).catch(() => {});
           return res.data;
         } else {
@@ -89,7 +85,6 @@ export default function ChatScreen() {
           return res.data;
         }
       } catch {
-        // Fallback try the other endpoint if first fails
         try {
           const res = await api.get<ChatMessage[]>(`/orders/${effectiveId}/messages`);
           return res.data;
@@ -193,7 +188,7 @@ export default function ChatScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: activeColors.bg.canvas }]} edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
       {/* Header */}
       <ChatHeader chatTitle={chatTitle} shopId={shopId} />
 
@@ -206,7 +201,7 @@ export default function ChatScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
       >
         {messagesQuery.isLoading ? (
-          <View style={styles.center}>
+          <View className="flex-1 items-center justify-center">
             <ActivityIndicator color={colors.brand.primary} />
           </View>
         ) : (
@@ -214,9 +209,11 @@ export default function ChatScreen() {
             ref={listRef}
             data={messages}
             keyExtractor={(m) => m.id}
-            contentContainerStyle={styles.list}
+            contentContainerStyle={{ padding: 16, gap: 10, flexGrow: 1 }}
             showsVerticalScrollIndicator={false}
-            ListEmptyComponent={<Text style={styles.empty}>{tr('chat.empty')}</Text>}
+            ListEmptyComponent={
+              <Text className="text-sm text-text-secondary text-center mt-12">{tr('chat.empty')}</Text>
+            }
             renderItem={({ item }) => (
               <ChatMessageBubble
                 text={item.text}
@@ -253,26 +250,3 @@ export default function ChatScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.bg.canvas,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  list: {
-    padding: layout.screenPadding,
-    gap: spacing.sm,
-    flexGrow: 1,
-  },
-  empty: {
-    ...typography.bodySmall,
-    color: colors.text.tertiary,
-    textAlign: 'center',
-    marginTop: spacing['4xl'],
-  },
-});

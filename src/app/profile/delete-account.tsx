@@ -1,43 +1,29 @@
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import {
-  AlertTriangle,
-  Check,
-  ShieldAlert,
-  Trash2,
-} from 'lucide-react-native';
+import { Check, ShieldAlert, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Card } from '@/components/ui/Card';
+import {
+  DeleteAccountReasons,
+  ReasonKey,
+} from '@/components/profile/DeleteAccountReasons';
+import { DeleteAccountWarning } from '@/components/profile/DeleteAccountWarning';
 import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 import { haptics } from '@/utils/haptics';
-
-const REASON_KEYS = [
-  'bad_experience',
-  'no_nearby_shops',
-  'app_bugs',
-  'created_another_account',
-  'privacy_concern',
-  'other',
-] as const;
-
-type ReasonKey = (typeof REASON_KEYS)[number];
 
 export default function DeleteAccountScreen() {
   const { tr } = useTranslation();
@@ -82,7 +68,7 @@ export default function DeleteAccountScreen() {
     }
     if (!agreed) {
       haptics.warning();
-      Alert.alert('Diqqat', 'Hisob o\'chirilishi shartlariga rozilik bildirishingiz lozim.');
+      Alert.alert('Diqqat', "Hisob o'chirilishi shartlariga rozilik bildirishingiz lozim.");
       return;
     }
 
@@ -110,66 +96,33 @@ export default function DeleteAccountScreen() {
   const isFormValid = selectedReason !== null && agreed;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 40 }}
           keyboardShouldPersistTaps="handled">
           {/* Header Description */}
-          <View style={styles.headerBox}>
-            <View style={styles.iconCircle}>
+          <View className="items-center py-4 px-2">
+            <View className="w-16 h-16 rounded-full bg-red-500/10 items-center justify-center mb-3">
               <ShieldAlert size={28} color={colors.feedback.danger} strokeWidth={2} />
             </View>
-            <Text style={styles.headerTitle}>{tr('deleteAccount.title')}</Text>
-            <Text style={styles.headerSub}>{tr('deleteAccount.subtitle')}</Text>
+            <Text className="text-xl font-bold text-text-primary mb-1 text-center">{tr('deleteAccount.title')}</Text>
+            <Text className="text-sm text-text-secondary text-center leading-5">{tr('deleteAccount.subtitle')}</Text>
           </View>
 
           {/* Reasons List */}
-          <View style={styles.sectionWrap}>
-            <Text style={styles.sectionLabel}>{tr('deleteAccount.reasonLabel')}</Text>
-            <View style={styles.reasonsList}>
-              {REASON_KEYS.map((key) => {
-                const isSelected = selectedReason === key;
-                return (
-                  <Pressable
-                    key={key}
-                    onPress={() => {
-                      haptics.selection();
-                      setSelectedReason(key);
-                    }}
-                    style={[
-                      styles.reasonCard,
-                      isSelected && styles.reasonCardSelected,
-                    ]}>
-                    <View style={styles.radioWrap}>
-                      {isSelected ? (
-                        <View style={styles.radioSelectedDot}>
-                          <View style={styles.radioInner} />
-                        </View>
-                      ) : (
-                        <View style={styles.radioUnselectedDot} />
-                      )}
-                    </View>
-                    <Text
-                      style={[
-                        styles.reasonText,
-                        isSelected && styles.reasonTextSelected,
-                      ]}>
-                      {tr(`deleteAccount.reason.${key}`)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
+          <DeleteAccountReasons
+            selectedReason={selectedReason}
+            onSelectReason={setSelectedReason}
+          />
 
           {/* Optional Text Details */}
           {selectedReason && (
-            <View style={styles.feedbackWrap}>
+            <View className="bg-surface rounded-xl p-3 border border-border-subtle">
               <TextInput
-                style={styles.textInput}
+                className="text-sm text-text-primary min-h-[70px]"
                 placeholder={tr('deleteAccount.feedbackPlaceholder')}
                 placeholderTextColor={colors.text.tertiary}
                 value={feedbackDetails}
@@ -183,271 +136,40 @@ export default function DeleteAccountScreen() {
           )}
 
           {/* Warning Banner */}
-          <Card padding="md" style={styles.warningCard}>
-            <View style={styles.warningHeaderRow}>
-              <AlertTriangle size={18} color={colors.feedback.danger} strokeWidth={2.2} />
-              <Text style={styles.warningTitle}>{tr('deleteAccount.warningTitle')}</Text>
-            </View>
-            <View style={styles.warningList}>
-              <Text style={styles.warningItem}>• {tr('deleteAccount.warning1')}</Text>
-              <Text style={styles.warningItem}>• {tr('deleteAccount.warning2')}</Text>
-              <Text style={styles.warningItem}>• {tr('deleteAccount.warning3')}</Text>
-            </View>
-          </Card>
+          <DeleteAccountWarning />
 
           {/* Agreement Checkbox */}
           <Pressable
-            style={styles.checkboxRow}
+            className="flex-row items-center gap-3 py-2 px-1"
             onPress={() => {
               haptics.selection();
-              setAgreed((v) => !v);
+              setAgreed(!agreed);
             }}>
             <View
-              style={[
-                styles.checkboxBox,
-                agreed && styles.checkboxBoxChecked,
-              ]}>
+              className={`w-6 h-6 rounded-lg border-2 items-center justify-center ${
+                agreed ? 'bg-brand-primary border-brand-primary' : 'border-border bg-surface'
+              }`}>
               {agreed && <Check size={14} color={colors.text.onPrimary} strokeWidth={3} />}
             </View>
-            <Text style={styles.checkboxLabel}>
+            <Text className="flex-1 text-xs text-text-primary font-medium leading-4">
               {tr('deleteAccount.agreeCheckbox')}
             </Text>
           </Pressable>
 
-          {/* Actions */}
-          <View style={styles.actionsWrap}>
-            <Pressable
-              style={[
-                styles.deleteBtn,
-                (!isFormValid || deleteMutation.isPending) && styles.deleteBtnDisabled,
-              ]}
-              disabled={!isFormValid || deleteMutation.isPending}
-              onPress={handleConfirmDelete}>
-              {deleteMutation.isPending ? (
-                <ActivityIndicator size="small" color={colors.text.onPrimary} />
-              ) : (
-                <>
-                  <Trash2 size={18} color={colors.text.onPrimary} strokeWidth={2} />
-                  <Text style={styles.deleteBtnText}>
-                    {tr('deleteAccount.actionBtn')}
-                  </Text>
-                </>
-              )}
-            </Pressable>
-
-            <Pressable
-              style={styles.cancelBtn}
-              onPress={() => {
-                haptics.selection();
-                router.back();
-              }}>
-              <Text style={styles.cancelBtnText}>
-                {tr('deleteAccount.cancelBtn')}
-              </Text>
-            </Pressable>
-          </View>
+          {/* Action Button */}
+          <Pressable
+            className={`flex-row items-center justify-center gap-2 h-12 rounded-xl mt-2 ${
+              isFormValid && !deleteMutation.isPending ? 'bg-red-600' : 'bg-surface-disabled'
+            }`}
+            disabled={!isFormValid || deleteMutation.isPending}
+            onPress={handleConfirmDelete}>
+            <Trash2 size={18} color="#FFFFFF" strokeWidth={2.2} />
+            <Text className="text-base font-bold text-white">
+              {deleteMutation.isPending ? tr('common.loading') : tr('auth.deleteAccountAction')}
+            </Text>
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.bg.canvas,
-  },
-  scroll: {
-    padding: layout.screenPadding,
-    paddingBottom: spacing['4xl'],
-    gap: spacing.lg,
-  },
-  headerBox: {
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    gap: spacing.xs,
-  },
-  iconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: radius.full,
-    backgroundColor: colors.feedback.dangerSurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xs,
-  },
-  headerTitle: {
-    ...typography.h3,
-    color: colors.text.primary,
-    fontWeight: '800',
-  },
-  headerSub: {
-    ...typography.bodySmall,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    paddingHorizontal: spacing.xl,
-  },
-  sectionWrap: {
-    gap: spacing.sm,
-  },
-  sectionLabel: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    paddingHorizontal: spacing.xs,
-  },
-  reasonsList: {
-    gap: spacing.sm,
-  },
-  reasonCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.xl,
-    padding: spacing.md,
-    gap: spacing.md,
-    borderWidth: 1.5,
-    borderColor: colors.border.subtle,
-  },
-  reasonCardSelected: {
-    borderColor: colors.feedback.danger,
-    backgroundColor: colors.feedback.dangerSurface,
-  },
-  radioWrap: {
-    width: 22,
-    height: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioUnselectedDot: {
-    width: 20,
-    height: 20,
-    borderRadius: radius.full,
-    borderWidth: 2,
-    borderColor: colors.border.default,
-  },
-  radioSelectedDot: {
-    width: 20,
-    height: 20,
-    borderRadius: radius.full,
-    borderWidth: 2,
-    borderColor: colors.feedback.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: radius.full,
-    backgroundColor: colors.feedback.danger,
-  },
-  reasonText: {
-    ...typography.body,
-    flex: 1,
-    color: colors.text.primary,
-    fontWeight: '500',
-  },
-  reasonTextSelected: {
-    color: colors.feedback.danger,
-    fontWeight: '700',
-  },
-  feedbackWrap: {
-    marginTop: -spacing.xs,
-  },
-  textInput: {
-    ...typography.bodySmall,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.xl,
-    padding: spacing.md,
-    minHeight: 80,
-    borderWidth: 1.5,
-    borderColor: colors.border.subtle,
-    color: colors.text.primary,
-  },
-  warningCard: {
-    backgroundColor: colors.feedback.dangerSurface,
-    borderColor: colors.feedback.danger,
-    borderWidth: 1,
-    gap: spacing.sm,
-  },
-  warningHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  warningTitle: {
-    ...typography.bodySmall,
-    color: colors.feedback.danger,
-    fontWeight: '800',
-  },
-  warningList: {
-    gap: spacing.xs,
-    paddingLeft: spacing.xs,
-  },
-  warningItem: {
-    ...typography.caption,
-    color: colors.text.primary,
-    lineHeight: 18,
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.xs,
-  },
-  checkboxBox: {
-    width: 22,
-    height: 22,
-    borderRadius: radius.sm,
-    borderWidth: 2,
-    borderColor: colors.border.default,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.bg.surface,
-  },
-  checkboxBoxChecked: {
-    backgroundColor: colors.feedback.danger,
-    borderColor: colors.feedback.danger,
-  },
-  checkboxLabel: {
-    ...typography.bodySmall,
-    color: colors.text.primary,
-    flex: 1,
-    fontWeight: '600',
-  },
-  actionsWrap: {
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  deleteBtn: {
-    height: layout.buttonHeight.lg,
-    borderRadius: radius.xl,
-    backgroundColor: colors.feedback.danger,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  deleteBtnDisabled: {
-    opacity: 0.45,
-  },
-  deleteBtnText: {
-    ...typography.button,
-    color: colors.text.onPrimary,
-    fontWeight: '800',
-  },
-  cancelBtn: {
-    height: layout.buttonHeight.md,
-    borderRadius: radius.xl,
-    backgroundColor: colors.bg.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelBtnText: {
-    ...typography.bodySmall,
-    color: colors.text.secondary,
-    fontWeight: '700',
-  },
-});
