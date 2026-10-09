@@ -1,11 +1,11 @@
 import { Package, ScanBarcode } from 'lucide-react-native';
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { resolveMedia } from '@/lib/api';
 import { Order, OrderItem } from '@/lib/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 import { fmt } from './types';
 
 interface SellerOrderItemsCardProps {
@@ -22,31 +22,31 @@ export function SellerOrderItemsCard({
   const { tr } = useTranslation();
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>{tr('shop.products')}</Text>
+    <View className="bg-bg-surface rounded-2xl p-4 border border-border-subtle gap-2">
+      <Text className="text-xs uppercase tracking-wider font-bold text-text-secondary">{tr('shop.products')}</Text>
       {order.items.map((it) => {
         const remainingQty = it.quantity - it.returnedQuantity;
         const markingDone = (it.markingCodes?.length ?? 0) >= remainingQty;
 
         return (
-          <View key={it.id} style={styles.itemRow}>
-            <View style={styles.itemImageWrap}>
+          <View key={it.id} className="flex-row items-center gap-3">
+            <View className="w-12 h-12 rounded-xl overflow-hidden bg-brand-primary/10">
               {it.productVariant?.globalProduct?.photos?.[0] ? (
                 <Image
                   source={{ uri: resolveMedia(it.productVariant.globalProduct.photos[0]) }}
-                  style={styles.itemImage}
+                  className="w-12 h-12"
                 />
               ) : (
-                <View style={[styles.itemImage, styles.itemPlaceholder]}>
+                <View className="w-12 h-12 items-center justify-center">
                   <Package size={18} color={colors.brand.primary} strokeWidth={1.7} />
                 </View>
               )}
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.itemName} numberOfLines={2}>
+            <View className="flex-1">
+              <Text className="text-sm font-semibold text-text-primary" numberOfLines={2}>
                 {it.productName}
               </Text>
-              <Text style={styles.itemMeta}>
+              <Text className="text-xs text-text-secondary mt-0.5">
                 {it.quantity} × {fmt(it.unitPrice)} {tr('common.som')}
                 {it.returnedQuantity > 0
                   ? ` · ${tr('sellerOrder.returnedCount', { n: it.returnedQuantity })}`
@@ -54,7 +54,7 @@ export function SellerOrderItemsCard({
               </Text>
               {it.productVariant?.globalProduct?.taxCategory?.markingRequired ? (
                 <Pressable
-                  style={styles.markingRow}
+                  className="flex-row items-center gap-1 mt-1 active:opacity-75"
                   onPress={() => onOpenMarkingScanner(it)}
                   disabled={isSavingMarking}
                 >
@@ -64,10 +64,9 @@ export function SellerOrderItemsCard({
                     strokeWidth={2.2}
                   />
                   <Text
-                    style={[
-                      styles.markingText,
-                      markingDone ? styles.markingDone : styles.markingPending,
-                    ]}
+                    className={`text-xs font-bold ${
+                      markingDone ? 'text-feedback-success' : 'text-feedback-warning'
+                    }`}
                   >
                     {tr('sellerOrder.marking', {
                       done: it.markingCodes?.length ?? 0,
@@ -78,33 +77,10 @@ export function SellerOrderItemsCard({
                 </Pressable>
               ) : null}
             </View>
-            <Text style={styles.itemTotal}>{fmt(it.lineTotal)}</Text>
+            <Text className="text-sm font-extrabold text-text-primary">{fmt(it.lineTotal)}</Text>
           </View>
         );
       })}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    gap: spacing.sm,
-  },
-  cardTitle: { ...typography.overline, color: colors.text.secondary },
-  itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  itemImageWrap: { width: 48, height: 48, borderRadius: radius.md, overflow: 'hidden' },
-  itemImage: { width: 48, height: 48, backgroundColor: colors.brand.primarySurface },
-  itemPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  itemName: { ...typography.bodySmall, fontWeight: '600', color: colors.text.primary },
-  itemMeta: { ...typography.caption, color: colors.text.secondary, marginTop: 1 },
-  markingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
-  markingText: { ...typography.caption, fontWeight: '700' },
-  markingDone: { color: colors.feedback.success },
-  markingPending: { color: colors.feedback.warning },
-  itemTotal: { ...typography.bodySmall, fontWeight: '800', color: colors.text.primary },
-});

@@ -6,7 +6,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -14,7 +13,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
 import { useTranslation } from '@/i18n';
 import { DeliveryRoute, DeliveryRouteStop } from '@/lib/types';
-import { colors, radius, shadow, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 import { openDirections } from './types';
 
@@ -46,8 +45,8 @@ function RouteStopMarker({
       title={`#${stop.orderNumber.slice(-6)}`}
       description={stop.address}
     >
-      <View style={styles.stopPin}>
-        <Text style={styles.stopPinText}>{sequence}</Text>
+      <View className="w-[26px] h-[26px] rounded-full bg-brand-primary items-center justify-center border-2 border-text-on-primary shadow-sm">
+        <Text className="text-xs font-extrabold text-text-on-primary">{sequence}</Text>
       </View>
     </Marker>
   );
@@ -79,10 +78,10 @@ export function SellerDeliveryRouteModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.routeOverlay}>
-        <View style={styles.routeSheet}>
-          <View style={styles.routeHeader}>
-            <Text style={styles.routeTitle}>{tr('sellerOrders.route')}</Text>
+      <View className="flex-1 bg-black/45 justify-end">
+        <View className="bg-bg-surface rounded-t-3xl p-6 max-h-[88%] gap-4">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-xl font-bold text-text-primary">{tr('sellerOrders.route')}</Text>
             <Pressable onPress={onClose} hitSlop={8}>
               <X size={22} color={colors.text.primary} strokeWidth={2.4} />
             </Pressable>
@@ -91,15 +90,15 @@ export function SellerDeliveryRouteModal({
           {isLoading ? (
             <ActivityIndicator color={colors.brand.primary} style={{ marginVertical: 32 }} />
           ) : !route?.stops.length ? (
-            <View style={styles.routeEmpty}>
+            <View className="items-center py-10 gap-3">
               <MapPin size={28} color={colors.text.tertiary} strokeWidth={1.8} />
-              <Text style={styles.routeEmptyText}>{tr('sellerOrders.routeEmpty')}</Text>
+              <Text className="text-sm text-text-secondary">{tr('sellerOrders.routeEmpty')}</Text>
             </View>
           ) : (
             <>
               <MapView
                 ref={routeMapRef}
-                style={styles.routeMap}
+                className="w-full h-[220px] rounded-2xl overflow-hidden"
                 provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
                 initialRegion={{
                   latitude: route.shopLocation.lat,
@@ -122,30 +121,30 @@ export function SellerDeliveryRouteModal({
                 ))}
               </MapView>
 
-              <ScrollView showsVerticalScrollIndicator={false} style={styles.routeList}>
+              <ScrollView showsVerticalScrollIndicator={false} className="max-h-[320px]">
                 {route.stops.map((stop, i) => (
-                  <View key={stop.orderId} style={styles.stopRow}>
-                    <View style={styles.stopIndex}>
-                      <Text style={styles.stopIndexText}>{i + 1}</Text>
+                  <View key={stop.orderId} className="flex-row items-start gap-3 py-2.5 border-b border-border-subtle">
+                    <View className="w-7 h-7 rounded-full bg-brand-primary items-center justify-center mt-0.5">
+                      <Text className="text-xs text-text-on-primary font-extrabold">{i + 1}</Text>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.stopName} numberOfLines={1}>
+                    <View className="flex-1">
+                      <Text className="text-sm font-semibold text-text-primary" numberOfLines={1}>
                         Buyurtma #{stop.orderNumber.slice(-6)}
                         {stop.customerPhone ? ` · ${stop.customerPhone}` : ''}
                       </Text>
-                      <Text style={styles.stopAddr} numberOfLines={2}>
+                      <Text className="text-xs text-text-secondary mt-0.5 leading-4" numberOfLines={2}>
                         {stop.address}
                       </Text>
-                      <Text style={styles.stopDist}>
+                      <Text className="text-xs text-brand-primary font-bold mt-0.5">
                         {stop.distanceFromPreviousKm.toFixed(1)} km oldingi nuqtadan
                       </Text>
                     </View>
                     <Pressable
-                      style={styles.directionsBtn}
+                      className="flex-row items-center gap-1 self-center px-3 py-1.5 rounded-xl bg-brand-primary/10 active:opacity-75"
                       onPress={() => openDirections(stop.lat, stop.lng)}
                     >
                       <Navigation size={14} color={colors.brand.primary} strokeWidth={2.4} />
-                      <Text style={styles.directionsBtnText}>{tr('sellerOrders.navigate')}</Text>
+                      <Text className="text-xs text-brand-primary font-bold">{tr('sellerOrders.navigate')}</Text>
                     </Pressable>
                   </View>
                 ))}
@@ -157,115 +156,3 @@ export function SellerDeliveryRouteModal({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  routeOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
-  },
-  routeSheet: {
-    backgroundColor: colors.bg.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    padding: spacing.xl,
-    maxHeight: '88%',
-    gap: spacing.md,
-  },
-  routeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  routeTitle: {
-    ...typography.h3,
-    color: colors.text.primary,
-  },
-  routeEmpty: {
-    alignItems: 'center',
-    paddingVertical: spacing['4xl'],
-    gap: spacing.md,
-  },
-  routeEmptyText: {
-    ...typography.bodySmall,
-    color: colors.text.secondary,
-  },
-  routeMap: {
-    width: '100%',
-    height: 220,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-  },
-  routeList: {
-    maxHeight: 320,
-  },
-  stopPin: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.text.onPrimary,
-    ...shadow.xs,
-  },
-  stopPinText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.text.onPrimary,
-  },
-  stopRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  stopIndex: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  stopIndexText: {
-    ...typography.caption,
-    color: colors.text.onPrimary,
-    fontWeight: '800',
-  },
-  stopName: {
-    ...typography.bodyStrong,
-    color: colors.text.primary,
-  },
-  stopAddr: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    marginTop: 2,
-    lineHeight: 16,
-  },
-  stopDist: {
-    ...typography.caption,
-    color: colors.brand.primary,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  directionsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 7,
-    borderRadius: radius.md,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  directionsBtnText: {
-    ...typography.caption,
-    color: colors.brand.primary,
-    fontWeight: '700',
-  },
-});

@@ -1,11 +1,11 @@
 import { Bike, Check, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, Text, View } from 'react-native';
 
 import { StaffMember } from '@/constants/staffPermissions';
 import { useTranslation } from '@/i18n';
 import { Order } from '@/lib/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 interface SellerOrderCourierCardProps {
   order: Order;
@@ -26,13 +26,16 @@ export function SellerOrderCourierCard({ order, staffList, onAssign }: SellerOrd
 
   return (
     <>
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>{tr('sellerOrder.courier')}</Text>
-        <View style={styles.assignRow}>
+      <View className="bg-bg-surface rounded-2xl p-4 border border-border-subtle gap-2">
+        <Text className="text-xs uppercase tracking-wider font-bold text-text-secondary">{tr('sellerOrder.courier')}</Text>
+        <View className="flex-row items-center gap-2">
           <Bike size={16} color={colors.brand.primary} strokeWidth={2.2} />
-          <Text style={styles.assignName}>{staffDisplayName}</Text>
-          <Pressable style={styles.assignBtn} onPress={() => setModalOpen(true)}>
-            <Text style={styles.assignBtnText}>
+          <Text className="text-sm text-text-primary flex-1">{staffDisplayName}</Text>
+          <Pressable
+            className="px-4 py-1 rounded-xl border border-brand-primary/20 bg-brand-primary/10 active:opacity-75"
+            onPress={() => setModalOpen(true)}
+          >
+            <Text className="text-xs font-bold text-brand-primary">
               {order.assignedStaffId ? tr('common.edit') : tr('sellerOrder.assign')}
             </Text>
           </Pressable>
@@ -40,23 +43,23 @@ export function SellerOrderCourierCard({ order, staffList, onAssign }: SellerOrd
       </View>
 
       <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={() => setModalOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setModalOpen(false)}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.sheetHead}>
-              <Text style={styles.sheetTitle}>{tr('sellerOrder.pickCourier')}</Text>
+        <Pressable className="flex-1 bg-black/40 justify-end" onPress={() => setModalOpen(false)}>
+          <Pressable className="bg-bg-surface rounded-t-3xl p-5 gap-1 pb-8" onPress={(e) => e.stopPropagation()}>
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-lg font-bold text-text-primary">{tr('sellerOrder.pickCourier')}</Text>
               <Pressable onPress={() => setModalOpen(false)} hitSlop={8}>
                 <X size={20} color={colors.text.secondary} />
               </Pressable>
             </View>
             {order.assignedStaffId ? (
               <Pressable
-                style={styles.staffRow}
+                className="flex-row items-center py-3 border-b border-border-subtle active:opacity-75"
                 onPress={() => {
                   onAssign(null);
                   setModalOpen(false);
                 }}
               >
-                <Text style={[styles.staffName, { color: colors.text.danger }]}>
+                <Text className="text-base font-bold text-feedback-danger">
                   {tr('sellerOrder.unassign')}
                 </Text>
               </Pressable>
@@ -66,15 +69,15 @@ export function SellerOrderCourierCard({ order, staffList, onAssign }: SellerOrd
               .map((s) => (
                 <Pressable
                   key={s.id}
-                  style={styles.staffRow}
+                  className="flex-row items-center py-3 border-b border-border-subtle active:opacity-75"
                   onPress={() => {
                     onAssign(s.id);
                     setModalOpen(false);
                   }}
                 >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.staffName}>{s.name ?? s.phone}</Text>
-                    <Text style={styles.staffRole}>{s.customRoleName}</Text>
+                  <View className="flex-1">
+                    <Text className="text-base font-bold text-text-primary">{s.name ?? s.phone}</Text>
+                    <Text className="text-xs text-text-secondary mt-0.5">{s.customRoleName}</Text>
                   </View>
                   {s.id === order.assignedStaffId ? (
                     <Check size={18} color={colors.feedback.success} strokeWidth={2.6} />
@@ -82,7 +85,7 @@ export function SellerOrderCourierCard({ order, staffList, onAssign }: SellerOrd
                 </Pressable>
               ))}
             {staffList.length === 0 ? (
-              <Text style={styles.staffEmpty}>{tr('sellerOrder.noStaff')}</Text>
+              <Text className="text-sm text-text-tertiary py-3 text-center">{tr('sellerOrder.noStaff')}</Text>
             ) : null}
           </Pressable>
         </Pressable>
@@ -90,46 +93,3 @@ export function SellerOrderCourierCard({ order, staffList, onAssign }: SellerOrd
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    gap: spacing.sm,
-  },
-  cardTitle: { ...typography.overline, color: colors.text.secondary },
-  assignRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  assignName: { ...typography.bodySmall, color: colors.text.primary, flex: 1 },
-  assignBtn: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.brand.primaryBorder,
-  },
-  assignBtnText: { ...typography.caption, fontWeight: '700', color: colors.brand.primary },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.bg.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    padding: spacing.lg,
-    gap: spacing.xs,
-    paddingBottom: spacing['2xl'],
-  },
-  sheetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-  sheetTitle: { ...typography.h4, color: colors.text.primary },
-  staffRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  staffName: { ...typography.bodyStrong, color: colors.text.primary },
-  staffRole: { ...typography.caption, color: colors.text.secondary, marginTop: 1 },
-  staffEmpty: { ...typography.bodySmall, color: colors.text.tertiary, paddingVertical: spacing.md, textAlign: 'center' },
-});

@@ -1,9 +1,9 @@
 import { Truck } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 import { Filter, FILTERS } from './types';
 
@@ -27,7 +27,7 @@ export function SellerOrderFilterSegments({
   const { tr } = useTranslation();
 
   return (
-    <View style={styles.segments}>
+    <View className="flex-row gap-2 px-4 py-2 items-center">
       {FILTERS.map((f) => {
         const cnt = counts[f.key];
         const isActive = filter === f.key;
@@ -35,27 +35,33 @@ export function SellerOrderFilterSegments({
           <Pressable
             key={f.key}
             onPress={() => onFilterChange(f.key)}
-            style={[styles.segment, isActive && styles.segmentActive]}
+            className={`flex-1 flex-row items-center justify-center gap-1.5 py-2 px-1 rounded-full border ${
+              isActive
+                ? 'bg-brand-primary border-brand-primary'
+                : 'bg-bg-surface border-border-default'
+            }`}
           >
-            <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>
+            <Text
+              className={`text-xs font-bold ${
+                isActive ? 'text-text-on-primary' : 'text-text-secondary'
+              }`}
+            >
               {tr(f.labelKey)}
             </Text>
             {cnt > 0 && (
               <View
-                style={[
-                  styles.badge,
+                className={`min-w-[18px] h-[18px] rounded-full px-1 items-center justify-center ${
                   isActive
-                    ? styles.badgeActive
+                    ? 'bg-white/30'
                     : f.key === 'new'
-                      ? styles.badgeNew
-                      : styles.badgeMuted,
-                ]}
+                      ? 'bg-feedback-danger'
+                      : 'bg-bg-surface-muted border border-border-default'
+                }`}
               >
                 <Text
-                  style={[
-                    styles.badgeText,
-                    isActive || f.key === 'new' ? styles.badgeTextLight : styles.badgeTextDark,
-                  ]}
+                  className={`text-[10px] font-extrabold leading-[13px] ${
+                    isActive || f.key === 'new' ? 'text-white' : 'text-text-secondary'
+                  }`}
                 >
                   {cnt}
                 </Text>
@@ -66,107 +72,16 @@ export function SellerOrderFilterSegments({
       })}
 
       {canSeeRoute && (
-        <Pressable style={styles.routeBtn} onPress={onOpenRoute}>
+        <Pressable
+          className="relative w-9 h-9 rounded-full border border-brand-primary/20 bg-brand-primary/10 items-center justify-center active:opacity-75"
+          onPress={onOpenRoute}
+        >
           <Truck size={15} color={colors.brand.primary} strokeWidth={2.4} />
-          <View style={styles.routeBadge}>
-            <Text style={styles.routeBadgeText}>{deliveringCount}</Text>
+          <View className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-feedback-danger items-center justify-center border-[1.5px] border-bg-canvas">
+            <Text className="text-[9px] text-white font-extrabold">{deliveringCount}</Text>
           </View>
         </Pressable>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  segments: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
-    alignItems: 'center',
-  },
-  segment: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 9,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surface,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  segmentActive: {
-    backgroundColor: colors.brand.primary,
-    borderColor: colors.brand.primary,
-  },
-  segmentText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.text.secondary,
-  },
-  segmentTextActive: {
-    color: colors.text.onPrimary,
-  },
-  badge: {
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    paddingHorizontal: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeActive: {
-    backgroundColor: 'rgba(255,255,255,0.30)',
-  },
-  badgeNew: {
-    backgroundColor: colors.feedback.danger,
-  },
-  badgeMuted: {
-    backgroundColor: colors.bg.surfaceMuted,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    lineHeight: 13,
-  },
-  badgeTextLight: {
-    color: '#fff',
-  },
-  badgeTextDark: {
-    color: colors.text.secondary,
-  },
-  routeBtn: {
-    position: 'relative',
-    width: 38,
-    height: 38,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  routeBadge: {
-    position: 'absolute',
-    top: -3,
-    right: -3,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: colors.feedback.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.bg.canvas,
-  },
-  routeBadgeText: {
-    fontSize: 9,
-    color: '#fff',
-    fontWeight: '800',
-  },
-});

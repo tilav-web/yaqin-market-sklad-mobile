@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
 import { Ban, MessageCircle, RotateCcw } from 'lucide-react-native';
 import React from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { Order, OrderStatus } from '@/lib/types';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 import { haptics } from '@/utils/haptics';
 import { NEXT_STATUS } from './types';
 
@@ -36,23 +36,29 @@ export function SellerOrderActionsSection({
   return (
     <>
       {/* Chat button */}
-      <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${order.id}`)}>
+      <Pressable
+        className="flex-row items-center justify-center gap-1.5 h-12 rounded-xl bg-brand-primary/10 active:opacity-75"
+        onPress={() => router.push(`/chat/${order.id}`)}
+      >
         <MessageCircle size={18} color={colors.brand.primary} strokeWidth={2.4} />
-        <Text style={styles.chatText}>{tr('sellerOrder.chatWithCustomer')}</Text>
+        <Text className="text-base font-bold text-brand-primary">{tr('sellerOrder.chatWithCustomer')}</Text>
       </Pressable>
 
       {/* Return button */}
       {order.status === 'delivering' ? (
-        <Pressable style={styles.returnBtn} onPress={() => router.push(`/seller/return/${order.id}`)}>
+        <Pressable
+          className="flex-row items-center justify-center gap-1.5 h-9 rounded-xl bg-feedback-warning/10 active:opacity-75"
+          onPress={() => router.push(`/seller/return/${order.id}`)}
+        >
           <RotateCcw size={16} color={colors.feedback.warning} strokeWidth={2.4} />
-          <Text style={styles.returnText}>{tr('sellerOrder.markReturn')}</Text>
+          <Text className="text-sm font-bold text-feedback-warning">{tr('sellerOrder.markReturn')}</Text>
         </Pressable>
       ) : null}
 
       {/* Advance status button */}
       {next ? (
         <Pressable
-          style={styles.acceptBtn}
+          className="h-14 rounded-2xl bg-feedback-success items-center justify-center active:opacity-85"
           onPress={() => {
             if (next.next === 'delivered' && order.requiresHandshake) {
               onTriggerHandshake();
@@ -62,17 +68,17 @@ export function SellerOrderActionsSection({
             onAdvance(next.next);
           }}
         >
-          <Text style={styles.acceptText}>{tr(next.label)} →</Text>
+          <Text className="text-base font-extrabold text-text-on-primary">{tr(next.label)} →</Text>
         </Pressable>
       ) : null}
 
       {/* Destructive zone */}
       {cancellable || (order.user && isOwner !== false) ? (
-        <View style={styles.dangerZone}>
+        <View className="mt-8 pt-4 border-t border-border-subtle gap-2">
           {cancellable ? (
             order.status === 'new' ? (
               <Pressable
-                style={styles.cancelBtn}
+                className="h-12 rounded-xl border border-feedback-danger items-center justify-center active:opacity-75"
                 onPress={() =>
                   Alert.alert(tr('sellerOrder.rejectTitle'), tr('sellerOrder.rejectConfirm'), [
                     { text: tr('common.no'), style: 'cancel' },
@@ -80,11 +86,11 @@ export function SellerOrderActionsSection({
                   ])
                 }
               >
-                <Text style={styles.cancelText}>{tr('sellerOrder.rejectTitle')}</Text>
+                <Text className="text-sm font-bold text-feedback-danger">{tr('sellerOrder.rejectTitle')}</Text>
               </Pressable>
             ) : (
               <Pressable
-                style={styles.cancelBtn}
+                className="h-12 rounded-xl border border-feedback-danger items-center justify-center active:opacity-75"
                 onPress={() =>
                   Alert.alert(tr('orders.cancel'), tr('orders.cancelConfirm'), [
                     { text: tr('common.no'), style: 'cancel' },
@@ -92,13 +98,13 @@ export function SellerOrderActionsSection({
                   ])
                 }
               >
-                <Text style={styles.cancelText}>{tr('sellerOrder.cancelOrder')}</Text>
+                <Text className="text-sm font-bold text-feedback-danger">{tr('sellerOrder.cancelOrder')}</Text>
               </Pressable>
             )
           ) : null}
           {order.user && isOwner !== false ? (
             <Pressable
-              style={styles.blockBtn}
+              className="flex-row items-center justify-center gap-1.5 py-2 active:opacity-75"
               onPress={() =>
                 Alert.alert(
                   tr('sellerOrder.blockTitle'),
@@ -117,7 +123,7 @@ export function SellerOrderActionsSection({
               }
             >
               <Ban size={15} color={colors.text.danger} strokeWidth={2.3} />
-              <Text style={styles.blockText}>{tr('sellerOrder.blockCustomer')}</Text>
+              <Text className="text-sm font-semibold text-feedback-danger">{tr('sellerOrder.blockCustomer')}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -125,58 +131,3 @@ export function SellerOrderActionsSection({
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  chatBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    height: layout.buttonHeight.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  chatText: { ...typography.body, fontWeight: '700', color: colors.brand.primary },
-  returnBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    height: layout.buttonHeight.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.feedback.warningSurface,
-  },
-  returnText: { ...typography.bodySmall, fontWeight: '700', color: colors.feedback.warning },
-  acceptBtn: {
-    height: layout.buttonHeight.lg,
-    borderRadius: radius.lg,
-    backgroundColor: colors.feedback.success,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  acceptText: { ...typography.body, fontWeight: '800', color: colors.text.onPrimary },
-  dangerZone: {
-    marginTop: spacing['2xl'],
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    gap: spacing.sm,
-  },
-  cancelBtn: {
-    height: layout.buttonHeight.md,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.feedback.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelText: { ...typography.bodySmall, fontWeight: '700', color: colors.feedback.danger },
-  blockBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-  },
-  blockText: { ...typography.bodySmall, fontWeight: '600', color: colors.text.danger },
-});
