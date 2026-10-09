@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
 import { ChevronRight, Package } from 'lucide-react-native';
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { PublicProductVariant } from '@/lib/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 import { formatMoney } from '@/utils/formatMoney';
 
 interface ChatAttachedProductProps {
@@ -16,82 +16,29 @@ export function ChatAttachedProduct({ product }: ChatAttachedProductProps) {
   const { tr } = useTranslation();
 
   return (
-    <View style={styles.attachedProductBanner}>
+    <View className="flex-row items-center bg-white px-4 py-2 border-b border-[#FBD9D5]">
       {product.photos?.[0] ? (
-        <Image source={{ uri: product.photos[0] }} style={styles.attachedImg} />
+        <Image source={{ uri: product.photos[0] }} className="w-11 h-11 rounded-lg bg-[#ECE9E6]" />
       ) : (
-        <View style={styles.attachedFallback}>
+        <View className="w-11 h-11 rounded-lg bg-[#FDECEA] items-center justify-center">
           <Package size={20} color={colors.brand.primary} />
         </View>
       )}
-      <View style={styles.attachedInfo}>
-        <Text style={styles.attachedTitle} numberOfLines={1}>
+      <View className="flex-1 mx-2">
+        <Text className="text-[13px] font-bold text-[#191715]" numberOfLines={1}>
           {product.name}
         </Text>
-        <Text style={styles.attachedPrice}>
+        <Text className="text-xs font-extrabold text-[#E8392E]">
           {formatMoney(product.discountPrice ?? product.price)} {tr('common.som')}
         </Text>
       </View>
       <Pressable
         onPress={() => router.push(`/product/${product.id}` as never)}
-        style={styles.attachedAction}
+        className="flex-row items-center gap-0.5"
       >
-        <Text style={styles.attachedActionText}>{tr('chat.viewProduct')}</Text>
+        <Text className="text-xs font-bold text-[#E8392E]">{tr('chat.viewProduct')}</Text>
         <ChevronRight size={14} color={colors.brand.primary} />
       </Pressable>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  attachedProductBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.bg.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.brand.primaryBorder,
-  },
-  attachedImg: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  attachedFallback: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  attachedInfo: {
-    flex: 1,
-    marginHorizontal: spacing.sm,
-  },
-  attachedTitle: {
-    ...typography.caption,
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.text.primary,
-  },
-  attachedPrice: {
-    ...typography.caption,
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.brand.primary,
-  },
-  attachedAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  attachedActionText: {
-    ...typography.caption,
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.brand.primary,
-  },
-});

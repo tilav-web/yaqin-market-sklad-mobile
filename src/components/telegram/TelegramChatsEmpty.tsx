@@ -1,6 +1,6 @@
 import { MessageCircle, ShoppingBag } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 
@@ -16,70 +16,33 @@ export function TelegramChatsEmpty({ onExplore, activeColors }: TelegramChatsEmp
   const { tr } = useTranslation();
 
   return (
-    <View style={styles.emptyContainer}>
+    <View className="items-center justify-center py-14 px-6">
       <View
-        style={[
-          styles.emptyIconCircle,
-          { backgroundColor: activeColors.brand.primarySurface },
-        ]}
+        className="w-20 h-20 rounded-full items-center justify-center mb-4"
+        style={{ backgroundColor: activeColors.brand.primarySurface }}
       >
         <MessageCircle size={44} color={activeColors.brand.primary} />
       </View>
-      <Text style={[styles.emptyTitle, { color: activeColors.text.primary }]}>
+      <Text
+        className="text-lg font-bold mb-1.5 text-center"
+        style={{ color: activeColors.text.primary }}
+      >
         {tr('chat.emptyTitle')}
       </Text>
-      <Text style={[styles.emptyDesc, { color: activeColors.text.secondary }]}>
+      <Text
+        className="text-sm text-center leading-5 mb-6"
+        style={{ color: activeColors.text.secondary }}
+      >
         {tr('chat.emptyDesc')}
       </Text>
       <Pressable
         onPress={onExplore}
-        style={[styles.exploreButton, { backgroundColor: activeColors.brand.primary }]}
+        className="flex-row items-center gap-2 px-5 py-3 rounded-full"
+        style={{ backgroundColor: activeColors.brand.primary }}
       >
         <ShoppingBag size={18} color="#FFFFFF" />
-        <Text style={styles.exploreButtonText}>{tr('chat.exploreButton')}</Text>
+        <Text className="font-bold text-white text-sm">{tr('chat.exploreButton')}</Text>
       </Pressable>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 24,
-  },
-  emptyIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  emptyDesc: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  exploreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 24,
-  },
-  exploreButtonText: {
-    fontWeight: '700',
-    color: '#FFFFFF',
-    fontSize: 14,
-  },
-});

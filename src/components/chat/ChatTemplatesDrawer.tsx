@@ -1,8 +1,8 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { ChatTemplate } from '@/lib/types';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 interface ChatTemplatesDrawerProps {
   isLoading: boolean;
@@ -16,22 +16,22 @@ export function ChatTemplatesDrawer({
   onSelectTemplate,
 }: ChatTemplatesDrawerProps) {
   return (
-    <View style={styles.templatesPanel}>
+    <View className="border-t border-[#DEDAD6] bg-[#ECE9E6] py-2">
       {isLoading ? (
-        <ActivityIndicator color={colors.brand.primary} style={{ margin: spacing.md }} />
+        <ActivityIndicator color={colors.brand.primary} className="m-4" />
       ) : (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.templatesList}
+          contentContainerClassName="px-4 gap-2"
         >
           {templates.map((t) => (
             <Pressable
               key={t.id}
-              style={styles.templateChip}
+              className="max-w-[200px] px-3 py-2 rounded-xl bg-white border border-[#FBD9D5]"
               onPress={() => onSelectTemplate(t.text)}
             >
-              <Text style={styles.templateChipText} numberOfLines={2}>
+              <Text className="text-xs text-[#191715] leading-[18px]" numberOfLines={2}>
                 {t.text}
               </Text>
             </Pressable>
@@ -41,30 +41,3 @@ export function ChatTemplatesDrawer({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  templatesPanel: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    backgroundColor: colors.bg.surfaceMuted,
-    paddingVertical: spacing.sm,
-  },
-  templatesList: {
-    paddingHorizontal: layout.screenPadding,
-    gap: spacing.sm,
-  },
-  templateChip: {
-    maxWidth: 200,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.lg,
-    backgroundColor: colors.bg.surface,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-  },
-  templateChipText: {
-    ...typography.bodySmall,
-    color: colors.text.primary,
-    lineHeight: 18,
-  },
-});

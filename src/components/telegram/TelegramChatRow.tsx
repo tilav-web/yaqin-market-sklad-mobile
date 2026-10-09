@@ -1,8 +1,6 @@
 import { Check, CheckCheck, Store } from 'lucide-react-native';
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-
-import { colors, radius } from '@/theme';
+import { Image, Pressable, Text, View } from 'react-native';
 
 import { UnifiedChat } from './types';
 
@@ -29,81 +27,79 @@ export function TelegramChatRow({ item, onPress, activeColors }: TelegramChatRow
   return (
     <Pressable
       onPress={onPress}
+      className="flex-row px-4 py-3 items-center"
       style={({ pressed }) => [
-        styles.chatRow,
         { backgroundColor: activeColors.bg.surface },
         pressed && { backgroundColor: activeColors.bg.surfaceMuted },
       ]}
     >
       {/* Telegram Circle Avatar */}
-      <View style={styles.avatarContainer}>
+      <View className="relative mr-3.5">
         {item.avatarUrl ? (
           <Image
             source={{ uri: item.avatarUrl }}
-            style={[styles.avatarImage, { backgroundColor: activeColors.bg.surfaceMuted }]}
+            className="w-[52px] h-[52px] rounded-full"
+            style={{ backgroundColor: activeColors.bg.surfaceMuted }}
           />
         ) : (
           <View
-            style={[
-              styles.avatarFallback,
-              {
-                backgroundColor: item.isSellerSide
-                  ? activeColors.bg.surfaceElevated
-                  : activeColors.brand.primary,
-              },
-            ]}
+            className="w-[52px] h-[52px] rounded-full items-center justify-center"
+            style={{
+              backgroundColor: item.isSellerSide
+                ? activeColors.bg.surfaceElevated
+                : activeColors.brand.primary,
+            }}
           >
             {item.isSellerSide ? (
-              <Text style={styles.avatarInitials}>{initials}</Text>
+              <Text className="font-extrabold text-lg text-white">{initials}</Text>
             ) : (
               <Store size={22} color="#FFFFFF" />
             )}
           </View>
         )}
         {item.isSellerSide && (
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleBadgeText}>Xaridor</Text>
+          <View className="absolute -bottom-0.5 -right-1 bg-gray-700 rounded-full px-1.5 py-px">
+            <Text className="text-white text-[8.5px] font-bold">Xaridor</Text>
           </View>
         )}
       </View>
 
       {/* Telegram Chat Content */}
-      <View style={styles.contentWrap}>
-        <View style={styles.topLine}>
+      <View className="flex-1 justify-center">
+        <View className="flex-row justify-between items-center mb-1">
           <Text
-            style={[styles.chatTitle, { color: activeColors.text.primary }]}
+            className="text-base font-bold flex-1 mr-2"
+            style={{ color: activeColors.text.primary }}
             numberOfLines={1}
           >
             {item.title}
           </Text>
-          <View style={styles.timeWrap}>
+          <View className="flex-row items-center gap-1">
             <Text
-              style={[
-                styles.timeText,
-                { color: activeColors.text.tertiary },
-                item.unreadCount > 0 && styles.timeTextUnread,
-              ]}
+              className={`text-xs ${
+                item.unreadCount > 0 ? 'text-[#E8392E] font-bold' : 'font-medium'
+              }`}
+              style={item.unreadCount > 0 ? undefined : { color: activeColors.text.tertiary }}
             >
               {item.time}
             </Text>
           </View>
         </View>
 
-        <View style={styles.bottomLine}>
+        <View className="flex-row items-center justify-between gap-2">
           <Text
-            style={[
-              styles.lastMessageText,
-              { color: activeColors.text.secondary },
-              item.unreadCount > 0 && styles.lastMessageUnread,
-            ]}
+            className={`text-[13.5px] flex-1 leading-[18px] ${
+              item.unreadCount > 0 ? 'text-white font-semibold' : ''
+            }`}
+            style={item.unreadCount > 0 ? undefined : { color: activeColors.text.secondary }}
             numberOfLines={2}
           >
             {item.subtitle}
           </Text>
 
           {item.unreadCount > 0 ? (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadBadgeText}>
+            <View className="min-w-[20px] h-5 rounded-full bg-[#E8392E] px-1.5 items-center justify-center">
+              <Text className="text-white text-[11px] font-extrabold leading-[14px]">
                 {item.unreadCount > 99 ? '99+' : item.unreadCount}
               </Text>
             </View>
@@ -117,106 +113,3 @@ export function TelegramChatRow({ item, onPress, activeColors }: TelegramChatRow
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  chatRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  avatarContainer: {
-    position: 'relative',
-    marginRight: 14,
-  },
-  avatarImage: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-  },
-  avatarFallback: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitials: {
-    fontWeight: '800',
-    fontSize: 18,
-    color: '#FFFFFF',
-  },
-  roleBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -4,
-    backgroundColor: '#374151',
-    borderRadius: radius.full,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  roleBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 8.5,
-    fontWeight: '700',
-  },
-  contentWrap: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  topLine: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  chatTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    flex: 1,
-    marginRight: 8,
-  },
-  timeWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  timeText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  timeTextUnread: {
-    color: colors.brand.primary,
-    fontWeight: '700',
-  },
-  bottomLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  lastMessageText: {
-    fontSize: 13.5,
-    flex: 1,
-    lineHeight: 18,
-  },
-  lastMessageUnread: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  unreadBadge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.brand.primary,
-    paddingHorizontal: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  unreadBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
-    lineHeight: 14,
-  },
-});

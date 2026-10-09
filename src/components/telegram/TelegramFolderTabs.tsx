@@ -2,13 +2,11 @@ import React, { useRef, useEffect } from 'react';
 import {
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
 
 import { useTheme } from '@/stores/theme';
-import { radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 export interface FolderTabItem {
@@ -34,19 +32,22 @@ export function TelegramFolderTabs({
   // Auto-scroll the active tab into view
   useEffect(() => {
     if (tabs.length === 0) return;
-    // rough estimate scroll offset
     const tabWidth = 90;
     const offset = Math.max(0, activeIndex * tabWidth - 100);
     scrollRef.current?.scrollTo({ x: offset, animated: true });
   }, [activeIndex, tabs.length]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg.surface, borderBottomColor: colors.border.subtle }]}>
+    <View
+      className="border-b py-2"
+      style={{ backgroundColor: colors.bg.surface, borderBottomColor: colors.border.subtle }}
+    >
       <ScrollView
         ref={scrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}>
+        contentContainerClassName="px-4 gap-2 items-center"
+      >
         {tabs.map((tab, idx) => {
           const isActive = idx === activeIndex;
           return (
@@ -56,32 +57,33 @@ export function TelegramFolderTabs({
                 haptics.selection();
                 onSelectTab(idx);
               }}
-              style={[
-                styles.tabPill,
-                { backgroundColor: isActive ? colors.brand.primarySurface : colors.bg.surfaceMuted },
-                isActive && { borderWidth: 1, borderColor: colors.brand.primaryBorder },
-              ]}>
+              className={`flex-row items-center gap-1.5 px-3.5 py-1.5 rounded-full ${
+                isActive ? 'border border-[#FBD9D5]' : ''
+              }`}
+              style={{
+                backgroundColor: isActive ? colors.brand.primarySurface : colors.bg.surfaceMuted,
+              }}
+            >
               <Text
-                style={[
-                  styles.tabText,
-                  { color: isActive ? colors.brand.primary : colors.text.secondary },
-                  isActive && styles.tabTextActive,
-                ]}>
+                className={`text-[13px] ${
+                  isActive ? 'font-extrabold text-[#E8392E]' : 'font-semibold'
+                }`}
+                style={isActive ? undefined : { color: colors.text.secondary }}
+              >
                 {tab.title}
               </Text>
 
               {typeof tab.badge === 'number' && tab.badge > 0 && (
                 <View
-                  style={[
-                    styles.badge,
-                    { backgroundColor: isActive ? colors.brand.primary : colors.border.default },
-                  ]}>
+                  className={`rounded-full px-1.5 py-0.5 min-w-[16px] items-center justify-center ${
+                    isActive ? 'bg-[#E8392E]' : 'bg-[#DEDAD6]'
+                  }`}
+                >
                   <Text
-                    style={[
-                      styles.badgeText,
-                      { color: isActive ? colors.text.onPrimary : colors.text.secondary },
-                      isActive && styles.badgeTextActive,
-                    ]}>
+                    className={`text-[10px] font-bold ${
+                      isActive ? 'text-white' : 'text-[#7E7872]'
+                    }`}
+                  >
                     {tab.badge > 99 ? '99+' : tab.badge}
                   </Text>
                 </View>
@@ -93,44 +95,3 @@ export function TelegramFolderTabs({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 8,
-  },
-  scrollContent: {
-    paddingHorizontal: spacing.md,
-    gap: 8,
-    alignItems: 'center',
-  },
-  tabPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: radius.full,
-  },
-  tabText: {
-    ...typography.caption,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  tabTextActive: {
-    fontWeight: '800',
-  },
-  badge: {
-    borderRadius: radius.full,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    minWidth: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  badgeTextActive: {},
-});

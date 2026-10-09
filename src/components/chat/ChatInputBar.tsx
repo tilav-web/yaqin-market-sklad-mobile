@@ -1,10 +1,9 @@
 import { Send, Zap } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { useTheme } from '@/stores/theme';
-import { colors, layout, radius, spacing, typography } from '@/theme';
 
 interface ChatInputBarProps {
   text: string;
@@ -30,17 +29,17 @@ export function ChatInputBar({
 
   return (
     <View
-      style={[
-        styles.inputBar,
-        {
-          backgroundColor: activeColors.bg.surface,
-          borderTopColor: activeColors.border.subtle,
-        },
-      ]}
+      className="flex-row items-center gap-1.5 px-4 py-1.5 border-t"
+      style={{
+        backgroundColor: activeColors.bg.surface,
+        borderTopColor: activeColors.border.subtle,
+      }}
     >
       {hasShop && (
         <Pressable
-          style={[styles.templateBtn, templatesOpen && styles.templateBtnActive]}
+          className={`w-[38px] h-[38px] rounded-full border items-center justify-center ${
+            templatesOpen ? 'bg-[#E8392E] border-[#E8392E]' : 'bg-[#FDECEA] border-[#FBD9D5]'
+          }`}
           onPress={onToggleTemplates}
         >
           <Zap
@@ -52,13 +51,11 @@ export function ChatInputBar({
       )}
 
       <TextInput
-        style={[
-          styles.input,
-          {
-            color: activeColors.text.primary,
-            backgroundColor: activeColors.bg.surfaceMuted,
-          },
-        ]}
+        className="flex-1 text-sm max-h-[100px] min-h-[40px] rounded-2xl px-3.5 py-2"
+        style={{
+          color: activeColors.text.primary,
+          backgroundColor: activeColors.bg.surfaceMuted,
+        }}
         value={text}
         onChangeText={onChangeText}
         placeholder={tr('chat.placeholder')}
@@ -68,11 +65,9 @@ export function ChatInputBar({
       />
 
       <Pressable
-        style={[
-          styles.sendBtn,
-          { backgroundColor: activeColors.brand.primary },
-          (!text.trim() || isSending) && styles.sendBtnDisabled,
-        ]}
+        className={`w-[38px] h-[38px] rounded-full items-center justify-center ${
+          !text.trim() || isSending ? 'bg-[#C5BFB9]' : 'bg-[#E8392E]'
+        }`}
         onPress={onSend}
         disabled={!text.trim() || isSending}
       >
@@ -81,49 +76,3 @@ export function ChatInputBar({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  inputBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.xs,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  input: {
-    flex: 1,
-    ...typography.body,
-    fontSize: 14,
-    maxHeight: 100,
-    minHeight: 40,
-    borderRadius: radius.xl,
-    paddingHorizontal: spacing.md,
-    paddingTop: 8,
-    paddingBottom: 8,
-  },
-  templateBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  templateBtnActive: {
-    backgroundColor: colors.brand.primary,
-    borderColor: colors.brand.primary,
-  },
-  sendBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendBtnDisabled: {
-    backgroundColor: colors.text.hint,
-  },
-});

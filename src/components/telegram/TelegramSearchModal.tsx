@@ -16,7 +16,6 @@ import {
   Image,
   Modal,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -98,19 +97,8 @@ export function TelegramSearchModal() {
     staleTime: 10_000,
   });
 
-  // Query categories
-  const categoriesQuery = useQuery<Category[]>({
-    queryKey: ['catalog-categories'],
-    queryFn: async () => {
-      const res = await api.get<Category[]>('/catalog/categories');
-      return res.data ?? [];
-    },
-    enabled: isOpen,
-    staleTime: 60_000,
-  });
-
-  // Query user conversations
-  const conversationsQuery = useQuery<Conversation[]>({
+  // Query conversations
+  const convsQuery = useQuery<Conversation[]>({
     queryKey: ['conversations'],
     queryFn: async () => {
       const res = await api.get<Conversation[]>('/conversations');
@@ -120,94 +108,116 @@ export function TelegramSearchModal() {
     staleTime: 30_000,
   });
 
-  const matchingConversations = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.toLowerCase();
-    return (conversationsQuery.data ?? []).filter((c) =>
-      c.shopName.toLowerCase().includes(q) ||
-      (c.lastMessageText && c.lastMessageText.toLowerCase().includes(q)),
-    );
-  }, [conversationsQuery.data, query]);
+  // Query categories
+  const catsQuery = useQuery<Category[]>({
+    queryKey: ['catalog-categories'],
+    queryFn: async () => {
+      const res = await api.get<Category[]>('/catalog/categories');
+      return res.data ?? [];
+    },
+    enabled: isOpen,
+    staleTime: 60_000,
+  });
 
   const products = productsQuery.data ?? [];
   const shops = shopsQuery.data ?? [];
-  const categories = categoriesQuery.data ?? [];
+  const categories = catsQuery.data ?? [];
 
-  const handleSelectProduct = useCallback((product: FeedProduct) => {
-    haptics.selection();
-    close();
-    router.push(`/product/${product.id}`);
-  }, [close]);
+  const isSearching = query.trim().length > 0;
+  const isLoading = (productsQuery.isLoading || shopsQuery.isLoading) && isSearching;
 
-  const handleSelectShop = useCallback((shop: PublicShop) => {
-    haptics.selection();
-    close();
-    router.push(`/shop/${shop.id}`);
-  }, [close]);
+  const matchingConversations = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase().trim();
+    return (convsQuery.data ?? []).filter(
+      (c) =>
+        c.shopName?.toLowerCase().includes(q) ||
+        c.lastMessageText?.toLowerCase().includes(q),
+    );
+  }, [convsQuery.data, query]);
 
-  const handleSelectConversation = useCallback((conv: Conversation) => {
+  const handleSelectProduct = useCallback(
+    (product: FeedProduct) => {
+      haptics.selection();
+      close();
+      router.push(`/product/${product.id}` as any);
+    },
+    [close],
+  );
+
+  const handleSelectShop = useCallback(
+    (shop: PublicShop) => {
+      haptics.selection();
+      close();
+      router.push(`/shop/${shop.id}` as any);
+    },
+    [close],
+  );
+
+  const handleSelectConversation = useCallback(
+    (conv: Conversation) => {
+      haptics.selection();
+      close();
+      router.push({
+        pathname: '/chat/[orderId]',
+        params: {
+          orderId: conv.id,
+          conversationId: conv.id,
+          shopId: conv.shopId,
+          title: conv.shopName,
+        },
+      } as any);
+    },
+    [close],
+  );
+
+  const handleSelectSaved = useCallback(() => {
     haptics.selection();
     close();
     router.push({
       pathname: '/chat/[orderId]',
       params: {
-        orderId: conv.id,
-        conversationId: conv.id,
-        shopId: conv.shopId,
-        title: conv.shopName,
+        orderId: 'saved',
+        conversationId: 'saved',
+        title: tr('chat.savedMessages'),
       },
-    });
-  }, [close]);
-
-  const handleSelectSaved = useCallback(() => {
-    haptics.selection();
-    close();
-    router.push('/favorites');
-  }, [close]);
-
-  const isSearching = query.trim().length > 0;
-  const isLoading = productsQuery.isLoading || shopsQuery.isLoading;
-
-  if (!isOpen) return null;
+    } as any);
+  }, [close, tr]);
 
   return (
-    <Modal
-      visible={isOpen}
-      animationType="fade"
-      transparent={false}
-      onRequestClose={close}>
-      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.bg.canvas }]}>
-        {/* Top Search Header */}
+    <Modal visible={isOpen} animationType="slide" onRequestClose={close}>
+      <View
+        className="flex-1"
+        style={{
+          paddingTop: Math.max(insets.top, 12),
+          backgroundColor: themeColors.bg.canvas,
+        }}
+      >
+        {/* Top Search Bar */}
         <View
-          style={[
-            styles.topHeader,
-            {
-              backgroundColor: themeColors.bg.surface,
-              borderBottomColor: themeColors.border.subtle,
-            },
-          ]}>
-          {/* Input Row */}
-          <View style={styles.inputRow}>
+          className="px-4 pt-2 pb-2.5 border-b gap-2.5"
+          style={{
+            backgroundColor: themeColors.bg.surface,
+            borderBottomColor: themeColors.border.subtle,
+          }}
+        >
+          <View className="flex-row items-center gap-2.5">
             <View
-              style={[
-                styles.searchBarBox,
-                {
-                  backgroundColor: themeColors.bg.surfaceMuted,
-                  borderColor: themeColors.border.subtle,
-                },
-              ]}>
-              <SearchIcon
-                size={18}
-                color={themeColors.text.secondary}
-                style={styles.searchIcon}
-              />
+              className="flex-1 flex-row items-center rounded-[22px] border px-3 h-[42px]"
+              style={{
+                backgroundColor: isDark ? '#1E2C3A' : '#F1F5F9',
+                borderColor: themeColors.border.subtle,
+              }}
+            >
+              <SearchIcon size={18} color={themeColors.text.secondary} className="mr-2" />
               <TextInput
                 ref={inputRef}
                 value={query}
                 onChangeText={setQuery}
                 placeholder="Qidirish..."
                 placeholderTextColor={themeColors.text.tertiary}
-                style={[styles.searchInput, { color: themeColors.text.primary }]}
+                className="flex-1 text-[15px] py-0"
+                style={{ color: themeColors.text.primary }}
                 returnKeyType="search"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -218,9 +228,13 @@ export function TelegramSearchModal() {
                     haptics.selection();
                     setQuery('');
                   }}
-                  style={styles.clearBtn}
-                  hitSlop={8}>
-                  <View style={[styles.clearCircle, { backgroundColor: themeColors.border.default }]}>
+                  className="p-1"
+                  hitSlop={8}
+                >
+                  <View
+                    className="w-[18px] h-[18px] rounded-full items-center justify-center"
+                    style={{ backgroundColor: themeColors.border.default }}
+                  >
                     <X size={12} color={themeColors.text.secondary} />
                   </View>
                 </Pressable>
@@ -232,482 +246,292 @@ export function TelegramSearchModal() {
                 haptics.selection();
                 close();
               }}
-              style={styles.cancelTextBtn}
-              hitSlop={8}>
-              <Text style={[styles.cancelBtnText, { color: themeColors.brand.primary }]}>
+              className="px-1.5 py-1.5"
+              hitSlop={8}
+            >
+              <Text className="text-[15px] font-semibold" style={{ color: themeColors.brand.primary }}>
                 {tr('common.cancel')}
               </Text>
             </Pressable>
           </View>
 
           {/* Filter Tabs */}
-          <View style={styles.pillRow}>
-            <Pressable
-              onPress={() => {
-                haptics.selection();
-                setActiveTab('all');
-              }}
-              style={[
-                styles.tabPill,
-                { backgroundColor: themeColors.bg.surfaceMuted },
-                activeTab === 'all' && { backgroundColor: themeColors.brand.primary },
-              ]}>
-              <Text
-                style={[
-                  styles.tabPillText,
-                  { color: themeColors.text.secondary },
-                  activeTab === 'all' && styles.tabPillTextActive,
-                ]}>
-                {tr('filter.all')}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => {
-                haptics.selection();
-                setActiveTab('products');
-              }}
-              style={[
-                styles.tabPill,
-                { backgroundColor: themeColors.bg.surfaceMuted },
-                activeTab === 'products' && { backgroundColor: themeColors.brand.primary },
-              ]}>
-              <Text
-                style={[
-                  styles.tabPillText,
-                  { color: themeColors.text.secondary },
-                  activeTab === 'products' && styles.tabPillTextActive,
-                ]}>
-                Mahsulotlar
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => {
-                haptics.selection();
-                setActiveTab('shops');
-              }}
-              style={[
-                styles.tabPill,
-                { backgroundColor: themeColors.bg.surfaceMuted },
-                activeTab === 'shops' && { backgroundColor: themeColors.brand.primary },
-              ]}>
-              <Text
-                style={[
-                  styles.tabPillText,
-                  { color: themeColors.text.secondary },
-                  activeTab === 'shops' && styles.tabPillTextActive,
-                ]}>
-                Do'konlar
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => {
-                haptics.selection();
-                setActiveTab('chats');
-              }}
-              style={[
-                styles.tabPill,
-                { backgroundColor: themeColors.bg.surfaceMuted },
-                activeTab === 'chats' && { backgroundColor: themeColors.brand.primary },
-              ]}>
-              <Text
-                style={[
-                  styles.tabPillText,
-                  { color: themeColors.text.secondary },
-                  activeTab === 'chats' && styles.tabPillTextActive,
-                ]}>
-                Chatlar
-              </Text>
-            </Pressable>
+          <View className="flex-row gap-1.5">
+            {(
+              [
+                { key: 'all', label: tr('filter.all') },
+                { key: 'products', label: 'Mahsulotlar' },
+                { key: 'shops', label: "Do'konlar" },
+                { key: 'chats', label: 'Chatlar' },
+              ] as const
+            ).map((tab) => {
+              const isActive = activeTab === tab.key;
+              return (
+                <Pressable
+                  key={tab.key}
+                  onPress={() => {
+                    haptics.selection();
+                    setActiveTab(tab.key);
+                  }}
+                  className={`px-3.5 py-1.5 rounded-[18px] ${
+                    isActive ? 'bg-[#E8392E]' : ''
+                  }`}
+                  style={
+                    isActive
+                      ? undefined
+                      : { backgroundColor: themeColors.bg.surfaceMuted }
+                  }
+                >
+                  <Text
+                    className={`text-[13px] ${
+                      isActive ? 'text-white font-bold' : 'font-semibold'
+                    }`}
+                    style={isActive ? undefined : { color: themeColors.text.secondary }}
+                  >
+                    {tab.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
-        {/* Main Results / Content Area */}
-        <View style={styles.resultsArea}>
-
-            {isLoading ? (
-              <View style={styles.centerLoading}>
-                <ActivityIndicator size="large" color={colors.brand.primary} />
-              </View>
-            ) : isSearching ? (
-              <FlatList
-                data={[]}
-                renderItem={null}
-                ListHeaderComponent={
-                  <View style={{ paddingBottom: 120 }}>
-                    {/* Products matches */}
-                    {(activeTab === 'all' || activeTab === 'products') && products.length > 0 && (
-                      <View style={styles.groupWrap}>
-                        <Text style={styles.groupTitle}>MAHSULOTLAR ({products.length})</Text>
-                        {products.map((p) => {
-                          const price = p.discountPrice ?? p.price;
-                          return (
-                            <Pressable
-                              key={p.id}
-                              onPress={() => handleSelectProduct(p)}
-                              style={({ pressed }) => [
-                                styles.resultRow,
-                                pressed && styles.resultRowPressed,
-                              ]}>
-                              <View style={styles.avatarWrap}>
-                                {p.photos?.[0] ? (
-                                  <Image source={{ uri: p.photos[0] }} style={styles.avatarImg} />
-                                ) : (
-                                  <View style={[styles.avatarPlaceholder, { backgroundColor: colors.brand.primary }]}>
-                                    <Package size={22} color="#FFF" />
-                                  </View>
-                                )}
-                              </View>
-                              <View style={styles.rowBody}>
-                                <Text style={styles.rowTitle} numberOfLines={1}>
-                                  {p.name}
-                                </Text>
-                                <Text style={styles.rowSubtitle} numberOfLines={1}>
-                                  {p.shop?.name} · {formatMoney(price)} so'm
-                                </Text>
-                              </View>
-                              <View style={styles.tagBadge}>
-                                <Text style={styles.tagText}>Tovar</Text>
-                              </View>
-                            </Pressable>
-                          );
-                        })}
-                      </View>
-                    )}
-
-                    {/* Shops matches */}
-                    {(activeTab === 'all' || activeTab === 'shops') && shops.length > 0 && (
-                      <View style={styles.groupWrap}>
-                        <Text style={styles.groupTitle}>DO'KONLAR ({shops.length})</Text>
-                        {shops.map((s) => (
+        {/* Results Area */}
+        <View className="flex-1 px-4">
+          {isLoading ? (
+            <View className="flex-1 items-center justify-center">
+              <ActivityIndicator size="large" color={colors.brand.primary} />
+            </View>
+          ) : isSearching ? (
+            <FlatList
+              data={[]}
+              renderItem={null}
+              ListHeaderComponent={
+                <View className="pb-30">
+                  {/* Products matches */}
+                  {(activeTab === 'all' || activeTab === 'products') && products.length > 0 && (
+                    <View className="mt-3">
+                      <Text className="text-xs font-bold text-gray-400 tracking-wider mb-1.5 uppercase">
+                        MAHSULOTLAR ({products.length})
+                      </Text>
+                      {products.map((p) => {
+                        const price = p.discountPrice ?? p.price;
+                        return (
                           <Pressable
-                            key={s.id}
-                            onPress={() => handleSelectShop(s)}
-                            style={({ pressed }) => [
-                              styles.resultRow,
-                              pressed && styles.resultRowPressed,
-                            ]}>
-                            <View style={styles.avatarWrap}>
-                              {s.photos?.[0] ? (
-                                <Image source={{ uri: s.photos[0] }} style={styles.avatarImg} />
+                            key={p.id}
+                            onPress={() => handleSelectProduct(p)}
+                            className="flex-row items-center py-2.5 border-b"
+                            style={{ borderBottomColor: themeColors.border.subtle }}
+                          >
+                            <View className="w-12 h-12 rounded-full mr-3.5 overflow-hidden">
+                              {p.photos?.[0] ? (
+                                <Image source={{ uri: p.photos[0] }} className="w-full h-full" />
                               ) : (
-                                <View style={[styles.avatarPlaceholder, { backgroundColor: '#10B981' }]}>
-                                  <Store size={22} color="#FFF" />
+                                <View className="w-full h-full items-center justify-center bg-[#E8392E]">
+                                  <Package size={22} color="#FFF" />
                                 </View>
                               )}
                             </View>
-                            <View style={styles.rowBody}>
-                              <Text style={styles.rowTitle} numberOfLines={1}>
-                                {s.name}
+                            <View className="flex-1 gap-0.5">
+                              <Text
+                                className="text-base font-bold"
+                                style={{ color: themeColors.text.primary }}
+                                numberOfLines={1}
+                              >
+                                {p.name}
                               </Text>
-                              <Text style={styles.rowSubtitle} numberOfLines={1}>
-                                {s.address || 'Yaqin do\'kon'} {s.distanceKm ? `· ${s.distanceKm.toFixed(1)} km` : ''}
+                              <Text
+                                className="text-[13.5px]"
+                                style={{ color: themeColors.text.secondary }}
+                                numberOfLines={1}
+                              >
+                                {p.shop?.name} · {formatMoney(price)} so&apos;m
                               </Text>
                             </View>
-                            <View style={[styles.tagBadge, { backgroundColor: 'rgba(36, 129, 204, 0.15)' }]}>
-                              <Text style={[styles.tagText, { color: '#2481CC' }]}>DO'KON</Text>
+                            <View className="px-2 py-0.5 rounded bg-white/10">
+                              <Text className="text-[11px] font-bold text-gray-300">Tovar</Text>
                             </View>
                           </Pressable>
-                        ))}
-                      </View>
-                    )}
+                        );
+                      })}
+                    </View>
+                  )}
 
-                    {/* Conversations matches */}
-                    {(activeTab === 'all' || activeTab === 'chats') && matchingConversations.length > 0 && (
-                      <View style={styles.groupWrap}>
-                        <Text style={styles.groupTitle}>CHATLAR ({matchingConversations.length})</Text>
-                        {matchingConversations.map((c) => (
-                          <Pressable
-                            key={c.id}
-                            onPress={() => handleSelectConversation(c)}
-                            style={({ pressed }) => [
-                              styles.resultRow,
-                              pressed && styles.resultRowPressed,
-                            ]}>
-                            <View style={styles.avatarWrap}>
-                              <View style={[styles.avatarPlaceholder, { backgroundColor: '#F59E0B' }]}>
-                                <MessageCircle size={22} color="#FFF" />
+                  {/* Shops matches */}
+                  {(activeTab === 'all' || activeTab === 'shops') && shops.length > 0 && (
+                    <View className="mt-3">
+                      <Text className="text-xs font-bold text-gray-400 tracking-wider mb-1.5 uppercase">
+                        DO&apos;KONLAR ({shops.length})
+                      </Text>
+                      {shops.map((s) => (
+                        <Pressable
+                          key={s.id}
+                          onPress={() => handleSelectShop(s)}
+                          className="flex-row items-center py-2.5 border-b"
+                          style={{ borderBottomColor: themeColors.border.subtle }}
+                        >
+                          <View className="w-12 h-12 rounded-full mr-3.5 overflow-hidden">
+                            {s.photos?.[0] ? (
+                              <Image source={{ uri: s.photos[0] }} className="w-full h-full" />
+                            ) : (
+                              <View className="w-full h-full items-center justify-center bg-[#10B981]">
+                                <Store size={22} color="#FFF" />
                               </View>
-                            </View>
-                            <View style={styles.rowBody}>
-                              <Text style={styles.rowTitle} numberOfLines={1}>
-                                {c.shopName}
-                              </Text>
-                              <Text style={styles.rowSubtitle} numberOfLines={1}>
-                                {c.lastMessageText || 'Suhbat tarixi'}
-                              </Text>
-                            </View>
-                            <View style={styles.tagBadge}>
-                              <Text style={styles.tagText}>Chat</Text>
-                            </View>
-                          </Pressable>
-                        ))}
-                      </View>
-                    )}
+                            )}
+                          </View>
+                          <View className="flex-1 gap-0.5">
+                            <Text
+                              className="text-base font-bold"
+                              style={{ color: themeColors.text.primary }}
+                              numberOfLines={1}
+                            >
+                              {s.name}
+                            </Text>
+                            <Text
+                              className="text-[13.5px]"
+                              style={{ color: themeColors.text.secondary }}
+                              numberOfLines={1}
+                            >
+                              {s.address || "Yaqin do'kon"} {s.distanceKm ? `· ${s.distanceKm.toFixed(1)} km` : ''}
+                            </Text>
+                          </View>
+                          <View className="px-2 py-0.5 rounded bg-[#2481CC]/15">
+                            <Text className="text-[11px] font-bold text-[#2481CC]">DO&apos;KON</Text>
+                          </View>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
 
-                    {products.length === 0 && shops.length === 0 && matchingConversations.length === 0 && (
-                      <View style={styles.emptyContainer}>
-                        <SearchIcon size={44} color="#8E8E93" />
-                        <Text style={styles.emptyTitle}>Natija topilmadi</Text>
-                        <Text style={styles.emptySubtitle}>
-                          "{query}" bo'yicha hech qanday tovar yoki do'kon topilmadi
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                }
-              />
-            ) : (
-              /* Idle / Initial State */
-              <FlatList
-                data={[]}
-                renderItem={null}
-                ListHeaderComponent={
-                  <View style={{ paddingBottom: 120 }}>
-                    {/* Saved Messages (Telegram Style) */}
-                    <Pressable
-                      onPress={handleSelectSaved}
-                      style={({ pressed }) => [
-                        styles.resultRow,
-                        { borderBottomColor: themeColors.border.subtle },
-                        pressed && { backgroundColor: themeColors.bg.surfaceMuted },
-                      ]}>
-                      <View style={styles.avatarWrap}>
-                        <View style={[styles.avatarPlaceholder, { backgroundColor: colors.brand.primary }]}>
-                          <Bookmark size={22} color="#FFF" />
-                        </View>
-                      </View>
-                      <View style={styles.rowBody}>
-                        <Text style={[styles.rowTitle, { color: themeColors.text.primary }]}>{tr('chat.savedMessages')}</Text>
-                        <Text style={[styles.rowSubtitle, { color: themeColors.text.secondary }]}>{tr('chat.savedMessagesDesc')}</Text>
-                      </View>
-                      <ChevronRight size={18} color={themeColors.text.tertiary} />
-                    </Pressable>
+                  {/* Conversations matches */}
+                  {(activeTab === 'all' || activeTab === 'chats') && matchingConversations.length > 0 && (
+                    <View className="mt-3">
+                      <Text className="text-xs font-bold text-gray-400 tracking-wider mb-1.5 uppercase">
+                        CHATLAR ({matchingConversations.length})
+                      </Text>
+                      {matchingConversations.map((c) => (
+                        <Pressable
+                          key={c.id}
+                          onPress={() => handleSelectConversation(c)}
+                          className="flex-row items-center py-2.5 border-b"
+                          style={{ borderBottomColor: themeColors.border.subtle }}
+                        >
+                          <View className="w-12 h-12 rounded-full mr-3.5 overflow-hidden">
+                            <View className="w-full h-full items-center justify-center bg-[#F59E0B]">
+                              <MessageCircle size={22} color="#FFF" />
+                            </View>
+                          </View>
+                          <View className="flex-1 gap-0.5">
+                            <Text
+                              className="text-base font-bold"
+                              style={{ color: themeColors.text.primary }}
+                              numberOfLines={1}
+                            >
+                              {c.shopName}
+                            </Text>
+                            <Text
+                              className="text-[13.5px]"
+                              style={{ color: themeColors.text.secondary }}
+                              numberOfLines={1}
+                            >
+                              {c.lastMessageText || 'Suhbat tarixi'}
+                            </Text>
+                          </View>
+                          <View className="px-2 py-0.5 rounded bg-white/10">
+                            <Text className="text-[11px] font-bold text-gray-300">Chat</Text>
+                          </View>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
 
-                    {/* Popular categories */}
-                    {categories.length > 0 && (
-                      <View style={[styles.groupWrap, { marginTop: 16 }]}>
-                        <Text style={[styles.groupTitle, { color: themeColors.text.secondary }]}>{tr('search.categories').toUpperCase()}</Text>
-                        {categories.slice(0, 8).map((cat) => (
-                          <Pressable
-                            key={cat.id}
-                            onPress={() => {
-                              setQuery(cat.nameUzLatn);
-                            }}
-                            style={({ pressed }) => [
-                              styles.resultRow,
-                              { borderBottomColor: themeColors.border.subtle },
-                              pressed && { backgroundColor: themeColors.bg.surfaceMuted },
-                            ]}>
-                            <View style={styles.avatarWrap}>
-                              <View style={[styles.avatarPlaceholder, { backgroundColor: isDark ? '#374151' : '#E2E8F0' }]}>
-                                {cat.iconUrl ? (
-                                  <Image source={{ uri: cat.iconUrl }} style={styles.avatarImg} />
-                                ) : (
-                                  <Text style={{ fontSize: 18 }}>🛍️</Text>
-                                )}
-                              </View>
-                            </View>
-                            <View style={styles.rowBody}>
-                              <Text style={[styles.rowTitle, { color: themeColors.text.primary }]}>
-                                {catName(cat)}
-                              </Text>
-                              <Text style={[styles.rowSubtitle, { color: themeColors.text.secondary }]}>{tr('search.empty.desc')}</Text>
-                            </View>
-                            <ChevronRight size={16} color={themeColors.text.tertiary} />
-                          </Pressable>
-                        ))}
+                  {products.length === 0 && shops.length === 0 && matchingConversations.length === 0 && (
+                    <View className="items-center justify-center py-15 gap-2.5">
+                      <SearchIcon size={44} color="#8E8E93" />
+                      <Text className="text-[17px] font-bold" style={{ color: themeColors.text.primary }}>
+                        Natija topilmadi
+                      </Text>
+                      <Text className="text-sm text-center px-8" style={{ color: themeColors.text.tertiary }}>
+                        &quot;{query}&quot; bo&apos;yicha hech qanday tovar yoki do&apos;kon topilmadi
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              }
+            />
+          ) : (
+            /* Idle / Initial State */
+            <FlatList
+              data={[]}
+              renderItem={null}
+              ListHeaderComponent={
+                <View className="pb-30">
+                  {/* Saved Messages */}
+                  <Pressable
+                    onPress={handleSelectSaved}
+                    className="flex-row items-center py-2.5 border-b"
+                    style={{ borderBottomColor: themeColors.border.subtle }}
+                  >
+                    <View className="w-12 h-12 rounded-full mr-3.5 overflow-hidden">
+                      <View className="w-full h-full items-center justify-center bg-[#E8392E]">
+                        <Bookmark size={22} color="#FFF" />
                       </View>
-                    )}
-                  </View>
-                }
-              />
-            )}
+                    </View>
+                    <View className="flex-1 gap-0.5">
+                      <Text className="text-base font-bold" style={{ color: themeColors.text.primary }}>
+                        {tr('chat.savedMessages')}
+                      </Text>
+                      <Text className="text-[13.5px]" style={{ color: themeColors.text.secondary }}>
+                        {tr('chat.savedMessagesDesc')}
+                      </Text>
+                    </View>
+                    <ChevronRight size={18} color={themeColors.text.tertiary} />
+                  </Pressable>
+
+                  {/* Popular categories */}
+                  {categories.length > 0 && (
+                    <View className="mt-4">
+                      <Text className="text-xs font-bold tracking-wider mb-1.5 uppercase" style={{ color: themeColors.text.secondary }}>
+                        {tr('search.categories').toUpperCase()}
+                      </Text>
+                      {categories.slice(0, 8).map((cat) => (
+                        <Pressable
+                          key={cat.id}
+                          onPress={() => setQuery(cat.nameUzLatn)}
+                          className="flex-row items-center py-2.5 border-b"
+                          style={{ borderBottomColor: themeColors.border.subtle }}
+                        >
+                          <View className="w-12 h-12 rounded-full mr-3.5 overflow-hidden">
+                            <View
+                              className="w-full h-full items-center justify-center"
+                              style={{ backgroundColor: isDark ? '#374151' : '#E2E8F0' }}
+                            >
+                              {cat.iconUrl ? (
+                                <Image source={{ uri: cat.iconUrl }} className="w-full h-full" />
+                              ) : (
+                                <Text className="text-lg">🛍️</Text>
+                              )}
+                            </View>
+                          </View>
+                          <View className="flex-1 gap-0.5">
+                            <Text className="text-base font-bold" style={{ color: themeColors.text.primary }}>
+                              {catName(cat)}
+                            </Text>
+                            <Text className="text-[13.5px]" style={{ color: themeColors.text.secondary }}>
+                              {tr('search.empty.desc')}
+                            </Text>
+                          </View>
+                          <ChevronRight size={16} color={themeColors.text.tertiary} />
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              }
+            />
+          )}
         </View>
       </View>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  keyboardContainer: {
-    flex: 1,
-    justifyContent: 'space-between',
-  },
-  resultsArea: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  sectionHeader: {
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#1F2937',
-  },
-  sectionHeaderText: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: '#8E8E93',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  groupWrap: {
-    marginTop: 12,
-  },
-  groupTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#6B7280',
-    letterSpacing: 0.6,
-    marginBottom: 6,
-    textTransform: 'uppercase',
-  },
-  resultRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#1F2937',
-  },
-  resultRowPressed: {
-    backgroundColor: '#111827',
-  },
-  avatarWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 14,
-    overflow: 'hidden',
-  },
-  avatarImg: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarPlaceholder: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowBody: {
-    flex: 1,
-    gap: 3,
-  },
-  rowTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  rowSubtitle: {
-    fontSize: 13.5,
-    color: '#9CA3AF',
-  },
-  tagBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  tagText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#D1D5DB',
-  },
-  centerLoading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    gap: 10,
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#FFF',
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    paddingHorizontal: 30,
-  },
-  topHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 10,
-  },
-  pillRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  tabPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 18,
-    backgroundColor: '#1A232E',
-  },
-  tabPillActive: {
-    backgroundColor: colors.brand.primary,
-  },
-  tabPillText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#8E8E93',
-  },
-  tabPillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  searchBarBox: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E2C3A',
-    borderRadius: 22,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    height: 42,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    paddingVertical: 0,
-  },
-  clearBtn: {
-    padding: 4,
-  },
-  clearCircle: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelTextBtn: {
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-  },
-  cancelBtnText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-});

@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -20,7 +19,7 @@ import { api } from '@/lib/api';
 import { PublicShop } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/stores/theme';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 interface TelegramShopRowProps {
@@ -76,71 +75,81 @@ export function TelegramShopRow({ shop }: TelegramShopRowProps) {
   return (
     <Pressable
       onPress={handleOpenShop}
+      className="flex-row px-5 py-3 items-center"
       style={({ pressed }) => [
-        styles.row,
         { backgroundColor: activeColors.bg.surface },
         pressed && { backgroundColor: activeColors.bg.surfaceMuted },
       ]}>
       {/* Telegram Shop Avatar */}
-      <View style={styles.avatarContainer}>
+      <View className="relative mr-3">
         {photo ? (
           <Image
             source={{ uri: photo }}
-            style={[styles.avatar, { backgroundColor: activeColors.bg.surfaceMuted }]}
+            className="w-[54px] h-[54px] rounded-full"
+            style={{ backgroundColor: activeColors.bg.surfaceMuted }}
             resizeMode="cover"
           />
         ) : (
-          <View style={[styles.avatarFallback, { backgroundColor: activeColors.bg.surfaceMuted }]}>
+          <View
+            className="w-[54px] h-[54px] rounded-full items-center justify-center"
+            style={{ backgroundColor: activeColors.bg.surfaceMuted }}>
             <Store size={26} color={activeColors.brand.primary} />
           </View>
         )}
-        <View style={[styles.statusDot, shop.isOpenManual ? styles.dotOpen : styles.dotClosed]} />
+        <View
+          className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 ${
+            shop.isOpenManual ? 'bg-[#1F9D63]' : 'bg-[#A39D96]'
+          }`}
+          style={{ borderColor: activeColors.bg.surface }}
+        />
       </View>
 
       {/* Middle shop details */}
-      <View style={styles.infoCol}>
-        <View style={styles.nameRow}>
-          <Text style={[styles.name, { color: activeColors.text.primary }]} numberOfLines={1}>
+      <View className="flex-1 justify-center mr-2">
+        <View className="flex-row items-center mb-0.5">
+          <Text
+            className="text-base font-bold"
+            style={{ color: activeColors.text.primary }}
+            numberOfLines={1}>
             {shop.name}
           </Text>
         </View>
 
-        <View style={styles.metaRow}>
+        <View className="flex-row items-center gap-2 mb-0.5">
           {shop.ratingAverage > 0 && (
-            <View style={styles.ratingWrap}>
+            <View className="flex-row items-center gap-0.5">
               <Star size={12} color={colors.feedback.warning} fill={colors.feedback.warning} />
-              <Text style={[styles.ratingText, { color: activeColors.text.primary }]}>{shop.ratingAverage.toFixed(1)}</Text>
+              <Text className="text-xs font-bold" style={{ color: activeColors.text.primary }}>
+                {shop.ratingAverage.toFixed(1)}
+              </Text>
             </View>
           )}
 
           {shop.distanceKm !== undefined && (
-            <View style={styles.distanceWrap}>
+            <View className="flex-row items-center gap-0.5">
               <MapPin size={11} color={activeColors.text.tertiary} />
-              <Text style={[styles.distanceText, { color: activeColors.text.tertiary }]}>
+              <Text className="text-xs" style={{ color: activeColors.text.tertiary }}>
                 {shop.distanceKm < 1 ? `${Math.round(shop.distanceKm * 1000)} m` : `${shop.distanceKm.toFixed(1)} km`}
               </Text>
             </View>
           )}
         </View>
 
-        <Text style={[styles.address, { color: activeColors.text.tertiary }]} numberOfLines={1}>
+        <Text className="text-xs" style={{ color: activeColors.text.secondary }} numberOfLines={1}>
           {shop.address}
         </Text>
       </View>
 
       {/* Right action: chat button & chevron */}
-      <View style={styles.actionCol}>
+      <View className="flex-row items-center gap-1.5">
         <Pressable
           onPress={handleChatWithShop}
           disabled={chatLoading}
-          style={({ pressed }) => [
-            styles.chatBtn,
-            {
-              backgroundColor: activeColors.brand.primarySurface,
-              borderColor: activeColors.brand.primaryBorder,
-            },
-            pressed && styles.chatBtnPressed,
-          ]}>
+          className="w-9 h-9 rounded-full border items-center justify-center active:opacity-70"
+          style={{
+            backgroundColor: activeColors.brand.primarySurface,
+            borderColor: activeColors.brand.primaryBorder,
+          }}>
           {chatLoading ? (
             <ActivityIndicator size="small" color={activeColors.brand.primary} />
           ) : (
@@ -153,116 +162,3 @@ export function TelegramShopRow({ shop }: TelegramShopRowProps) {
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 12,
-    backgroundColor: colors.bg.surface,
-    alignItems: 'center',
-  },
-  rowPressed: {
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  avatarContainer: {
-    position: 'relative',
-    marginRight: spacing.md,
-  },
-  avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  avatarFallback: {
-    width: 54,
-    height: 54,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statusDot: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 14,
-    height: 14,
-    borderRadius: radius.full,
-    borderWidth: 2,
-    borderColor: colors.bg.surface,
-  },
-  dotOpen: {
-    backgroundColor: colors.feedback.success,
-  },
-  dotClosed: {
-    backgroundColor: colors.text.hint,
-  },
-  infoCol: {
-    flex: 1,
-    justifyContent: 'center',
-    marginRight: spacing.sm,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 3,
-  },
-  name: {
-    ...typography.body,
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text.primary,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: 3,
-  },
-  ratingWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  ratingText: {
-    ...typography.caption,
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.text.primary,
-  },
-  distanceWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  distanceText: {
-    ...typography.caption,
-    fontSize: 12,
-    color: colors.text.tertiary,
-  },
-  address: {
-    ...typography.caption,
-    fontSize: 12,
-    color: colors.text.secondary,
-  },
-  actionCol: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  chatBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chatBtnPressed: {
-    opacity: 0.7,
-  },
-});
