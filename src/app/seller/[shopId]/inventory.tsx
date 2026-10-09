@@ -1,24 +1,19 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useGlobalSearchParams } from 'expo-router';
-import { AlertTriangle, Ban, ClipboardCheck, FileSpreadsheet, History, Minus, MoreVertical, Package, PackagePlus, Pencil, Percent, Plus, ScanLine, Search, Tag, TrendingDown, Trash2 } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, Package, Plus, TrendingDown } from 'lucide-react-native';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
-  Modal,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { tr } from '@/i18n';
 import { BarcodeScannerModal } from '@/components/seller/BarcodeScannerModal';
 import { BrakStockModal } from '@/components/seller/BrakStockModal';
 import { InventoryCountModal } from '@/components/seller/InventoryCountModal';
@@ -26,8 +21,16 @@ import { KirimModal } from '@/components/seller/KirimModal';
 import { ProductFormModal, ProductPrefill } from '@/components/seller/ProductFormModal';
 import { QuickAddModal } from '@/components/seller/QuickAddModal';
 import { StockHistoryModal } from '@/components/seller/StockHistoryModal';
-import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
-import { useShopAccess } from '@/lib/useIsShopOwner';
+import {
+  InventoryBulkPriceModal,
+  InventoryCard,
+  InventoryExpiringList,
+  InventoryLowStockList,
+  InventoryToolbar,
+  Tab,
+} from '@/components/seller-inventory';
+import { tr } from '@/i18n';
+import { api, extractErrorMessage } from '@/lib/api';
 import {
   Category,
   ExpiringVariant,
@@ -35,39 +38,15 @@ import {
   PublicProductVariant,
   SellerVariant,
 } from '@/lib/types';
+import { useShopAccess } from '@/lib/useIsShopOwner';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
-
-function unitLabel(unitType: string): string {
-  switch (unitType) {
-    case 'piece':
-      return tr('inv.unitPiece');
-    case 'kg':
-      return tr('inv.unitKg');
-    case 'liter':
-      return tr('inv.unitLiter');
-    case 'gram':
-      return tr('inv.unitGram');
-    case 'pack':
-      return tr('inv.unitPack');
-    default:
-      return unitType;
-  }
-}
-
-function fmt(n: number): string {
-  return n.toLocaleString('ru-RU').replace(/,/g, ' ');
-}
-
-type Tab = 'all' | 'expiring' | 'lowStock';
 
 export default function SellerInventoryScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
   const qc = useQueryClient();
-  // Permanent product delete is owner-only server-side (ensureShopOwner) —
-  // everything else on this screen (view/add/edit/receive) is granted per
-  // staff permission, so only the delete action is hidden for non-owners.
   const access = useShopAccess(shopId);
   const isOwner = access.isOwner;
+
   const [tab, setTab] = useState<Tab>('all');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<PublicProductVariant | null>(null);
@@ -144,9 +123,6 @@ export default function SellerInventoryScreen() {
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
-  // Duplicate a variant (SPEC.md §24.1) — server returns the new variant
-  // already named "<original> — nusxa" with stock 0; open it straight in the
-  // edit form so the seller can adjust price/photo/etc. before saving.
   const duplicate = useMutation({
     mutationFn: async (variantId: string) => {
       const res = await api.post<SellerVariant>(
@@ -158,17 +134,12 @@ export default function SellerInventoryScreen() {
       qc.invalidateQueries({ queryKey: ['variants', shopId] });
       setPrefill(null);
       setScannedBarcode('');
-      // `editing` only needs the PublicProductVariant fields ProductFormModal
-      // actually reads — no need to backfill the FIFO `cost` summary here.
       setEditing(created);
       setFormOpen(true);
     },
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
-  // Tiered "Muddati o'tayotganlar" list (SPEC.md §26.2) — 🔴 expired / 🟠
-  // critical / 🟡 warning. Kept enabled regardless of the active tab so the
-  // tab button can show a live badge count without requiring a visit first.
   const expiringQuery = useQuery({
     queryKey: ['variants-expiring', shopId],
     queryFn: async () => {
@@ -179,7 +150,6 @@ export default function SellerInventoryScreen() {
     staleTime: 60_000,
   });
 
-  // Tiered low-stock list (SPEC.md §30) — 🟠 critical / 🟡 warning.
   const lowStockQuery = useQuery({
     queryKey: ['variants-low-stock', shopId],
     queryFn: async () => {
@@ -199,25 +169,19 @@ export default function SellerInventoryScreen() {
     Alert.alert(item.name, undefined, options);
   };
 
-  // Add a product WITHOUT a barcode (the scanner's escape hatch).
   const openCreateBlank = () => {
     setScannedBarcode('');
     setPrefill(null);
     setEditing(null);
     setFormOpen(true);
   };
+
   const openEdit = (v: SellerVariant) => {
     setPrefill(null);
     setEditing(v);
     setFormOpen(true);
   };
 
-  /**
-   * Scanned a barcode. Three branches:
-   *  (a) already in this shop → Kirim (receive stock)
-   *  (b) in shared catalogue, but not in this shop → QuickAddModal (price+stock only)
-   *  (c) unknown → full ProductFormModal with barcode pre-filled
-   */
   const onScanned = async (code: string) => {
     try {
       const res = await api.get<SellerVariant[]>(`/seller/shops/${shopId}/products/variants`, {
@@ -233,13 +197,12 @@ export default function SellerInventoryScreen() {
       return;
     }
     try {
-      const res = await api.get<import('@/lib/types').GlobalProduct>(`/catalog-global/by-barcode/${encodeURIComponent(code)}`);
-      const g = res.data;
-      // (b) GlobalProduct exists in shared catalogue → quick add (price + stock only)
-      setQuickAddGp(g);
+      const res = await api.get<import('@/lib/types').GlobalProduct>(
+        `/catalog-global/by-barcode/${encodeURIComponent(code)}`,
+      );
+      setQuickAddGp(res.data);
       return;
     } catch {
-      // (c) Not in catalogue yet → full form
       setPrefill(null);
       setScannedBarcode(code);
       setEditing(null);
@@ -255,22 +218,49 @@ export default function SellerInventoryScreen() {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Tab switcher */}
       <View style={styles.tabRow}>
-        <Pressable style={[styles.tabBtn, tab === 'all' && styles.tabBtnActive]} onPress={() => setTab('all')}>
-          <Package size={15} color={tab === 'all' ? colors.text.onPrimary : colors.text.secondary} strokeWidth={2.2} />
-          <Text style={[styles.tabBtnText, tab === 'all' && styles.tabBtnTextActive]}>{tr('inv.tabAll')}</Text>
+        <Pressable
+          style={[styles.tabBtn, tab === 'all' && styles.tabBtnActive]}
+          onPress={() => setTab('all')}
+        >
+          <Package
+            size={15}
+            color={tab === 'all' ? colors.text.onPrimary : colors.text.secondary}
+            strokeWidth={2.2}
+          />
+          <Text style={[styles.tabBtnText, tab === 'all' && styles.tabBtnTextActive]}>
+            {tr('inv.tabAll')}
+          </Text>
         </Pressable>
-        <Pressable style={[styles.tabBtn, tab === 'expiring' && styles.tabBtnActive]} onPress={() => setTab('expiring')}>
-          <AlertTriangle size={15} color={tab === 'expiring' ? colors.text.onPrimary : colors.feedback.warning} strokeWidth={2.2} />
-          <Text style={[styles.tabBtnText, tab === 'expiring' && styles.tabBtnTextActive]}>{tr('inv.tabExpiring')}</Text>
+        <Pressable
+          style={[styles.tabBtn, tab === 'expiring' && styles.tabBtnActive]}
+          onPress={() => setTab('expiring')}
+        >
+          <AlertTriangle
+            size={15}
+            color={tab === 'expiring' ? colors.text.onPrimary : colors.feedback.warning}
+            strokeWidth={2.2}
+          />
+          <Text style={[styles.tabBtnText, tab === 'expiring' && styles.tabBtnTextActive]}>
+            {tr('inv.tabExpiring')}
+          </Text>
           {expiringCount > 0 && (
             <View style={[styles.tabBadge, expiringUrgent && styles.tabBadgeUrgent]}>
               <Text style={styles.tabBadgeText}>{expiringCount}</Text>
             </View>
           )}
         </Pressable>
-        <Pressable style={[styles.tabBtn, tab === 'lowStock' && styles.tabBtnActive]} onPress={() => setTab('lowStock')}>
-          <TrendingDown size={15} color={tab === 'lowStock' ? colors.text.onPrimary : colors.feedback.warning} strokeWidth={2.2} />
-          <Text style={[styles.tabBtnText, tab === 'lowStock' && styles.tabBtnTextActive]}>{tr('inv.tabLowStock')}</Text>
+        <Pressable
+          style={[styles.tabBtn, tab === 'lowStock' && styles.tabBtnActive]}
+          onPress={() => setTab('lowStock')}
+        >
+          <TrendingDown
+            size={15}
+            color={tab === 'lowStock' ? colors.text.onPrimary : colors.feedback.warning}
+            strokeWidth={2.2}
+          />
+          <Text style={[styles.tabBtnText, tab === 'lowStock' && styles.tabBtnTextActive]}>
+            {tr('inv.tabLowStock')}
+          </Text>
           {lowStockCount > 0 && (
             <View style={styles.tabBadge}>
               <Text style={styles.tabBadgeText}>{lowStockCount}</Text>
@@ -280,7 +270,7 @@ export default function SellerInventoryScreen() {
       </View>
 
       {tab === 'expiring' ? (
-        <ExpiringList
+        <InventoryExpiringList
           data={expiringQuery.data ?? []}
           isLoading={expiringQuery.isLoading}
           onBrak={(v) => setBrakFor(v)}
@@ -291,196 +281,106 @@ export default function SellerInventoryScreen() {
           }}
         />
       ) : tab === 'lowStock' ? (
-        <LowStockList
+        <InventoryLowStockList
           data={lowStockQuery.data ?? []}
           isLoading={lowStockQuery.isLoading}
           onKirim={(v) => setKirimFor(v)}
         />
       ) : (
-      <>
-      {/* Search + actions (always visible) */}
-      <View style={styles.toolbar}>
-        <View style={styles.searchBox}>
-          <Search size={17} color={colors.text.tertiary} strokeWidth={2.2} />
-          <TextInput
-            style={styles.searchInput}
-            value={searchInput}
-            onChangeText={setSearchInput}
-            placeholder={tr('inv.searchPlaceholder')}
-            placeholderTextColor={colors.text.hint}
-            returnKeyType="search"
+        <>
+          <InventoryToolbar
+            searchInput={searchInput}
+            onSearchChange={setSearchInput}
+            lowOnly={lowOnly}
+            onToggleLowOnly={() => setLowOnly((v) => !v)}
+            onOpenBulkPrice={() => setBulkPriceOpen(true)}
+            onOpenExcel={() => router.push(`/seller/${shopId}/excel` as Href)}
+            onOpenScanner={() => setScanOpen(true)}
+            onOpenCount={() => setCountOpen(true)}
           />
-          {searchInput.length > 0 ? (
-            <Pressable onPress={() => setSearchInput('')} hitSlop={8}>
-              <Text style={styles.clearSearch}>✕</Text>
-            </Pressable>
-          ) : null}
-        </View>
-        <View style={styles.toolbarActions}>
-          <Pressable
-            onPress={() => setLowOnly((v) => !v)}
-            style={[styles.lowChip, lowOnly && styles.lowChipActive]}>
-            <Text style={[styles.lowChipText, lowOnly && styles.lowChipTextActive]}>{tr('inv.lowOnlyChip')}</Text>
-          </Pressable>
-          <Pressable onPress={() => setBulkPriceOpen(true)} style={styles.iconBtn}>
-            <Tag size={18} color={colors.brand.primary} strokeWidth={2.2} />
-          </Pressable>
-          <Pressable onPress={() => router.push(`/seller/${shopId}/excel` as Href)} style={styles.iconBtn}>
-            <FileSpreadsheet size={18} color={colors.brand.primary} strokeWidth={2.2} />
-          </Pressable>
-          <Pressable onPress={() => setScanOpen(true)} style={styles.iconBtn}>
-            <ScanLine size={18} color={colors.brand.primary} strokeWidth={2.2} />
-          </Pressable>
-          <Pressable onPress={() => setCountOpen(true)} style={styles.iconBtn}>
-            <ClipboardCheck size={18} color={colors.brand.primary} strokeWidth={2.2} />
-          </Pressable>
-        </View>
-      </View>
 
-      <FlatList
-        data={variants}
-        keyExtractor={(v) => v.id}
-        contentContainerStyle={styles.list}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl
-            refreshing={
-              variantsQuery.isFetching &&
-              !variantsQuery.isLoading &&
-              !variantsQuery.isFetchingNextPage
+          <FlatList
+            data={variants}
+            keyExtractor={(v) => v.id}
+            contentContainerStyle={styles.list}
+            keyboardShouldPersistTaps="handled"
+            refreshControl={
+              <RefreshControl
+                refreshing={
+                  variantsQuery.isFetching &&
+                  !variantsQuery.isLoading &&
+                  !variantsQuery.isFetchingNextPage
+                }
+                onRefresh={() => {
+                  void variantsQuery.refetch();
+                }}
+                tintColor={colors.brand.primary}
+                colors={[colors.brand.primary]}
+              />
             }
-            onRefresh={() => {
-              void variantsQuery.refetch();
+            onEndReachedThreshold={0.4}
+            onEndReached={() => {
+              if (variantsQuery.hasNextPage && !variantsQuery.isFetchingNextPage) {
+                variantsQuery.fetchNextPage();
+              }
             }}
-            tintColor={colors.brand.primary}
-            colors={[colors.brand.primary]}
-          />
-        }
-        onEndReachedThreshold={0.4}
-        onEndReached={() => {
-          if (variantsQuery.hasNextPage && !variantsQuery.isFetchingNextPage) variantsQuery.fetchNextPage();
-        }}
-        ListFooterComponent={
-          variantsQuery.isFetchingNextPage ? (
-            <ActivityIndicator color={colors.brand.primary} style={{ marginVertical: spacing.md }} />
-          ) : null
-        }
-        ListEmptyComponent={
-          variantsQuery.isLoading ? (
-            <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />
-          ) : (
-            <View style={styles.empty}>
-              <View style={styles.emptyIcon}>
-                <Package size={28} color={colors.brand.primary} strokeWidth={1.8} />
-              </View>
-              <Text style={styles.emptyTitle}>
-                {search ? tr('inv.notFound') : tr('inv.emptyTitle')}
-              </Text>
-              <Text style={styles.dim}>
-                {search ? tr('inv.notFoundHint') : tr('inv.emptyHint')}
-              </Text>
-            </View>
-          )
-        }
-        renderItem={({ item }) => {
-          const hasDiscount = item.discountPrice != null && item.discountPrice < item.price;
-          const low = item.stock <= item.lowStockThreshold;
-          const sellPrice = item.discountPrice ?? item.price;
-          const avgCost = item.cost?.avgCost ?? 0;
-          const profit = Math.max(0, sellPrice - avgCost);
-          return (
-            <View style={styles.card}>
-              <Pressable style={styles.cardMain} onPress={() => openEdit(item)}>
-                <View style={styles.imageWrap}>
-                  {item.photos[0] ? (
-                    <Image source={{ uri: resolveMedia(item.photos[0]) }} style={styles.image} />
-                  ) : (
-                    <View style={[styles.image, styles.placeholder]}>
-                      <Package size={22} color={colors.brand.primary} strokeWidth={1.6} />
-                    </View>
-                  )}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {item.name}
-                  </Text>
-                  <View style={styles.priceRow}>
-                    {hasDiscount ? (
-                      <Text style={styles.oldPrice}>{item.price.toLocaleString()}</Text>
-                    ) : null}
-                    <Text style={styles.price}>{sellPrice.toLocaleString()} {tr('common.som')}</Text>
+            ListFooterComponent={
+              variantsQuery.isFetchingNextPage ? (
+                <ActivityIndicator
+                  color={colors.brand.primary}
+                  style={{ marginVertical: spacing.md }}
+                />
+              ) : null
+            }
+            ListEmptyComponent={
+              variantsQuery.isLoading ? (
+                <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />
+              ) : (
+                <View style={styles.empty}>
+                  <View style={styles.emptyIcon}>
+                    <Package size={28} color={colors.brand.primary} strokeWidth={1.8} />
                   </View>
-                  <Text style={styles.unit}>
-                    {item.unitSize} {unitLabel(item.unitType)}
+                  <Text style={styles.emptyTitle}>
+                    {search ? tr('inv.notFound') : tr('inv.emptyTitle')}
+                  </Text>
+                  <Text style={styles.dim}>
+                    {search ? tr('inv.notFoundHint') : tr('inv.emptyHint')}
                   </Text>
                 </View>
-                <View style={styles.cardTopActions}>
-                  <Pencil size={16} color={colors.text.tertiary} strokeWidth={2} />
-                  <Pressable onPress={() => openVariantMenu(item)} hitSlop={8}>
-                    <MoreVertical size={16} color={colors.text.tertiary} strokeWidth={2} />
-                  </Pressable>
-                </View>
-              </Pressable>
+              )
+            }
+            renderItem={({ item }) => (
+              <InventoryCard
+                item={item}
+                isOwner={isOwner}
+                onEdit={openEdit}
+                onMenu={openVariantMenu}
+                onAdjust={(variantId, delta) => adjust.mutate({ variantId, delta })}
+                onHistory={(v) => setHistoryFor(v)}
+                onDelete={(v) =>
+                  Alert.alert(
+                    tr('common.delete'),
+                    tr('inv.deleteConfirm', { name: v.name }),
+                    [
+                      { text: tr('common.cancel'), style: 'cancel' },
+                      {
+                        text: tr('common.delete'),
+                        style: 'destructive',
+                        onPress: () => remove.mutate(v.id),
+                      },
+                    ],
+                  )
+                }
+                onKirim={(v) => setKirimFor(v)}
+              />
+            )}
+          />
 
-              {/* Cost / profit strip */}
-              <View style={styles.costStrip}>
-                <Text style={styles.costText}>
-                  {tr('inv.cost')} <Text style={styles.costVal}>{avgCost > 0 ? fmt(avgCost) : '—'}</Text>
-                </Text>
-                <Text style={styles.costText}>
-                  {tr('inv.profitPerUnit')} <Text style={[styles.costVal, { color: colors.feedback.success }]}>{fmt(profit)}</Text>
-                </Text>
-              </View>
-
-              <View style={styles.cardFooter}>
-                <Text style={[styles.stock, low && styles.stockLow]}>
-                  {tr('inv.stockLine', { count: item.stock })}
-                  {low ? tr('inv.stockLowSuffix') : ''}
-                </Text>
-                <View style={styles.stockControls}>
-                  <Pressable
-                    style={styles.stepBtn}
-                    onPress={() => adjust.mutate({ variantId: item.id, delta: -1 })}>
-                    <Minus size={15} color={colors.brand.primary} strokeWidth={2.6} />
-                  </Pressable>
-                  <Pressable
-                    style={styles.stepBtn}
-                    onPress={() => adjust.mutate({ variantId: item.id, delta: 1 })}>
-                    <Plus size={15} color={colors.brand.primary} strokeWidth={2.6} />
-                  </Pressable>
-                  <Pressable style={styles.historyBtn} onPress={() => setHistoryFor(item)}>
-                    <History size={15} color={colors.text.secondary} strokeWidth={2.2} />
-                  </Pressable>
-                  {isOwner !== false && (
-                    <Pressable
-                      style={styles.delBtn}
-                      onPress={() =>
-                        Alert.alert(tr('common.delete'), tr('inv.deleteConfirm', { name: item.name }), [
-                          { text: tr('common.cancel'), style: 'cancel' },
-                          { text: tr('common.delete'), style: 'destructive', onPress: () => remove.mutate(item.id) },
-                        ])
-                      }>
-                      <Trash2 size={15} color={colors.text.danger} strokeWidth={2.2} />
-                    </Pressable>
-                  )}
-                </View>
-              </View>
-
-              {/* Primary warehouse action */}
-              <Pressable style={styles.kirimBtn} onPress={() => setKirimFor(item)}>
-                <PackagePlus size={16} color={colors.brand.primary} strokeWidth={2.3} />
-                <Text style={styles.kirimText}>{tr('inv.kirimBtn')}</Text>
-              </Pressable>
-            </View>
-          );
-        }}
-      />
-
-      <Pressable style={styles.fab} onPress={() => setScanOpen(true)}>
-        <Plus size={22} color={colors.text.onPrimary} strokeWidth={2.8} />
-        <Text style={styles.fabText}>{tr('inv.fabProduct')}</Text>
-      </Pressable>
-      </>
+          <Pressable style={styles.fab} onPress={() => setScanOpen(true)}>
+            <Plus size={22} color={colors.text.onPrimary} strokeWidth={2.8} />
+            <Text style={styles.fabText}>{tr('inv.fabProduct')}</Text>
+          </Pressable>
+        </>
       )}
 
       <ProductFormModal
@@ -535,7 +435,7 @@ export default function SellerInventoryScreen() {
         onClose={() => setHistoryFor(null)}
       />
 
-      <BulkPriceModal
+      <InventoryBulkPriceModal
         visible={bulkPriceOpen}
         shopId={shopId}
         categories={leafCategories}
@@ -549,283 +449,11 @@ export default function SellerInventoryScreen() {
   );
 }
 
-// Theme only defines two alert tones (danger red, warning amber) — 🟠
-// critical and 🟡 warning share the amber tone and are told apart by their
-// emoji/label instead of a third distinct color (SPEC.md §26.2).
-const EXPIRY_TIER_META: Record<
-  ExpiringVariant['tier'],
-  { emoji: string; color: string; surface: string }
-> = {
-  expired: { emoji: '🔴', color: colors.feedback.danger, surface: colors.feedback.dangerSurface },
-  critical: { emoji: '🟠', color: colors.feedback.warning, surface: colors.feedback.warningSurface },
-  warning: { emoji: '🟡', color: colors.feedback.warning, surface: colors.feedback.warningSurface },
-};
-
-function expiryTierLabel(tier: ExpiringVariant['tier']): string {
-  if (tier === 'expired') return tr('inv.tierExpired');
-  if (tier === 'critical') return tr('inv.tierCritical');
-  return tr('inv.tierWarning');
-}
-
-function ExpiringList({
-  data,
-  isLoading,
-  onBrak,
-  onDiscount,
-}: {
-  data: ExpiringVariant[];
-  isLoading: boolean;
-  onBrak: (v: ExpiringVariant) => void;
-  onDiscount: (v: ExpiringVariant) => void;
-}) {
-  if (isLoading) return <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />;
-  if (!data.length) {
-    return (
-      <View style={styles.empty}>
-        <View style={styles.emptyIcon}>
-          <AlertTriangle size={28} color={colors.feedback.warning} strokeWidth={1.8} />
-        </View>
-        <Text style={styles.emptyTitle}>{tr('inv.expiringEmptyTitle')}</Text>
-        <Text style={styles.dim}>{tr('inv.expiringEmptyHint')}</Text>
-      </View>
-    );
-  }
-
-  const tiers: ExpiringVariant['tier'][] = ['expired', 'critical', 'warning'];
-
-  return (
-    <ScrollView contentContainerStyle={styles.list}>
-      {tiers.map((tier) => {
-        const items = data.filter((v) => v.tier === tier);
-        if (!items.length) return null;
-        const meta = EXPIRY_TIER_META[tier];
-        return (
-          <View key={tier} style={styles.tierGroup}>
-            <Text style={[styles.tierGroupTitle, { color: meta.color }]}>
-              {meta.emoji} {expiryTierLabel(tier)} ({items.length})
-            </Text>
-            {items.map((item) => (
-              <View key={item.id} style={[styles.card, { borderColor: meta.color }]}>
-                <View style={styles.cardMain}>
-                  <View style={[styles.expiryDaysBox, { backgroundColor: meta.surface }]}>
-                    <Text style={[styles.expiryDaysNum, { color: meta.color }]}>
-                      {Math.max(item.daysToExpiry, 0)}
-                    </Text>
-                    <Text style={[styles.expiryDaysLabel, { color: meta.color }]}>{tr('inv.days')}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-                    <Text style={styles.unit}>
-                      {tr('inv.expiryLine', {
-                        stock: item.stock,
-                        unit: unitLabel(item.unitType),
-                        date: new Date(item.expiryDate).toLocaleDateString('uz-UZ'),
-                      })}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.tierActions}>
-                  <Pressable style={styles.tierActionBtnDanger} onPress={() => onBrak(item)}>
-                    <Ban size={14} color={colors.feedback.danger} strokeWidth={2.2} />
-                    <Text style={styles.tierActionBtnDangerText}>{tr('inv.brak')}</Text>
-                  </Pressable>
-                  <Pressable style={styles.tierActionBtn} onPress={() => onDiscount(item)}>
-                    <Percent size={14} color={colors.brand.primary} strokeWidth={2.2} />
-                    <Text style={styles.tierActionBtnText}>{tr('inv.setDiscount')}</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ))}
-          </View>
-        );
-      })}
-    </ScrollView>
-  );
-}
-
-const LOW_STOCK_TIER_META: Record<
-  LowStockVariant['tier'],
-  { emoji: string; color: string; surface: string }
-> = {
-  critical: { emoji: '🟠', color: colors.feedback.danger, surface: colors.feedback.dangerSurface },
-  warning: { emoji: '🟡', color: colors.feedback.warning, surface: colors.feedback.warningSurface },
-};
-
-function lowStockTierLabel(tier: LowStockVariant['tier']): string {
-  return tier === 'critical' ? tr('inv.tierCritical') : tr('inv.tierLow');
-}
-
-function LowStockList({
-  data,
-  isLoading,
-  onKirim,
-}: {
-  data: LowStockVariant[];
-  isLoading: boolean;
-  onKirim: (v: LowStockVariant) => void;
-}) {
-  if (isLoading) return <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />;
-  if (!data.length) {
-    return (
-      <View style={styles.empty}>
-        <View style={styles.emptyIcon}>
-          <TrendingDown size={28} color={colors.feedback.warning} strokeWidth={1.8} />
-        </View>
-        <Text style={styles.emptyTitle}>{tr('inv.lowEmptyTitle')}</Text>
-        <Text style={styles.dim}>{tr('inv.lowEmptyHint')}</Text>
-      </View>
-    );
-  }
-
-  const tiers: LowStockVariant['tier'][] = ['critical', 'warning'];
-
-  return (
-    <ScrollView contentContainerStyle={styles.list}>
-      {tiers.map((tier) => {
-        const items = data.filter((v) => v.tier === tier);
-        if (!items.length) return null;
-        const meta = LOW_STOCK_TIER_META[tier];
-        return (
-          <View key={tier} style={styles.tierGroup}>
-            <Text style={[styles.tierGroupTitle, { color: meta.color }]}>
-              {meta.emoji} {lowStockTierLabel(tier)} ({items.length})
-            </Text>
-            {items.map((item) => (
-              <View key={item.id} style={[styles.card, { borderColor: meta.color }]}>
-                <View style={styles.cardMain}>
-                  <View style={[styles.expiryDaysBox, { backgroundColor: meta.surface }]}>
-                    <Text style={[styles.expiryDaysNum, { color: meta.color }]}>{item.stock}</Text>
-                    <Text style={[styles.expiryDaysLabel, { color: meta.color }]}>{tr('inv.pcs')}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-                    <Text style={styles.unit}>
-                      {tr('inv.thresholdLine', {
-                        value: item.lowStockThreshold,
-                        unit: unitLabel(item.unitType),
-                      })}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.tierActions}>
-                  <Pressable style={styles.tierActionBtn} onPress={() => onKirim(item)}>
-                    <PackagePlus size={14} color={colors.brand.primary} strokeWidth={2.2} />
-                    <Text style={styles.tierActionBtnText}>{tr('inv.doKirim')}</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ))}
-          </View>
-        );
-      })}
-    </ScrollView>
-  );
-}
-
-function BulkPriceModal({
-  visible,
-  shopId,
-  categories,
-  onClose,
-  onDone,
-}: {
-  visible: boolean;
-  shopId: string;
-  categories: Category[];
-  onClose: () => void;
-  onDone: () => void;
-}) {
-  const [categoryId, setCategoryId] = useState('');
-  const [adjustType, setAdjustType] = useState<'percent' | 'fixed'>('percent');
-  const [value, setValue] = useState('');
-
-  const bulk = useMutation({
-    mutationFn: async () => {
-      await api.put(`/seller/shops/${shopId}/products/variants/bulk-price`, {
-        categoryId: categoryId || undefined,
-        adjustType,
-        value: parseFloat(value),
-      });
-    },
-    onSuccess: onDone,
-    onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
-  });
-
-  const reset = () => { setCategoryId(''); setAdjustType('percent'); setValue(''); };
-  const handleClose = () => { reset(); onClose(); };
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <Text style={styles.sheetTitle}>{tr('inv.bulkTitle')}</Text>
-          <Text style={styles.sheetSub}>{tr('inv.bulkSub')}</Text>
-
-          <Text style={styles.fieldLabel}>{tr('inv.bulkCategory')}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
-            <View style={{ flexDirection: 'row', gap: spacing.xs }}>
-              <Pressable
-                style={[styles.catChip, !categoryId && styles.catChipActive]}
-                onPress={() => setCategoryId('')}>
-                <Text style={[styles.catChipText, !categoryId && styles.catChipTextActive]}>{tr('inv.tabAll')}</Text>
-              </Pressable>
-              {categories.map((c) => (
-                <Pressable
-                  key={c.id}
-                  style={[styles.catChip, categoryId === c.id && styles.catChipActive]}
-                  onPress={() => setCategoryId(c.id)}>
-                  <Text style={[styles.catChipText, categoryId === c.id && styles.catChipTextActive]}>
-                    {c.nameUzLatn}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </ScrollView>
-
-          <Text style={styles.fieldLabel}>{tr('inv.bulkAdjustType')}</Text>
-          <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}>
-            {(['percent', 'fixed'] as const).map((t) => (
-              <Pressable
-                key={t}
-                style={[styles.catChip, adjustType === t && styles.catChipActive, { flex: 1, alignItems: 'center' }]}
-                onPress={() => setAdjustType(t)}>
-                <Text style={[styles.catChipText, adjustType === t && styles.catChipTextActive]}>
-                  {t === 'percent' ? tr('inv.bulkPercent') : tr('inv.bulkFixed')}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <TextInput
-            style={styles.priceInput}
-            value={value}
-            onChangeText={setValue}
-            keyboardType="numeric"
-            placeholder={adjustType === 'percent' ? tr('inv.bulkPercentPh') : tr('inv.bulkFixedPh')}
-            placeholderTextColor={colors.text.hint}
-          />
-
-          <Pressable
-            style={[styles.confirmBtn, bulk.isPending && { opacity: 0.6 }]}
-            onPress={() => bulk.mutate()}
-            disabled={bulk.isPending || !value}>
-            {bulk.isPending ? (
-              <ActivityIndicator color={colors.text.onPrimary} />
-            ) : (
-              <Text style={styles.confirmBtnText}>{tr('inv.bulkSubmit')}</Text>
-            )}
-          </Pressable>
-          <Pressable style={styles.cancelBtn} onPress={handleClose}>
-            <Text style={styles.cancelBtnText}>{tr('common.cancel')}</Text>
-          </Pressable>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg.canvas,
+  },
   tabRow: {
     flexDirection: 'row',
     gap: spacing.xs,
@@ -847,9 +475,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border.default,
   },
-  tabBtnActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
-  tabBtnText: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
-  tabBtnTextActive: { color: colors.text.onPrimary },
+  tabBtnActive: {
+    backgroundColor: colors.brand.primary,
+    borderColor: colors.brand.primary,
+  },
+  tabBtnText: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.text.secondary,
+  },
+  tabBtnTextActive: {
+    color: colors.text.onPrimary,
+  },
   tabBadge: {
     minWidth: 18,
     height: 18,
@@ -859,223 +496,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tabBadgeUrgent: { backgroundColor: colors.feedback.danger },
-  tabBadgeText: { ...typography.caption, fontSize: 10, fontWeight: '800', color: colors.text.onPrimary },
-  bulkBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
+  tabBadgeUrgent: {
+    backgroundColor: colors.feedback.danger,
   },
-  bulkBtnText: { ...typography.caption, fontWeight: '700', color: colors.brand.primary },
-  cardTopActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  cardUrgent: { borderColor: colors.feedback.danger, borderWidth: 1.5 },
-  tierGroup: { gap: spacing.sm },
-  tierGroupTitle: { ...typography.bodyStrong, fontWeight: '800', marginLeft: spacing.xs },
-  tierActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
+  tabBadgeText: {
+    ...typography.caption,
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.text.onPrimary,
   },
-  tierActionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.brand.primarySurface,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-  },
-  tierActionBtnText: { ...typography.caption, fontWeight: '700', color: colors.brand.primary },
-  tierActionBtnDanger: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.feedback.dangerSurface,
-    borderWidth: 1,
-    borderColor: colors.feedback.danger,
-  },
-  tierActionBtnDangerText: { ...typography.caption, fontWeight: '700', color: colors.feedback.danger },
-  expiryDaysBox: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  expiryDaysNum: { fontSize: 22, fontWeight: '800', lineHeight: 26 },
-  expiryDaysLabel: { ...typography.caption, fontWeight: '600' },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.bg.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    padding: spacing.xl,
-    gap: spacing.sm,
-  },
-  sheetTitle: { ...typography.h3, color: colors.text.primary },
-  sheetSub: { ...typography.bodySmall, color: colors.text.secondary },
-  fieldLabel: { ...typography.caption, fontWeight: '700', color: colors.text.secondary, marginTop: spacing.sm },
-  catChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    backgroundColor: colors.bg.surface,
-  },
-  catChipActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
-  catChipText: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
-  catChipTextActive: { color: colors.text.onPrimary },
-  priceInput: {
-    ...typography.body,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  confirmBtn: {
-    height: 52,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.sm,
-  },
-  confirmBtnText: { ...typography.button, color: colors.text.onPrimary },
-  cancelBtn: { alignItems: 'center', paddingVertical: spacing.sm },
-  cancelBtnText: { ...typography.body, color: colors.text.secondary },
-  list: { padding: layout.screenPadding, paddingBottom: 100, gap: spacing.md },
-  card: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    ...shadow.xs,
-  },
-  toolbar: {
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.sm,
-    gap: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-    paddingBottom: spacing.sm,
-  },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  searchInput: { flex: 1, paddingVertical: 10, ...typography.body, color: colors.text.primary },
-  clearSearch: { ...typography.body, color: colors.text.tertiary, paddingHorizontal: spacing.xs },
-  toolbarActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lowChip: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    backgroundColor: colors.bg.surface,
-  },
-  lowChipActive: { backgroundColor: colors.feedback.warning, borderColor: colors.feedback.warning },
-  lowChipText: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
-  lowChipTextActive: { color: colors.text.onPrimary },
-  cardMain: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
-  costStrip: {
-    flexDirection: 'row',
-    gap: spacing.lg,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  costText: { ...typography.caption, color: colors.text.secondary },
-  costVal: { ...typography.caption, fontWeight: '800', color: colors.text.primary },
-  historyBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kirimBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-  },
-  kirimText: { ...typography.bodySmall, fontWeight: '700', color: colors.brand.primary },
-  imageWrap: { width: 56, height: 56, borderRadius: radius.md, overflow: 'hidden' },
-  image: { width: 56, height: 56, backgroundColor: colors.brand.primarySurface },
-  placeholder: { alignItems: 'center', justifyContent: 'center' },
-  name: { ...typography.bodyStrong, color: colors.text.primary },
-  priceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 2 },
-  oldPrice: { ...typography.caption, color: colors.text.hint, textDecorationLine: 'line-through' },
-  price: { ...typography.bodyStrong, color: colors.brand.primary },
-  unit: { ...typography.caption, color: colors.text.tertiary, marginTop: 1 },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-  },
-  stock: { ...typography.caption, color: colors.text.secondary, fontWeight: '600' },
-  stockLow: { color: colors.text.danger, fontWeight: '800' },
-  stockControls: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  stepBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  delBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.feedback.dangerSurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: spacing.xs,
+  list: {
+    padding: layout.screenPadding,
+    paddingBottom: 100,
+    gap: spacing.md,
   },
   fab: {
     position: 'absolute',
@@ -1090,8 +523,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand.primary,
     ...shadow.lg,
   },
-  fabText: { ...typography.body, fontWeight: '800', color: colors.text.onPrimary },
-  empty: { padding: spacing['4xl'], alignItems: 'center', gap: spacing.sm },
+  fabText: {
+    ...typography.body,
+    fontWeight: '800',
+    color: colors.text.onPrimary,
+  },
+  empty: {
+    padding: spacing['4xl'],
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   emptyIcon: {
     width: 64,
     height: 64,
@@ -1100,6 +541,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyTitle: { ...typography.h4, color: colors.text.primary },
-  dim: { ...typography.bodySmall, color: colors.text.secondary, textAlign: 'center' },
+  emptyTitle: {
+    ...typography.h4,
+    color: colors.text.primary,
+  },
+  dim: {
+    ...typography.bodySmall,
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
 });
