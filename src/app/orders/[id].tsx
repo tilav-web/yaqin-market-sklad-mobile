@@ -1,48 +1,51 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
-import { AlertCircle, Banknote, Check, CreditCard, FileText, MessageCircle, RefreshCw, RotateCcw, Star, X } from 'lucide-react-native';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AlertCircle,
+  Check,
+  MessageCircle,
+  RefreshCw,
+  X,
+} from 'lucide-react-native';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import QRCode from 'react-native-qrcode-svg';
 
 import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
-import { CardVisual } from '@/components/CardVisual';
 import { FiscalReceiptModal } from '@/components/FiscalReceiptModal';
-import { Button, useToast } from '@/components/ui';
-import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
+import { OrderAlternativesCard } from '@/components/orders/OrderAlternativesCard';
+import { OrderComplaintCard } from '@/components/orders/OrderComplaintCard';
+import { OrderCourierMapCard } from '@/components/orders/OrderCourierMapCard';
+import { OrderItemsCard } from '@/components/orders/OrderItemsCard';
+import { OrderPaymentSection } from '@/components/orders/OrderPaymentSection';
+import { OrderReviewSection } from '@/components/orders/OrderReviewSection';
+import { OrderReturnReasonCard } from '@/components/orders/OrderReturnReasonCard';
+import { OrderStatusTimeline } from '@/components/orders/OrderStatusTimeline';
+import { OrderSummaryCard } from '@/components/orders/OrderSummaryCard';
+import { useToast } from '@/components/ui';
+import { useTranslation } from '@/i18n';
+import { api, extractErrorMessage } from '@/lib/api';
 import { captureEvidence } from '@/lib/location-evidence';
 import { useCountdown } from '@/lib/useCountdown';
 import { endOrderActivity, updateOrderActivity } from '@/lib/useOrderLiveActivity';
 import { useOrderSocket } from '@/lib/useOrderSocket';
-import { useTranslation } from '@/i18n';
 import { FiscalReceipt, ORDER_STATUS_KEY, Order, OrderStatus, ProductOffer, PublicProductVariant, SavedCard } from '@/lib/types';
 import { OrderActivityProps } from '@/widgets/order-activity';
 import { useCartStore } from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
-import { detectCardBrand } from '@/utils/cardBrand';
+import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 import { getLocalizedText } from '@/utils/text';
 
-const FLOW: OrderStatus[] = ['new', 'accepted', 'preparing', 'delivering', 'delivered'];
-
-// Terminal: nothing further will happen to this order. Covers both a
-// customer's own cancellation and the shop failing to accept it (which is a
-// distinct case, see isSellerDeclined below and the suggestion flow it drives).
 function isTerminalStatus(status: OrderStatus | undefined): boolean {
   return (
     status === 'delivered' ||
@@ -58,13 +61,6 @@ export default function OrderDetailScreen() {
   const qc = useQueryClient();
   const toast = useToast();
 
-  const [reasonDraft, setReasonDraft] = useState('');
-  const [ratingDraft, setRatingDraft] = useState<Record<string, number>>({});
-  const [reviewText, setReviewText] = useState<Record<string, string>>({});
-  const [complaintOpen, setComplaintOpen] = useState(false);
-  const [complaintReason, setComplaintReason] = useState('');
-  const [complaintCustomReason, setComplaintCustomReason] = useState('');
-  const [complaintDesc, setComplaintDesc] = useState('');
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
 
   const orderQuery = useQuery({
@@ -76,7 +72,6 @@ export default function OrderDetailScreen() {
     enabled: !!id,
     refetchInterval: (query) => {
       const s = query.state.data?.status;
-      // Stop polling once the order reaches a terminal state.
       return isTerminalStatus(s) ? false : 8000;
     },
   });
@@ -93,6 +88,7 @@ export default function OrderDetailScreen() {
   const order = orderQuery.data;
   const isSellerDeclined = order?.status === 'seller_no_response' || order?.status === 'seller_rejected';
   const coords = useEffectiveCoords();
+
   const alternativesQueries = useQueries({
     queries: (order?.items ?? []).map((it) => ({
       queryKey: [
@@ -113,11 +109,9 @@ export default function OrderDetailScreen() {
       staleTime: 60_000,
     })),
   });
-  const mapRef = useRef<MapView | null>(null);
+
   const { courierLocation } = useOrderSocket(order?.status === 'delivering' ? id : undefined);
 
-  // Almost always `required: false` — only true when the assigned courier
-  // already carries an admin-confirmed risk flag (see RiskHandshakeService).
   const handshakeQuery = useQuery({
     queryKey: ['order-handshake', id],
     queryFn: async () => {
@@ -127,17 +121,6 @@ export default function OrderDetailScreen() {
     enabled: order?.status === 'delivering' && !!order?.requiresHandshake,
     staleTime: 60_000,
   });
-
-  // Keep the camera centered on the courier as they move — `initialRegion`
-  // only applies to the first render, so without this the pin quietly
-  // wanders toward the map's edge as the courier gets closer.
-  useEffect(() => {
-    if (!courierLocation || !mapRef.current) return;
-    mapRef.current.animateToRegion(
-      { latitude: courierLocation.lat, longitude: courierLocation.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 },
-      400,
-    );
-  }, [courierLocation]);
 
   useEffect(() => {
     if (!order) return;
@@ -183,10 +166,6 @@ export default function OrderDetailScreen() {
 
   const setStatus = useMutation({
     mutationFn: async (status: OrderStatus) => {
-      // Best-effort evidence on self-confirm — never a warning dialog for the
-      // customer (only couriers get the far-from-address soft-warning, see
-      // useAdvanceOrderStatus). A denied/failed capture is sent as absent,
-      // not withheld — the server records "no evidence" rather than nothing.
       const evidence = status === 'delivered' ? await captureEvidence() : null;
       const res = await api.patch<Order>(`/orders/${id}/status`, {
         status,
@@ -213,10 +192,6 @@ export default function OrderDetailScreen() {
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
-  // A paid order the shop keeps ignoring: after the 5-min window (restarted
-  // by each re-request) the customer gets explicit options — re-ask the shop
-  // or cancel for an automatic card refund. Sentinel deadline (far future)
-  // keeps the hook unconditional while the order is loading / not applicable.
   const paidStaleDeadline =
     order &&
     order.status === 'new' &&
@@ -228,10 +203,8 @@ export default function OrderDetailScreen() {
   const showPaidStaleOptions = paidStaleRemaining === 0;
 
   const submitReason = useMutation({
-    mutationFn: async () => {
-      const res = await api.post<Order>(`/orders/${id}/return-reason`, {
-        reason: reasonDraft.trim(),
-      });
+    mutationFn: async (reason: string) => {
+      const res = await api.post<Order>(`/orders/${id}/return-reason`, { reason });
       return res.data;
     },
     onSuccess: () => {
@@ -242,84 +215,49 @@ export default function OrderDetailScreen() {
   });
 
   const submitReviews = useMutation({
-    mutationFn: async () => {
-      const items = Object.entries(ratingDraft)
-        .filter(([, stars]) => stars > 0)
-        .map(([productVariantId, stars]) => ({
-          productVariantId,
-          stars,
-          text: reviewText[productVariantId]?.trim() || undefined,
-        }));
+    mutationFn: async (items: { productVariantId: string; stars: number; text?: string }[]) => {
       const res = await api.post(`/orders/${id}/reviews`, { items });
       return res.data;
     },
     onSuccess: () => {
-      setRatingDraft({});
-      setReviewText({});
       qc.invalidateQueries({ queryKey: ['order', id] });
       toast.success(tr('orderDet.reviewThanks'));
     },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
-  const [courierStars, setCourierStars] = useState(0);
   const submitCourierRating = useMutation({
-    mutationFn: async () => {
-      const res = await api.post(`/orders/${id}/review-courier`, { stars: courierStars });
+    mutationFn: async (stars: number) => {
+      const res = await api.post(`/orders/${id}/review-courier`, { stars });
       return res.data;
     },
     onSuccess: () => {
-      setCourierStars(0);
       qc.invalidateQueries({ queryKey: ['order', id] });
       toast.success(tr('orderDet.reviewThanks'));
     },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
-  const [shopStars, setShopStars] = useState(0);
   const submitShopRating = useMutation({
-    mutationFn: async () => {
-      const res = await api.post(`/orders/${id}/review-shop`, { stars: shopStars });
+    mutationFn: async (stars: number) => {
+      const res = await api.post(`/orders/${id}/review-shop`, { stars });
       return res.data;
     },
     onSuccess: () => {
-      setShopStars(0);
       qc.invalidateQueries({ queryKey: ['order', id] });
       toast.success(tr('orderDet.reviewThanks'));
     },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
-  // `value` is the canonical reason string sent to the server; `labelKey` is
-  // only what the customer sees, so switching language never changes the data.
-  const COMPLAINT_REASONS = [
-    { value: 'Mahsulot yetkazilmadi', labelKey: 'orderDet.complaintNotDelivered' },
-    { value: 'Mahsulot sifatsiz', labelKey: 'orderDet.complaintLowQuality' },
-    { value: "Noto'g'ri mahsulot keldi", labelKey: 'orderDet.complaintWrongItem' },
-    { value: 'Kam yetkazildi', labelKey: 'orderDet.complaintShort' },
-    { value: 'Boshqa', labelKey: 'orderDet.complaintOther' },
-  ] as const;
-
-  // Files a dispute within the server's settlement window (the exact
-  // window length is not duplicated client-side — a closed window simply
-  // surfaces as the server's rejection message via extractErrorMessage).
   const fileComplaint = useMutation({
-    mutationFn: async () => {
-      const reason =
-        complaintReason === 'Boshqa' ? complaintCustomReason.trim() : complaintReason;
-      const res = await api.post(`/orders/${id}/complaint`, {
-        reason,
-        description: complaintDesc.trim() || undefined,
-      });
+    mutationFn: async ({ reason, description }: { reason: string; description?: string }) => {
+      const res = await api.post(`/orders/${id}/complaint`, { reason, description });
       return res.data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['order', id] });
       toast.success(tr('orderDet.complaintSent'));
-      setComplaintOpen(false);
-      setComplaintReason('');
-      setComplaintCustomReason('');
-      setComplaintDesc('');
     },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
@@ -339,8 +277,6 @@ export default function OrderDetailScreen() {
     );
   }
 
-  // Includes seller_no_response/seller_rejected — retrying the same shop is
-  // one of the suggested options when it didn't accept the order.
   const canReorder = isTerminalStatus(order.status);
 
   const handleReorder = async () => {
@@ -348,16 +284,12 @@ export default function OrderDetailScreen() {
     const shopId = order.shopId;
     const shopName = order.shop?.name ?? '';
 
-    // order.items carries this order's HISTORICAL price/no photo — cart
-    // merging now trusts the newest addItem() call as the current truth
-    // (fixes a stale-price bug elsewhere), so reordering must feed it
-    // today's actual price, not what was charged last time.
     let current: PublicProductVariant[] = [];
     try {
       const res = await api.get<PublicProductVariant[]>(`/catalog/shops/${shopId}/products`);
       current = res.data;
     } catch {
-      // Fall back to historical data below rather than blocking reorder entirely.
+      // Fallback to historical prices if catalog lookup fails
     }
     const currentById = new Map(current.map((v) => [v.id, v]));
 
@@ -378,25 +310,12 @@ export default function OrderDetailScreen() {
 
   const canReview = order.status === 'delivered';
   const canComplain = order.status === 'delivered' && !order.complaint;
-  const canSubmitComplaint =
-    complaintReason !== '' && (complaintReason !== 'Boshqa' || complaintCustomReason.trim() !== '');
   const statusColor = colors.status[order.status];
-  // No further progress will happen and there's nothing to chat about or
-  // track on a timeline — covers a plain cancel as well as the shop
-  // declining/not responding (isSellerDeclined).
   const isDeadOrder = order.status === 'cancelled' || isSellerDeclined;
-  // Locked the instant Click confirms payment — there's no automated refund
-  // path, so this must never be switchable once money has actually moved.
   const canChangePayment = order.paymentStatus !== 'paid' && !isTerminalStatus(order.status);
-  // A real courier return only happens mid-delivery (server: partialReturn
-  // requires status === 'delivering'). A dead order's items also carry
-  // returnedQuantity === quantity — the server reuses that field to put
-  // reserved stock back when an order never gets fulfilled at all — but
-  // that's not a customer return, so it must not show the return UI/prompt.
   const hasReturns = !isDeadOrder && order.items.some((i) => i.returnedQuantity > 0);
   const returnedTotal = order.items.reduce((sum, i) => sum + i.unitPrice * i.returnedQuantity, 0);
   const unreviewed = canReview ? order.items.filter((i) => !reviewed.has(i.productVariantId)) : [];
-  const pendingRatings = Object.values(ratingDraft).filter((s) => s > 0).length;
 
   return (
     <View style={styles.root}>
@@ -422,8 +341,7 @@ export default function OrderDetailScreen() {
           <AutoCancelCountdown createdAt={order.createdAt} status={order.status} />
         </View>
 
-        {/* Admin force-refund — previously tracked in the DB but never shown
-            to the customer (flagged in the previous session). */}
+        {/* Refund banners */}
         {order.refund && (
           <View style={styles.refundBanner}>
             <Text style={styles.refundBannerText}>
@@ -435,8 +353,6 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
-        {/* Click payment reversed back to the card (auto-refund on
-            cancel/no-response) — reassure the customer the money is on its way. */}
         {order.refundedAt && (
           <View style={[styles.refundBanner, styles.refundBannerRow]}>
             <Check size={16} color={colors.feedback.success} strokeWidth={2.6} />
@@ -444,8 +360,7 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
-        {/* Seller didn't accept — distinct from a plain cancel: not the
-            customer's fault, so offer a way forward instead of a dead end. */}
+        {/* Seller declined banner */}
         {isSellerDeclined && (
           <View style={styles.declinedBanner}>
             <AlertCircle size={18} color={colors.feedback.warning} strokeWidth={2.4} />
@@ -455,44 +370,17 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
+        {/* Find elsewhere alternatives */}
         {isSellerDeclined && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{tr('orders.findElsewhereTitle')}</Text>
-            {order.items.map((it, idx) => {
-              const offers = (alternativesQueries[idx]?.data ?? []).slice(0, 5);
-              if (offers.length === 0) return null;
-              return (
-                <View key={it.id} style={styles.altGroup}>
-                  <Text style={styles.altGroupTitle}>{getLocalizedText(it.productName)}</Text>
-                  {offers.map((o) => (
-                    <Pressable
-                      key={o.variantId}
-                      style={styles.offerRow}
-                      onPress={() => {
-                        haptics.selection();
-                        router.push(`/product/${o.variantId}`);
-                      }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.offerShop} numberOfLines={1}>{o.shopName}</Text>
-                        <Text style={styles.offerMeta}>
-                          {o.isOpen ? tr('shop.open') : tr('shop.closed')}
-                          {o.distanceKm != null
-                            ? ` · ${o.distanceKm < 1 ? `${Math.round(o.distanceKm * 1000)} m` : `${o.distanceKm.toFixed(1)} km`}`
-                            : ''}
-                        </Text>
-                      </View>
-                      <Text style={styles.offerPrice}>
-                        {(o.discountPrice ?? o.price).toLocaleString()} {tr('common.som')}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              );
-            })}
-            {alternativesQueries.every((q) => !q.isLoading && (q.data?.length ?? 0) === 0) && (
-              <Text style={styles.altEmpty}>{tr('orders.findElsewhereEmpty')}</Text>
-            )}
-          </View>
+          <OrderAlternativesCard
+            items={order.items}
+            offersByItem={alternativesQueries.map((q) => q.data ?? [])}
+            hasNoOffers={alternativesQueries.every((q) => !q.isLoading && (q.data?.length ?? 0) === 0)}
+            onSelectProduct={(variantId) => {
+              haptics.selection();
+              router.push(`/product/${variantId}`);
+            }}
+          />
         )}
 
         {!isDeadOrder && (
@@ -503,375 +391,59 @@ export default function OrderDetailScreen() {
         )}
 
         {/* Timeline */}
-        {!isDeadOrder && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{tr('orderDet.timeline')}</Text>
-            {FLOW.map((s, idx) => {
-              const event = order.timeline.find((e) => e.status === s);
-              const active = event !== undefined;
-              const isLast = idx === FLOW.length - 1;
-              return (
-                <View key={s} style={styles.tlRow}>
-                  <View style={styles.tlGutter}>
-                    <View style={[styles.tlDot, active && styles.tlDotActive]}>
-                      {active && <Check size={11} color={colors.text.onPrimary} strokeWidth={3.5} />}
-                    </View>
-                    {!isLast && <View style={[styles.tlLine, active && styles.tlLineActive]} />}
-                  </View>
-                  <View style={styles.tlBody}>
-                    <Text style={[styles.tlLabel, active && styles.tlLabelActive]}>
-                      {tr(ORDER_STATUS_KEY[s])}
-                    </Text>
-                    {event && (
-                      <Text style={styles.tlTime}>
-                        {new Date(event.at).toLocaleString('uz-UZ', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        )}
+        {!isDeadOrder && <OrderStatusTimeline timeline={order.timeline} />}
 
-        {/* Items */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{tr('shop.products')}</Text>
-          {order.items.map((it) => {
-            const photo = it.productVariant?.globalProduct?.photos?.[0];
-            return (
-              <View key={it.id} style={styles.itemRow}>
-                {photo ? (
-                  <Image source={{ uri: resolveMedia(photo) }} style={styles.itemImage} />
-                ) : (
-                  <View style={styles.itemImage} />
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.itemName}>{getLocalizedText(it.productName)}</Text>
-                  <Text style={styles.itemQty}>
-                    {it.quantity} × {it.unitPrice.toLocaleString()} {tr('common.som')}
-                  </Text>
-                  {hasReturns && it.returnedQuantity > 0 && (
-                    <Text style={styles.returnedTag}>
-                      {tr('orderDet.returnedCount', { n: it.returnedQuantity })}
-                    </Text>
-                  )}
-                </View>
-                <Text style={styles.itemTotal}>{it.lineTotal.toLocaleString()}</Text>
-              </View>
-            );
-          })}
-        </View>
+        {/* Order Items */}
+        <OrderItemsCard items={order.items} hasReturns={hasReturns} />
 
-        {/* Return reason — optional, prompted after the courier marks returns */}
+        {/* Return Reason Prompt */}
         {hasReturns && (
-          <View style={styles.section}>
-            <View style={styles.returnHeader}>
-              <RotateCcw size={16} color={colors.feedback.warning} strokeWidth={2.4} />
-              <Text style={styles.sectionTitle}>{tr('orderDet.returnedTitle')}</Text>
-            </View>
-            {order.returnReason ? (
-              <Text style={styles.reasonSaved}>"{order.returnReason}"</Text>
-            ) : (
-              <>
-                <Text style={styles.reasonHint}>{tr('orderDet.returnReasonHint')}</Text>
-                <TextInput
-                  style={styles.reviewInput}
-                  placeholder={tr('orderDet.returnReasonPlaceholder')}
-                  placeholderTextColor={colors.text.hint}
-                  value={reasonDraft}
-                  onChangeText={setReasonDraft}
-                  multiline
-                />
-                {reasonDraft.trim().length > 0 && (
-                  <Pressable
-                    style={styles.primaryBtn}
-                    onPress={() => submitReason.mutate()}
-                    disabled={submitReason.isPending}>
-                    {submitReason.isPending ? (
-                      <ActivityIndicator color={colors.text.onPrimary} />
-                    ) : (
-                      <Text style={styles.primaryBtnText}>{tr('orderDet.saveReason')}</Text>
-                    )}
-                  </Pressable>
-                )}
-              </>
-            )}
-          </View>
-        )}
-
-        {/* Summary — subTotal/total already reflect any partial return (the
-            server recalculates and saves them when items are returned), so
-            this always shows what the customer actually owes/paid. When
-            there was a return, call that out explicitly with the refunded
-            amount, derived from the per-item returnedQuantity already shown
-            above — not invented. */}
-        <View style={styles.section}>
-          {hasReturns && (
-            <>
-              <Row
-                label={tr('orderDet.returnedLabel')}
-                value={`− ${returnedTotal.toLocaleString()} ${tr('common.som')}`}
-                tone="warning"
-              />
-              <View style={styles.divider} />
-            </>
-          )}
-          <Row label={tr('cart.subtotal')} value={`${order.subTotal.toLocaleString()} ${tr('common.som')}`} />
-          <Row label={tr('cart.deliveryFee')} value={`${order.deliveryFee.toLocaleString()} ${tr('common.som')}`} />
-          <Row label={tr('cart.distance')} value={`${order.distanceKm.toFixed(2)} km`} />
-          <View style={styles.divider} />
-          <Row
-            label={hasReturns ? tr('orderDet.newTotalAfterReturn') : tr('cart.total')}
-            value={`${order.total.toLocaleString()} ${tr('common.som')}`}
-            bold
+          <OrderReturnReasonCard
+            returnReason={order.returnReason}
+            onSubmitReason={async (reason) => {
+              await submitReason.mutateAsync(reason);
+            }}
           />
-          {(order.paymentStatus === 'paid' || order.status === 'delivered') && (
-            <>
-              <View style={styles.divider} />
-              <Pressable
-                style={styles.fiscalReceiptBtn}
-                onPress={() => {
-                  haptics.selection();
-                  setReceiptModalOpen(true);
-                }}>
-                <View style={styles.fiscalReceiptBtnLeft}>
-                  <FileText size={18} color={colors.brand.primary} strokeWidth={2.4} />
-                  <Text style={styles.fiscalReceiptBtnText}>{tr('fiscal.viewReceiptBtn')}</Text>
-                </View>
-                <View style={styles.fiscalReceiptBtnTagWrap}>
-                  <Text style={styles.fiscalReceiptBtnTag}>1% keshbek</Text>
-                </View>
-              </Pressable>
-            </>
-          )}
-        </View>
-
-        {/* Rating */}
-        {canReview && unreviewed.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{tr('orderDet.rateProducts')}</Text>
-            {unreviewed.map((it) => (
-              <View key={it.id} style={styles.rateRow}>
-                <Text style={styles.rateName}>{getLocalizedText(it.productName)}</Text>
-                <StarPicker
-                  value={ratingDraft[it.productVariantId] ?? 0}
-                  onChange={(v) => {
-                    haptics.selection();
-                    setRatingDraft((d) => ({ ...d, [it.productVariantId]: v }));
-                  }}
-                />
-                {(ratingDraft[it.productVariantId] ?? 0) > 0 && (
-                  <TextInput
-                    style={styles.reviewInput}
-                    placeholder={tr('orderDet.reviewPlaceholder')}
-                    placeholderTextColor={colors.text.hint}
-                    value={reviewText[it.productVariantId] ?? ''}
-                    onChangeText={(t) =>
-                      setReviewText((r) => ({ ...r, [it.productVariantId]: t }))
-                    }
-                  />
-                )}
-              </View>
-            ))}
-            {pendingRatings > 0 && (
-              <Pressable
-                style={styles.primaryBtn}
-                onPress={() => submitReviews.mutate()}
-                disabled={submitReviews.isPending}>
-                {submitReviews.isPending ? (
-                  <ActivityIndicator color={colors.text.onPrimary} />
-                ) : (
-                  <Text style={styles.primaryBtnText}>
-                    {tr('orderDet.submitReviews', { n: pendingRatings })}
-                  </Text>
-                )}
-              </Pressable>
-            )}
-          </View>
         )}
 
-        {canReview && unreviewed.length === 0 && order.items.length > 0 && (
-          <Text style={styles.allReviewed}>{tr('orderDet.allReviewed')}</Text>
+        {/* Summary Card */}
+        <OrderSummaryCard
+          order={order}
+          hasReturns={hasReturns}
+          returnedTotal={returnedTotal}
+          onOpenReceipt={() => setReceiptModalOpen(true)}
+        />
+
+        {/* Review Section */}
+        {canReview && (
+          <OrderReviewSection
+            unreviewedItems={unreviewed}
+            allReviewed={unreviewed.length === 0 && order.items.length > 0}
+            hasDeliveredCourier={!!order.deliveredByUserId}
+            courierReviewed={!!order.courierReviewed}
+            shopReviewed={!!order.shopReviewed}
+            onSubmitProductReviews={async (items) => {
+              await submitReviews.mutateAsync(items);
+            }}
+            onSubmitCourierRating={async (stars) => {
+              await submitCourierRating.mutateAsync(stars);
+            }}
+            onSubmitShopRating={async (stars) => {
+              await submitShopRating.mutateAsync(stars);
+            }}
+          />
         )}
 
-        {/* Delivery/courier rating — separate from per-product reviews. Only
-            shown when a courier is actually attributed (deliveredByUserId is
-            null when the customer self-confirmed receipt). */}
-        {canReview && order.deliveredByUserId && !order.courierReviewed && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{tr('orderDet.rateCourier')}</Text>
-            <StarPicker
-              value={courierStars}
-              onChange={(v) => {
-                haptics.selection();
-                setCourierStars(v);
-              }}
-            />
-            {courierStars > 0 && (
-              <Pressable
-                style={styles.primaryBtn}
-                onPress={() => submitCourierRating.mutate()}
-                disabled={submitCourierRating.isPending}>
-                {submitCourierRating.isPending ? (
-                  <ActivityIndicator color={colors.text.onPrimary} />
-                ) : (
-                  <Text style={styles.primaryBtnText}>{tr('orderDet.submitRating')}</Text>
-                )}
-              </Pressable>
-            )}
-          </View>
-        )}
+        {/* Complaint Section */}
+        <OrderComplaintCard
+          complaint={order.complaint}
+          canComplain={canComplain}
+          onSubmitComplaint={async (reason, description) => {
+            await fileComplaint.mutateAsync({ reason, description });
+          }}
+        />
 
-        {/* Shop/delivery-experience rating — separate from product-quality reviews. */}
-        {canReview && !order.shopReviewed && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{tr('orderDet.rateShop')}</Text>
-            <StarPicker
-              value={shopStars}
-              onChange={(v) => {
-                haptics.selection();
-                setShopStars(v);
-              }}
-            />
-            {shopStars > 0 && (
-              <Pressable
-                style={styles.primaryBtn}
-                onPress={() => submitShopRating.mutate()}
-                disabled={submitShopRating.isPending}>
-                {submitShopRating.isPending ? (
-                  <ActivityIndicator color={colors.text.onPrimary} />
-                ) : (
-                  <Text style={styles.primaryBtnText}>{tr('orderDet.submitRating')}</Text>
-                )}
-              </Pressable>
-            )}
-          </View>
-        )}
-
-        {/* Complaint — either its current status, or the filing form (only
-            while delivered and within the server's dispute window; a closed
-            window surfaces as the server's own rejection toast). */}
-        {order.status === 'delivered' && order.complaint && (
-          <View style={[styles.section, styles.complaintCard]}>
-            <View style={styles.complaintHeader}>
-              <AlertCircle size={16} color={colors.feedback.danger} strokeWidth={2.2} />
-              <Text style={styles.sectionTitle}>{tr('orderDet.complaintTitle')}</Text>
-            </View>
-            <Text style={styles.complaintReasonText}>"{order.complaint.reason}"</Text>
-            <View
-              style={[
-                styles.complaintStatusBadge,
-                order.complaint.status === 'resolved'
-                  ? styles.complaintStatusResolved
-                  : styles.complaintStatusOpen,
-              ]}>
-              <Text
-                style={[
-                  styles.complaintStatusText,
-                  order.complaint.status === 'resolved'
-                    ? styles.complaintStatusTextResolved
-                    : styles.complaintStatusTextOpen,
-                ]}>
-                {order.complaint.status === 'resolved'
-                  ? tr('orderDet.complaintResolved')
-                  : tr('orderDet.complaintReviewing')}
-              </Text>
-            </View>
-            {order.complaint.resolvedAt && (
-              <Text style={styles.complaintMeta}>
-                {tr('orderDet.complaintResolvedAt', {
-                  date: new Date(order.complaint.resolvedAt).toLocaleDateString('uz-UZ'),
-                })}
-              </Text>
-            )}
-          </View>
-        )}
-
-        {canComplain && (
-          <View style={styles.section}>
-            {!complaintOpen ? (
-              <Pressable style={styles.complaintOpenBtn} onPress={() => setComplaintOpen(true)}>
-                <AlertCircle size={16} color={colors.feedback.danger} strokeWidth={2.2} />
-                <Text style={styles.complaintOpenBtnText}>{tr('orderDet.fileComplaint')}</Text>
-              </Pressable>
-            ) : (
-              <>
-                <Text style={styles.sectionTitle}>{tr('orderDet.complaintReasonTitle')}</Text>
-                <View style={styles.wrap}>
-                  {COMPLAINT_REASONS.map((r) => (
-                    <Pressable
-                      key={r.value}
-                      onPress={() => setComplaintReason(r.value)}
-                      style={[
-                        styles.reasonChip,
-                        complaintReason === r.value && styles.reasonChipActive,
-                      ]}>
-                      <Text
-                        style={[
-                          styles.reasonChipText,
-                          complaintReason === r.value && styles.reasonChipTextActive,
-                        ]}>
-                        {tr(r.labelKey)}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-                {complaintReason === 'Boshqa' && (
-                  <TextInput
-                    style={styles.reviewInput}
-                    placeholder={tr('orderDet.writeReason')}
-                    placeholderTextColor={colors.text.hint}
-                    value={complaintCustomReason}
-                    onChangeText={setComplaintCustomReason}
-                  />
-                )}
-                <TextInput
-                  style={[styles.reviewInput, styles.complaintTextarea]}
-                  placeholder={tr('orderDet.extraNotePlaceholder')}
-                  placeholderTextColor={colors.text.hint}
-                  value={complaintDesc}
-                  onChangeText={setComplaintDesc}
-                  multiline
-                />
-                <View style={styles.complaintActions}>
-                  <Pressable
-                    style={styles.ghostBtn}
-                    onPress={() => {
-                      setComplaintOpen(false);
-                      setComplaintReason('');
-                      setComplaintCustomReason('');
-                      setComplaintDesc('');
-                    }}>
-                    <Text style={styles.ghostBtnText}>{tr('common.cancel')}</Text>
-                  </Pressable>
-                  <Pressable
-                    style={[
-                      styles.primaryBtn,
-                      { flex: 1 },
-                      !canSubmitComplaint && styles.primaryBtnDisabled,
-                    ]}
-                    disabled={!canSubmitComplaint || fileComplaint.isPending}
-                    onPress={() => fileComplaint.mutate()}>
-                    {fileComplaint.isPending ? (
-                      <ActivityIndicator color={colors.text.onPrimary} />
-                    ) : (
-                      <Text style={styles.primaryBtnText}>{tr('orderDet.send')}</Text>
-                    )}
-                  </Pressable>
-                </View>
-              </>
-            )}
-          </View>
-        )}
-
-        {/* QR handshake — only when the assigned courier already carries a
-            confirmed risk flag (almost never). Kuryer skanerlaydi. */}
+        {/* QR Handshake */}
         {order.status === 'delivering' && handshakeQuery.data?.required && handshakeQuery.data.token && (
           <View style={styles.handshakeCard}>
             <Text style={styles.handshakeTitle}>{tr('orderDet.handshakeTitle')}</Text>
@@ -882,150 +454,29 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
-        {/* Courier map — shown while delivering */}
+        {/* Courier Live GPS Map */}
         {order.status === 'delivering' && courierLocation && (
-          <View style={styles.mapCard}>
-            <View style={styles.mapTitleRow}>
-              <Text style={styles.mapTitle}>{tr('orderDet.courierLocation')}</Text>
-              {courierLocation.etaMinutes != null ? (
-                <Text style={styles.mapEta}>
-                  {tr('orderDet.courierEta', { n: courierLocation.etaMinutes })}
-                </Text>
-              ) : null}
-            </View>
-            <MapView
-              ref={mapRef}
-              provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-              style={styles.map}
-              initialRegion={{
-                latitude: courierLocation.lat,
-                longitude: courierLocation.lng,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              }}>
-              <Marker
-                coordinate={{ latitude: courierLocation.lat, longitude: courierLocation.lng }}
-                title={tr('orderDet.courierPin')}
-                pinColor={colors.brand.primary}
-              />
-              {order.deliveryAddress && (
-                <Marker
-                  coordinate={{
-                    latitude: order.deliveryAddress.latitude,
-                    longitude: order.deliveryAddress.longitude,
-                  }}
-                  title={tr('orderDet.youPin')}
-                  pinColor={colors.feedback.success}
-                />
-              )}
-            </MapView>
-          </View>
+          <OrderCourierMapCard
+            courierLocation={courierLocation}
+            deliveryAddress={order.deliveryAddress}
+          />
         )}
 
-        {/* Switch cash <-> card any time before payment actually succeeds. */}
-        {canChangePayment && (
-          <View style={styles.paymentSwitchRow}>
-            <Text style={styles.paymentSwitchLabel}>{tr('checkout.paymentTitle')}</Text>
-            <View style={styles.paymentSwitchOptions}>
-              <View style={styles.paymentOption}>
-                <Button
-                  label={tr('checkout.cash')}
-                  leftIcon={Banknote}
-                  size="sm"
-                  variant={order.paymentMethod === 'cash' ? 'primary' : 'outline'}
-                  disabled={changePaymentMethod.isPending || order.paymentMethod === 'cash'}
-                  onPress={() => changePaymentMethod.mutate('cash')}
-                />
-              </View>
-              <View style={styles.paymentOption}>
-                <Button
-                  label={tr('checkout.cardPayment')}
-                  leftIcon={CreditCard}
-                  size="sm"
-                  variant={order.paymentMethod === 'click_online' ? 'primary' : 'outline'}
-                  disabled={changePaymentMethod.isPending || order.paymentMethod === 'click_online'}
-                  onPress={() => changePaymentMethod.mutate('click_online')}
-                />
-              </View>
-            </View>
-          </View>
-        )}
+        {/* Payment & Cards */}
+        <OrderPaymentSection
+          order={order}
+          canChangePayment={canChangePayment}
+          isTerminal={isTerminalStatus(order.status)}
+          cards={cardsQuery.data ?? []}
+          onPayWithCard={(cardId) => payWithCard.mutate(cardId)}
+          payWithCardLoading={payWithCard.isPending}
+          onChangePaymentMethod={(method) => changePaymentMethod.mutate(method)}
+          changePaymentMethodLoading={changePaymentMethod.isPending}
+          onRefreshOrder={() => void qc.invalidateQueries({ queryKey: ['order', id] })}
+          onError={(msg) => toast.error(msg)}
+        />
 
-        {/* A failed charge must never be silently invisible — the customer has
-            no other way to learn the payment didn't go through. */}
-        {order.paymentMethod === 'click_online' && order.paymentStatus === 'failed' && (
-          <View style={styles.failedBadge}>
-            <AlertCircle size={16} color={colors.feedback.danger} strokeWidth={2.2} />
-            <Text style={styles.failedBadgeText}>{tr('checkout.paymentFailedBadge')}</Text>
-          </View>
-        )}
-
-        {/* Saved-card retry — one tap, no redirect, for a pending/failed
-            online payment on an order that can still be paid. Card identity
-            and the pay action are separate elements so the button label stays
-            short instead of cramming a masked PAN into it. */}
-        {order.paymentMethod === 'click_online' &&
-          (order.paymentStatus === 'pending' || order.paymentStatus === 'failed') &&
-          !isTerminalStatus(order.status) &&
-          (cardsQuery.data ?? [])
-            .filter((c) => c.status === 'active')
-            .map((card) => (
-              <View key={card.id} style={styles.savedCardRow}>
-                <View style={styles.savedCardInfo}>
-                  <CardVisual
-                    size="mini"
-                    brand={detectCardBrand(card.cardNumberMasked ?? '')}
-                    numberText={card.cardNumberMasked ?? '••••'}
-                    fallbackLabel={tr('cards.genericName')}
-                  />
-                  <Text style={styles.savedCardNumber} numberOfLines={1}>
-                    {card.cardNumberMasked ?? '••••'}
-                  </Text>
-                </View>
-                <Button
-                  label={tr('checkout.payAction')}
-                  size="sm"
-                  variant="primary"
-                  loading={payWithCard.isPending}
-                  onPress={() => payWithCard.mutate(card.id)}
-                />
-              </View>
-            ))}
-
-        {/* Click payment button — the redirect fallback; demoted to a ghost
-            button once a one-tap saved-card option is available above. */}
-        {order.paymentMethod === 'click_online' &&
-          (order.paymentStatus === 'pending' || order.paymentStatus === 'failed') &&
-          !isTerminalStatus(order.status) &&
-          (() => {
-            const hasCards = (cardsQuery.data ?? []).some((c) => c.status === 'active');
-            return (
-              <Button
-                label={hasCards ? tr('checkout.payWithRedirect') : tr('checkout.cardPayment')}
-                leftIcon={CreditCard}
-                size={hasCards ? 'sm' : 'md'}
-                variant={hasCards ? 'ghost' : 'primary'}
-                onPress={async () => {
-                  try {
-                    const { data } = await api.get<{ url: string }>(`/click/orders/${order.id}/url`);
-                    await WebBrowser.openBrowserAsync(data.url, { showTitle: true });
-                    void qc.invalidateQueries({ queryKey: ['order', id] });
-                  } catch (e) {
-                    toast.error(extractErrorMessage(e));
-                  }
-                }}
-              />
-            );
-          })()}
-        {order.paymentMethod === 'click_online' && order.paymentStatus === 'paid' && !order.refundedAt && (
-          <View style={styles.paidBadge}>
-            <Text style={styles.paidBadgeText}>{tr('checkout.paidBadge')}</Text>
-          </View>
-        )}
-
-        {/* Paid order the shop keeps ignoring — give the customer a way
-            forward: re-ask the same shop (new 5-min window) or cancel below
-            for an automatic refund to the card. */}
+        {/* Ignored paid order options */}
         {showPaidStaleOptions && (
           <View style={styles.noRespCard}>
             <View style={styles.noRespHeader}>
@@ -1043,7 +494,7 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
-        {/* Status actions */}
+        {/* Status action buttons */}
         {order.status === 'delivering' && (
           <Pressable
             style={styles.primaryBtn}
@@ -1052,14 +503,13 @@ export default function OrderDetailScreen() {
             <Text style={styles.primaryBtnText}>{tr('orders.confirmReceived')}</Text>
           </Pressable>
         )}
+
         {(order.status === 'new' || order.status === 'accepted') && (
           <Pressable
             style={styles.ghostBtn}
             onPress={() =>
               Alert.alert(
                 tr('orders.cancel'),
-                // A captured Click payment comes back automatically — say so,
-                // or the customer will fear cancelling swallows their money.
                 order.paymentStatus === 'paid' ? tr('orders.cancelPaidConfirm') : tr('orders.cancelConfirm'),
                 [
                   { text: tr('common.no'), style: 'cancel' },
@@ -1093,49 +543,6 @@ export default function OrderDetailScreen() {
   );
 }
 
-function StarPicker({ value, onChange }: { readonly value: number; readonly onChange: (v: number) => void }) {
-  return (
-    <View style={styles.starRow}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Pressable key={i} onPress={() => onChange(i)} hitSlop={4}>
-          <Star
-            size={28}
-            color={i <= value ? colors.feedback.warning : colors.border.default}
-            fill={i <= value ? colors.feedback.warning : 'transparent'}
-            strokeWidth={2}
-          />
-        </Pressable>
-      ))}
-    </View>
-  );
-}
-
-function Row({
-  label,
-  value,
-  bold,
-  tone,
-}: {
-  readonly label: string;
-  readonly value: string;
-  readonly bold?: boolean;
-  readonly tone?: 'warning';
-}) {
-  return (
-    <View style={styles.row}>
-      <Text style={[styles.rowLabel, bold && styles.rowLabelBold]}>{label}</Text>
-      <Text
-        style={[
-          styles.rowValue,
-          bold && styles.rowValueBold,
-          tone === 'warning' && { color: colors.feedback.warning, fontWeight: '700' },
-        ]}>
-        {value}
-      </Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg.canvas },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg.canvas },
@@ -1164,7 +571,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand.primarySurface,
   },
   chatBtnText: { ...typography.buttonSmall, color: colors.brand.primary },
-  // refund banner
   refundBanner: {
     backgroundColor: colors.feedback.successSurface,
     borderRadius: radius.md,
@@ -1175,7 +581,6 @@ const styles = StyleSheet.create({
   },
   refundBannerText: { ...typography.bodySmall, fontWeight: '700', color: colors.feedback.success, flex: 1 },
   refundBannerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  // paid-but-ignored options card (re-request / cancel-for-refund)
   noRespCard: {
     backgroundColor: colors.feedback.warningSurface,
     borderRadius: radius.md,
@@ -1199,7 +604,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand.primarySurface,
   },
   reRequestBtnText: { ...typography.buttonSmall, color: colors.brand.primary },
-  // seller-declined suggestion flow
   declinedBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1212,145 +616,24 @@ const styles = StyleSheet.create({
     borderColor: colors.feedback.warning,
   },
   declinedBannerText: { ...typography.bodySmall, fontWeight: '700', color: colors.feedback.warning, flex: 1 },
-  altGroup: { gap: spacing.xs },
-  altGroupTitle: { ...typography.bodyStrong, fontSize: 13, color: colors.text.secondary },
-  offerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  offerShop: { ...typography.bodyStrong, fontSize: 14 },
-  offerMeta: { ...typography.caption, color: colors.text.tertiary, marginTop: 2 },
-  offerPrice: { ...typography.bodyStrong, fontSize: 14, color: colors.brand.primary },
-  altEmpty: { ...typography.bodySmall, color: colors.text.tertiary, fontStyle: 'italic' },
-  // complaint
-  complaintCard: { borderColor: colors.feedback.danger, borderWidth: 1.5 },
-  complaintHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  complaintReasonText: { ...typography.body, color: colors.text.secondary, fontStyle: 'italic' },
-  complaintStatusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.md,
-    paddingVertical: 4,
-    borderRadius: radius.full,
-  },
-  complaintStatusOpen: { backgroundColor: colors.feedback.warningSurface },
-  complaintStatusResolved: { backgroundColor: colors.feedback.successSurface },
-  complaintStatusText: { ...typography.caption, fontWeight: '800' },
-  complaintStatusTextOpen: { color: colors.feedback.warning },
-  complaintStatusTextResolved: { color: colors.feedback.success },
-  complaintMeta: { ...typography.caption, color: colors.text.tertiary },
-  complaintOpenBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    height: layout.buttonHeight.md,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.feedback.danger,
-  },
-  complaintOpenBtnText: { ...typography.buttonSmall, color: colors.feedback.danger },
-  complaintTextarea: { minHeight: 64, textAlignVertical: 'top' },
-  complaintActions: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
-  primaryBtnDisabled: { backgroundColor: colors.text.hint },
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  reasonChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    backgroundColor: colors.bg.surface,
-  },
-  reasonChipActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
-  reasonChipText: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
-  reasonChipTextActive: { color: colors.text.onPrimary },
-  section: {
+  handshakeCard: {
     backgroundColor: colors.bg.surface,
     borderRadius: radius.lg,
     padding: spacing.lg,
-    gap: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border.subtle,
-  },
-  sectionTitle: { ...typography.overline, color: colors.text.tertiary, marginBottom: spacing.xs },
-  // timeline
-  tlRow: { flexDirection: 'row', gap: spacing.md },
-  tlGutter: { alignItems: 'center', width: 22 },
-  tlDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: colors.border.default,
-    backgroundColor: colors.bg.surface,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tlDotActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
-  tlLine: { width: 2, flex: 1, backgroundColor: colors.border.default, minHeight: 16 },
-  tlLineActive: { backgroundColor: colors.brand.primary },
-  tlBody: { flex: 1, paddingBottom: spacing.md },
-  tlLabel: { ...typography.body, color: colors.text.tertiary },
-  tlLabelActive: { color: colors.text.primary, fontWeight: '700' },
-  tlTime: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
-  // items
-  itemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs, gap: spacing.sm },
-  itemImage: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.bg.canvas },
-  itemName: { ...typography.bodyStrong, fontSize: 14 },
-  itemQty: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
-  returnedTag: { ...typography.caption, color: colors.feedback.warning, fontWeight: '700', marginTop: 2 },
-  itemTotal: { ...typography.priceSmall },
-  returnHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  reasonSaved: { ...typography.body, color: colors.text.secondary, fontStyle: 'italic' },
-  reasonHint: { ...typography.bodySmall, color: colors.text.secondary },
-  // summary
-  // A long label (e.g. "Yangi summa (qaytarishdan keyin)") next to a bold,
-  // larger-font value must never push the value off-screen — the label
-  // shrinks/wraps first, the value never does.
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingVertical: 3,
     gap: spacing.sm,
   },
-  rowLabel: { ...typography.body, color: colors.text.secondary, flexShrink: 1 },
-  rowLabelBold: { color: colors.text.primary, fontWeight: '700' },
-  rowValue: { ...typography.body, fontWeight: '600', flexShrink: 0 },
-  rowValueBold: { ...typography.h3, color: colors.brand.primary },
-  divider: { height: 1, backgroundColor: colors.border.subtle, marginVertical: spacing.xs },
-  // rating
-  rateRow: { paddingVertical: spacing.sm, gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border.subtle },
-  rateName: { ...typography.bodyStrong, fontSize: 14 },
-  starRow: { flexDirection: 'row', gap: spacing.xs },
-  reviewInput: {
-    ...typography.body,
-    backgroundColor: colors.bg.surfaceMuted,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  allReviewed: {
-    ...typography.bodySmall,
-    color: colors.feedback.success,
-    fontWeight: '700',
-    textAlign: 'center',
-    paddingVertical: spacing.sm,
-  },
-  // buttons
+  handshakeTitle: { ...typography.h3, fontSize: 16 },
+  handshakeBody: { ...typography.bodySmall, color: colors.text.secondary, textAlign: 'center' },
+  handshakeQrWrap: { padding: spacing.md, backgroundColor: '#FFFFFF', borderRadius: radius.md, marginTop: spacing.xs },
   primaryBtn: {
+    backgroundColor: colors.brand.primary,
     height: layout.buttonHeight.lg,
     borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadow.sm,
   },
   primaryBtnText: { ...typography.button, color: colors.text.onPrimary },
   ghostBtn: {
@@ -1360,6 +643,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     height: layout.buttonHeight.md,
     borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.feedback.danger,
+    backgroundColor: colors.feedback.dangerSurface,
   },
   ghostBtnText: { ...typography.buttonSmall, color: colors.feedback.danger },
   reorderBtn: {
@@ -1374,114 +660,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand.primarySurface,
   },
   reorderBtnText: { ...typography.buttonSmall, color: colors.brand.primary },
-  // courier map
-  mapCard: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    overflow: 'hidden',
-  },
-  handshakeCard: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-    alignItems: 'center',
-  },
-  handshakeTitle: { ...typography.bodyStrong, color: colors.text.primary, textAlign: 'center' },
-  handshakeBody: { ...typography.bodySmall, color: colors.text.secondary, textAlign: 'center' },
-  handshakeQrWrap: { padding: spacing.md, backgroundColor: '#fff', borderRadius: radius.md, marginTop: spacing.xs },
-  mapTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs },
-  mapTitle: { ...typography.overline, color: colors.text.tertiary },
-  mapEta: { ...typography.caption, fontWeight: '700', color: colors.brand.primary },
-  map: { width: '100%', height: 220, borderRadius: radius.md },
-  paidBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.lg,
-    backgroundColor: `${colors.feedback.success}18`,
-    borderWidth: 1,
-    borderColor: colors.feedback.success,
-  },
-  paidBadgeText: { ...typography.bodyStrong, color: colors.feedback.success },
-  failedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.lg,
-    backgroundColor: `${colors.feedback.danger}18`,
-    borderWidth: 1,
-    borderColor: colors.feedback.danger,
-  },
-  failedBadgeText: { ...typography.bodySmall, color: colors.feedback.danger, flexShrink: 1 },
-  paymentSwitchRow: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  paymentSwitchLabel: { ...typography.caption, color: colors.text.secondary, fontWeight: '700' },
-  paymentSwitchOptions: { flexDirection: 'row', gap: spacing.sm },
-  paymentOption: { flex: 1 },
-  // Saved-card retry: card identity and the pay action live in separate
-  // elements so the button label stays short (see checkout.payAction).
-  savedCardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  savedCardInfo: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1 },
-  savedCardNumber: { ...typography.bodyStrong, color: colors.text.primary, flexShrink: 1 },
-  fiscalReceiptBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    marginTop: spacing.xs,
-  },
-  fiscalReceiptBtnLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  fiscalReceiptBtnText: {
-    ...typography.subtitle,
-    color: '#15803D',
-    fontWeight: '700',
-  },
-  fiscalReceiptBtnTagWrap: {
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-    borderRadius: radius.full,
-  },
-  fiscalReceiptBtnTag: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#166534',
-  },
 });

@@ -292,18 +292,20 @@ export interface Order {
   /** 'delivery' (app order) or 'in_store' (counter sale). */
   channel?: 'delivery' | 'in_store';
   /** Customer dispute on this order, if any (from GET /orders/:id — SPEC.md §8.5, §21). */
-  complaint?: {
-    status: 'open' | 'resolved';
-    reason: string;
-    createdAt: string;
-    resolvedAt: string | null;
-  } | null;
+  complaint?: OrderComplaint | null;
   /** Admin force-refund applied to this order, if any (from GET /orders/:id). */
   refund?: { amount: number; at: string } | null;
   /** Customer re-asked the silent shop — restarts the 5-min accept window from here. */
   reRequestedAt?: string | null;
   /** Click payment was reversed back to the customer's card. */
   refundedAt?: string | null;
+}
+
+export interface OrderComplaint {
+  status: 'open' | 'resolved';
+  reason: string;
+  createdAt: string;
+  resolvedAt: string | null;
 }
 
 /** FIFO cost summary attached to seller inventory rows. */
