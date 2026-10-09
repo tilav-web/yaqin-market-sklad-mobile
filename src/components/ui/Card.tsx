@@ -1,6 +1,6 @@
-import { Pressable, PressableProps, StyleSheet, View, ViewStyle } from 'react-native';
+import { Pressable, PressableProps, View, ViewStyle } from 'react-native';
 
-import { colors, radius, shadow as shadowTokens, spacing } from '@/theme';
+import { radius, shadow as shadowTokens, spacing } from '@/theme';
 import { useTheme } from '@/stores/theme';
 
 interface Props extends Omit<PressableProps, 'style' | 'children'> {
@@ -9,6 +9,7 @@ interface Props extends Omit<PressableProps, 'style' | 'children'> {
   elevation?: 'none' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   bordered?: boolean;
   style?: ViewStyle | ViewStyle[];
+  className?: string;
 }
 
 export function Card({
@@ -17,15 +18,16 @@ export function Card({
   elevation = 'xs',
   bordered = true,
   style,
+  className,
   onPress,
   ...rest
 }: Props) {
   const { colors: activeColors } = useTheme();
   const content = (
     <View
+      className={`rounded-2xl ${className ?? ''}`}
       style={[
-        styles.base,
-        { backgroundColor: activeColors.bg.surface },
+        { backgroundColor: activeColors.bg.surface, borderRadius: radius.lg },
         bordered && { borderWidth: 1, borderColor: activeColors.border.subtle },
         shadowTokens[elevation],
         padding !== 'none' && { padding: spacing[padding] },
@@ -44,10 +46,3 @@ export function Card({
   }
   return content;
 }
-
-const styles = StyleSheet.create({
-  base: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-  },
-});

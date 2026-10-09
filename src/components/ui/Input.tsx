@@ -1,7 +1,6 @@
 import { LucideIcon } from 'lucide-react-native';
 import { forwardRef, useState } from 'react';
 import {
-  StyleSheet,
   Text,
   TextInput,
   TextInputProps,
@@ -9,7 +8,7 @@ import {
   ViewStyle,
 } from 'react-native';
 
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors, layout, radius, typography } from '@/theme';
 
 interface Props extends Omit<TextInputProps, 'style'> {
   label?: string;
@@ -19,6 +18,7 @@ interface Props extends Omit<TextInputProps, 'style'> {
   rightIcon?: LucideIcon;
   rightSlot?: React.ReactNode;
   containerStyle?: ViewStyle;
+  className?: string;
   size?: 'md' | 'lg';
 }
 
@@ -31,6 +31,7 @@ export const Input = forwardRef<TextInput, Props>(function Input(
     rightIcon: RightIcon,
     rightSlot,
     containerStyle,
+    className,
     size = 'md',
     onFocus,
     onBlur,
@@ -47,25 +48,29 @@ export const Input = forwardRef<TextInput, Props>(function Input(
       : colors.border.default;
 
   return (
-    <View style={[styles.wrap, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+    <View className={`gap-1.5 ${className ?? ''}`} style={containerStyle}>
+      {label && (
+        <Text style={[typography.bodySmall, { color: colors.text.secondary, fontWeight: '600' }]}>
+          {label}
+        </Text>
+      )}
       <View
-        style={[
-          styles.fieldWrap,
-          {
-            borderColor,
-            borderWidth: focused || error ? 1.5 : 1,
-            height: size === 'lg' ? 56 : layout.inputHeight,
-            backgroundColor: focused ? colors.bg.surface : colors.bg.surfaceMuted,
-          },
-        ]}>
+        className="flex-row items-center px-4 gap-2"
+        style={{
+          borderColor,
+          borderWidth: focused || error ? 1.5 : 1,
+          borderRadius: radius.md,
+          height: size === 'lg' ? 56 : layout.inputHeight,
+          backgroundColor: focused ? colors.bg.surface : colors.bg.surfaceMuted,
+        }}>
         {LeftIcon && (
           <LeftIcon size={18} color={focused ? colors.brand.primary : colors.text.tertiary} strokeWidth={2} />
         )}
         <TextInput
           ref={ref}
           {...rest}
-          style={[styles.input]}
+          className="flex-1 h-full p-0"
+          style={[typography.body, { color: colors.text.primary }]}
           placeholderTextColor={colors.text.hint}
           onFocus={(e) => {
             setFocused(true);
@@ -82,30 +87,12 @@ export const Input = forwardRef<TextInput, Props>(function Input(
         {rightSlot}
       </View>
       {(hint || error) && (
-        <Text style={[styles.hint, error && { color: colors.text.danger }]}>
+        <Text
+          className="mt-0.5 px-1"
+          style={[typography.caption, { color: error ? colors.text.danger : colors.text.tertiary }]}>
           {error ?? hint}
         </Text>
       )}
     </View>
   );
-});
-
-const styles = StyleSheet.create({
-  wrap: { gap: spacing.xs },
-  label: { ...typography.bodySmall, color: colors.text.secondary, fontWeight: '600' },
-  fieldWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.md,
-  },
-  input: {
-    ...typography.body,
-    flex: 1,
-    height: '100%',
-    padding: 0,
-    color: colors.text.primary,
-  },
-  hint: { ...typography.caption, color: colors.text.tertiary, marginTop: 2, paddingHorizontal: spacing.xs },
 });

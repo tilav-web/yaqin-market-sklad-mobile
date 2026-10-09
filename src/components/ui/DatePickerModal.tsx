@@ -1,9 +1,9 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Modal, Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, typography } from '@/theme';
 
 interface Props {
   readonly visible: boolean;
@@ -12,7 +12,7 @@ interface Props {
   readonly onConfirm: (isoDate: string) => void;
   readonly onClose: () => void;
   readonly title?: string;
-  /** Latest selectable date ('YYYY-MM-DD') — e.g. birth date capped to "at least N years old". Later years/months/days are hidden or disabled. */
+  /** Latest selectable date ('YYYY-MM-DD') — e.g. birth date capped to "at least N years old". */
   readonly maxDate?: string;
 }
 
@@ -22,14 +22,13 @@ const MONTHS = [
   'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
 ];
 
-// Wide enough for birth dates (a century back) as well as near-future dates
-// (promotion/expiry fields also use this picker).
 const CURRENT_YEAR = new Date().getFullYear();
 const YEAR_MIN = CURRENT_YEAR - 100;
 const YEAR_MAX = CURRENT_YEAR + 10;
 const YEARS: number[] = Array.from({ length: YEAR_MAX - YEAR_MIN + 1 }, (_, i) => YEAR_MAX - i);
 const YEAR_COLUMNS = 4;
 const YEAR_ROW_HEIGHT = 48;
+const CELL_SIZE = 40;
 
 function toIso(y: number, m: number, d: number): string {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -41,16 +40,6 @@ function parseIso(iso: string): Date | null {
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
 }
 
-/**
- * Lightweight, dependency-free date picker (no `@react-native-community/
- * datetimepicker` in this project yet — this avoids adding a new native
- * module that would need a dev-client rebuild). Replaces raw "YYYY-MM-DD"
- * free-text date fields (promotions start/end, stock-receive expiry, birth
- * date) with a simple month-grid picker built from the same primitives as
- * the rest of the app's modals. Tapping the "Month Year" header jumps to a
- * scrollable year grid — flipping month-by-month to reach a birth year
- * decades back would otherwise take dozens of taps.
- */
 export function DatePickerModal({ visible, value, onConfirm, onClose, title, maxDate }: Props) {
   const { tr } = useTranslation();
   const maxParsed = maxDate ? parseIso(maxDate) : null;
@@ -58,11 +47,6 @@ export function DatePickerModal({ visible, value, onConfirm, onClose, title, max
   const [selected, setSelected] = useState<string | null>(value ?? null);
   const [mode, setMode] = useState<'calendar' | 'year'>('calendar');
 
-  // Re-sync to the field's current value each time the picker opens. With no
-  // value yet and a maxDate cap (birth date), start the view there instead of
-  // "today" — today would just be a wall of disabled days otherwise.
-  // Applied during render, not in an effect, so the calendar opens already
-  // showing the field's month instead of flashing the previous one.
   const syncKey = `${visible}|${value ?? ''}`;
   const [syncedKey, setSyncedKey] = useState<string | null>(null);
   if (syncedKey !== syncKey) {
@@ -100,26 +84,41 @@ export function DatePickerModal({ visible, value, onConfirm, onClose, title, max
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={styles.wrap} pointerEvents="box-none">
-        <View style={styles.card}>
-          {title ? <Text style={styles.title}>{title}</Text> : null}
-          <View style={styles.header}>
+      <Pressable className="absolute inset-0 bg-black/45" onPress={onClose} />
+      <View className="flex-1 items-center justify-center p-6" pointerEvents="box-none">
+        <View
+          className="w-full max-w-sm p-4 gap-2"
+          style={{ backgroundColor: colors.bg.surface, borderRadius: radius.xl }}>
+          {title ? (
+            <Text className="text-center mb-1" style={[typography.bodyStrong, { color: colors.text.primary }]}>
+              {title}
+            </Text>
+          ) : null}
+
+          {/* Header navigation */}
+          <View className="flex-row items-center justify-between">
             {mode === 'calendar' ? (
-              <Pressable style={styles.navBtn} onPress={() => setViewDate(new Date(year, month - 1, 1))} hitSlop={8}>
+              <Pressable
+                className="w-8 h-8 rounded-full items-center justify-center"
+                style={{ backgroundColor: colors.brand.primarySurface }}
+                onPress={() => setViewDate(new Date(year, month - 1, 1))}
+                hitSlop={8}>
                 <ChevronLeft size={20} color={colors.brand.primary} strokeWidth={2.4} />
               </Pressable>
             ) : (
-              <View style={styles.navBtn} />
+              <View className="w-8 h-8" />
             )}
+
             <Pressable onPress={() => setMode(mode === 'calendar' ? 'year' : 'calendar')} hitSlop={8}>
-              <Text style={styles.headerText}>
+              <Text style={[typography.bodyStrong, { color: colors.text.primary }]}>
                 {mode === 'calendar' ? `${MONTHS[month]} ${year}` : 'Yilni tanlang'}
               </Text>
             </Pressable>
+
             {mode === 'calendar' ? (
               <Pressable
-                style={[styles.navBtn, nextMonthDisabled && styles.navBtnDisabled]}
+                className="w-8 h-8 rounded-full items-center justify-center"
+                style={{ backgroundColor: nextMonthDisabled ? colors.bg.surfaceMuted : colors.brand.primarySurface }}
                 disabled={nextMonthDisabled}
                 onPress={() => setViewDate(new Date(year, month + 1, 1))}
                 hitSlop={8}>
@@ -130,10 +129,11 @@ export function DatePickerModal({ visible, value, onConfirm, onClose, title, max
                 />
               </Pressable>
             ) : (
-              <View style={styles.navBtn} />
+              <View className="w-8 h-8" />
             )}
           </View>
 
+          {/* Calendar or Year view */}
           {mode === 'year' ? (
             <FlatList
               data={years}
@@ -145,31 +145,50 @@ export function DatePickerModal({ visible, value, onConfirm, onClose, title, max
                 offset: YEAR_ROW_HEIGHT * Math.floor(index / YEAR_COLUMNS),
                 index,
               })}
-              style={styles.yearList}
+              className="mt-1"
+              style={{ maxHeight: YEAR_ROW_HEIGHT * 4.5 }}
               renderItem={({ item: y }) => {
                 const active = y === year;
                 return (
                   <Pressable
-                    style={[styles.yearCell, active && styles.yearCellActive]}
+                    className="flex-1 items-center justify-center"
+                    style={{ height: YEAR_ROW_HEIGHT }}
                     onPress={() => pickYear(y)}>
-                    <Text style={[styles.yearText, active && styles.yearTextActive]}>{y}</Text>
+                    <Text
+                      style={[
+                        typography.body,
+                        { color: active ? colors.brand.primary : colors.text.primary },
+                        active && { fontWeight: '800', fontSize: 17 },
+                      ]}>
+                      {y}
+                    </Text>
                   </Pressable>
                 );
               }}
             />
           ) : (
             <>
-              <View style={styles.weekRow}>
+              {/* Day of week labels */}
+              <View className="flex-row justify-between mt-1">
                 {WEEKDAYS.map((w) => (
-                  <Text key={w} style={styles.weekday}>
+                  <Text
+                    key={w}
+                    className="text-center"
+                    style={[
+                      typography.caption,
+                      { color: colors.text.tertiary, fontWeight: '700', width: CELL_SIZE },
+                    ]}>
                     {w}
                   </Text>
                 ))}
               </View>
 
-              <View style={styles.grid}>
+              {/* Day grid */}
+              <View className="flex-row flex-wrap">
                 {cells.map((day, i) => {
-                  if (day === null) return <View key={`empty-${i}`} style={styles.cell} />;
+                  if (day === null) {
+                    return <View key={`empty-${i}`} style={{ width: CELL_SIZE, height: CELL_SIZE }} />;
+                  }
                   const iso = toIso(year, month, day);
                   const active = selected === iso;
                   const disabled = !!maxParsed && viewYm === maxYm && day > maxParsed.getDate();
@@ -177,13 +196,23 @@ export function DatePickerModal({ visible, value, onConfirm, onClose, title, max
                     <Pressable
                       key={iso}
                       disabled={disabled}
-                      style={[styles.cell, active && styles.cellActive]}
+                      className="items-center justify-center rounded-full"
+                      style={[
+                        { width: CELL_SIZE, height: CELL_SIZE },
+                        active && { backgroundColor: colors.brand.primary },
+                      ]}
                       onPress={() => setSelected(iso)}>
                       <Text
                         style={[
-                          styles.cellText,
-                          active && styles.cellTextActive,
-                          disabled && styles.cellTextDisabled,
+                          typography.body,
+                          {
+                            color: active
+                              ? colors.text.onPrimary
+                              : disabled
+                                ? colors.text.hint
+                                : colors.text.primary,
+                            fontWeight: active ? '700' : '400',
+                          },
                         ]}>
                         {day}
                       </Text>
@@ -194,16 +223,27 @@ export function DatePickerModal({ visible, value, onConfirm, onClose, title, max
             </>
           )}
 
-          <View style={styles.actions}>
-            <Pressable style={styles.cancelBtn} onPress={onClose}>
-              <Text style={styles.cancelText}>{tr('common.cancel')}</Text>
+          {/* Action buttons */}
+          <View className="flex-row gap-2 mt-2">
+            <Pressable
+              className="flex-1 items-center justify-center py-3 rounded-xl border"
+              style={{ borderColor: colors.border.default }}
+              onPress={onClose}>
+              <Text style={[typography.bodyStrong, { color: colors.text.secondary }]}>
+                {tr('common.cancel')}
+              </Text>
             </Pressable>
             {mode === 'calendar' && (
               <Pressable
-                style={[styles.confirmBtn, !selected && styles.confirmBtnDisabled]}
+                className="flex-1 items-center justify-center py-3 rounded-xl"
+                style={{
+                  backgroundColor: selected ? colors.brand.primary : colors.border.strong,
+                }}
                 disabled={!selected}
                 onPress={() => selected && onConfirm(selected)}>
-                <Text style={styles.confirmText}>{tr('common.confirm')}</Text>
+                <Text style={[typography.bodyStrong, { color: colors.text.onPrimary }]}>
+                  {tr('common.confirm')}
+                </Text>
               </Pressable>
             )}
           </View>
@@ -212,69 +252,3 @@ export function DatePickerModal({ visible, value, onConfirm, onClose, title, max
     </Modal>
   );
 }
-
-const CELL_SIZE = 40;
-
-const styles = StyleSheet.create({
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
-  wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
-  card: {
-    width: '100%',
-    maxWidth: 360,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  title: { ...typography.bodyStrong, color: colors.text.primary, textAlign: 'center', marginBottom: spacing.xs },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  navBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.brand.primarySurface,
-  },
-  navBtnDisabled: { backgroundColor: colors.bg.surfaceMuted },
-  headerText: { ...typography.bodyStrong, color: colors.text.primary },
-  weekRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xs },
-  weekday: { ...typography.caption, color: colors.text.tertiary, fontWeight: '700', width: CELL_SIZE, textAlign: 'center' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  cell: { width: CELL_SIZE, height: CELL_SIZE, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full },
-  cellActive: { backgroundColor: colors.brand.primary },
-  cellText: { ...typography.body, color: colors.text.primary },
-  cellTextActive: { color: colors.text.onPrimary, fontWeight: '700' },
-  cellTextDisabled: { color: colors.text.hint },
-  yearList: { maxHeight: YEAR_ROW_HEIGHT * 4.5, marginTop: spacing.xs },
-  yearCell: {
-    flex: 1 / YEAR_COLUMNS,
-    height: YEAR_ROW_HEIGHT,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  yearCellActive: {},
-  yearText: { ...typography.body, color: colors.text.primary },
-  yearTextActive: { color: colors.brand.primary, fontWeight: '800', fontSize: 17 },
-  actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
-  cancelBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  cancelText: { ...typography.bodyStrong, color: colors.text.secondary },
-  confirmBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-  },
-  confirmBtnDisabled: { backgroundColor: colors.border.strong },
-  confirmText: { ...typography.bodyStrong, color: colors.text.onPrimary },
-});

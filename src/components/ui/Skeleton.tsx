@@ -8,9 +8,16 @@ interface Props {
   height?: number;
   radius?: number;
   style?: ViewStyle;
+  className?: string;
 }
 
-export function Skeleton({ width = '100%', height = 16, radius = radiusToken.sm, style }: Props) {
+export function Skeleton({
+  width = '100%',
+  height = 16,
+  radius = radiusToken.sm,
+  style,
+  className,
+}: Props) {
   const [opacity] = useState(() => new Animated.Value(0.5));
 
   useEffect(() => {
@@ -26,6 +33,7 @@ export function Skeleton({ width = '100%', height = 16, radius = radiusToken.sm,
 
   return (
     <Animated.View
+      className={className}
       style={[
         {
           width,

@@ -5,7 +5,6 @@ import {
   Animated,
   Pressable,
   PressableProps,
-  StyleSheet,
   Text,
   View,
   ViewStyle,
@@ -29,6 +28,7 @@ interface Props extends Omit<PressableProps, 'children' | 'style'> {
   rightIcon?: LucideIcon;
   haptic?: 'light' | 'medium' | 'heavy' | 'success' | 'warning' | 'error' | 'none';
   style?: ViewStyle | ViewStyle[];
+  className?: string;
 }
 
 const ICON_SIZE: Record<ButtonSize, number> = { sm: 16, md: 18, lg: 20 };
@@ -45,6 +45,7 @@ export function Button({
   rightIcon: RightIcon,
   haptic = 'light',
   style,
+  className,
   ...rest
 }: Props) {
   const [scale] = useState(() => new Animated.Value(1));
@@ -81,9 +82,10 @@ export function Button({
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         disabled={isDisabled}
+        className={`items-center justify-center ${className ?? ''}`}
         style={({ pressed }) => [
-          styles.base,
           {
+            borderRadius: radius.md,
             backgroundColor: variantStyle.bg,
             borderColor: variantStyle.border,
             borderWidth: variantStyle.borderWidth,
@@ -99,7 +101,7 @@ export function Button({
         {loading ? (
           <ActivityIndicator color={textColor} />
         ) : (
-          <View style={styles.inner}>
+          <View className="flex-row items-center gap-2">
             {LeftIcon && <LeftIcon size={ICON_SIZE[size]} color={textColor} strokeWidth={2.4} />}
             <Text
               style={[
@@ -163,16 +165,3 @@ const SIZE_STYLES: Record<ButtonSize, { height: number; paddingX: number }> = {
   md: { height: layout.buttonHeight.md, paddingX: spacing.xl },
   lg: { height: layout.buttonHeight.lg, paddingX: spacing['2xl'] },
 };
-
-const styles = StyleSheet.create({
-  base: {
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  inner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-});

@@ -1,6 +1,6 @@
 import { CircleAlert, CircleCheck, CircleX, Info } from 'lucide-react-native';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, radius, shadow, spacing, typography } from '@/theme';
@@ -74,23 +74,31 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {toast && (
         <Animated.View
           pointerEvents="box-none"
+          className="absolute left-4 right-4 z-50"
           style={[
-            styles.host,
             { top: insets.top + spacing.sm },
             { opacity, transform: [{ translateY }] },
           ]}>
-          <Pressable onPress={dismiss} style={styles.cardWrap}>
+          <Pressable onPress={dismiss}>
             <View
+              className="flex-row items-center gap-3 p-3"
               style={[
-                styles.card,
+                shadow.lg,
                 {
+                  backgroundColor: colors.bg.surface,
+                  borderRadius: radius.md,
+                  borderLeftWidth: 4,
                   borderLeftColor: VARIANT_COLOR[toast.variant],
                 },
               ]}>
-              <View style={[styles.iconWrap, { backgroundColor: VARIANT_BG[toast.variant] }]}>
+              <View
+                className="w-9 h-9 rounded-full items-center justify-center"
+                style={{ backgroundColor: VARIANT_BG[toast.variant] }}>
                 {iconFor(toast.variant)}
               </View>
-              <Text style={styles.message}>{toast.message}</Text>
+              <Text className="flex-1" style={typography.bodyStrong}>
+                {toast.message}
+              </Text>
             </View>
           </Pressable>
         </Animated.View>
@@ -125,31 +133,3 @@ function iconFor(variant: ToastVariant) {
       return <Info size={20} color={color} strokeWidth={2.4} />;
   }
 }
-
-const styles = StyleSheet.create({
-  host: {
-    position: 'absolute',
-    left: spacing.lg,
-    right: spacing.lg,
-    zIndex: 100,
-  },
-  cardWrap: {},
-  card: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    padding: spacing.md,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    borderLeftWidth: 4,
-    ...shadow.lg,
-    alignItems: 'center',
-  },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  message: { ...typography.bodyStrong, flex: 1 },
-});

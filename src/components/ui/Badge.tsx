@@ -1,6 +1,6 @@
-import { StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Text, View, ViewStyle } from 'react-native';
 
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, spacing, typography } from '@/theme';
 
 export type BadgeTone =
   | 'primary'
@@ -16,6 +16,7 @@ interface Props {
   tone?: BadgeTone;
   size?: 'sm' | 'md';
   style?: ViewStyle;
+  className?: string;
 }
 
 const TONE_STYLES: Record<BadgeTone, { bg: string; fg: string }> = {
@@ -28,12 +29,12 @@ const TONE_STYLES: Record<BadgeTone, { bg: string; fg: string }> = {
   neutral: { bg: colors.bg.surfaceMuted, fg: colors.text.secondary },
 };
 
-export function Badge({ label, tone = 'neutral', size = 'sm', style }: Props) {
+export function Badge({ label, tone = 'neutral', size = 'sm', style, className }: Props) {
   const t = TONE_STYLES[tone];
   return (
     <View
+      className={`self-start rounded-full items-center justify-center ${className ?? ''}`}
       style={[
-        styles.base,
         {
           backgroundColor: t.bg,
           paddingHorizontal: size === 'sm' ? spacing.sm : spacing.md,
@@ -43,8 +44,8 @@ export function Badge({ label, tone = 'neutral', size = 'sm', style }: Props) {
       ]}>
       <Text
         style={[
-          styles.text,
-          { color: t.fg, fontSize: size === 'sm' ? 11 : 13 },
+          typography.caption,
+          { color: t.fg, fontSize: size === 'sm' ? 11 : 13, fontWeight: '700', letterSpacing: 0.3 },
         ]}>
         {label}
       </Text>
@@ -77,7 +78,7 @@ const STATUS_LABELS_UZ: Record<OrderStatus, string> = {
   new: 'Yangi',
   accepted: 'Qabul qilindi',
   preparing: "Yig'ilmoqda",
-  delivering: 'Yo\'lda',
+  delivering: "Yo'lda",
   delivered: 'Yetkazildi',
   cancelled: 'Bekor qilindi',
   seller_no_response: "Do'kon javob bermadi",
@@ -87,15 +88,3 @@ const STATUS_LABELS_UZ: Record<OrderStatus, string> = {
 export function StatusBadge({ status }: { status: OrderStatus }) {
   return <Badge label={STATUS_LABELS_UZ[status]} tone={STATUS_TONE[status]} size="md" />;
 }
-
-const styles = StyleSheet.create({
-  base: {
-    alignSelf: 'flex-start',
-    borderRadius: radius.full,
-  },
-  text: {
-    ...typography.caption,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-});
