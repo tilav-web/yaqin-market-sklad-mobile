@@ -18,6 +18,7 @@ interface CartState {
   hasHydrated: boolean;
   setHasHydrated: (v: boolean) => void;
   addItem: (line: CartLine) => void;
+  replaceCartWithItem: (line: CartLine) => void;
   removeItem: (shopId: string, variantId: string) => void;
   updateQty: (shopId: string, variantId: string, qty: number) => void;
   clearShop: (shopId: string) => void;
@@ -32,6 +33,14 @@ export const useCartStore = create<CartState>()(
       hasHydrated: false,
       setHasHydrated(v) {
         set({ hasHydrated: v });
+      },
+
+      replaceCartWithItem(line) {
+        set({
+          carts: {
+            [line.shopId]: [line],
+          },
+        });
       },
 
       addItem(line) {
@@ -116,3 +125,18 @@ export const useCartStore = create<CartState>()(
     },
   ),
 );
+
+export const selectActiveShopId = (s: CartState): string | null => {
+  for (const id in s.carts) {
+    if ((s.carts[id]?.length ?? 0) > 0) return id;
+  }
+  return null;
+};
+
+export const selectActiveShopName = (s: CartState): string | null => {
+  for (const id in s.carts) {
+    const lines = s.carts[id];
+    if (lines && lines.length > 0 && lines[0]?.shopName) return lines[0].shopName;
+  }
+  return null;
+};

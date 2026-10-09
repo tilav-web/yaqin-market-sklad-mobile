@@ -17,7 +17,7 @@ import {
 import { useCategoryPrefetch } from '@/hooks/useCategoryPrefetch';
 import { api } from '@/lib/api';
 import { Category, FeedProduct, FeedResponse, PublicShop } from '@/lib/types';
-import { useCartStore } from '@/stores/cart';
+import { selectActiveShopId, useCartStore } from '@/stores/cart';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
 import { useTheme } from '@/stores/theme';
 import { interleaveProductsByShop } from '@/utils/productMixer';
@@ -37,13 +37,8 @@ export default function TelegramHomeScreen() {
   const refresh = useLocationStore((s) => s.refresh);
   const permissionStatus = useLocationStore((s) => s.permissionStatus);
 
-  // Optimized primitive selectors: will NOT trigger screen re-renders on quantity changes
-  const targetShopId = useCartStore((s) => {
-    for (const id in s.carts) {
-      if ((s.carts[id]?.length ?? 0) > 0) return id;
-    }
-    return null;
-  });
+  // Optimized primitive selector: will NOT trigger screen re-renders on quantity changes
+  const targetShopId = useCartStore(selectActiveShopId);
 
   // Brief delay so user immediately sees + increment before cards smoothly settle into place
   const [activeShopId, setActiveShopId] = useState<string | null>(targetShopId);

@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -23,7 +24,12 @@ import { useTranslation } from '@/i18n';
 import { trackAddToCart, trackProductView } from '@/lib/analyticsQueue';
 import { api } from '@/lib/api';
 import { ProductOffer, ProductReview, VariantDetail } from '@/lib/types';
-import { EMPTY_CART, useCartStore } from '@/stores/cart';
+import {
+  EMPTY_CART,
+  selectActiveShopId,
+  selectActiveShopName,
+  useCartStore,
+} from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
 import { useTheme } from '@/stores/theme';
 import { haptics } from '@/utils/haptics';
@@ -89,7 +95,10 @@ export default function ProductDetailScreen() {
 
   const lines = useCartStore((s) => s.carts[shopId] ?? EMPTY_CART);
   const addItem = useCartStore((s) => s.addItem);
+  const replaceCartWithItem = useCartStore((s) => s.replaceCartWithItem);
   const updateQty = useCartStore((s) => s.updateQty);
+  const currentCartShopId = useCartStore(selectActiveShopId);
+  const currentCartShopName = useCartStore(selectActiveShopName);
   const inCart = lines.find((l) => l.variantId === id);
 
   useEffect(() => {
@@ -116,8 +125,7 @@ export default function ProductDetailScreen() {
   const outOfStock = product.stock <= 0;
 
   const handleAdd = () => {
-    haptics.success();
-    addItem({
+    const lineData = {
       variantId: product.id,
       shopId: product.shopId,
       shopName: product.shop?.name ?? '',
@@ -125,7 +133,29 @@ export default function ProductDetailScreen() {
       unitPrice: finalPrice,
       quantity: 1,
       photoUrl: product.photos[0],
-    });
+    };
+
+    if (currentCartShopId && currentCartShopId !== product.shopId) {
+      Alert.alert(
+        "Boshqa do'kon mahsuloti",
+        `Savatingizda «${currentCartShopName ?? "boshqa do'kon"}» mahsulotlari bor. Buyurtma faqat bitta do'kondan amalga oshiriladi.\n\nAvvalgi savatni tozalab, «${product.shop?.name ?? "ushbu do'kon"}» mahsulotini qo'shasizmi?`,
+        [
+          { text: 'Bekor qilish', style: 'cancel' },
+          {
+            text: 'Tozalash va qo‘shish',
+            style: 'destructive',
+            onPress: () => {
+              replaceCartWithItem(lineData);
+              trackAddToCart(product.shopId, product.id);
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    haptics.success();
+    addItem(lineData);
     trackAddToCart(product.shopId, product.id);
   };
 

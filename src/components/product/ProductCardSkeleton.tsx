@@ -3,7 +3,6 @@ import { View } from 'react-native';
 
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useTheme } from '@/stores/theme';
-import { shadow } from '@/theme';
 
 interface ProductCardSkeletonProps {
   cardWidth?: number;
@@ -19,14 +18,20 @@ export function ProductCardSkeleton({ cardWidth }: ProductCardSkeletonProps) {
         cardWidth ? { width: cardWidth } : { flex: 1, maxWidth: '48.8%' },
         {
           backgroundColor: activeColors.bg.surface,
+          borderRadius: 16,
           borderWidth: 1,
           borderColor: activeColors.border.subtle,
+          shadowColor: '#0f172a',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 6,
+          elevation: 2,
         },
-        shadow.sm,
       ]}
-      className="rounded-2xl overflow-hidden"
+      className="rounded-2xl"
     >
-      {/* Image Placeholder Skeleton */}
+      <View className="w-full rounded-2xl overflow-hidden">
+        {/* Image Placeholder Skeleton */}
         <Skeleton
           width="100%"
           height={imageSize}
@@ -54,5 +59,6 @@ export function ProductCardSkeleton({ cardWidth }: ProductCardSkeletonProps) {
           </View>
         </View>
       </View>
+    </View>
   );
 }

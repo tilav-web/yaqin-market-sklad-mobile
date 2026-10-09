@@ -132,6 +132,9 @@ export function useOrderDetailsMutations(id: string, order?: Order) {
     const shopId = order.shopId;
     const shopName = order.shop?.name ?? '';
 
+    // Clear any previous cart to maintain single-shop policy
+    useCartStore.getState().clearAll();
+
     let current: PublicProductVariant[] = [];
     try {
       const res = await api.get<PublicProductVariant[]>(`/catalog/shops/${shopId}/products`);

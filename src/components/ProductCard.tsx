@@ -1,6 +1,6 @@
 import { Minus, Plus, ShoppingBag, Store } from 'lucide-react-native';
 import React from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Alert, Image, Pressable, Text, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -11,9 +11,12 @@ import { useTranslation } from '@/i18n';
 import { trackAddToCart } from '@/lib/analyticsQueue';
 import { resolveMedia } from '@/lib/api';
 import { FeedProduct } from '@/lib/types';
-import { useCartStore } from '@/stores/cart';
+import {
+  selectActiveShopId,
+  selectActiveShopName,
+  useCartStore,
+} from '@/stores/cart';
 import { useTheme } from '@/stores/theme';
-import { shadow } from '@/theme';
 import { formatMoney } from '@/utils/formatMoney';
 import { haptics } from '@/utils/haptics';
 import { getLocalizedText } from '@/utils/text';
@@ -41,7 +44,11 @@ export function ProductCard({
   const { tr } = useTranslation();
   const { colors: activeColors } = useTheme();
   const addItem = useCartStore((s) => s.addItem);
+  const replaceCartWithItem = useCartStore((s) => s.replaceCartWithItem);
   const updateQty = useCartStore((s) => s.updateQty);
+
+  const currentCartShopId = useCartStore(selectActiveShopId);
+  const currentCartShopName = useCartStore(selectActiveShopName);
 
   // Primitive selector: ONLY re-renders this exact card when its quantity changes
   const quantity = useCartStore((s) => {
@@ -67,15 +74,37 @@ export function ProductCard({
   const handleAdd = (e: any) => {
     e.stopPropagation();
     haptics.light();
-    addItem({
+
+    const lineData = {
       variantId: product.id,
       shopId: product.shopId,
-      shopName: product.shop.name,
+      shopName: product.shop?.name ?? '',
       productName,
       unitPrice: finalPrice,
       quantity: 1,
       photoUrl: photoUrl ?? undefined,
-    });
+    };
+
+    if (currentCartShopId && currentCartShopId !== product.shopId) {
+      Alert.alert(
+        "Boshqa do'kon mahsuloti",
+        `Savatingizda «${currentCartShopName ?? "boshqa do'kon"}» mahsulotlari bor. Buyurtma faqat bitta do'kondan amalga oshiriladi.\n\nAvvalgi savatni tozalab, «${product.shop?.name ?? "ushbu do'kon"}» mahsulotini qo'shasizmi?`,
+        [
+          { text: 'Bekor qilish', style: 'cancel' },
+          {
+            text: 'Tozalash va qo‘shish',
+            style: 'destructive',
+            onPress: () => {
+              replaceCartWithItem(lineData);
+              trackAddToCart(product.shopId, product.id);
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    addItem(lineData);
     trackAddToCart(product.shopId, product.id);
   };
 
@@ -99,16 +128,22 @@ export function ProductCard({
           haptics.selection();
           onPress();
         }}
-        className="w-full rounded-2xl overflow-hidden"
+        className="w-full rounded-2xl"
         style={({ pressed }) => [
           {
             backgroundColor: activeColors.bg.surface,
+            borderRadius: 16,
             borderWidth: 1,
             borderColor: activeColors.border.subtle,
+            shadowColor: '#0f172a',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.06,
+            shadowRadius: 6,
+            elevation: 2,
           },
-          shadow.sm,
           pressed && { opacity: 0.94, transform: [{ scale: 0.985 }] },
         ]}>
+        <View className="w-full rounded-2xl overflow-hidden">
         {/* Uniform Product Image Area */}
         <View
           style={{
@@ -252,6 +287,7 @@ export function ProductCard({
               </Pressable>
             )}
           </View>
+        </View>
         </View>
       </Pressable>
     </Animated.View>
