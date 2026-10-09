@@ -53,6 +53,7 @@ export default function ChatScreen() {
   const [text, setText] = useState('');
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const listRef = useRef<FlatList<any>>(null);
 
   const productQuery = useQuery({
@@ -85,14 +86,18 @@ export default function ChatScreen() {
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => {
+      (e) => {
+        setKeyboardHeight(e.endCoordinates?.height ?? 0);
         setIsKeyboardVisible(true);
         requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
       }
     );
     const hideSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setIsKeyboardVisible(false)
+      () => {
+        setKeyboardHeight(0);
+        setIsKeyboardVisible(false);
+      }
     );
     return () => {
       showSub.remove();
@@ -116,7 +121,7 @@ export default function ChatScreen() {
   const telegramBg = isDark ? '#0E1621' : '#E2EAF1';
 
   return (
-    <SafeAreaView className="flex-1" edges={['top']} style={{ backgroundColor: activeColors.bg.surface }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: activeColors.bg.surface }}>
       {/* Telegram-style Top Header */}
       <ChatHeader chatTitle={chatTitle} shopId={shopId} avatarUrl={avatarUrl} />
 
@@ -124,16 +129,19 @@ export default function ChatScreen() {
       {productQuery.data && <ChatAttachedProduct product={productQuery.data} />}
 
       <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: telegramBg }}
+        style={{
+          flex: 1,
+          backgroundColor: telegramBg,
+          paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0,
+        }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        <View className="flex-1">
-          {isLoadingMessages ? (
-            <View className="flex-1 items-center justify-center">
-              <ActivityIndicator color={colors.brand.primary} />
-            </View>
-          ) : (
+        {isLoadingMessages ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator color={colors.brand.primary} />
+          </View>
+        ) : (
             <FlatList
               ref={listRef}
               data={messages}
@@ -201,7 +209,6 @@ export default function ChatScreen() {
             onToggleTemplates={() => setTemplatesOpen((v) => !v)}
             bottomInset={isKeyboardVisible ? 6 : Math.max(insets.bottom, 8)}
           />
-        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
