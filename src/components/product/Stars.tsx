@@ -7,11 +7,12 @@ import { colors } from '@/theme';
 interface StarsProps {
   value: number;
   size?: number;
+  className?: string;
 }
 
-export function Stars({ value, size = 15 }: StarsProps) {
+export function Stars({ value, size = 15, className }: StarsProps) {
   return (
-    <View style={{ flexDirection: 'row', gap: 1 }}>
+    <View className={`flex-row gap-0.5 ${className ?? ''}`}>
       {[1, 2, 3, 4, 5].map((i) => {
         const filled = i <= Math.round(value);
         return (

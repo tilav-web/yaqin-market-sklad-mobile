@@ -1,10 +1,10 @@
 import { Minus, Plus, ShoppingBag, ShoppingCart } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTranslation } from '@/i18n';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors, typography } from '@/theme';
 
 interface ProductBottomBarProps {
   outOfStock: boolean;
@@ -31,42 +31,63 @@ export function ProductBottomBar({
   return (
     <SafeAreaView
       edges={['bottom']}
-      style={[
-        styles.footer,
-        {
-          backgroundColor: activeColors.bg.surface,
-          borderTopColor: activeColors.border.subtle,
-        },
-      ]}
+      className="border-t px-4 py-2"
+      style={{
+        backgroundColor: activeColors.bg.surface,
+        borderTopColor: activeColors.border.subtle,
+      }}
     >
       {outOfStock ? (
-        <View style={[styles.addBtn, styles.addBtnDisabled]}>
-          <Text style={styles.addBtnText}>{tr('product.outOfStock')}</Text>
+        <View
+          className="h-12 rounded-xl flex-row items-center justify-center gap-1.5"
+          style={{ backgroundColor: colors.border.default }}
+        >
+          <Text style={[typography.button, { color: colors.text.onPrimary }]}>
+            {tr('product.outOfStock')}
+          </Text>
         </View>
       ) : quantityInCart && quantityInCart > 0 ? (
-        <View style={styles.footerRow}>
-          <View style={styles.qtyControl}>
-            <Pressable onPress={() => onUpdateQty(-1)} style={styles.qtyBtn}>
+        <View className="flex-row items-center gap-3">
+          <View
+            className="flex-row items-center border-[1.5px] rounded-xl h-12"
+            style={{
+              borderColor: colors.brand.primary,
+              backgroundColor: colors.brand.primarySurface,
+            }}
+          >
+            <Pressable onPress={() => onUpdateQty(-1)} className="w-11 h-full items-center justify-center">
               <Minus size={18} color={colors.brand.primary} strokeWidth={3} />
             </Pressable>
-            <Text style={styles.qtyValue}>{quantityInCart}</Text>
-            <Pressable onPress={() => onUpdateQty(1)} style={styles.qtyBtn}>
+            <Text
+              className="min-w-[28px] text-center"
+              style={[typography.bodyStrong, { color: colors.brand.primary }]}
+            >
+              {quantityInCart}
+            </Text>
+            <Pressable onPress={() => onUpdateQty(1)} className="w-11 h-full items-center justify-center">
               <Plus size={18} color={colors.brand.primary} strokeWidth={3} />
             </Pressable>
           </View>
-          <Pressable style={styles.goCartBtn} onPress={onGoToCart}>
+          <Pressable
+            className="flex-1 h-12 rounded-xl flex-row items-center justify-center gap-1.5"
+            style={{ backgroundColor: colors.brand.primary }}
+            onPress={onGoToCart}
+          >
             <ShoppingCart size={18} color={colors.text.onPrimary} strokeWidth={2.4} />
-            <Text style={styles.goCartText}>{tr('product.goToCart')}</Text>
+            <Text style={[typography.button, { color: colors.text.onPrimary }]}>
+              {tr('product.goToCart')}
+            </Text>
           </Pressable>
         </View>
       ) : (
         <Pressable
           onPress={onAddToCart}
           disabled={outOfStock}
-          style={[styles.addBtn, outOfStock && styles.addBtnDisabled]}
+          className="h-12 rounded-xl flex-row items-center justify-center gap-1.5"
+          style={{ backgroundColor: outOfStock ? colors.border.default : colors.brand.primary }}
         >
           <ShoppingBag size={18} color={colors.text.onPrimary} strokeWidth={2.4} />
-          <Text style={styles.addBtnText}>
+          <Text style={[typography.button, { color: colors.text.onPrimary }]}>
             {outOfStock ? tr('shop.outOfStock') : tr('prodDet.addToCart')}
           </Text>
         </Pressable>
@@ -74,68 +95,3 @@ export function ProductBottomBar({
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  footer: {
-    borderTopWidth: 1,
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  qtyControl: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.brand.primary,
-    borderRadius: radius.md,
-    height: layout.buttonHeight.md,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  qtyBtn: {
-    width: 44,
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qtyValue: {
-    ...typography.bodyStrong,
-    color: colors.brand.primary,
-    minWidth: 28,
-    textAlign: 'center',
-  },
-  goCartBtn: {
-    flex: 1,
-    height: layout.buttonHeight.md,
-    backgroundColor: colors.brand.primary,
-    borderRadius: radius.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-  },
-  goCartText: {
-    ...typography.button,
-    color: colors.text.onPrimary,
-  },
-  addBtn: {
-    height: layout.buttonHeight.md,
-    backgroundColor: colors.brand.primary,
-    borderRadius: radius.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-  },
-  addBtnDisabled: {
-    backgroundColor: colors.border.default,
-  },
-  addBtnText: {
-    ...typography.button,
-    color: colors.text.onPrimary,
-  },
-});

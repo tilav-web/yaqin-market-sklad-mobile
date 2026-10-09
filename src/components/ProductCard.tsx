@@ -1,6 +1,6 @@
 import { Plus, ShoppingBag, Store } from 'lucide-react-native';
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 
 import { useToast } from '@/components/ui/Toast';
 import { useTranslation } from '@/i18n';
@@ -9,7 +9,7 @@ import { resolveMedia } from '@/lib/api';
 import { FeedProduct } from '@/lib/types';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { useTheme } from '@/stores/theme';
-import { radius, shadow, spacing, typography } from '@/theme';
+import { shadow } from '@/theme';
 import { formatMoney } from '@/utils/formatMoney';
 import { haptics } from '@/utils/haptics';
 import { getLocalizedText } from '@/utils/text';
@@ -82,47 +82,47 @@ export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props
         haptics.selection();
         onPress();
       }}
+      className="rounded-2xl border overflow-hidden"
       style={({ pressed }) => [
-        styles.card,
         {
           backgroundColor: activeColors.bg.surface,
           borderColor: activeColors.border.subtle,
         },
+        shadow.sm,
         cardWidth ? { width: cardWidth } : { flex: 1, maxWidth: '48.8%' },
         pressed && { opacity: 0.94, transform: [{ scale: 0.985 }] },
       ]}>
       {/* Product Image Area */}
-      <View style={[styles.imageWrap, { backgroundColor: activeColors.bg.surfaceMuted }]}>
+      <View
+        className="w-full aspect-square relative"
+        style={{ backgroundColor: activeColors.bg.surfaceMuted }}>
         {photoUrl ? (
           <Image
             source={{ uri: resolveMedia(photoUrl) }}
-            style={styles.image}
+            className="w-full h-full"
             resizeMode="cover"
           />
         ) : (
           <View
-            style={[
-              styles.image,
-              styles.imagePlaceholder,
-              { backgroundColor: activeColors.brand.primarySurface },
-            ]}>
+            className="w-full h-full items-center justify-center"
+            style={{ backgroundColor: activeColors.brand.primarySurface }}>
             <ShoppingBag size={34} color={activeColors.brand.primary} strokeWidth={1.5} />
           </View>
         )}
 
         {hasDiscount && (
-          <View style={[styles.discountBadge, { backgroundColor: activeColors.feedback.danger }]}>
-            <Text style={styles.discountText}>−{discountPct}%</Text>
+          <View
+            className="absolute top-2 left-2 px-1.5 py-0.5 rounded-full"
+            style={{ backgroundColor: activeColors.feedback.danger }}>
+            <Text className="text-white font-extrabold text-[10.5px]">−{discountPct}%</Text>
           </View>
         )}
 
         {product.unitSize ? (
           <View
-            style={[
-              styles.unitBadge,
-              { backgroundColor: 'rgba(0, 0, 0, 0.55)' },
-            ]}>
-            <Text style={styles.unitBadgeText}>
+            className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded-md"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.55)' }}>
+            <Text className="text-white font-bold text-[10px]">
               {product.unitSize} {product.unitType || ''}
             </Text>
           </View>
@@ -130,27 +130,33 @@ export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props
       </View>
 
       {/* Card Details Body */}
-      <View style={styles.body}>
+      <View className="p-2.5 gap-1">
         {/* Product Name */}
         <Text
-          style={[styles.name, { color: activeColors.text.primary }]}
+          className="text-[13.5px] leading-[18px] min-h-[36px] font-bold"
+          style={{ color: activeColors.text.primary }}
           numberOfLines={2}>
           {productName}
         </Text>
 
         {/* Shop Name & Distance */}
         {!hideShopChip && product.shop && (
-          <View style={styles.shopChip}>
+          <View className="flex-row items-center gap-1 mt-0.5">
             <Store size={11} color={activeColors.text.tertiary} strokeWidth={2.2} />
             <Text
-              style={[styles.shopName, { color: activeColors.text.secondary }]}
+              className="text-[11.5px] font-semibold flex-shrink"
+              style={{ color: activeColors.text.secondary }}
               numberOfLines={1}>
               {product.shop.name}
             </Text>
             {formattedDistance && (
               <>
-                <Text style={[styles.shopDot, { color: activeColors.text.tertiary }]}>·</Text>
-                <Text style={[styles.shopDistance, { color: activeColors.text.tertiary }]}>
+                <Text className="text-[11px]" style={{ color: activeColors.text.tertiary }}>
+                  ·
+                </Text>
+                <Text
+                  className="text-[11px] font-semibold"
+                  style={{ color: activeColors.text.tertiary }}>
                   {formattedDistance}
                 </Text>
               </>
@@ -159,19 +165,21 @@ export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props
         )}
 
         {/* Price & Action Row */}
-        <View style={styles.priceRow}>
-          <View style={{ flex: 1, marginRight: 6 }}>
+        <View className="flex-row items-center justify-between mt-1">
+          <View className="flex-1 mr-1.5">
             {hasDiscount && (
               <Text
-                style={[styles.oldPrice, { color: activeColors.text.hint }]}>
+                className="text-[10.5px] line-through mb-0.5"
+                style={{ color: activeColors.text.hint }}>
                 {formatMoney(product.price)}
               </Text>
             )}
             <Text
-              style={[styles.price, { color: activeColors.text.primary }]}
+              className="text-[13.5px] font-extrabold"
+              style={{ color: activeColors.text.primary }}
               numberOfLines={1}>
               {formatMoney(finalPrice)}{' '}
-              <Text style={[styles.currency, { color: activeColors.text.secondary }]}>
+              <Text className="text-[10.5px] font-semibold" style={{ color: activeColors.text.secondary }}>
                 {tr('common.som')}
               </Text>
             </Text>
@@ -180,10 +188,8 @@ export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props
           {/* Quick Counter or Add Button */}
           {inCart ? (
             <View
-              style={[
-                styles.qtyControl,
-                { backgroundColor: activeColors.brand.primarySurface },
-              ]}>
+              className="flex-row items-center rounded-full px-1 h-7.5"
+              style={{ backgroundColor: activeColors.brand.primarySurface }}>
               <Pressable
                 onPress={(e) => {
                   e.stopPropagation();
@@ -191,10 +197,14 @@ export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props
                   updateQty(product.shopId, product.id, inCart.quantity - 1);
                 }}
                 hitSlop={4}
-                style={styles.qtyBtn}>
-                <Text style={[styles.qtyMinus, { color: activeColors.brand.primary }]}>−</Text>
+                className="w-5.5 h-5.5 rounded-full items-center justify-center">
+                <Text className="text-base font-extrabold leading-5" style={{ color: activeColors.brand.primary }}>
+                  −
+                </Text>
               </Pressable>
-              <Text style={[styles.qtyValue, { color: activeColors.brand.primary }]}>
+              <Text
+                className="font-extrabold text-xs min-w-4 text-center"
+                style={{ color: activeColors.brand.primary }}>
                 {inCart.quantity}
               </Text>
               <Pressable
@@ -204,17 +214,17 @@ export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props
                   updateQty(product.shopId, product.id, inCart.quantity + 1);
                 }}
                 hitSlop={4}
-                style={styles.qtyBtn}>
-                <Text style={[styles.qtyPlus, { color: activeColors.brand.primary }]}>+</Text>
+                className="w-5.5 h-5.5 rounded-full items-center justify-center">
+                <Text className="text-base font-extrabold leading-5" style={{ color: activeColors.brand.primary }}>
+                  +
+                </Text>
               </Pressable>
             </View>
           ) : (
             <Pressable
               onPress={handleAdd}
-              style={[
-                styles.addBtn,
-                { backgroundColor: activeColors.brand.primary },
-              ]}
+              className="w-8 h-8 rounded-full items-center justify-center"
+              style={{ backgroundColor: activeColors.brand.primary }}
               hitSlop={6}>
               <Plus size={16} color="#FFFFFF" strokeWidth={2.8} />
             </Pressable>
@@ -224,140 +234,3 @@ export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: radius.xl,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
-    ...shadow.sm,
-  },
-  imageWrap: {
-    aspectRatio: 1,
-    position: 'relative',
-    width: '100%',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  imagePlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  discountBadge: {
-    position: 'absolute',
-    top: spacing.xs + 2,
-    left: spacing.xs + 2,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: radius.full,
-  },
-  discountText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 10.5,
-  },
-  unitBadge: {
-    position: 'absolute',
-    bottom: 6,
-    right: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  unitBadgeText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 10,
-  },
-  body: {
-    padding: spacing.sm + 2,
-    gap: 4,
-  },
-  name: {
-    ...typography.bodyStrong,
-    fontSize: 13.5,
-    lineHeight: 18,
-    minHeight: 36,
-    fontWeight: '700',
-  },
-  shopChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    marginTop: 1,
-  },
-  shopName: {
-    ...typography.caption,
-    fontSize: 11.5,
-    fontWeight: '600',
-    flexShrink: 1,
-  },
-  shopDot: {
-    fontSize: 11,
-  },
-  shopDistance: {
-    ...typography.caption,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  oldPrice: {
-    ...typography.caption,
-    fontSize: 10.5,
-    textDecorationLine: 'line-through',
-    marginBottom: 1,
-  },
-  price: {
-    fontSize: 13.5,
-    fontWeight: '800',
-  },
-  currency: {
-    fontSize: 10.5,
-    fontWeight: '600',
-  },
-  addBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qtyControl: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: radius.full,
-    paddingHorizontal: 3,
-    height: 30,
-  },
-  qtyBtn: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qtyMinus: {
-    fontSize: 16,
-    fontWeight: '800',
-    lineHeight: 18,
-  },
-  qtyPlus: {
-    fontSize: 16,
-    fontWeight: '800',
-    lineHeight: 18,
-  },
-  qtyValue: {
-    ...typography.caption,
-    fontWeight: '800',
-    fontSize: 12,
-    minWidth: 16,
-    textAlign: 'center',
-  },
-});

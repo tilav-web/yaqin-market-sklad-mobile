@@ -1,10 +1,10 @@
 import { router } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { ProductOffer } from '@/lib/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 interface ProductOffersSectionProps {
@@ -29,8 +29,10 @@ export function ProductOffersSection({
   const visible = others.slice(0, SHOW);
 
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{tr('prodDet.otherShops')}</Text>
+    <View className="mt-6 gap-2">
+      <Text style={[typography.h4, { color: colors.text.primary }]}>
+        {tr('prodDet.otherShops')}
+      </Text>
       {visible.map((o, idx) => {
         const effectivePrice = o.discountPrice ?? o.price;
         const isCheapest = effectivePrice === cheapestPrice && idx === 0;
@@ -38,17 +40,18 @@ export function ProductOffersSection({
         return (
           <Pressable
             key={o.variantId}
-            style={styles.offerRow}
+            className="flex-row items-center justify-between py-2 border-b"
+            style={{ borderBottomColor: colors.border.subtle }}
             onPress={() => {
               haptics.selection();
               router.push(`/product/${o.variantId}`);
             }}
           >
-            <View style={styles.offerLeft}>
-              <Text style={styles.offerShop} numberOfLines={1}>
+            <View className="flex-1 mr-3">
+              <Text className="font-bold" style={[typography.bodyStrong, { color: colors.text.primary }]} numberOfLines={1}>
                 {o.shopName}
               </Text>
-              <Text style={styles.offerMeta}>
+              <Text className="mt-0.5" style={[typography.caption, { color: colors.text.secondary }]}>
                 {o.isOpen ? tr('shop.open') : tr('shop.closed')}
                 {o.distanceKm != null
                   ? ` · ${
@@ -59,18 +62,25 @@ export function ProductOffersSection({
                   : ''}
               </Text>
             </View>
-            <View style={styles.offerRight}>
+            <View className="items-end gap-0.5">
               {isCheapest && (
-                <View style={styles.cheapBadge}>
-                  <Text style={styles.cheapBadgeText}>{tr('prodDet.cheapest')}</Text>
+                <View className="bg-emerald-100 px-1.5 py-0.5 rounded-full">
+                  <Text className="text-[10px] font-extrabold text-emerald-700">
+                    {tr('prodDet.cheapest')}
+                  </Text>
                 </View>
               )}
               {saving > 0 && (
-                <Text style={styles.savingText}>
+                <Text className="text-[11px] font-bold" style={{ color: colors.feedback.success }}>
                   −{saving.toLocaleString()} {tr('common.som')}
                 </Text>
               )}
-              <Text style={[styles.offerPrice, isCheapest && styles.offerPriceCheap]}>
+              <Text
+                style={[
+                  typography.bodyStrong,
+                  { color: isCheapest ? colors.brand.primary : colors.text.primary },
+                ]}
+              >
                 {effectivePrice.toLocaleString()}
               </Text>
             </View>
@@ -78,75 +88,10 @@ export function ProductOffersSection({
         );
       })}
       {others.length > SHOW && (
-        <Text style={styles.offersMore}>
+        <Text className="text-center mt-1" style={[typography.caption, { color: colors.text.hint }]}>
           {tr('prodDet.moreShops', { n: others.length - SHOW })}
         </Text>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  section: {
-    marginTop: spacing.xl,
-    gap: spacing.sm,
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.text.primary,
-  },
-  offerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border.subtle,
-  },
-  offerLeft: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  offerShop: {
-    ...typography.bodyStrong,
-    color: colors.text.primary,
-  },
-  offerMeta: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    marginTop: 2,
-  },
-  offerRight: {
-    alignItems: 'flex-end',
-    gap: 2,
-  },
-  cheapBadge: {
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: radius.full,
-  },
-  cheapBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#15803D',
-  },
-  savingText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.feedback.success,
-  },
-  offerPrice: {
-    ...typography.bodyStrong,
-    color: colors.text.primary,
-  },
-  offerPriceCheap: {
-    color: colors.brand.primary,
-  },
-  offersMore: {
-    ...typography.caption,
-    color: colors.text.hint,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
-});
