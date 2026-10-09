@@ -13,7 +13,7 @@ import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 
 import { useTranslation } from '@/i18n';
 import { UserAddress } from '@/lib/types';
-import { colors, radius, shadow, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 interface Props {
@@ -46,9 +46,7 @@ interface Props {
  * Checkout's "where to" block: the picked address (with a static map preview,
  * and an unmissable empty state when nothing is picked yet) fused into one
  * card with everything the courier needs to reach the door —
- * entrance/floor/apartment/intercom, phone and a note. They live in a single
- * hairline-divided group because none of them mean anything apart from the
- * address above them.
+ * entrance/floor/apartment/intercom, phone and a note.
  */
 export function CheckoutDeliveryCard({
   address,
@@ -77,39 +75,35 @@ export function CheckoutDeliveryCard({
 
   if (loading) {
     return (
-      <View style={styles.card}>
-        <View style={styles.loadingBox}>
-          <ActivityIndicator color={colors.brand.primary} />
-        </View>
+      <View className="bg-surface rounded-2xl p-4 border border-border-subtle items-center py-8">
+        <ActivityIndicator color={colors.brand.primary} />
       </View>
     );
   }
 
   if (!address) {
     return (
-      <View style={[styles.card, styles.cardEmpty]}>
-        <View style={styles.emptyBox}>
-          <View style={styles.emptyIcon}>
+      <View className="bg-surface rounded-2xl p-4 border-[1.5px] border-feedback-warning">
+        <View className="items-center gap-2 py-2">
+          <View className="w-13 h-13 rounded-full bg-feedback-warning/10 items-center justify-center">
             <MapPinOff size={26} color={colors.feedback.warning} strokeWidth={2.2} />
           </View>
-          <Text style={styles.emptyTitle}>{tr('checkout.noAddressTitle')}</Text>
-          {!hasSavedAddresses && <Text style={styles.emptyBody}>{tr('checkout.noAddressEmptyBody')}</Text>}
+          <Text className="text-lg font-bold text-text-primary mt-0.5">{tr('checkout.noAddressTitle')}</Text>
+          {!hasSavedAddresses && <Text className="text-sm text-text-secondary">{tr('checkout.noAddressEmptyBody')}</Text>}
           <Pressable
-            style={styles.emptyBtn}
+            className="flex-row items-center justify-center gap-2 self-stretch h-12 rounded-xl bg-brand-primary mt-1"
             onPress={() => {
               haptics.selection();
               if (hasSavedAddresses) onChangeAddress();
               else onAddAddress();
             }}>
             <MapPin size={17} color={colors.text.onPrimary} strokeWidth={2.4} />
-            <Text style={styles.emptyBtnText}>
+            <Text className="text-sm font-bold text-white">
               {tr(hasSavedAddresses ? 'checkout.chooseAddressBtn' : 'checkout.addAddressBtn')}
             </Text>
           </Pressable>
 
-          {/* The device's own location is reported either way — a missing GPS
-              fix is a state the customer should see, not silence. */}
-          <View style={styles.gpsRow}>
+          <View className="flex-row items-center gap-1.5 mt-1">
             {gpsLoading ? (
               <ActivityIndicator size="small" color={colors.text.tertiary} />
             ) : gpsAvailable ? (
@@ -117,12 +111,12 @@ export function CheckoutDeliveryCard({
             ) : (
               <Crosshair size={14} color={colors.text.hint} strokeWidth={2.4} />
             )}
-            <Text style={[styles.gpsText, gpsAvailable && styles.gpsTextOk]}>
+            <Text className={`text-xs ${gpsAvailable ? 'text-feedback-success' : 'text-text-hint'}`}>
               {tr(gpsAvailable ? 'checkout.gpsFound' : 'checkout.gpsMissing')}
             </Text>
             {!gpsAvailable && !gpsLoading && (
               <Pressable hitSlop={8} onPress={onEnableGps}>
-                <Text style={styles.gpsAction}>{tr('checkout.gpsEnable')}</Text>
+                <Text className="text-xs font-bold text-brand-primary">{tr('checkout.gpsEnable')}</Text>
               </Pressable>
             )}
           </View>
@@ -132,29 +126,28 @@ export function CheckoutDeliveryCard({
   }
 
   return (
-    <View style={styles.card}>
+    <View className="bg-surface rounded-2xl p-4 gap-3.5 border border-border-subtle shadow-xs">
       <Pressable
-        style={({ pressed }) => [styles.addressRow, pressed && styles.addressRowPressed]}
+        className="flex-row items-center gap-3.5 active:opacity-60"
         onPress={() => {
           haptics.selection();
           onChangeAddress();
         }}>
         <MapThumb latitude={address.latitude} longitude={address.longitude} />
-        <View style={styles.addressBody}>
-          <Text style={styles.addressLabel} numberOfLines={1}>
+        <View className="flex-1 gap-1">
+          <Text className="text-base font-bold text-text-primary" numberOfLines={1}>
             {address.label}
           </Text>
-          <Text style={styles.addressText} numberOfLines={2}>
+          <Text className="text-xs text-text-secondary" numberOfLines={2}>
             {address.address}
           </Text>
         </View>
         <ChevronRight size={18} color={colors.text.tertiary} strokeWidth={2.4} />
       </Pressable>
 
-      {/* One bordered group split by hairlines — door details, phone and note
-          read as part of the address above, not as loose inputs. */}
-      <View style={styles.group}>
-        <View style={styles.groupRow}>
+      {/* Door details, phone, courier comment */}
+      <View className="border border-border rounded-xl bg-surface-muted overflow-hidden">
+        <View className="flex-row items-stretch">
           <DetailField
             name="entrance"
             label={tr('addr.entrance')}
@@ -165,7 +158,7 @@ export function CheckoutDeliveryCard({
             keyboardType="number-pad"
             maxLength={6}
           />
-          <View style={styles.vDivider} />
+          <View className="w-[1px] bg-border" />
           <DetailField
             name="floor"
             label={tr('addr.floor')}
@@ -177,8 +170,8 @@ export function CheckoutDeliveryCard({
             maxLength={4}
           />
         </View>
-        <View style={styles.hDivider} />
-        <View style={styles.groupRow}>
+        <View className="h-[1px] bg-border" />
+        <View className="flex-row items-stretch">
           <DetailField
             name="apartment"
             label={tr('addr.apartment')}
@@ -188,7 +181,7 @@ export function CheckoutDeliveryCard({
             setFocused={setFocused}
             maxLength={10}
           />
-          <View style={styles.vDivider} />
+          <View className="w-[1px] bg-border" />
           <DetailField
             name="intercom"
             label={tr('addr.intercom')}
@@ -199,7 +192,7 @@ export function CheckoutDeliveryCard({
             maxLength={12}
           />
         </View>
-        <View style={styles.hDivider} />
+        <View className="h-[1px] bg-border" />
         <IconField
           name="phone"
           icon={<Phone size={17} color={colors.text.tertiary} strokeWidth={2.2} />}
@@ -210,7 +203,7 @@ export function CheckoutDeliveryCard({
           setFocused={setFocused}
           keyboardType="phone-pad"
         />
-        <View style={styles.hDivider} />
+        <View className="h-[1px] bg-border" />
         <IconField
           name="comment"
           icon={<MessageSquare size={17} color={colors.text.tertiary} strokeWidth={2.2} />}
@@ -229,11 +222,8 @@ export function CheckoutDeliveryCard({
 /** Non-interactive map preview of the delivery point (lite/static on Android). */
 function MapThumb({ latitude, longitude }: { readonly latitude: number; readonly longitude: number }) {
   return (
-    <View style={styles.mapThumb} pointerEvents="none">
+    <View className="w-17 h-17 rounded-xl overflow-hidden bg-surface-muted border border-border-subtle items-center justify-center" pointerEvents="none">
       <MapView
-        // Lite mode renders a static bitmap that does not follow later region
-        // changes — remount on the coordinates so switching address actually
-        // repaints the preview instead of keeping the previous address's map.
         key={`${latitude},${longitude}`}
         style={StyleSheet.absoluteFill}
         provider={PROVIDER_GOOGLE}
@@ -245,7 +235,7 @@ function MapThumb({ latitude, longitude }: { readonly latitude: number; readonly
         pitchEnabled={false}
         toolbarEnabled={false}
       />
-      <View style={styles.mapPin}>
+      <View className="mb-1.5">
         <MapPin size={20} color={colors.brand.primary} fill={colors.brand.primarySurface} strokeWidth={2.4} />
       </View>
     </View>
@@ -275,10 +265,10 @@ function DetailField({
 }: FieldProps & { readonly label: string }) {
   const active = focused === name;
   return (
-    <View style={[styles.cell, active && styles.cellActive]}>
-      <Text style={[styles.cellLabel, active && styles.cellLabelActive]}>{label}</Text>
+    <View className={`flex-1 px-3.5 pt-2 pb-1.5 ${active ? 'bg-surface' : ''}`}>
+      <Text className={`text-[11px] font-semibold ${active ? 'text-brand-primary' : 'text-text-tertiary'}`}>{label}</Text>
       <TextInput
-        style={styles.cellInput}
+        className="text-sm font-semibold text-text-primary p-0 mt-0.5 min-h-[24px]"
         value={value}
         onChangeText={onChange}
         onFocus={() => setFocused(name)}
@@ -311,10 +301,13 @@ function IconField({
 }) {
   const active = focused === name;
   return (
-    <View style={[styles.iconRow, multiline && styles.iconRowMultiline, active && styles.cellActive]}>
+    <View
+      className={`flex-row items-center gap-2.5 px-3.5 min-h-[48px] ${
+        multiline ? 'items-start py-3' : ''
+      } ${active ? 'bg-surface' : ''}`}>
       {icon}
       <TextInput
-        style={styles.iconRowInput}
+        className="flex-1 text-base text-text-primary p-0"
         value={value}
         onChangeText={onChange}
         onFocus={() => setFocused(name)}
@@ -323,97 +316,8 @@ function IconField({
         placeholder={placeholder}
         placeholderTextColor={colors.text.hint}
         multiline={multiline}
-        // A wrapping note must not submit on Enter, but the single-line phone
-        // row should still close the keyboard.
         returnKeyType={multiline ? undefined : 'done'}
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    ...shadow.xs,
-  },
-  cardEmpty: { borderColor: colors.feedback.warning, borderWidth: 1.5 },
-  loadingBox: { paddingVertical: spacing.xl, alignItems: 'center' },
-
-  addressRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  addressRowPressed: { opacity: 0.6 },
-  addressBody: { flex: 1, gap: 3 },
-  addressLabel: { ...typography.h4, color: colors.text.primary, flexShrink: 1 },
-  addressText: { ...typography.bodySmall, color: colors.text.secondary },
-
-  mapThumb: {
-    width: 68,
-    height: 68,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    backgroundColor: colors.bg.surfaceMuted,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mapPin: { marginBottom: 6 },
-
-
-  group: {
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: radius.lg,
-    backgroundColor: colors.bg.surfaceMuted,
-    overflow: 'hidden',
-  },
-  groupRow: { flexDirection: 'row', alignItems: 'stretch' },
-  vDivider: { width: 1, backgroundColor: colors.border.default },
-  hDivider: { height: 1, backgroundColor: colors.border.default },
-  cell: { flex: 1, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: 6 },
-  cellActive: { backgroundColor: colors.bg.surface },
-  cellLabel: { ...typography.caption, fontSize: 11, color: colors.text.tertiary, fontWeight: '600' },
-  cellLabelActive: { color: colors.brand.primary },
-  cellInput: { ...typography.bodyStrong, color: colors.text.primary, padding: 0, marginTop: 1, minHeight: 24 },
-  iconRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    minHeight: 48,
-  },
-  iconRowMultiline: { alignItems: 'flex-start', paddingVertical: spacing.md },
-  iconRowInput: { flex: 1, ...typography.body, color: colors.text.primary, padding: 0 },
-
-  emptyBox: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
-  emptyIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.full,
-    backgroundColor: colors.feedback.warningSurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyTitle: { ...typography.h4, color: colors.text.primary, marginTop: 2 },
-  emptyBody: { ...typography.bodySmall, color: colors.text.secondary },
-  emptyBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    alignSelf: 'stretch',
-    height: 48,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-    marginTop: spacing.xs,
-  },
-  emptyBtnText: { ...typography.button, fontSize: 15, color: colors.text.onPrimary },
-  gpsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.xs },
-  gpsText: { ...typography.caption, color: colors.text.hint },
-  gpsTextOk: { color: colors.feedback.success },
-  gpsAction: { ...typography.caption, color: colors.brand.primary, fontWeight: '800' },
-});

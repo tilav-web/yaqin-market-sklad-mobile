@@ -1,11 +1,11 @@
 import { Check, Tag, X } from 'lucide-react-native';
-import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTranslation } from '@/i18n';
 import type { TranslationKey } from '@/i18n/translations';
 import { Category } from '@/lib/types';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 export type PriceSort = 'price_asc' | 'price_desc' | null;
@@ -58,9 +58,11 @@ function PillChip({
         haptics.selection();
         onPress();
       }}
-      style={[styles.chip, active && styles.chipActive]}>
+      className={`flex-row items-center gap-1.5 px-3.5 py-2 rounded-full border ${
+        active ? 'bg-brand-primary border-brand-primary' : 'bg-surface border-border'
+      }`}>
       {active && <Check size={13} color={colors.text.onPrimary} strokeWidth={3} />}
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+      <Text className={`text-xs font-bold ${active ? 'text-white' : 'text-text-secondary'}`}>{label}</Text>
     </Pressable>
   );
 }
@@ -94,68 +96,72 @@ export function SearchFilterSheet({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <SafeAreaView edges={['bottom']} style={styles.sheetWrap} pointerEvents="box-none">
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
-          <View style={styles.header}>
-            <Text style={styles.title}>{tr('filter.button')}</Text>
-            <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
+      <Pressable className="flex-1 bg-black/60" onPress={onClose} />
+      <SafeAreaView edges={['bottom']} className="justify-end" pointerEvents="box-none">
+        <View className="bg-surface rounded-t-3xl px-4 pt-2 pb-4 shadow-2xl">
+          <View className="w-10 h-1 rounded-full bg-border self-center mb-3" />
+          <View className="flex-row items-center justify-between pb-3 border-b border-border-subtle">
+            <Text className="text-xl font-bold text-text-primary">{tr('filter.button')}</Text>
+            <Pressable onPress={onClose} hitSlop={8} className="w-8 h-8 rounded-full bg-surface-muted items-center justify-center">
               <X size={20} color={colors.text.secondary} strokeWidth={2.4} />
             </Pressable>
           </View>
 
           <ScrollView
             style={{ maxHeight: 460 }}
-            contentContainerStyle={{ paddingBottom: spacing.md }}
+            contentContainerStyle={{ paddingBottom: 16, gap: 12, paddingTop: 12 }}
             showsVerticalScrollIndicator={false}>
-            {/* Sort — price direction + optional rating (combinable) */}
-            <Text style={styles.sectionLabel}>{tr('filter.sort')}</Text>
-            <Text style={styles.sectionHint}>{tr('filter.sortCombineHint')}</Text>
-            <View style={styles.wrap}>
-              <PillChip
-                label={tr('sort.popular')}
-                active={noSort}
-                onPress={() => {
-                  setPriceSort(null);
-                  setByRating(false);
-                }}
-              />
-              <PillChip
-                label={tr('sort.cheap')}
-                active={priceSort === 'price_asc'}
-                onPress={() => setPriceSort(priceSort === 'price_asc' ? null : 'price_asc')}
-              />
-              <PillChip
-                label={tr('sort.expensive')}
-                active={priceSort === 'price_desc'}
-                onPress={() => setPriceSort(priceSort === 'price_desc' ? null : 'price_desc')}
-              />
-              <PillChip
-                label={tr('sort.rating')}
-                active={byRating}
-                onPress={() => setByRating(!byRating)}
-              />
+            {/* Sort */}
+            <View className="gap-1.5">
+              <Text className="text-xs font-bold text-text-primary uppercase tracking-wider">{tr('filter.sort')}</Text>
+              <Text className="text-xs text-text-secondary">{tr('filter.sortCombineHint')}</Text>
+              <View className="flex-row flex-wrap gap-2 mt-1">
+                <PillChip
+                  label={tr('sort.popular')}
+                  active={noSort}
+                  onPress={() => {
+                    setPriceSort(null);
+                    setByRating(false);
+                  }}
+                />
+                <PillChip
+                  label={tr('sort.cheap')}
+                  active={priceSort === 'price_asc'}
+                  onPress={() => setPriceSort(priceSort === 'price_asc' ? null : 'price_asc')}
+                />
+                <PillChip
+                  label={tr('sort.expensive')}
+                  active={priceSort === 'price_desc'}
+                  onPress={() => setPriceSort(priceSort === 'price_desc' ? null : 'price_desc')}
+                />
+                <PillChip
+                  label={tr('sort.rating')}
+                  active={byRating}
+                  onPress={() => setByRating(!byRating)}
+                />
+              </View>
             </View>
 
-            {/* Price range — single select */}
-            <Text style={styles.sectionLabel}>{tr('filter.priceRange')}</Text>
-            <View style={styles.wrap}>
-              {PRICE_RANGES.map((r) => (
-                <PillChip
-                  key={r.key}
-                  label={tr(r.labelKey)}
-                  active={priceRange === r.key}
-                  onPress={() => setPriceRange(priceRange === r.key ? null : r.key)}
-                />
-              ))}
+            {/* Price range */}
+            <View className="gap-1.5">
+              <Text className="text-xs font-bold text-text-primary uppercase tracking-wider">{tr('filter.priceRange')}</Text>
+              <View className="flex-row flex-wrap gap-2 mt-1">
+                {PRICE_RANGES.map((r) => (
+                  <PillChip
+                    key={r.key}
+                    label={tr(r.labelKey)}
+                    active={priceRange === r.key}
+                    onPress={() => setPriceRange(priceRange === r.key ? null : r.key)}
+                  />
+                ))}
+              </View>
             </View>
 
             {/* Discount toggle */}
-            <View style={styles.toggleRow}>
-              <View style={styles.toggleLabel}>
+            <View className="flex-row items-center justify-between py-2 border-y border-border-subtle">
+              <View className="flex-row items-center gap-2">
                 <Tag size={16} color={colors.brand.primary} strokeWidth={2.4} />
-                <Text style={styles.toggleText}>{tr('filter.onlyDiscount')}</Text>
+                <Text className="text-sm font-semibold text-text-primary">{tr('filter.onlyDiscount')}</Text>
               </View>
               <Switch
                 value={onlyDiscounted}
@@ -168,45 +174,50 @@ export function SearchFilterSheet({
               />
             </View>
 
-            {/* Categories — multi-select */}
-            <View style={styles.catHeader}>
-              <Text style={styles.sectionLabel}>{tr('filter.category')}</Text>
-              {categoryIds.length > 0 && (
-                <Text style={styles.catCount}>{tr('filter.countN', { n: categoryIds.length })}</Text>
-              )}
-            </View>
-            <View style={styles.wrap}>
-              <PillChip
-                label={tr('filter.all')}
-                active={categoryIds.length === 0}
-                onPress={onClearCategories}
-              />
-              {categories.map((c) => (
+            {/* Categories */}
+            <View className="gap-1.5">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-xs font-bold text-text-primary uppercase tracking-wider">{tr('filter.category')}</Text>
+                {categoryIds.length > 0 && (
+                  <Text className="text-xs font-bold text-brand-primary">{tr('filter.countN', { n: categoryIds.length })}</Text>
+                )}
+              </View>
+              <View className="flex-row flex-wrap gap-2 mt-1">
                 <PillChip
-                  key={c.id}
-                  label={catName(c)}
-                  active={categoryIds.includes(c.id)}
-                  onPress={() => onToggleCategory(c.id)}
+                  label={tr('filter.all')}
+                  active={categoryIds.length === 0}
+                  onPress={onClearCategories}
                 />
-              ))}
+                {categories.map((c) => (
+                  <PillChip
+                    key={c.id}
+                    label={catName(c)}
+                    active={categoryIds.includes(c.id)}
+                    onPress={() => onToggleCategory(c.id)}
+                  />
+                ))}
+              </View>
             </View>
           </ScrollView>
 
-          <View style={styles.footer}>
+          {/* Footer */}
+          <View className="flex-row items-center gap-3 pt-3 border-t border-border-subtle">
             <Pressable
-              style={styles.resetBtn}
+              className="py-3 px-4 rounded-xl border border-border items-center justify-center active:opacity-60"
               onPress={() => {
                 haptics.selection();
                 onReset();
               }}
               disabled={activeCount === 0}>
-              <Text style={[styles.resetText, activeCount === 0 && styles.resetTextDisabled]}>
+              <Text className={`text-sm font-bold ${activeCount === 0 ? 'text-text-hint' : 'text-text-primary'}`}>
                 {tr('filter.reset')}
               </Text>
             </Pressable>
-            <Pressable style={styles.applyBtn} onPress={onClose}>
+            <Pressable
+              className="flex-1 flex-row items-center justify-center gap-2 h-12 rounded-xl bg-brand-primary shadow-sm"
+              onPress={onClose}>
               <Check size={18} color={colors.text.onPrimary} strokeWidth={2.6} />
-              <Text style={styles.applyText}>
+              <Text className="text-base font-bold text-white">
                 {activeCount > 0 ? tr('filter.applyN', { n: activeCount }) : tr('filter.apply')}
               </Text>
             </Pressable>
@@ -216,116 +227,3 @@ export function SearchFilterSheet({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: colors.overlay.scrim,
-  },
-  sheetWrap: { flex: 1, justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.bg.surface,
-    borderTopLeftRadius: radius['2xl'],
-    borderTopRightRadius: radius['2xl'],
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-    ...shadow.xl,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: radius.full,
-    backgroundColor: colors.border.default,
-    alignSelf: 'center',
-    marginBottom: spacing.md,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
-  title: { ...typography.h4, color: colors.text.primary },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionLabel: {
-    ...typography.caption,
-    fontWeight: '800',
-    color: colors.text.tertiary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  sectionHint: { ...typography.caption, color: colors.text.hint, marginBottom: spacing.sm },
-  catHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.lg,
-  },
-  catCount: {
-    ...typography.caption,
-    fontWeight: '800',
-    color: colors.brand.primary,
-    marginTop: spacing.md,
-  },
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    backgroundColor: colors.bg.surface,
-  },
-  chipActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
-  chipText: { ...typography.caption, color: colors.text.secondary, fontWeight: '700' },
-  chipTextActive: { color: colors.text.onPrimary },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.lg,
-    paddingVertical: spacing.xs,
-  },
-  toggleLabel: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  toggleText: { ...typography.body, color: colors.text.primary, fontWeight: '600' },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-  },
-  resetBtn: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
-  resetText: { ...typography.body, color: colors.text.secondary, fontWeight: '700' },
-  resetTextDisabled: { color: colors.text.hint },
-  applyBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.brand.primary,
-    height: layout.buttonHeight.md,
-    borderRadius: radius.lg,
-  },
-  applyText: { ...typography.body, color: colors.text.onPrimary, fontWeight: '700' },
-});

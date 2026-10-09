@@ -9,7 +9,7 @@ import {
   User,
 } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,7 +19,7 @@ import { Conversation } from '@/lib/types';
 import { hideProgress } from '@/stores/scrollHide';
 import { useSearchModalStore } from '@/stores/searchModal';
 import { useTheme } from '@/stores/theme';
-import { colors, radius, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 const ICONS: Record<string, LucideIcon> = {
@@ -77,11 +77,17 @@ export function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
 
   return (
     <Animated.View
-      style={[styles.container, { paddingBottom: Math.max(insets.bottom, 8) }, hideStyle]}
+      className="absolute left-0 right-0 bottom-0 px-3"
+      style={[{ paddingBottom: Math.max(insets.bottom, 8) }, hideStyle]}
       onLayout={(e) => setContainerHeight(e.nativeEvent.layout.height)}>
-      <View style={styles.barRow}>
+      <View className="flex-row items-center gap-2.5">
         {/* Telegram Pill Capsule */}
-        <View style={[styles.capsule, isDark ? styles.capsuleDark : styles.capsuleLight]}>
+        <View
+          className={`flex-1 h-[58px] flex-row items-center justify-around rounded-[29px] px-1 ${
+            isDark
+              ? 'bg-[#1C1C1E] border border-white/10 shadow-lg'
+              : 'bg-white border border-black/10 shadow-md'
+          }`}>
           {tabs.map((route: TabRoute) => {
             const isFocused = route.key === activeKey;
             return (
@@ -115,11 +121,11 @@ export function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
             haptics.selection();
             useSearchModalStore.getState().open();
           }}
-          style={({ pressed }) => [
-            styles.searchButton,
-            isDark ? styles.searchButtonDark : styles.searchButtonLight,
-            pressed && styles.searchButtonPressed,
-          ]}>
+          className={`w-[58px] h-[58px] rounded-[29px] items-center justify-center active:scale-95 ${
+            isDark
+              ? 'bg-[#1C1C1E] border border-white/10 shadow-lg'
+              : 'bg-white border border-black/10 shadow-md'
+          }`}>
           <SearchIcon size={22} color={activeThemeColors.brand.primary} strokeWidth={2.4} />
         </Pressable>
       </View>
@@ -152,36 +158,34 @@ function TelegramTabItem({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.tabItem,
-        pressed && styles.tabItemPressed,
-      ]}>
-      <View style={styles.tabContent}>
+      className="flex-1 items-center justify-center py-0.5 active:opacity-65">
+      <View className="items-center justify-center gap-0.5">
         {/* Soft borderless pill wrap for active tab */}
         <View
-          style={[
-            styles.iconWrap,
-            focused && (isDark ? styles.activePillDark : styles.activePillLight),
-          ]}>
+          className={`w-11 h-[26px] rounded-[13px] items-center justify-center relative ${
+            focused ? (isDark ? 'bg-[#E8392E]/20' : 'bg-[#E8392E]/10') : ''
+          }`}>
           <Icon
             size={20}
             color={focused ? primaryColor : inactiveColor}
             strokeWidth={focused ? 2.4 : 1.9}
           />
           {badgeCount > 0 && (
-            <View style={[styles.badge, { borderColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
-              <Text style={styles.badgeText}>{badgeCount > 99 ? '99+' : badgeCount}</Text>
+            <View
+              className={`absolute -top-1 -right-0.5 min-w-[16px] h-4 rounded-full px-1 bg-[#E53935] items-center justify-center border-[1.5px] ${
+                isDark ? 'border-[#1C1C1E]' : 'border-white'
+              }`}>
+              <Text className="text-white text-[9px] font-extrabold leading-[11px]">
+                {badgeCount > 99 ? '99+' : badgeCount}
+              </Text>
             </View>
           )}
         </View>
 
         {/* Tab Label */}
         <Text
-          style={[
-            styles.tabLabel,
-            { color: inactiveColor },
-            focused && { color: primaryColor, fontWeight: '700' },
-          ]}
+          className={`text-[10.5px] ${focused ? 'font-bold' : 'font-medium'}`}
+          style={{ color: focused ? primaryColor : inactiveColor }}
           numberOfLines={1}>
           {tr(labelKey)}
         </Text>
@@ -189,135 +193,3 @@ function TelegramTabItem({
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 12,
-  },
-  barRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  // Capsule base
-  capsule: {
-    flex: 1,
-    height: 58,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    borderRadius: 29,
-    paddingHorizontal: 4,
-    elevation: 8,
-  },
-  capsuleDark: {
-    backgroundColor: '#1C1C1E',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-  },
-  capsuleLight: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 2,
-  },
-  tabItemPressed: {
-    opacity: 0.65,
-  },
-  tabContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  iconWrap: {
-    width: 44,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  activePillDark: {
-    backgroundColor: 'rgba(232, 57, 46, 0.18)',
-  },
-  activePillLight: {
-    backgroundColor: 'rgba(232, 57, 46, 0.10)',
-  },
-  tabLabel: {
-    ...typography.caption,
-    fontSize: 10.5,
-    fontWeight: '500',
-    color: '#8E8E93',
-  },
-  tabLabelActive: {
-    color: colors.brand.primary,
-    fontWeight: '700',
-  },
-  badge: {
-    position: 'absolute',
-    top: -4,
-    right: -2,
-    minWidth: 16,
-    height: 16,
-    borderRadius: radius.full,
-    paddingHorizontal: 4,
-    backgroundColor: '#E53935',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '800',
-    lineHeight: 11,
-  },
-  // Floating Circular Search Button
-  searchButton: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 8,
-  },
-  searchButtonDark: {
-    backgroundColor: '#1C1C1E',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-  },
-  searchButtonLight: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-  },
-  searchButtonPressed: {
-    opacity: 0.75,
-    transform: [{ scale: 0.95 }],
-  },
-});

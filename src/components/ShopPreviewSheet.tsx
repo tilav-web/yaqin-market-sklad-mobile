@@ -9,7 +9,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -21,7 +20,7 @@ import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { FeedProduct, PublicProductVariant, PublicShop } from '@/lib/types';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { colors, layout, spacing } from '@/theme';
 
 const SCREEN_W = Dimensions.get('window').width;
 const GUTTER = spacing.sm;
@@ -101,53 +100,53 @@ export function ShopPreviewSheet({ visible, shop, onClose }: Props) {
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <SafeAreaView edges={['bottom']} style={styles.sheetWrap} pointerEvents="box-none">
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
+      <Pressable className="flex-1 bg-black/60" onPress={onClose} />
+      <SafeAreaView edges={['bottom']} className="justify-end" pointerEvents="box-none">
+        <View className="h-[82%] bg-surface rounded-t-3xl px-4 pt-2 pb-4 shadow-2xl">
+          <View className="w-10 h-1 rounded-full bg-border self-center mb-3" />
 
           {shop.isPrime && (
-            <View style={styles.primeBanner}>
+            <View className="flex-row items-center gap-1.5 bg-amber-100 border border-amber-300 rounded-xl px-3 py-1.5 mb-2">
               <Crown size={14} color="#D97706" strokeWidth={2.6} />
-              <Text style={styles.primeBannerText}>
+              <Text className="text-xs font-bold text-amber-800">
                 {shop.primeBadgeText ? `${shop.primeBadgeText} Hamkor` : 'Yaqin Prime Hamkor'} • Kafolatlangan sifat
               </Text>
             </View>
           )}
 
           {/* Shop header */}
-          <Pressable style={styles.header} onPress={goToShop}>
-            <View style={[styles.icon, isShowcase && styles.iconShowcase]}>
+          <Pressable className="flex-row items-center gap-3" onPress={goToShop}>
+            <View className={`w-11 h-11 rounded-full items-center justify-center ${isShowcase ? 'bg-blue-100' : 'bg-brand-primary/10'}`}>
               <Store size={22} color={isShowcase ? '#2563EB' : colors.brand.primary} strokeWidth={2.2} />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.name} numberOfLines={1}>
+            <View className="flex-1">
+              <Text className="text-lg font-bold text-text-primary" numberOfLines={1}>
                 {shop.name}
               </Text>
-              <Text style={styles.address} numberOfLines={1}>
+              <Text className="text-xs text-text-secondary mt-0.5" numberOfLines={1}>
                 {shop.address}
               </Text>
             </View>
-            <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
+            <Pressable onPress={onClose} hitSlop={8} className="w-8 h-8 rounded-full bg-surface-muted items-center justify-center">
               <X size={18} color={colors.text.secondary} />
             </Pressable>
           </Pressable>
 
           {/* Meta badges */}
-          <View style={styles.metaRow}>
-            <Text style={[styles.badge, shop.isOpenManual ? styles.badgeOpen : styles.badgeClosed]}>
+          <View className="flex-row items-center flex-wrap gap-2 mt-3">
+            <Text className={`text-[11px] font-bold px-2 py-0.5 rounded ${shop.isOpenManual ? 'text-emerald-700 bg-emerald-100' : 'text-slate-500 bg-slate-100'}`}>
               {shop.isOpenManual ? tr('shop.open') : tr('shop.closed')}
             </Text>
             {isShowcase ? (
-              <Text style={[styles.badge, styles.badgeShowcase]}>
+              <Text className="text-[11px] font-bold px-2 py-0.5 rounded text-blue-700 bg-blue-100">
                 📍 {tr('shop.inStoreOnly')}
               </Text>
             ) : isDeliveryClosed ? (
-              <Text style={[styles.badge, styles.badgeClosed]}>
+              <Text className="text-[11px] font-bold px-2 py-0.5 rounded text-slate-500 bg-slate-100">
                 🚚 {tr('shop.deliveryClosed')}
               </Text>
             ) : (
-              <Text style={styles.metaText}>
+              <Text className="text-xs font-semibold text-text-secondary">
                 🚚{' '}
                 {shop.deliveryFeeAtUser === 0
                   ? tr('shop.freeShort')
@@ -155,34 +154,35 @@ export function ShopPreviewSheet({ visible, shop, onClose }: Props) {
               </Text>
             )}
             {shop.distanceKm !== undefined && (
-              <Text style={styles.metaText}>{shop.distanceKm.toFixed(1)} km</Text>
+              <Text className="text-xs font-semibold text-text-secondary">{shop.distanceKm.toFixed(1)} km</Text>
             )}
             {shop.ratingCount > 0 && (
-              <View style={styles.ratingPill}>
+              <View className="flex-row items-center gap-1 bg-amber-100 px-2 py-0.5 rounded">
                 <Star size={11} color={colors.feedback.warning} fill={colors.feedback.warning} />
-                <Text style={styles.ratingText}>{shop.ratingAverage.toFixed(1)}</Text>
+                <Text className="text-[11px] font-bold text-amber-700">{shop.ratingAverage.toFixed(1)}</Text>
               </View>
             )}
           </View>
 
           {/* Quick contact / navigation action buttons */}
-          <View style={styles.actionRow}>
+          <View className="flex-row items-center gap-2 mt-3">
             {shop.phone ? (
-              <Pressable style={styles.actionBtn} onPress={handleCall}>
+              <Pressable className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-muted border border-border-subtle" onPress={handleCall}>
                 <Phone size={14} color={colors.brand.primary} />
-                <Text style={styles.actionBtnText}>{shop.phone}</Text>
+                <Text className="text-xs font-bold text-text-primary">{shop.phone}</Text>
               </Pressable>
             ) : null}
-            <Pressable style={styles.actionBtn} onPress={handleRoute}>
+            <Pressable className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-muted border border-border-subtle" onPress={handleRoute}>
               <Navigation size={14} color={colors.brand.primary} />
-              <Text style={styles.actionBtnText}>{tr('shop.openRoute')}</Text>
+              <Text className="text-xs font-bold text-text-primary">{tr('shop.openRoute')}</Text>
             </Pressable>
           </View>
 
-          <View style={styles.sectionRow}>
-            <Text style={styles.sectionTitle}>{tr('shop.products')}</Text>
-            <Pressable style={styles.shopLink} onPress={goToShop} hitSlop={6}>
-              <Text style={styles.shopLinkText}>{tr('shop.enter')}</Text>
+          {/* Section title */}
+          <View className="flex-row items-center justify-between mt-4 mb-2">
+            <Text className="text-sm font-bold text-text-primary">{tr('shop.products')}</Text>
+            <Pressable className="flex-row items-center gap-0.5" onPress={goToShop} hitSlop={6}>
+              <Text className="text-xs font-bold text-brand-primary">{tr('shop.enter')}</Text>
               <ChevronRight size={15} color={colors.brand.primary} strokeWidth={2.6} />
             </Pressable>
           </View>
@@ -192,23 +192,23 @@ export function ShopPreviewSheet({ visible, shop, onClose }: Props) {
             data={products}
             keyExtractor={(item) => item.id}
             numColumns={2}
-            style={styles.flatList}
-            columnWrapperStyle={styles.column}
-            contentContainerStyle={styles.list}
+            className="flex-1"
+            columnWrapperStyle={{ gap: GUTTER }}
+            contentContainerStyle={{ paddingBottom: 16, flexGrow: 1 }}
             showsVerticalScrollIndicator={false}
             ItemSeparatorComponent={() => <View style={{ height: GUTTER }} />}
             ListEmptyComponent={
               productsQuery.isLoading ? (
-                <View style={styles.skeletonWrap}>
+                <View style={{ gap: GUTTER }}>
                   {[0, 1, 2, 3].map((r) => (
-                    <View key={r} style={styles.skeletonRow}>
+                    <View key={r} className="flex-row" style={{ gap: GUTTER }}>
                       <ProductCardSkeleton cardWidth={CARD_WIDTH} />
                       <ProductCardSkeleton cardWidth={CARD_WIDTH} />
                     </View>
                   ))}
                 </View>
               ) : (
-                <Text style={styles.empty}>{tr('shop.noProducts')}</Text>
+                <Text className="text-sm text-text-secondary text-center mt-8">{tr('shop.noProducts')}</Text>
               )
             }
             renderItem={({ item }) => (
@@ -224,18 +224,18 @@ export function ShopPreviewSheet({ visible, shop, onClose }: Props) {
             )}
           />
 
-          {/* Footer CTA adapts to cart state */}
+          {/* Footer CTA */}
           {cartCount > 0 ? (
-            <Pressable style={styles.cta} onPress={goToCheckout}>
-              <View style={styles.ctaBadge}>
-                <Text style={styles.ctaBadgeText}>{cartCount}</Text>
+            <Pressable className="flex-row items-center gap-2 bg-brand-primary h-12 rounded-xl px-4 mt-2 shadow-md" onPress={goToCheckout}>
+              <View className="min-w-[24px] h-6 rounded-full px-1.5 bg-surface items-center justify-center">
+                <Text className="text-xs font-extrabold text-brand-primary">{cartCount}</Text>
               </View>
-              <Text style={styles.ctaText}>{tr('shop.order')}</Text>
-              <Text style={styles.ctaTotal}>{cartTotal.toLocaleString()} {tr('common.som')}</Text>
+              <Text className="flex-1 text-base font-bold text-white">{tr('shop.order')}</Text>
+              <Text className="text-base font-bold text-white">{cartTotal.toLocaleString()} {tr('common.som')}</Text>
             </Pressable>
           ) : (
-            <Pressable style={styles.ctaOutline} onPress={goToShop}>
-              <Text style={styles.ctaOutlineText}>{tr('shop.enter')}</Text>
+            <Pressable className="h-12 rounded-xl border border-brand-primary items-center justify-center mt-2" onPress={goToShop}>
+              <Text className="text-base font-bold text-brand-primary">{tr('shop.enter')}</Text>
             </Pressable>
           )}
         </View>
@@ -243,172 +243,3 @@ export function ShopPreviewSheet({ visible, shop, onClose }: Props) {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: colors.overlay.scrim,
-  },
-  sheetWrap: { flex: 1, justifyContent: 'flex-end' },
-  sheet: {
-    // Fixed tall height so the sheet opens at a consistent size immediately —
-    // it never collapses to the bottom while products are still loading.
-    height: '82%',
-    backgroundColor: colors.bg.surface,
-    borderTopLeftRadius: radius['2xl'],
-    borderTopRightRadius: radius['2xl'],
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-    ...shadow.xl,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: radius.full,
-    backgroundColor: colors.border.default,
-    alignSelf: 'center',
-    marginBottom: spacing.md,
-  },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  icon: {
-    width: 46,
-    height: 46,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconShowcase: {
-    backgroundColor: '#EFF6FF',
-  },
-  name: { ...typography.h4, color: colors.text.primary },
-  address: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  badge: {
-    ...typography.caption,
-    fontSize: 11,
-    fontWeight: '700',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-    overflow: 'hidden',
-  },
-  badgeOpen: { color: colors.feedback.success, backgroundColor: colors.feedback.successSurface },
-  badgeClosed: { color: colors.text.tertiary, backgroundColor: colors.bg.surfaceMuted },
-  badgeShowcase: { color: '#1D4ED8', backgroundColor: '#EFF6FF' },
-  primeBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#FEF3C7',
-    borderWidth: 1,
-    borderColor: '#FCD34D',
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 5,
-    marginBottom: spacing.xs,
-  },
-  primeBannerText: {
-    ...typography.caption,
-    color: '#92400E',
-    fontWeight: '800',
-    fontSize: 12,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 7,
-    borderRadius: radius.md,
-    backgroundColor: colors.bg.surfaceMuted,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  actionBtnText: { ...typography.caption, fontWeight: '700', color: colors.text.primary },
-  metaText: { ...typography.caption, color: colors.text.secondary, fontWeight: '600' },
-  ratingPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: colors.feedback.warningSurface,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-  },
-  ratingText: { ...typography.caption, fontSize: 11, fontWeight: '700', color: colors.feedback.warning },
-  sectionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  sectionTitle: { ...typography.bodyStrong, color: colors.text.primary },
-  shopLink: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  shopLinkText: { ...typography.caption, color: colors.brand.primary, fontWeight: '700' },
-  flatList: { flex: 1 },
-  column: { gap: GUTTER },
-  skeletonWrap: { gap: GUTTER },
-  skeletonRow: { flexDirection: 'row', gap: GUTTER },
-  list: { paddingBottom: spacing.md, flexGrow: 1 },
-  empty: { ...typography.bodySmall, color: colors.text.secondary, textAlign: 'center', marginTop: spacing.xl },
-  cta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.brand.primary,
-    height: layout.buttonHeight.md,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    marginTop: spacing.sm,
-    ...shadow.md,
-  },
-  ctaBadge: {
-    minWidth: 24,
-    height: 24,
-    borderRadius: radius.full,
-    paddingHorizontal: 6,
-    backgroundColor: colors.bg.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ctaBadgeText: { ...typography.caption, color: colors.brand.primary, fontWeight: '800', fontSize: 12 },
-  ctaText: { flex: 1, ...typography.body, color: colors.text.onPrimary, fontWeight: '800' },
-  ctaTotal: { ...typography.body, color: colors.text.onPrimary, fontWeight: '800' },
-  ctaOutline: {
-    height: layout.buttonHeight.md,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.sm,
-  },
-  ctaOutlineText: { ...typography.body, color: colors.brand.primary, fontWeight: '800' },
-});
