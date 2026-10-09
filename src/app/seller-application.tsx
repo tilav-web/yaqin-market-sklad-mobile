@@ -2,61 +2,32 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { router, Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Image as ExpoImage } from 'expo-image';
+import React, { useState } from 'react';
 import {
-  AlertCircle,
-  AlertTriangle,
-  ArrowLeft,
-  ArrowRight,
-  Building2,
-  Check,
-  CheckCircle2,
-  Copy,
-  ExternalLink,
-  FileText,
-  Hash,
-  Info,
-  Landmark,
-  MapPin,
-  RefreshCw,
-  Search,
-  ShieldCheck,
-  Sparkles,
-  User,
-  X,
-} from 'lucide-react-native';
-import { useState } from 'react';
-import {
-  ActivityIndicator,
   KeyboardAvoidingView,
-  Linking,
-  Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
-  View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { api, extractErrorMessage } from '@/lib/api';
+import {
+  PlatformConfig,
+  SellerAppBottomBar,
+  SellerApplicationHeader,
+  SellerAppOfertaModal,
+  SellerAppStep1Legal,
+  SellerAppStep2Soliq,
+  SellerAppStep3Bank,
+  SellerAppSuccessModal,
+  SoliqVerifyResult,
+  StirData,
+} from '@/components/seller-application';
 import { useToast } from '@/components/ui/Toast';
-import { useAuthStore } from '@/stores/auth';
 import { useTranslation } from '@/i18n';
-import { colors, radius, shadow, spacing } from '@/theme';
-
-interface StirData {
-  stir: string;
-  companyName: string;
-  legalName: string;
-  entityType: string;
-  legalAddress: string;
-  region?: string;
-  status: 'active' | 'inactive';
-  vatPayer: boolean;
-}
+import { api, extractErrorMessage } from '@/lib/api';
+import { useAuthStore } from '@/stores/auth';
+import { colors, spacing } from '@/theme';
 
 export default function SellerApplicationScreen() {
   const insets = useSafeAreaInsets();
@@ -83,11 +54,7 @@ export default function SellerApplicationScreen() {
   // Step 2: Soliq biriktiruvi
   const [copiedStir, setCopiedStir] = useState(false);
   const [isVerifyingSoliq, setIsVerifyingSoliq] = useState(false);
-  const [soliqVerifyResult, setSoliqVerifyResult] = useState<{
-    isAttached: boolean;
-    message: string;
-    attachedAt?: string;
-  } | null>(null);
+  const [soliqVerifyResult, setSoliqVerifyResult] = useState<SoliqVerifyResult | null>(null);
 
   // Step 3: Bank Account & Contact
   const [bankAccountNumber, setBankAccountNumber] = useState('');
@@ -97,18 +64,10 @@ export default function SellerApplicationScreen() {
   const [contactPhone, setContactPhone] = useState(user?.phone || '');
 
   // Platform info fetched dynamically from admin settings via backend
-  const { data: platformConfig } = useQuery({
+  const { data: platformConfig } = useQuery<PlatformConfig>({
     queryKey: ['platform-config'],
     queryFn: async () => {
-      const res = await api.get<{
-        platformStir: string;
-        platformName: string;
-        commissionRate: number;
-        ofertaTitle: string;
-        ofertaUrl: string;
-        ofertaPdfUrl?: string;
-        supportPhone: string;
-      }>('/sellers/platform-config');
+      const res = await api.get<PlatformConfig>('/sellers/platform-config');
       return res.data;
     },
     staleTime: 5 * 60 * 1000,
@@ -154,10 +113,8 @@ export default function SellerApplicationScreen() {
     }
   };
 
-  // Auto trigger STIR check when 9 digits entered
   const cleanStir = stir.replace(/\D/g, '').slice(0, 9);
 
-  // Real-time STIR validatsiyasi (yozish jarayonida qizil ko'rsatish)
   const validateStirRealtime = (val: string): string | null => {
     if (!val || val.length === 0) return null;
     const first = val[0];
@@ -225,17 +182,15 @@ export default function SellerApplicationScreen() {
       toast.success(tr('sellerApp.toastStirVerified'));
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch { }
+      } catch {}
     } catch (e) {
       setStirData(null);
-      const errMsg =
-        extractErrorMessage(e) ||
-        tr('sellerApp.stirNotFoundFallback');
+      const errMsg = extractErrorMessage(e) || tr('sellerApp.stirNotFoundFallback');
       setStirError(errMsg);
       toast.error(errMsg);
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      } catch { }
+      } catch {}
     } finally {
       setIsCheckingStir(false);
     }
@@ -249,25 +204,19 @@ export default function SellerApplicationScreen() {
 
     setIsVerifyingSoliq(true);
     try {
-      const res = await api.get<{
-        isAttached: boolean;
-        message: string;
-        attachedAt?: string;
-      }>(`/sellers/check-commissioner/${cleanStir}`);
-
+      const res = await api.get<SoliqVerifyResult>(`/sellers/check-commissioner/${cleanStir}`);
       setSoliqVerifyResult(res.data);
       if (res.data.isAttached) {
         toast.success(tr('sellerApp.toastSoliqSuccess'));
         try {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } catch { }
-        // Successfully verified commissioner! Proceed directly to Step 3!
+        } catch {}
         setStep(3);
       } else {
         toast.warning(res.data.message || tr('sellerApp.toastSoliqWarning'));
         try {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        } catch { }
+        } catch {}
       }
     } catch (e) {
       const errMsg = extractErrorMessage(e) || tr('sellerApp.soliqCheckError');
@@ -278,7 +227,7 @@ export default function SellerApplicationScreen() {
       toast.error(errMsg);
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      } catch { }
+      } catch {}
     } finally {
       setIsVerifyingSoliq(false);
     }
@@ -288,7 +237,7 @@ export default function SellerApplicationScreen() {
     setCopiedStir(true);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch { }
+    } catch {}
     setTimeout(() => setCopiedStir(false), 3000);
   };
 
@@ -302,7 +251,6 @@ export default function SellerApplicationScreen() {
     return text.replace(/\D/g, '').slice(0, 5);
   };
 
-  // Validation: Step 2ga faqat Soliq bazasidan tasdiqlangan rasmiy korxona nomiga ega bo'lgan va ofertaga rozilik bergan foydalanuvchi o'ta oladi
   const canGoToStep2 =
     cleanStir.length === 9 &&
     !!stirData &&
@@ -310,9 +258,11 @@ export default function SellerApplicationScreen() {
     !!stirData.companyName &&
     stirData.companyName.trim().length >= 2 &&
     ofertaAccepted;
+
   const rawAccount = bankAccountNumber.replace(/\s+/g, '');
   const rawMfo = bankMfo.replace(/\s+/g, '');
-  const canSubmit = rawAccount.length === 20 && rawMfo.length === 5 && bankAccountHolderName.trim().length >= 2;
+  const canSubmit =
+    rawAccount.length === 20 && rawMfo.length === 5 && bankAccountHolderName.trim().length >= 2;
 
   const submitMutation = useMutation({
     mutationFn: async () => {
@@ -342,7 +292,7 @@ export default function SellerApplicationScreen() {
     onSuccess: () => {
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch { }
+      } catch {}
       queryClient.invalidateQueries({ queryKey: ['users', 'me'] });
       queryClient.invalidateQueries({ queryKey: ['seller-profile'] });
       queryClient.invalidateQueries({ queryKey: ['seller-bank-accounts'] });
@@ -357,59 +307,21 @@ export default function SellerApplicationScreen() {
     <SafeAreaView style={styles.safeContainer} edges={['top', 'left', 'right']}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* ================= TOP CUSTOM HEADER ================= */}
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => {
-            if (step > 1) {
-              setStep((s) => ((s - 1) as 1 | 2));
-            } else {
-              router.back();
-            }
-          }}
-          style={styles.backBtn}
-          hitSlop={8}
-        >
-          <ArrowLeft size={20} color={colors.text.primary} strokeWidth={2.4} />
-        </Pressable>
+      {/* Top Header & Progress */}
+      <SellerApplicationHeader
+        step={step}
+        onBack={() => {
+          if (step > 1) {
+            setStep((s) => ((s - 1) as 1 | 2));
+          } else {
+            router.back();
+          }
+        }}
+      />
 
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{tr('sellerApp.headerTitle')}</Text>
-          <Text style={styles.headerSubtitle}>
-            {step === 1 && tr('sellerApp.step1Badge')}
-            {step === 2 && tr('sellerApp.step2Badge')}
-            {step === 3 && tr('sellerApp.step3Badge')}
-          </Text>
-        </View>
-
-        <View style={styles.stepBadge}>
-          <Text style={styles.stepBadgeText}>{step}/3</Text>
-        </View>
-      </View>
-
-      {/* ================= 3-SEGMENT PROGRESS BAR ================= */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressSegments}>
-          <View style={[styles.segment, styles.segmentActive]} />
-          <View style={[styles.segment, step >= 2 && styles.segmentActive]} />
-          <View style={[styles.segment, step >= 3 && styles.segmentActive]} />
-        </View>
-        <View style={styles.progressLabels}>
-          <Text style={[styles.progressLabel, step === 1 && styles.progressLabelActive]}>
-            {tr('sellerApp.tab1')}
-          </Text>
-          <Text style={[styles.progressLabel, step === 2 && styles.progressLabelActive]}>
-            {tr('sellerApp.tab2')}
-          </Text>
-          <Text style={[styles.progressLabel, step === 3 && styles.progressLabelActive]}>
-            {tr('sellerApp.tab3')}
-          </Text>
-        </View>
-      </View>
-
-      {/* ================= STEP CONTENT SCROLL ================= */}
+      {/* Step Content */}
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        style={styles.keyboardAvoid}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
@@ -418,684 +330,90 @@ export default function SellerApplicationScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* ===================== STEP 1: STIR & OFERTA ===================== */}
           {step === 1 && (
-            <View style={styles.stepWrapper}>
-              {/* Hero Program Card */}
-              <View style={styles.heroCard}>
-                <View style={styles.heroHeader}>
-                  <View style={styles.heroIconBox}>
-                    <Building2 size={24} color={colors.brand.primary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.heroTitle}>
-                      {tr('sellerApp.introTitle', { name: platformName })}
-                    </Text>
-                    <Text style={styles.heroDesc}>
-                      {tr('sellerApp.introDesc')}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* STIR Input Card */}
-              <View style={styles.formCard}>
-                <View style={styles.cardHeaderRow}>
-                  <Text style={styles.inputLabel}>{tr('sellerApp.stirLabel')}</Text>
-                  <View
-                    style={[
-                      styles.charCounterBadge,
-                      !!stirError && styles.charCounterBadgeError,
-                      !!stirData && styles.charCounterBadgeSuccess,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.charCounterText,
-                        !!stirError && styles.charCounterTextError,
-                        !!stirData && styles.charCounterTextSuccess,
-                      ]}
-                    >
-                      {cleanStir.length} / 9
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Real-time Dynamic Input Box (to'g'ri yozilmasa qizil, to'g'ri bo'lsa yashil) */}
-                <View
-                  style={[
-                    styles.fullStirInputBox,
-                    !!stirError && styles.fullStirInputBoxError,
-                    !!stirData && styles.fullStirInputBoxSuccess,
-                  ]}
-                >
-                  {isCheckingStir ? (
-                    <ActivityIndicator size="small" color={colors.brand.primary} />
-                  ) : stirData ? (
-                    <CheckCircle2 size={20} color="#16A34A" strokeWidth={2.4} />
-                  ) : stirError ? (
-                    <AlertTriangle size={20} color="#EF4444" strokeWidth={2.4} />
-                  ) : (
-                    <Search size={18} color={colors.text.hint} strokeWidth={2.2} />
-                  )}
-
-                  <TextInput
-                    style={[
-                      styles.fullStirInput,
-                      !!stirError && styles.fullStirInputError,
-                      !!stirData && styles.fullStirInputSuccess,
-                    ]}
-                    value={stir}
-                    onChangeText={handleStirChange}
-                    placeholder="305 123 456"
-                    placeholderTextColor={colors.text.hint}
-                    keyboardType="number-pad"
-                    maxLength={9}
-                  />
-
-                  {cleanStir.length === 9 && !isCheckingStir && !stirData && (
-                    <Pressable
-                      onPress={() => handleCheckStir()}
-                      hitSlop={8}
-                      style={[
-                        styles.miniReloadBtn,
-                        !!stirError && { backgroundColor: '#EF4444' },
-                      ]}
-                    >
-                      <RefreshCw size={17} color={colors.palette.white} strokeWidth={2.4} />
-                    </Pressable>
-                  )}
-                </View>
-
-                {/* Real-time Error Row */}
-                {!!stirError && (
-                  <View style={styles.realtimeErrorRow}>
-                    <AlertCircle size={15} color="#DC2626" style={{ marginTop: 1 }} />
-                    <Text style={styles.realtimeErrorText}>{stirError}</Text>
-                  </View>
-                )}
-
-                {/* Real-time Typing Hint */}
-                {cleanStir.length > 0 && cleanStir.length < 9 && !stirError && (
-                  <View style={styles.realtimeHintRow}>
-                    <Info size={14} color={colors.text.hint} style={{ marginTop: 1 }} />
-                    <Text style={styles.realtimeHintText}>
-                      {cleanStir.startsWith('2') || cleanStir.startsWith('3')
-                        ? tr('sellerApp.stirHintLegal')
-                        : tr('sellerApp.stirHintIndividual')}
-                    </Text>
-                  </View>
-                )}
-
-                {/* STIR Verified Result & Confirmed Official Details (Read-Only: qo'lda o'zgartirilmaydi) */}
-                {stirData && (
-                  <View style={styles.verifiedBox}>
-                    <View style={styles.verifiedHeader}>
-                      <ShieldCheck size={20} color="#16A34A" />
-                      <View style={{ flex: 1, marginLeft: 8 }}>
-                        <Text style={styles.verifiedTitle}>{tr('sellerApp.stirVerified')}</Text>
-                        <Text style={styles.verifiedSubtitle}>
-                          {tr('sellerApp.stirVerifiedDesc')}
-                        </Text>
-                      </View>
-                      <View style={styles.statusPill}>
-                        <Text style={styles.statusPillText}>
-                          {stirData.entityType} • {tr('sellerApp.active')}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.verifiedDetailsContainer}>
-                      {/* Tashkilot Nomi */}
-                      <View style={styles.readOnlyRow}>
-                        <Building2
-                          size={16}
-                          color={colors.brand.primary}
-                          style={styles.readOnlyIcon}
-                        />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.readOnlyLabel}>{tr('sellerApp.companyNameLabel')}</Text>
-                          <Text style={styles.readOnlyValueBold}>
-                            {stirData.companyName}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {/* Rahbar F.I.SH */}
-                      {!!stirData.legalName && (
-                        <View style={styles.readOnlyRow}>
-                          <User
-                            size={16}
-                            color={colors.text.secondary}
-                            style={styles.readOnlyIcon}
-                          />
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.readOnlyLabel}>{tr('sellerApp.directorLabel')}</Text>
-                            <Text style={styles.readOnlyValue}>
-                              {stirData.legalName}
-                            </Text>
-                          </View>
-                        </View>
-                      )}
-
-                      {/* Yuridik Manzil */}
-                      {!!(stirData.legalAddress || stirData.region) && (
-                        <View style={styles.readOnlyRow}>
-                          <MapPin
-                            size={16}
-                            color={colors.text.secondary}
-                            style={styles.readOnlyIcon}
-                          />
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.readOnlyLabel}>{tr('sellerApp.legalAddressLabel')}</Text>
-                            <Text style={styles.readOnlyValue}>
-                              {stirData.legalAddress || stirData.region}
-                            </Text>
-                          </View>
-                        </View>
-                      )}
-
-                      {/* Holat va QQS belgilari */}
-                      <View style={styles.taxStatusBadges}>
-                        <View style={styles.greenBadge}>
-                          <CheckCircle2 size={13} color="#15803D" />
-                          <Text style={styles.greenBadgeText}>{tr('sellerApp.activeStatus')}</Text>
-                        </View>
-                        <View style={styles.neutralBadge}>
-                          <Text style={styles.neutralBadgeText}>
-                            {stirData.vatPayer ? tr('sellerApp.vatPayer') : tr('sellerApp.notVatPayer')}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-                )}
-              </View>
-
-              {/* Oferta Acceptance Card */}
-              <View style={styles.formCard}>
-                <Pressable
-                  onPress={() => setOfertaAccepted(!ofertaAccepted)}
-                  style={styles.ofertaRow}
-                >
-                  <View
-                    style={[
-                      styles.customCheckbox,
-                      ofertaAccepted && styles.customCheckboxActive,
-                    ]}
-                  >
-                    {ofertaAccepted && (
-                      <Check size={15} color={colors.palette.white} strokeWidth={3} />
-                    )}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.ofertaMainText}>
-                      {tr('sellerApp.ofertaAgreement', { platformName, rate: commissionRate })}
-                    </Text>
-                    <Pressable onPress={handleOpenOferta} hitSlop={6}>
-                      <Text style={styles.ofertaLinkText}>
-                        {tr('sellerApp.readPdfContract')}
-                      </Text>
-                    </Pressable>
-                  </View>
-                </Pressable>
-              </View>
-            </View>
+            <SellerAppStep1Legal
+              platformName={platformName}
+              commissionRate={commissionRate}
+              stir={stir}
+              cleanStir={cleanStir}
+              isCheckingStir={isCheckingStir}
+              stirData={stirData}
+              stirError={stirError}
+              onStirChange={handleStirChange}
+              onCheckStir={() => handleCheckStir()}
+              ofertaAccepted={ofertaAccepted}
+              onToggleOferta={() => setOfertaAccepted((v) => !v)}
+              onOpenOfertaModal={handleOpenOferta}
+            />
           )}
 
-          {/* ===================== STEP 2: SOLIQ BIRIKTIRUVI ===================== */}
           {step === 2 && (
-            <View style={styles.stepWrapper}>
-              {/* Clean Concise Header */}
-              <View style={styles.cleanStepHeader}>
-                <View style={styles.cleanStepIconBox}>
-                  <ShieldCheck size={28} color={colors.brand.primary} />
-                </View>
-                <Text style={styles.cleanStepTitle}>{tr('sellerApp.soliqStepTitle')}</Text>
-                <Text style={styles.cleanStepSubtitle}>
-                  {tr('sellerApp.soliqStepSubtitle')}
-                </Text>
-              </View>
-
-              {/* High-Impact Operator STIR Card */}
-              <View style={styles.platformStirCard}>
-                <View style={styles.platformStirHeader}>
-                  <Sparkles size={16} color="#FDECEA" />
-                  <Text style={styles.platformStirTag}>{tr('sellerApp.operatorStirTag')}</Text>
-                </View>
-
-                <Text style={styles.platformStirNumber}>{platformStir}</Text>
-                <Text style={styles.platformStirOrg}>{platformName}</Text>
-
-                <Pressable
-                  onPress={handleCopyStir}
-                  style={[styles.copyStirButton, copiedStir && styles.copyStirButtonSuccess]}
-                >
-                  {copiedStir ? (
-                    <>
-                      <CheckCircle2 size={18} color={colors.palette.white} />
-                      <Text style={styles.copyStirBtnText}>{tr('sellerApp.stirCopied')}</Text>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={18} color={colors.palette.white} />
-                      <Text style={styles.copyStirBtnText}>{tr('sellerApp.copyStir')}</Text>
-                    </>
-                  )}
-                </Pressable>
-              </View>
-
-              {/* Soliq Ilovasida / Portalida To'ldirish Bo'yicha Aniq Qo'llanma */}
-              <View style={styles.soliqGuideCard}>
-                <View style={styles.soliqGuideHeader}>
-                  <Info size={18} color={colors.brand.primary} />
-                  <Text style={styles.soliqGuideTitle}>
-                    {tr('sellerApp.guideTitle')}
-                  </Text>
-                </View>
-
-                <View style={styles.soliqGuideStep}>
-                  <View style={styles.guideStepNumber}>
-                    <Text style={styles.guideStepNumberText}>1</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.guideStepLabel}>{tr('sellerApp.guideStep1')}</Text>
-                    <Text style={styles.guideStepHighlight}>{platformStir}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.soliqGuideStep}>
-                  <View style={styles.guideStepNumber}>
-                    <Text style={styles.guideStepNumberText}>2</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.guideStepLabel}>{tr('sellerApp.guideStep2')}</Text>
-                    <View style={styles.guideChipsRow}>
-                      <View style={styles.guideChipInactive}>
-                        <Text style={styles.guideChipInactiveText}>ONKM</Text>
-                      </View>
-                      <View style={styles.guideChipActive}>
-                        <Check size={12} color="#FFFFFF" strokeWidth={3} />
-                        <Text style={styles.guideChipActiveText}>Marketpleys</Text>
-                      </View>
-                      <View style={styles.guideChipInactive}>
-                        <Text style={styles.guideChipInactiveText}>Taxi</Text>
-                      </View>
-                      <View style={styles.guideChipInactive}>
-                        <Text style={styles.guideChipInactiveText}>EHF</Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-
-                <View style={styles.soliqGuideStep}>
-                  <View style={styles.guideStepNumber}>
-                    <Text style={styles.guideStepNumberText}>3</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.guideStepLabel}>
-                      {tr('sellerApp.guideStep3')}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Direct Link to Soliq */}
-              <Pressable
-                onPress={() => Linking.openURL('https://my3.soliq.uz')}
-                style={styles.directSoliqLinkCard}
-              >
-                <View style={styles.directSoliqLinkLeft}>
-                  <Text style={styles.directSoliqLinkTitle}>{tr('sellerApp.openSoliqSite')}</Text>
-                  <Text style={styles.directSoliqLinkDesc}>
-                    {tr('sellerApp.openSoliqDesc')}
-                  </Text>
-                </View>
-                <ExternalLink size={20} color={colors.brand.primary} />
-              </Pressable>
-
-              {/* Dynamic Status Notification */}
-              {soliqVerifyResult && !soliqVerifyResult.isAttached && (
-                <View style={styles.soliqFailedCard}>
-                  <AlertTriangle size={22} color="#DC2626" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.soliqFailedTitle}>{tr('sellerApp.attachmentNotFound')}</Text>
-                    <Text style={styles.soliqFailedDesc}>
-                      {soliqVerifyResult.message || tr('sellerApp.soliqNotFoundFallback', { stir: platformStir })}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {soliqVerifyResult?.isAttached && (
-                <View style={styles.soliqSuccessCard}>
-                  <CheckCircle2 size={22} color="#16A34A" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.soliqSuccessTitle}>{tr('sellerApp.attachmentConfirmed')}</Text>
-                    <Text style={styles.soliqSuccessDesc}>
-                      {soliqVerifyResult.message}
-                    </Text>
-                  </View>
-                </View>
-              )}
-            </View>
+            <SellerAppStep2Soliq
+              platformStir={platformStir}
+              platformName={platformName}
+              copiedStir={copiedStir}
+              onCopyStir={handleCopyStir}
+              soliqVerifyResult={soliqVerifyResult}
+            />
           )}
 
-          {/* ===================== STEP 3: BANK HISOB RAQAMI & YAKUN ===================== */}
           {step === 3 && (
-            <View style={styles.stepWrapper}>
-              {/* Virtual Bank Account Mockup */}
-              <View style={styles.bankCardMockup}>
-                <View style={styles.bankCardTop}>
-                  <View style={styles.bankChip}>
-                    <Landmark size={22} color="#ffffff" strokeWidth={2.2} />
-                  </View>
-                  <View style={styles.cardTypeBadge}>
-                    <Text style={styles.cardTypeText}>
-                      {bankMfo ? `MFO: ${bankMfo}` : tr('sellerApp.bankCardTitle')}
-                    </Text>
-                  </View>
-                </View>
-
-                <Text style={styles.bankCardDigits} numberOfLines={1}>
-                  {bankAccountNumber ? bankAccountNumber : '2020 8000 •••• •••• ••••'}
-                </Text>
-
-                <View style={styles.bankCardBottom}>
-                  <View style={{ flex: 1, marginRight: spacing.sm }}>
-                    <Text style={styles.bankCardHolderLabel}>{tr('sellerApp.bankAccountHolder')}</Text>
-                    <Text style={styles.bankCardHolderVal} numberOfLines={1}>
-                      {bankAccountHolderName || companyName || 'KORXONA NOMI'}
-                    </Text>
-                  </View>
-                  <View style={styles.payoutBadge}>
-                    <Text style={styles.payoutBadgeText}>{tr('sellerApp.zeroCommission')}</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Bank Account Inputs Form */}
-              <View style={styles.formCard}>
-                <Text style={styles.cardSectionHeading}>{tr('sellerApp.bankDetailsTitle')}</Text>
-                <Text style={styles.formCardSub}>
-                  {tr('sellerApp.bankDetailsDesc')}
-                </Text>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>
-                    {tr('sellerApp.bankAccountLabel')} <Text style={styles.requiredStar}>*</Text>
-                  </Text>
-                  <View style={styles.inputWithIcon}>
-                    <Hash size={18} color={colors.text.hint} />
-                    <TextInput
-                      style={styles.textInput}
-                      value={bankAccountNumber}
-                      onChangeText={(t) => setBankAccountNumber(formatBankAccountInput(t))}
-                      placeholder="2020 8000 0000 0000 0001"
-                      placeholderTextColor={colors.text.hint}
-                      keyboardType="number-pad"
-                      maxLength={24}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.inputRow}>
-                  <View style={[styles.inputGroup, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>
-                      {tr('sellerApp.bankMfoLabel')} <Text style={styles.requiredStar}>*</Text>
-                    </Text>
-                    <View style={styles.inputWithIcon}>
-                      <Building2 size={18} color={colors.text.hint} />
-                      <TextInput
-                        style={styles.textInput}
-                        value={bankMfo}
-                        onChangeText={(t) => setBankMfo(formatMfoInput(t))}
-                        placeholder="00444"
-                        placeholderTextColor={colors.text.hint}
-                        keyboardType="number-pad"
-                        maxLength={5}
-                      />
-                    </View>
-                  </View>
-
-                  <View style={[styles.inputGroup, { flex: 1.5 }]}>
-                    <Text style={styles.inputLabel}>{tr('sellerApp.bankNameLabel')}</Text>
-                    <TextInput
-                      style={styles.textInputFull}
-                      value={bankName}
-                      onChangeText={setBankName}
-                      placeholder={tr('sellerApp.bankNamePlaceholder')}
-                      placeholderTextColor={colors.text.hint}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>
-                    {tr('sellerApp.accountHolderInputLabel')} <Text style={styles.requiredStar}>*</Text>
-                  </Text>
-                  <View style={styles.inputWithIcon}>
-                    <User size={18} color={colors.text.hint} />
-                    <TextInput
-                      style={styles.textInput}
-                      value={bankAccountHolderName}
-                      onChangeText={setBankAccountHolderName}
-                      placeholder={companyName || tr('sellerApp.accountHolderPlaceholder')}
-                      placeholderTextColor={colors.text.hint}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>{tr('sellerApp.contactPhoneLabel')}</Text>
-                  <TextInput
-                    style={styles.textInputFull}
-                    value={contactPhone}
-                    onChangeText={setContactPhone}
-                    placeholder="+998 90 123 45 67"
-                    placeholderTextColor={colors.text.hint}
-                    keyboardType="phone-pad"
-                  />
-                </View>
-              </View>
-
-              {/* Summary Receipt Card */}
-              <View style={styles.receiptCard}>
-                <Text style={styles.receiptTitle}>{tr('sellerApp.summaryTitle')}</Text>
-
-                <View style={styles.receiptRow}>
-                  <Text style={styles.receiptKey}>{tr('sellerApp.summaryOrg')}</Text>
-                  <Text style={styles.receiptVal} numberOfLines={1}>
-                    {companyName || stirData?.companyName || '—'}
-                  </Text>
-                </View>
-
-                <View style={styles.receiptRow}>
-                  <Text style={styles.receiptKey}>{tr('sellerApp.summaryStir')}</Text>
-                  <Text style={styles.receiptVal}>{cleanStir}</Text>
-                </View>
-
-                <View style={styles.receiptRow}>
-                  <Text style={styles.receiptKey}>{tr('sellerApp.summaryAccount')}</Text>
-                  <Text style={styles.receiptVal} numberOfLines={1}>
-                    {bankAccountNumber ? `${bankAccountNumber.slice(0, 10)}...` : '—'}
-                  </Text>
-                </View>
-
-                <View style={styles.receiptRow}>
-                  <Text style={styles.receiptKey}>{tr('sellerApp.summaryMfo')}</Text>
-                  <Text style={styles.receiptVal}>{bankMfo || '—'}</Text>
-                </View>
-
-                <View style={styles.receiptRow}>
-                  <Text style={styles.receiptKey}>{tr('sellerApp.summarySoliq')}</Text>
-                  <Text style={[styles.receiptVal, { color: '#16A34A' }]}>{tr('sellerApp.summaryAttached')}</Text>
-                </View>
-
-                <View style={styles.receiptRow}>
-                  <Text style={styles.receiptKey}>{tr('sellerApp.summaryComm')}</Text>
-                  <Text style={styles.receiptVal}>
-                    {tr('sellerApp.summaryCommRate', { rate: commissionRate })}
-                  </Text>
-                </View>
-              </View>
-            </View>
+            <SellerAppStep3Bank
+              bankAccountNumber={bankAccountNumber}
+              bankMfo={bankMfo}
+              bankName={bankName}
+              bankAccountHolderName={bankAccountHolderName}
+              contactPhone={contactPhone}
+              companyName={companyName}
+              stirData={stirData}
+              cleanStir={cleanStir}
+              commissionRate={commissionRate}
+              onBankAccountNumberChange={(t) => setBankAccountNumber(formatBankAccountInput(t))}
+              onBankMfoChange={(t) => setBankMfo(formatMfoInput(t))}
+              onBankNameChange={setBankName}
+              onBankAccountHolderNameChange={setBankAccountHolderName}
+              onContactPhoneChange={setContactPhone}
+            />
           )}
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* ================= FIXED BOTTOM ACTION BAR ================= */}
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-        {step > 1 && (
-          <Pressable
-            onPress={() => setStep((s) => ((s - 1) as 1 | 2))}
-            style={styles.prevButton}
-            hitSlop={8}
-          >
-            <ArrowLeft size={18} color={colors.text.primary} strokeWidth={2.2} />
-            <Text style={styles.prevBtnText}>{tr('sellerApp.btnBack')}</Text>
-          </Pressable>
-        )}
+      {/* Fixed Bottom Action Bar */}
+      <SellerAppBottomBar
+        step={step}
+        bottomInset={insets.bottom}
+        canGoToStep2={canGoToStep2}
+        canSubmit={canSubmit}
+        isVerifyingSoliq={isVerifyingSoliq}
+        isSubmitting={submitMutation.isPending}
+        onPrev={() => setStep((s) => ((s - 1) as 1 | 2))}
+        onNext={() => {
+          if (step === 1 && canGoToStep2) setStep(2);
+          else if (step === 2) handleVerifyAndProceedToStep3();
+          else if (step === 3 && canSubmit) submitMutation.mutate();
+        }}
+      />
 
-        <Pressable
-          onPress={() => {
-            if (step === 1 && canGoToStep2) setStep(2);
-            else if (step === 2) handleVerifyAndProceedToStep3();
-            else if (step === 3 && canSubmit) submitMutation.mutate();
-          }}
-          disabled={
-            (step === 1 && !canGoToStep2) ||
-            (step === 2 && isVerifyingSoliq) ||
-            (step === 3 && (!canSubmit || submitMutation.isPending))
-          }
-          style={[
-            styles.nextButton,
-            ((step === 1 && !canGoToStep2) ||
-              (step === 2 && isVerifyingSoliq) ||
-              (step === 3 && (!canSubmit || submitMutation.isPending))) &&
-            styles.nextButtonDisabled,
-          ]}
-        >
-          {submitMutation.isPending || (step === 2 && isVerifyingSoliq) ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <ActivityIndicator size="small" color={colors.palette.white} />
-              <Text style={styles.nextBtnText} numberOfLines={1}>
-                {step === 2 ? tr('sellerApp.btnVerifying') : tr('sellerApp.btnSubmitting')}
-              </Text>
-            </View>
-          ) : (
-            <>
-              <Text style={styles.nextBtnText} numberOfLines={1}>
-                {step === 1 && tr('sellerApp.btnNext')}
-                {step === 2 && tr('sellerApp.btnVerify')}
-                {step === 3 && tr('sellerApp.btnSubmit')}
-              </Text>
-              <ArrowRight size={18} color={colors.palette.white} strokeWidth={2.4} />
-            </>
-          )}
-        </Pressable>
-      </View>
+      {/* Oferta Modal */}
+      <SellerAppOfertaModal
+        visible={showOfertaModal}
+        onClose={() => setShowOfertaModal(false)}
+        onAccept={() => {
+          setOfertaAccepted(true);
+          setShowOfertaModal(false);
+        }}
+        onOpenExternalPdf={handleOpenExternalPdf}
+        resolvePdfUrl={resolvePdfUrl}
+      />
 
-      {/* ================= OFERTA FULL MODAL ================= */}
-      <Modal visible={showOfertaModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderTitleRow}>
-                <FileText size={20} color={colors.brand.primary} />
-                <Text style={styles.modalTitle}>{tr('sellerApp.ofertaModalTitle')}</Text>
-              </View>
-              <Pressable onPress={() => setShowOfertaModal(false)} style={styles.modalCloseBtn}>
-                <X size={20} color={colors.text.secondary} />
-              </Pressable>
-            </View>
-
-            <View style={styles.pdfHeaderRow}>
-              <Text style={styles.pdfHeaderNotice}>
-                {tr('sellerApp.ofertaModalNotice')}
-              </Text>
-              <Pressable onPress={handleOpenExternalPdf} style={styles.externalLinkBtn}>
-                <ExternalLink size={13} color={colors.brand.primary} />
-                <Text style={styles.externalLinkText}>{tr('sellerApp.ofertaPdfBtn')}</Text>
-              </Pressable>
-            </View>
-
-            <ScrollView
-              style={styles.modalBody}
-              showsVerticalScrollIndicator={true}
-              contentContainerStyle={{ paddingBottom: 24 }}
-            >
-              <View style={styles.pdfPagesContainer}>
-                <ExpoImage
-                  source={{
-                    uri: resolvePdfUrl('/api/uploads/legal/oferta_page-1.png?v=20260904_2'),
-                  }}
-                  style={styles.pdfPageImage}
-                  contentFit="contain"
-                  priority="high"
-                />
-                <View style={styles.pdfPageBadge}>
-                  <Text style={styles.pdfPageBadgeText}>{tr('sellerApp.ofertaPage1')}</Text>
-                </View>
-
-                <ExpoImage
-                  source={{
-                    uri: resolvePdfUrl('/api/uploads/legal/oferta_page-2.png?v=20260904_2'),
-                  }}
-                  style={[styles.pdfPageImage, { marginTop: 14 }]}
-                  contentFit="contain"
-                  priority="high"
-                />
-                <View style={styles.pdfPageBadge}>
-                  <Text style={styles.pdfPageBadgeText}>{tr('sellerApp.ofertaPage2')}</Text>
-                </View>
-              </View>
-            </ScrollView>
-
-            <Pressable
-              onPress={() => {
-                setOfertaAccepted(true);
-                setShowOfertaModal(false);
-              }}
-              style={styles.modalAcceptBtn}
-            >
-              <Check size={18} color={colors.palette.white} />
-              <Text style={styles.modalAcceptText}>{tr('sellerApp.ofertaAcceptBtn')}</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ================= CUSTOM SUCCESS MODAL (OS Alert o'rniga) ================= */}
-      <Modal
+      {/* Custom Success Modal */}
+      <SellerAppSuccessModal
         visible={showSuccessModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => router.replace('/(tabs)/profile')}
-      >
-        <View style={styles.successModalBackdrop}>
-          <View style={styles.successModalCard}>
-            <View style={styles.successIconCircle}>
-              <CheckCircle2 size={42} color="#16A34A" strokeWidth={2.4} />
-            </View>
-
-            <Text style={styles.successModalTitle}>{tr('sellerApp.successModalTitle')}</Text>
-            <Text style={styles.successModalSubtitle}>
-              {tr('sellerApp.successModalDesc')}
-            </Text>
-
-            <Pressable
-              style={styles.successModalBtn}
-              onPress={() => {
-                setShowSuccessModal(false);
-                router.replace('/(tabs)/profile');
-              }}
-            >
-              <Text style={styles.successModalBtnText}>{tr('sellerApp.successModalBtn')}</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => {
+          setShowSuccessModal(false);
+          router.replace('/(tabs)/profile');
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -1105,85 +423,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAF8F5',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.palette.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.full,
-    backgroundColor: colors.palette.gray50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  headerCenter: {
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.text.primary,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.brand.primary,
-    marginTop: 1,
-  },
-  stepBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  stepBadgeText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.brand.primary,
-  },
-  progressContainer: {
-    backgroundColor: colors.palette.white,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  progressSegments: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 6,
-  },
-  segment: {
+  keyboardAvoid: {
     flex: 1,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.palette.gray200,
-  },
-  segmentActive: {
-    backgroundColor: colors.brand.primary,
-  },
-  progressLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  progressLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.text.hint,
-  },
-  progressLabelActive: {
-    color: colors.text.primary,
-    fontWeight: '700',
   },
   scrollView: {
     flex: 1,
@@ -1191,931 +432,5 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: spacing.lg,
     paddingBottom: 100,
-  },
-  stepWrapper: {
-    gap: spacing.lg,
-  },
-  heroCard: {
-    backgroundColor: colors.palette.white,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-    ...shadow.xs,
-  },
-  heroHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-  },
-  heroIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.text.primary,
-    marginBottom: 4,
-  },
-  heroDesc: {
-    fontSize: 13,
-    color: colors.text.secondary,
-    lineHeight: 18,
-  },
-  formCard: {
-    backgroundColor: colors.palette.white,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    gap: spacing.md,
-    ...shadow.xs,
-  },
-  formCardSub: {
-    fontSize: 12,
-    color: colors.text.secondary,
-    lineHeight: 16,
-    marginTop: -spacing.xs,
-  },
-  requiredStar: {
-    color: '#EF4444',
-  },
-  inputRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.text.primary,
-  },
-  charCounterBadge: {
-    backgroundColor: colors.palette.gray100,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: radius.full,
-  },
-  charCounterText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.text.secondary,
-  },
-  fullStirInputBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.palette.gray50,
-    borderRadius: radius.xl,
-    borderWidth: 1.5,
-    borderColor: colors.border.default,
-    paddingHorizontal: spacing.md,
-  },
-  fullStirInputBoxError: {
-    borderColor: '#EF4444',
-    backgroundColor: '#FEF2F2',
-  },
-  fullStirInputBoxSuccess: {
-    borderColor: '#16A34A',
-    backgroundColor: '#F0FDF4',
-  },
-  fullStirInput: {
-    flex: 1,
-    paddingVertical: 14,
-    fontSize: 17,
-    fontWeight: '800',
-    color: colors.text.primary,
-    letterSpacing: 2,
-  },
-  fullStirInputError: {
-    color: '#B91C1C',
-  },
-  fullStirInputSuccess: {
-    color: '#15803D',
-  },
-  charCounterBadgeError: {
-    backgroundColor: '#FEE2E2',
-  },
-  charCounterBadgeSuccess: {
-    backgroundColor: '#DCFCE7',
-  },
-  charCounterTextError: {
-    color: '#DC2626',
-    fontWeight: '800',
-  },
-  charCounterTextSuccess: {
-    color: '#15803D',
-    fontWeight: '800',
-  },
-  realtimeErrorRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-    borderRadius: radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8,
-    marginTop: 2,
-  },
-  realtimeErrorText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#B91C1C',
-    flex: 1,
-    lineHeight: 16,
-  },
-  realtimeHintRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 4,
-    marginTop: 2,
-  },
-  realtimeHintText: {
-    fontSize: 12,
-    color: colors.text.hint,
-    fontWeight: '500',
-  },
-  miniReloadBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  verifiedBox: {
-    backgroundColor: '#F0FDF4',
-    borderRadius: radius.xl,
-    borderWidth: 1.5,
-    borderColor: '#BBF7D0',
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  verifiedHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingBottom: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: '#DCFCE7',
-  },
-  verifiedTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#16A34A',
-  },
-  verifiedSubtitle: {
-    fontSize: 11,
-    color: colors.text.secondary,
-    fontWeight: '500',
-    marginTop: 1,
-  },
-  statusPill: {
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.full,
-  },
-  statusPillText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#15803D',
-  },
-  verifiedDetailsContainer: {
-    gap: 8,
-    marginTop: 2,
-  },
-  readOnlyRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: colors.palette.white,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    gap: 10,
-  },
-  readOnlyIcon: {
-    marginTop: 2,
-  },
-  readOnlyLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.text.hint,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  readOnlyValueBold: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.text.primary,
-  },
-  readOnlyValue: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.text.primary,
-  },
-  taxStatusBadges: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 2,
-  },
-  greenBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-  },
-  greenBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#15803D',
-  },
-  neutralBadge: {
-    backgroundColor: colors.palette.gray100,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-  },
-  neutralBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.text.secondary,
-  },
-  verifiedContent: {
-    gap: 6,
-    marginTop: 2,
-  },
-  verifiedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  verifiedName: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.text.primary,
-    flex: 1,
-  },
-  verifiedText: {
-    fontSize: 12,
-    color: colors.text.secondary,
-    flex: 1,
-  },
-  ofertaRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-  },
-  customCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 7,
-    borderWidth: 2,
-    borderColor: colors.palette.gray300,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  customCheckboxActive: {
-    backgroundColor: colors.brand.primary,
-    borderColor: colors.brand.primary,
-  },
-  ofertaMainText: {
-    fontSize: 13,
-    color: colors.text.primary,
-    lineHeight: 19,
-  },
-  ofertaLinkText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.brand.primary,
-    marginTop: 4,
-    textDecorationLine: 'underline',
-  },
-  infoBanner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    backgroundColor: colors.brand.primarySurface,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-  },
-  infoBannerTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.brand.primary,
-    marginBottom: 4,
-  },
-  infoBannerDesc: {
-    fontSize: 12,
-    color: colors.palette.redDarker,
-    lineHeight: 18,
-  },
-  platformStirCard: {
-    backgroundColor: '#1E1B18',
-    borderRadius: radius['2xl'],
-    padding: spacing.xl,
-    alignItems: 'center',
-    gap: spacing.xs,
-    ...shadow.md,
-  },
-  platformStirHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
-  },
-  platformStirTag: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#FBD9D5',
-    letterSpacing: 1.2,
-  },
-  platformStirNumber: {
-    fontSize: 36,
-    fontWeight: '900',
-    color: colors.palette.white,
-    letterSpacing: 3,
-    marginVertical: 4,
-  },
-  platformStirOrg: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#DEDAD6',
-    marginBottom: spacing.md,
-  },
-  copyStirButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.brand.primary,
-    paddingHorizontal: spacing['2xl'],
-    paddingVertical: 12,
-    borderRadius: radius.full,
-  },
-  copyStirButtonSuccess: {
-    backgroundColor: '#16A34A',
-  },
-  copyStirBtnText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.palette.white,
-  },
-  cleanStepHeader: {
-    alignItems: 'center',
-    textAlign: 'center',
-    paddingVertical: spacing.md,
-    gap: 8,
-  },
-  cleanStepIconBox: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#EEF2FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  cleanStepTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.text.primary,
-    textAlign: 'center',
-  },
-  cleanStepSubtitle: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: spacing.md,
-  },
-  soliqGuideCard: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    gap: spacing.md,
-    ...shadow.xs,
-  },
-  soliqGuideHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingBottom: 2,
-  },
-  soliqGuideTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.text.primary,
-  },
-  soliqGuideStep: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  guideStepNumber: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#E2E8F0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 1,
-  },
-  guideStepNumberText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: colors.text.primary,
-  },
-  guideStepLabel: {
-    fontSize: 13,
-    color: colors.text.secondary,
-    lineHeight: 18,
-  },
-  guideStepHighlight: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.brand.primary,
-    letterSpacing: 1,
-    marginTop: 2,
-  },
-  guideChipsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 6,
-  },
-  guideChipInactive: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.sm,
-    backgroundColor: '#EDF2F7',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-  },
-  guideChipInactiveText: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  guideChipActive: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-    backgroundColor: '#16A34A',
-  },
-  guideChipActiveText: {
-    fontSize: 11,
-    color: '#FFFFFF',
-    fontWeight: '800',
-  },
-  directSoliqLinkCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.palette.white,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    ...shadow.xs,
-  },
-  directSoliqLinkLeft: {
-    flex: 1,
-    paddingRight: spacing.md,
-    gap: 4,
-  },
-  directSoliqLinkTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.brand.primary,
-  },
-  directSoliqLinkDesc: {
-    fontSize: 12,
-    color: colors.text.secondary,
-    lineHeight: 16,
-  },
-  soliqFailedCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1.5,
-    borderColor: '#FCA5A5',
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    ...shadow.xs,
-  },
-  soliqFailedTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#DC2626',
-    marginBottom: 4,
-  },
-  soliqFailedDesc: {
-    fontSize: 13,
-    color: '#991B1B',
-    lineHeight: 18,
-  },
-  soliqSuccessCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1.5,
-    borderColor: '#86EFAC',
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    ...shadow.xs,
-  },
-  soliqSuccessTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#16A34A',
-    marginBottom: 4,
-  },
-  soliqSuccessDesc: {
-    fontSize: 13,
-    color: '#166534',
-    lineHeight: 18,
-  },
-  bankCardMockup: {
-    backgroundColor: '#1C1917',
-    borderRadius: radius['2xl'],
-    padding: spacing.xl,
-    height: 195,
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#383431',
-    ...shadow.md,
-  },
-  bankCardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  bankChip: {
-    width: 38,
-    height: 28,
-    borderRadius: 6,
-    backgroundColor: '#F59E0B',
-    padding: 3,
-  },
-  bankChipLines: {
-    flex: 1,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#D97706',
-  },
-  cardTypeBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-  },
-  cardTypeText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.palette.white,
-    letterSpacing: 1,
-  },
-  bankCardDigits: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.palette.white,
-    letterSpacing: 3,
-  },
-  bankCardBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  bankCardHolderLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#A8A29E',
-    letterSpacing: 1,
-  },
-  bankCardHolderVal: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.palette.white,
-    maxWidth: 180,
-  },
-  payoutBadge: {
-    backgroundColor: '#15803D',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.full,
-  },
-  payoutBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: colors.palette.white,
-  },
-  cardSectionHeading: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.text.primary,
-  },
-  inputGroup: {
-    gap: 6,
-  },
-  inputWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.palette.gray50,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    paddingHorizontal: spacing.md,
-  },
-  textInput: {
-    flex: 1,
-    paddingVertical: 12,
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.text.primary,
-  },
-  textInputFull: {
-    backgroundColor: colors.palette.gray50,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text.primary,
-  },
-  receiptCard: {
-    backgroundColor: colors.palette.white,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    gap: spacing.sm,
-    ...shadow.xs,
-  },
-  receiptTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.text.primary,
-    marginBottom: 4,
-  },
-  receiptRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  receiptKey: {
-    fontSize: 13,
-    color: colors.text.secondary,
-  },
-  receiptVal: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.text.primary,
-    maxWidth: '60%',
-  },
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.palette.white,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    flexDirection: 'row',
-    gap: spacing.md,
-    ...shadow.lg,
-  },
-  prevButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 14,
-    borderRadius: radius.xl,
-    backgroundColor: colors.palette.gray50,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  prevBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text.primary,
-  },
-  nextButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.brand.primary,
-    paddingVertical: 14,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.xl,
-    ...shadow.sm,
-  },
-  nextButtonDisabled: {
-    opacity: 0.45,
-  },
-  nextBtnText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.palette.white,
-    flexShrink: 1,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    backgroundColor: colors.palette.white,
-    borderTopLeftRadius: radius['3xl'],
-    borderTopRightRadius: radius['3xl'],
-    padding: spacing.lg,
-    height: '92%',
-    gap: spacing.sm,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: spacing.xs,
-  },
-  modalHeaderTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  modalTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: colors.text.primary,
-  },
-  modalCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.palette.gray100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pdfHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    backgroundColor: colors.palette.gray50,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    marginBottom: spacing.xs,
-    gap: 8,
-  },
-  pdfHeaderNotice: {
-    flex: 1,
-    fontSize: 11,
-    color: colors.text.secondary,
-    lineHeight: 15,
-  },
-  modalBody: {
-    flex: 1,
-  },
-  pdfPagesContainer: {
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-  },
-  externalLinkBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FEF2F2',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-  },
-  externalLinkText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.brand.primary,
-  },
-  pdfPageImage: {
-    width: '100%',
-    aspectRatio: 1654 / 2339,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
-  },
-  pdfPageBadge: {
-    backgroundColor: colors.palette.gray100,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: radius.full,
-    alignSelf: 'center',
-    marginTop: 6,
-  },
-  pdfPageBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.text.secondary,
-  },
-  modalAcceptBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.brand.primary,
-    paddingVertical: 14,
-    borderRadius: radius.xl,
-    marginTop: spacing.xs,
-  },
-  modalAcceptText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.palette.white,
-  },
-  successModalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  successModalCard: {
-    width: '100%',
-    maxWidth: 380,
-    backgroundColor: colors.palette.white,
-    borderRadius: radius['2xl'],
-    padding: spacing.xl,
-    alignItems: 'center',
-    ...shadow.md,
-  },
-  successIconCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: radius.full,
-    backgroundColor: '#DCFCE7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  successModalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.text.primary,
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-  },
-  successModalSubtitle: {
-    fontSize: 13,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 19,
-    marginBottom: spacing.xl,
-  },
-  successModalBtn: {
-    width: '100%',
-    backgroundColor: colors.brand.primary,
-    paddingVertical: 14,
-    borderRadius: radius.xl,
-    alignItems: 'center',
-  },
-  successModalBtnText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.palette.white,
   },
 });
