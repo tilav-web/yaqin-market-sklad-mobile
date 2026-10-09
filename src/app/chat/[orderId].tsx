@@ -73,6 +73,8 @@ export default function ChatScreen() {
     isLoadingMessages,
     sendMessage,
     isSending,
+    peerIsTyping,
+    sendTyping,
   } = useChatSession({
     effectiveId,
     isDirectConv,
@@ -176,12 +178,23 @@ export default function ChatScreen() {
                     <ChatMessageBubble
                       text={item.text}
                       createdAt={item.createdAt}
-                      isMine={item.senderUserId === myId}
+                      isMine={item.senderUserId === myId || Boolean(item.isPending)}
+                      isPending={item.isPending}
                     />
                   </View>
                 );
               }}
             />
+          )}
+
+          {/* Peer typing indicator banner */}
+          {peerIsTyping && (
+            <View className="flex-row items-center gap-1.5 px-4 py-1.5 bg-bg-surface border-t border-border-subtle/40">
+              <View className="w-2 h-2 rounded-full bg-brand-primary opacity-80" />
+              <Text className="text-[12px] italic text-brand-primary font-medium">
+                {tr('chat.peerTyping')}
+              </Text>
+            </View>
           )}
 
           {/* Telegram-style Bottom Input Bar pinned to keyboard/bottom */}
@@ -190,6 +203,7 @@ export default function ChatScreen() {
             onChangeText={setText}
             onSend={handleSend}
             isSending={isSending}
+            onTyping={sendTyping}
             onOpenEmoji={() => {
               Keyboard.dismiss();
               setIsEmojiPickerOpen(true);

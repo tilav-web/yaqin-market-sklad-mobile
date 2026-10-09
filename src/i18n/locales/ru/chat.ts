@@ -8,6 +8,7 @@ export const chat = {
   'chat.online': 'В сети',
   'chat.lastSeenRecently': 'был(а) недавно',
   'chat.typing': 'печатает...',
+  'chat.peerTyping': 'Магазин печатает...',
   'chat.attachProduct': 'Поделиться товаром',
   'chat.viewProduct': 'Посмотреть товар',
   'chat.orderNow': 'Заказать',

@@ -1,5 +1,5 @@
 import { Paperclip, Send, Smile } from 'lucide-react-native';
-import React from 'react';
+import React, { useRef } from 'react';
 import { Platform, Pressable, TextInput, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
@@ -13,6 +13,7 @@ interface ChatInputBarProps {
   readonly isSending: boolean;
   readonly onOpenEmoji?: () => void;
   readonly onAttach?: () => void;
+  readonly onTyping?: (isTyping: boolean) => void;
   readonly bottomInset?: number;
 }
 
@@ -23,15 +24,32 @@ export function ChatInputBar({
   isSending,
   onOpenEmoji,
   onAttach,
+  onTyping,
   bottomInset,
 }: ChatInputBarProps) {
   const { tr } = useTranslation();
   const { colors: activeColors } = useTheme();
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hasContent = Boolean(text.trim());
 
+  const handleChangeText = (val: string) => {
+    onChangeText(val);
+    if (onTyping) {
+      onTyping(true);
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = setTimeout(() => {
+        onTyping(false);
+      }, 3000);
+    }
+  };
+
   const handlePressSend = () => {
     if (!hasContent || isSending) return;
+    if (onTyping) {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      onTyping(false);
+    }
     haptics.light();
     onSend();
   };
@@ -72,7 +90,7 @@ export function ChatInputBar({
             textAlignVertical: 'center',
           }}
           value={text}
-          onChangeText={onChangeText}
+          onChangeText={handleChangeText}
           placeholder={tr('chat.placeholder')}
           placeholderTextColor={activeColors.text.hint}
           multiline

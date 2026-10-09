@@ -1,4 +1,4 @@
-import { CheckCheck } from 'lucide-react-native';
+import { CheckCheck, Clock } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
@@ -9,9 +9,15 @@ interface ChatMessageBubbleProps {
   readonly text: string;
   readonly createdAt: string;
   readonly isMine: boolean;
+  readonly isPending?: boolean;
 }
 
-export function ChatMessageBubble({ text, createdAt, isMine }: ChatMessageBubbleProps) {
+export function ChatMessageBubble({
+  text,
+  createdAt,
+  isMine,
+  isPending,
+}: ChatMessageBubbleProps) {
   const { colors: activeColors } = useTheme();
 
   const formattedTime = new Date(createdAt).toLocaleTimeString([], {
@@ -80,9 +86,12 @@ export function ChatMessageBubble({ text, createdAt, isMine }: ChatMessageBubble
           >
             {formattedTime}
           </Text>
-          {isMine && (
-            <CheckCheck size={13} color="#FFFFFF" strokeWidth={2.4} />
-          )}
+          {isMine &&
+            (isPending ? (
+              <Clock size={11} color="#FFFFFF" opacity={0.8} strokeWidth={2.2} />
+            ) : (
+              <CheckCheck size={13} color="#FFFFFF" strokeWidth={2.4} />
+            ))}
         </View>
       </Pressable>
     </View>

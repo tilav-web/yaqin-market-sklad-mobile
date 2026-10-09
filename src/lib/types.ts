@@ -152,6 +152,7 @@ export interface ChatMessage {
   fromShop: boolean;
   text: string;
   createdAt: string;
+  isPending?: boolean;
 }
 
 export interface Conversation {

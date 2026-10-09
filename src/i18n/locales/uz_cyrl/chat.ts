@@ -8,6 +8,7 @@ export const chat = {
   'chat.online': 'Онлайн',
   'chat.lastSeenRecently': 'охирги марта яқинда бўлган',
   'chat.typing': 'ёзмоқда...',
+  'chat.peerTyping': 'Дўкон ёзмоқда...',
   'chat.attachProduct': 'Маҳсулотни улашиш',
   'chat.viewProduct': 'Товарни кўриш',
   'chat.orderNow': 'Буюртма бериш',
