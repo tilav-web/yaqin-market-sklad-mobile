@@ -1,14 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { AlertCircle, CreditCard, Minus, Plus, ShoppingBag, Store, Trash2, Wallet } from 'lucide-react-native';
+import { ShoppingBag } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,20 +13,22 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { CardVisual } from '@/components/CardVisual';
 import { CheckoutAddressSheet } from '@/components/CheckoutAddressSheet';
 import { CheckoutDeliveryCard } from '@/components/CheckoutDeliveryCard';
+import {
+  CheckoutCartItemsCard,
+  CheckoutFooter,
+  CheckoutPaymentSection,
+} from '@/components/checkout';
 import { useToast } from '@/components/ui';
 import { useTranslation } from '@/i18n';
-import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
-import { startOrderActivity } from '@/lib/useOrderLiveActivity';
+import { api, extractErrorMessage } from '@/lib/api';
 import { Order, PublicShop, SavedCard, UserAddress } from '@/lib/types';
+import { startOrderActivity } from '@/lib/useOrderLiveActivity';
 import { useAuthStore } from '@/stores/auth';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
-import { detectCardBrand } from '@/utils/cardBrand';
-import { haptics } from '@/utils/haptics';
+import { colors, layout, radius, spacing, typography } from '@/theme';
 
 export default function CheckoutScreen() {
   const { id: shopId } = useLocalSearchParams<{ id: string }>();
@@ -66,10 +65,7 @@ export default function CheckoutScreen() {
   });
   const activeCards = (cardsQuery.data ?? []).filter((c) => c.status === 'active');
 
-  // Pre-select the default saved card the first time the list loads — after
-  // that the user's own tap (including explicitly picking "redirect" /
-  // deselecting) is never overridden again. A card added on /add-card comes
-  // back through the same path when it is the customer's first one.
+  // Pre-select the default saved card the first time the list loads
   const cardsPrefilled = useRef(false);
   useEffect(() => {
     if (!cardsPrefilled.current && activeCards.length > 0) {
@@ -84,30 +80,18 @@ export default function CheckoutScreen() {
     queryFn: async () => {
       const res = await api.get<UserAddress[]>('/users/me/addresses');
       const list = res.data;
-      // The last address used anywhere in the app (home tab's location
-      // switcher, or a previous checkout) wins over the account default —
-      // that's the "auto-select the last used location" behavior.
       const preferred = list.find((a) => a.id === lastUsedAddress?.id) ?? list.find((a) => a.isDefault) ?? list[0];
       if (preferred && !selectedAddressId) setSelectedAddressId(preferred.id);
       return list;
     },
   });
 
-  // The delivery zone/fee check must be run against the SELECTED delivery
-  // address's coordinates, not the device's live GPS — otherwise switching
-  // between saved addresses (Home/Work, possibly different delivery zones)
-  // never refetches the zone/fee check and shows stale data for the wrong
-  // address.
   const selectedAddress = addressesQuery.data?.find((a) => a.id === selectedAddressId);
   const zoneCheckCoords = selectedAddress
     ? { latitude: selectedAddress.latitude, longitude: selectedAddress.longitude }
     : coords;
 
-  // Prefill the apartment-detail fields from whichever address is selected.
-  // Done during render (not in an effect) so the fields never paint one frame
-  // of the previous address's values, and keyed on the address id so it only
-  // re-runs when the customer actually switches address — never clobbering
-  // details they are in the middle of editing.
+  // Prefill the apartment-detail fields from whichever address is selected
   const [detailsAddressId, setDetailsAddressId] = useState<string | null>(null);
   if (selectedAddress && selectedAddress.id !== detailsAddressId) {
     setDetailsAddressId(selectedAddress.id);
@@ -117,8 +101,7 @@ export default function CheckoutScreen() {
     setIntercom(selectedAddress.intercom ?? '');
   }
 
-  // One-time prefill from the account's own phone — the field stays editable
-  // afterwards (e.g. ordering for someone else) without being reset.
+  // One-time prefill from the account's own phone
   const phonePrefilled = useRef(false);
   useEffect(() => {
     if (!phonePrefilled.current && authPhone) {
@@ -146,9 +129,6 @@ export default function CheckoutScreen() {
 
   const createOrder = useMutation({
     mutationFn: async () => {
-      // Apartment details are address-level (reused next time this address
-      // is picked) — best-effort save them if the customer changed anything
-      // at checkout, without blocking order placement if it fails.
       if (
         selectedAddress &&
         (entrance.trim() !== (selectedAddress.entrance ?? '') ||
@@ -189,9 +169,6 @@ export default function CheckoutScreen() {
       });
 
       if (paymentMethod === 'click_online' && selectedCardId) {
-        // Charge the saved card directly — no redirect needed. Failure still
-        // leaves the order placed (paymentStatus stays pending); the order
-        // detail screen offers the same saved-card retry + the redirect.
         try {
           await api.post(`/click/orders/${order.id}/pay-with-card`, { cardId: selectedCardId });
           toast.success(tr('checkout.orderSent'));
@@ -199,7 +176,6 @@ export default function CheckoutScreen() {
           toast.error(extractErrorMessage(e));
         }
       } else if (paymentMethod === 'click_online') {
-        // Open Click payment page before navigating to order detail
         try {
           const { data } = await api.get<{ url: string }>(`/click/orders/${order.id}/url`);
           await WebBrowser.openBrowserAsync(data.url, { showTitle: true });
@@ -223,11 +199,6 @@ export default function CheckoutScreen() {
   const outOfZone = shop ? shop.isWithinZone === false : false;
   const canOrder = !!selectedAddressId && cartLines.length > 0 && !belowMin && !outOfZone;
 
-  // The single reason the order can't be placed, shown as a slim band above
-  // the footer button. Min-order also carries a fill ratio so the customer
-  // sees how close they are instead of only being told "not enough".
-  // Stays silent while the saved addresses are still in flight — one of them
-  // is about to be auto-selected, so "no address" would be a false alarm.
   const blocker = addressesQuery.isLoading
     ? null
     : !selectedAddressId
@@ -258,91 +229,24 @@ export default function CheckoutScreen() {
       <KeyboardAvoidingView
         style={styles.root}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+      >
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag">
-          {/* What you're buying comes first — it's what the customer opens this
-              screen to check. The money rows live at the bottom of this same
-              card instead of a separate summary block. */}
-          <View style={styles.section}>
-            <View style={styles.shopRow}>
-              <View style={styles.shopIcon}>
-                <Store size={16} color={colors.brand.primary} strokeWidth={2.4} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.shopName} numberOfLines={1}>
-                  {shop?.name ?? tr('checkout.itemsTitle')}
-                </Text>
-                <Text style={styles.shopMeta}>{tr('cart.itemsCount', { n: cartLines.length })}</Text>
-              </View>
-            </View>
+          keyboardDismissMode="on-drag"
+        >
+          {/* Order items and totals */}
+          <CheckoutCartItemsCard
+            shop={shop}
+            cartLines={cartLines}
+            subTotal={subTotal}
+            deliveryFee={deliveryFee}
+            onUpdateQty={(variantId, quantity) => updateQty(shopId!, variantId, quantity)}
+          />
 
-            {cartLines.map((line, i) => (
-              <View key={line.variantId} style={[styles.cartItem, i > 0 && styles.cartItemBordered]}>
-                <View style={styles.itemThumb}>
-                  {line.photoUrl ? (
-                    <Image source={{ uri: resolveMedia(line.photoUrl) }} style={styles.itemImg} />
-                  ) : (
-                    <View style={[styles.itemImg, styles.itemImgPlaceholder]} />
-                  )}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.itemName} numberOfLines={2}>
-                    {line.productName}
-                  </Text>
-                  <Text style={styles.itemPrice}>
-                    {(line.unitPrice * line.quantity).toLocaleString()} {tr('common.som')}
-                  </Text>
-                </View>
-                <View style={styles.qtyControls}>
-                  <Pressable
-                    style={styles.qtyBtn}
-                    hitSlop={4}
-                    onPress={() => {
-                      haptics.light();
-                      updateQty(shopId!, line.variantId, line.quantity - 1);
-                    }}>
-                    {line.quantity === 1 ? (
-                      <Trash2 size={15} color={colors.brand.primary} strokeWidth={2.4} />
-                    ) : (
-                      <Minus size={16} color={colors.brand.primary} strokeWidth={3} />
-                    )}
-                  </Pressable>
-                  <Text style={styles.qty}>{line.quantity}</Text>
-                  <Pressable
-                    style={styles.qtyBtn}
-                    hitSlop={4}
-                    onPress={() => {
-                      haptics.light();
-                      updateQty(shopId!, line.variantId, line.quantity + 1);
-                    }}>
-                    <Plus size={16} color={colors.brand.primary} strokeWidth={3} />
-                  </Pressable>
-                </View>
-              </View>
-            ))}
-
-            <View style={styles.divider} />
-            <Row label={tr('cart.subtotal')} value={`${subTotal.toLocaleString()} ${tr('common.som')}`} />
-            {/* Until the shop (and with it the zone fee) has loaded the fee is
-                simply unknown — showing the 0 default would advertise free
-                delivery for a moment and then take it away. */}
-            <Row
-              label={tr('cart.deliveryFee')}
-              value={
-                !shop
-                  ? '—'
-                  : deliveryFee === 0
-                    ? tr('shop.freeShort')
-                    : `${deliveryFee.toLocaleString()} ${tr('common.som')}`
-              }
-              free={!!shop && deliveryFee === 0}
-            />
-          </View>
-
+          {/* Delivery & address card */}
           <CheckoutDeliveryCard
             address={selectedAddress}
             loading={addressesQuery.isLoading}
@@ -366,138 +270,27 @@ export default function CheckoutScreen() {
             onComment={setCourierComment}
           />
 
-          {/* Payment */}
-          <View style={styles.section}>
-            <Pressable
-              style={[styles.payRow, paymentMethod === 'cash' && styles.payRowActive]}
-              onPress={() => {
-                haptics.selection();
-                setPaymentMethod('cash');
-              }}>
-              <Wallet
-                size={18}
-                color={paymentMethod === 'cash' ? colors.brand.primary : colors.text.tertiary}
-                strokeWidth={2.2}
-              />
-              <Text style={[styles.payText, paymentMethod === 'cash' && styles.payTextActive]}>
-                {tr('checkout.cash')}
-              </Text>
-              <View style={[styles.radio, paymentMethod === 'cash' && styles.radioActive]}>
-                {paymentMethod === 'cash' && <View style={styles.radioDot} />}
-              </View>
-            </Pressable>
-            <Pressable
-              style={[styles.payRow, paymentMethod === 'click_online' && styles.payRowActive]}
-              onPress={() => {
-                haptics.selection();
-                setPaymentMethod('click_online');
-              }}>
-              <CreditCard
-                size={18}
-                color={paymentMethod === 'click_online' ? colors.brand.primary : colors.text.tertiary}
-                strokeWidth={2.2}
-              />
-              <Text style={[styles.payText, paymentMethod === 'click_online' && styles.payTextActive]}>
-                {tr('checkout.cardPayment')}
-              </Text>
-              <View style={[styles.radio, paymentMethod === 'click_online' && styles.radioActive]}>
-                {paymentMethod === 'click_online' && <View style={styles.radioDot} />}
-              </View>
-            </Pressable>
-
-            {paymentMethod === 'click_online' && (
-              <View style={styles.cardSubList}>
-                {activeCards.map((card) => {
-                  const active = selectedCardId === card.id;
-                  const brand = detectCardBrand(card.cardNumberMasked ?? '');
-                  return (
-                    <Pressable
-                      key={card.id}
-                      style={styles.cardSubRow}
-                      onPress={() => {
-                        haptics.selection();
-                        setSelectedCardId(card.id);
-                      }}>
-                      <View style={[styles.radio, active && styles.radioActive]}>
-                        {active && <View style={styles.radioDot} />}
-                      </View>
-                      <CardVisual
-                        size="mini"
-                        brand={brand}
-                        numberText={card.cardNumberMasked ?? '••••'}
-                        fallbackLabel={tr('cards.genericName')}
-                      />
-                      <Text style={styles.cardSubText} numberOfLines={1}>
-                        {card.label || card.cardNumberMasked || '••••'}
-                      </Text>
-                      {card.isDefault && <Text style={styles.cardSubDefault}>{tr('cards.default')}</Text>}
-                    </Pressable>
-                  );
-                })}
-                <Pressable style={styles.cardSubRow} onPress={() => setSelectedCardId(null)}>
-                  <View style={[styles.radio, !selectedCardId && styles.radioActive]}>
-                    {!selectedCardId && <View style={styles.radioDot} />}
-                  </View>
-                  <Text style={styles.cardSubText}>{tr('checkout.payWithRedirect')}</Text>
-                </Pressable>
-                {/* A pushed screen, not a sheet — the card mockup plus the
-                    SMS-verify step never fit in one. */}
-                <Pressable onPress={() => router.push('/add-card')}>
-                  <Text style={styles.addCardLink}>{tr('cards.add')}</Text>
-                </Pressable>
-              </View>
-            )}
-          </View>
-
+          {/* Payment method selection */}
+          <CheckoutPaymentSection
+            paymentMethod={paymentMethod}
+            onSelectPaymentMethod={setPaymentMethod}
+            activeCards={activeCards}
+            selectedCardId={selectedCardId}
+            onSelectCardId={setSelectedCardId}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <SafeAreaView edges={['bottom']} style={styles.footer}>
-        {/* Why the button is off, stated once in a slim band — the button's
-            own label stays "place order" so it never turns into a wall of
-            text sitting where the primary action should be. */}
-        {blocker && (
-          <View style={[styles.blocker, blocker.danger && styles.blockerDanger]}>
-            <View style={styles.blockerRow}>
-              <AlertCircle
-                size={14}
-                color={blocker.danger ? colors.feedback.danger : colors.feedback.warning}
-                strokeWidth={2.6}
-              />
-              <Text style={[styles.blockerText, blocker.danger && styles.blockerTextDanger]}>
-                {blocker.text}
-              </Text>
-            </View>
-            {blocker.progress != null && (
-              <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${blocker.progress}%` }]} />
-              </View>
-            )}
-          </View>
-        )}
-        <View style={styles.footerRow}>
-          <View style={styles.footerTotal}>
-            <Text style={styles.footerTotalLabel}>{tr('cart.total')}</Text>
-            <Text style={styles.footerTotalValue}>
-              {total.toLocaleString()} {tr('common.som')}
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => {
-              haptics.medium();
-              createOrder.mutate();
-            }}
-            disabled={!canOrder || createOrder.isPending}
-            style={[styles.orderBtn, (!canOrder || createOrder.isPending) && styles.orderBtnDisabled]}>
-            {createOrder.isPending ? (
-              <ActivityIndicator color={colors.text.onPrimary} />
-            ) : (
-              <Text style={styles.orderBtnText}>{tr('cart.proceed')}</Text>
-            )}
-          </Pressable>
-        </View>
-      </SafeAreaView>
+      {/* Floating footer */}
+      <CheckoutFooter
+        blocker={blocker}
+        total={total}
+        canOrder={canOrder}
+        isPending={createOrder.isPending}
+        onSubmit={() => createOrder.mutate()}
+      />
 
+      {/* Address selection sheet */}
       <CheckoutAddressSheet
         visible={addressSheetVisible}
         addresses={addressesQuery.data ?? []}
@@ -505,23 +298,6 @@ export default function CheckoutScreen() {
         onSelect={selectAddress}
         onClose={() => setAddressSheetVisible(false)}
       />
-    </View>
-  );
-}
-
-function Row({
-  label,
-  value,
-  free,
-}: {
-  readonly label: string;
-  readonly value: string;
-  readonly free?: boolean;
-}) {
-  return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={[styles.rowValue, free && styles.rowValueFree]}>{value}</Text>
     </View>
   );
 }
@@ -545,131 +321,4 @@ const styles = StyleSheet.create({
   },
   dim: { ...typography.body, color: colors.text.secondary },
   scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['5xl'] },
-  section: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    ...shadow.xs,
-  },
-
-  shopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  shopIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shopName: { ...typography.h4, color: colors.text.primary },
-  shopMeta: { ...typography.caption, color: colors.text.tertiary },
-
-  cartItem: { flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md, alignItems: 'center' },
-  cartItemBordered: { borderTopWidth: 1, borderTopColor: colors.border.subtle },
-  itemThumb: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.md,
-    overflow: 'hidden',
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  itemImg: { width: '100%', height: '100%' },
-  itemImgPlaceholder: { backgroundColor: colors.brand.primarySurface },
-  itemName: { ...typography.bodySmall, color: colors.text.primary, fontWeight: '600' },
-  itemPrice: { ...typography.priceSmall, marginTop: 2 },
-  qtyControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.brand.primarySurface,
-    borderRadius: radius.full,
-    paddingHorizontal: 4,
-  },
-  qtyBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  qty: { ...typography.bodyStrong, color: colors.brand.primary, minWidth: 20, textAlign: 'center' },
-
-  payRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.border.subtle,
-    marginBottom: spacing.sm,
-  },
-  payRowActive: { borderColor: colors.brand.primary, backgroundColor: colors.brand.primarySurface },
-  payText: { ...typography.body, fontWeight: '600', flex: 1 },
-  payTextActive: { color: colors.brand.primary },
-  cardSubList: { gap: spacing.sm, paddingLeft: spacing.md, marginTop: spacing.xs },
-  cardSubRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs },
-  radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: colors.border.strong,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioActive: { borderColor: colors.brand.primary },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.brand.primary },
-  cardSubText: { ...typography.bodySmall, color: colors.text.primary, flex: 1 },
-  cardSubDefault: { ...typography.caption, color: colors.brand.primary, fontWeight: '700' },
-  addCardLink: { ...typography.bodySmall, color: colors.brand.primary, fontWeight: '700', paddingVertical: spacing.xs },
-
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 3 },
-  rowLabel: { ...typography.body, color: colors.text.secondary },
-  rowValue: { ...typography.body, fontWeight: '600' },
-  rowValueFree: { color: colors.feedback.success, fontWeight: '700' },
-  divider: { height: 1, backgroundColor: colors.border.subtle, marginTop: spacing.sm, marginBottom: spacing.md },
-
-  blocker: {
-    backgroundColor: colors.feedback.warningSurface,
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.sm,
-    gap: 6,
-  },
-  blockerDanger: { backgroundColor: colors.feedback.dangerSurface },
-  blockerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  blockerText: { ...typography.caption, color: colors.feedback.warning, fontWeight: '700', flex: 1 },
-  blockerTextDanger: { color: colors.feedback.danger },
-  progressTrack: {
-    height: 4,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surface,
-    overflow: 'hidden',
-  },
-  progressFill: { height: '100%', borderRadius: radius.full, backgroundColor: colors.feedback.warning },
-
-  footer: {
-    backgroundColor: colors.bg.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    ...shadow.lg,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  footerTotal: {},
-  footerTotalLabel: { ...typography.caption, color: colors.text.tertiary },
-  footerTotalValue: { ...typography.h3, color: colors.text.primary },
-  orderBtn: {
-    flex: 1,
-    height: layout.buttonHeight.lg,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orderBtnDisabled: { backgroundColor: colors.text.hint },
-  orderBtnText: { ...typography.button, color: colors.text.onPrimary },
 });
