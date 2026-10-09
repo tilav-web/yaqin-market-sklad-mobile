@@ -8,6 +8,18 @@
   --color-brand-light: #F36458;
   --color-brand-surface: #FDECEA;
   --color-brand-border: #FBD9D5;
+
+  --color-bg-canvas: #FCFAF8;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-surface-muted: #F6F4F2;
+  --color-surface-muted: #F6F4F2;
+  --color-surface: #FFFFFF;
+  --color-border-subtle: rgba(0, 0, 0, 0.06);
+  --color-border-default: rgba(0, 0, 0, 0.10);
+  --color-text-primary: #191715;
+  --color-text-secondary: #605B56;
+  --color-text-tertiary: #7E7872;
+  --color-text-hint: #A39D96;
 }
 
 /* Platform-specific font families */
