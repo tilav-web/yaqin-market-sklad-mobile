@@ -1,37 +1,34 @@
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { Clock, Search as SearchIcon, SlidersHorizontal, Tag, X } from 'lucide-react-native';
+import { Search as SearchIcon } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
   FlatList,
-  Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProductCard } from '@/components/ProductCard';
 import { ProductCardSkeleton } from '@/components/ProductCardSkeleton';
+import { PRICE_RANGES, SearchFilterSheet } from '@/components/SearchFilterSheet';
 import {
-  PRICE_RANGES,
-  PriceRangeKey,
-  PriceSort,
-  SearchFilterSheet,
-} from '@/components/SearchFilterSheet';
+  FILTER_INIT,
+  filterReducer,
+  SearchActiveFiltersBar,
+  SearchHeaderInput,
+  SearchLanding,
+} from '@/components/search';
 import { EmptyState } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { Category, FeedProduct, FeedResponse } from '@/lib/types';
 import { useEffectiveCoords } from '@/stores/location';
 import { useSearchHistoryStore } from '@/stores/searchHistory';
-import { useTheme } from '@/stores/theme';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors, layout, spacing } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 const SCREEN_W = Dimensions.get('window').width;
@@ -39,55 +36,8 @@ const COLUMNS = 2;
 const GUTTER = spacing.md;
 const CARD_WIDTH = (SCREEN_W - layout.screenPadding * 2 - GUTTER) / COLUMNS;
 
-/* ─── Filter reducer ─── */
-interface FilterState {
-  categoryIds: string[];
-  priceSort: PriceSort;
-  byRating: boolean;
-  priceRange: PriceRangeKey | null;
-  onlyDiscounted: boolean;
-  filterOpen: boolean;
-}
-type FilterAction =
-  | { type: 'TOGGLE_CATEGORY'; id: string }
-  | { type: 'SET_PRICE_SORT'; value: PriceSort }
-  | { type: 'SET_BY_RATING'; value: boolean }
-  | { type: 'SET_PRICE_RANGE'; value: PriceRangeKey | null }
-  | { type: 'SET_ONLY_DISCOUNTED'; value: boolean }
-  | { type: 'OPEN_FILTER' }
-  | { type: 'CLOSE_FILTER' }
-  | { type: 'CLEAR_SORT' }
-  | { type: 'RESET_ALL' };
-
-const FILTER_INIT: FilterState = {
-  categoryIds: [], priceSort: null, byRating: false,
-  priceRange: null, onlyDiscounted: false, filterOpen: false,
-};
-
-function filterReducer(state: FilterState, action: FilterAction): FilterState {
-  switch (action.type) {
-    case 'TOGGLE_CATEGORY':
-      return {
-        ...state,
-        categoryIds: state.categoryIds.includes(action.id)
-          ? state.categoryIds.filter((x) => x !== action.id)
-          : [...state.categoryIds, action.id],
-      };
-    case 'SET_PRICE_SORT': return { ...state, priceSort: action.value };
-    case 'SET_BY_RATING': return { ...state, byRating: action.value };
-    case 'SET_PRICE_RANGE': return { ...state, priceRange: action.value };
-    case 'SET_ONLY_DISCOUNTED': return { ...state, onlyDiscounted: action.value };
-    case 'OPEN_FILTER': return { ...state, filterOpen: true };
-    case 'CLOSE_FILTER': return { ...state, filterOpen: false };
-    case 'CLEAR_SORT': return { ...state, priceSort: null, byRating: false };
-    case 'RESET_ALL': return FILTER_INIT;
-    default: return state;
-  }
-}
-
 export default function SearchTab() {
-  const { tr, catName } = useTranslation();
-  const { colors: activeColors } = useTheme();
+  const { tr } = useTranslation();
   const coords = useEffectiveCoords();
   const [input, setInput] = useState('');
   const [q, setQ] = useState('');
@@ -99,7 +49,7 @@ export default function SearchTab() {
   const removeHistory = useSearchHistoryStore((s) => s.remove);
   const clearHistory = useSearchHistoryStore((s) => s.clear);
 
-  // Debounce the text input into the query.
+  // Debounce the text input into the query
   useEffect(() => {
     const t = setTimeout(() => setQ(input.trim()), 350);
     return () => clearTimeout(t);
@@ -123,7 +73,6 @@ export default function SearchTab() {
     return out;
   }, [categoriesQuery.data]);
 
-  // Compound sort: price direction first (primary), rating as tiebreaker.
   const sortParam = useMemo(() => {
     const tokens: string[] = [];
     if (priceSort) tokens.push(priceSort);
@@ -138,8 +87,6 @@ export default function SearchTab() {
   const activeCount =
     categoryIds.length + (sortActive ? 1 : 0) + (priceRange ? 1 : 0) + (onlyDiscounted ? 1 : 0);
 
-  // The search page stays empty (discovery landing) until the user actually
-  // searches or applies a filter — products only appear on intent.
   const hasResults = q.length > 0 || activeCount > 0;
 
   const feed = useInfiniteQuery({
@@ -171,9 +118,6 @@ export default function SearchTab() {
       });
       return res.data;
     },
-    // While the filter sheet is open the results are hidden behind it, so we
-    // pause refetching — otherwise every category tap fires a network request
-    // and re-renders the (invisible) grid. One fetch runs when the sheet closes.
     enabled: !!coords && hasResults && !filterOpen,
     placeholderData: keepPreviousData,
     initialPageParam: 1 as number,
@@ -189,6 +133,7 @@ export default function SearchTab() {
     () => leafCategories.filter((c) => categoryIds.includes(c.id)),
     [leafCategories, categoryIds],
   );
+
   const sortSummary = useMemo(() => {
     const parts: string[] = [];
     if (priceSort === 'price_asc') parts.push(tr('sort.cheap'));
@@ -201,7 +146,6 @@ export default function SearchTab() {
   const clearSort = useCallback(() => dispatch({ type: 'CLEAR_SORT' }), []);
   const resetFilters = useCallback(() => dispatch({ type: 'RESET_ALL' }), []);
 
-  // Run a saved/suggested term: fill the box, search immediately, remember it.
   const runTerm = (term: string) => {
     haptics.selection();
     setInput(term);
@@ -209,8 +153,6 @@ export default function SearchTab() {
     addHistory(term);
   };
 
-  // Stable renderItem so toggling filters (which re-renders this screen) never
-  // re-renders the product grid rows.
   const renderProduct = useCallback(
     ({ item }: { item: FeedProduct }) => (
       <ProductCard
@@ -227,86 +169,32 @@ export default function SearchTab() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={[styles.searchHeader, { backgroundColor: activeColors.bg.surface }]}>
-        <View
-          style={[
-            styles.searchBox,
-            {
-              backgroundColor: activeColors.bg.surfaceMuted,
-              borderColor: activeColors.border.subtle,
-            },
-          ]}>
-          <SearchIcon size={18} color={activeColors.text.secondary} strokeWidth={2.2} />
-          <TextInput
-            style={[styles.input, { color: activeColors.text.primary }]}
-            value={input}
-            onChangeText={setInput}
-            placeholder={tr('search.placeholder')}
-            placeholderTextColor={activeColors.text.tertiary}
-            autoCapitalize="none"
-            returnKeyType="search"
-            onSubmitEditing={() => {
-              if (input.trim()) addHistory(input.trim());
-            }}
-          />
-          {input.length > 0 && (
-            <Pressable onPress={() => setInput('')} hitSlop={8}>
-              <X size={18} color={activeColors.text.secondary} />
-            </Pressable>
-          )}
-        </View>
-      </View>
+      {/* Header Search Input */}
+      <SearchHeaderInput
+        input={input}
+        onChangeInput={setInput}
+        onSubmit={() => {
+          if (input.trim()) addHistory(input.trim());
+        }}
+        onClear={() => setInput('')}
+      />
 
-      <View
-        style={[
-          styles.filterBar,
-          {
-            backgroundColor: activeColors.bg.surface,
-            borderBottomColor: activeColors.border.subtle,
-          },
-        ]}>
-        <Pressable
-          style={[
-            styles.filterBtn,
-            {
-              backgroundColor: activeColors.brand.primarySurface,
-              borderColor: activeColors.brand.primaryBorder,
-            },
-          ]}
-          onPress={() => dispatch({ type: 'OPEN_FILTER' })}>
-          <SlidersHorizontal size={15} color={activeColors.brand.primary} strokeWidth={2.4} />
-          <Text style={[styles.filterBtnText, { color: activeColors.brand.primary }]}>{tr('filter.button')}</Text>
-          {activeCount > 0 && (
-            <View style={[styles.filterBadge, { backgroundColor: activeColors.brand.primary }]}>
-              <Text style={styles.filterBadgeText}>{activeCount}</Text>
-            </View>
-          )}
-        </Pressable>
+      {/* Active Filter Bar */}
+      <SearchActiveFiltersBar
+        activeCount={activeCount}
+        sortActive={sortActive}
+        sortSummary={sortSummary}
+        onClearSort={clearSort}
+        priceRange={priceRange}
+        onClearPriceRange={() => dispatch({ type: 'SET_PRICE_RANGE', value: null })}
+        selectedCategories={selectedCategories}
+        onToggleCategory={toggleCategory}
+        onlyDiscounted={onlyDiscounted}
+        onClearDiscounted={() => dispatch({ type: 'SET_ONLY_DISCOUNTED', value: false })}
+        onOpenFilter={() => dispatch({ type: 'OPEN_FILTER' })}
+      />
 
-        {activeCount === 0 ? (
-          <Text style={[styles.filterHint, { color: activeColors.text.tertiary }]} numberOfLines={1}>
-            Narx va toifa bo'yicha saralash
-          </Text>
-        ) : (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.activeRow}
-            keyboardShouldPersistTaps="handled">
-            {sortActive ? <ActiveChip label={sortSummary} onRemove={clearSort} /> : null}
-            {range ? (
-              <ActiveChip label={tr(range.labelKey)} onRemove={() => dispatch({ type: 'SET_PRICE_RANGE', value: null })} />
-            ) : null}
-            {selectedCategories.map((c) => (
-              <ActiveChip key={c.id} label={catName(c)} onRemove={() => toggleCategory(c.id)} />
-            ))}
-            {onlyDiscounted && (
-              <ActiveChip label={tr('filter.discounted')} onRemove={() => dispatch({ type: 'SET_ONLY_DISCOUNTED', value: false })} />
-            )}
-          </ScrollView>
-        )}
-      </View>
-
+      {/* Results or Discovery Landing */}
       {hasResults ? (
         <FlatList
           data={items}
@@ -368,6 +256,7 @@ export default function SearchTab() {
         />
       )}
 
+      {/* Filter Bottom Sheet */}
       <SearchFilterSheet
         visible={filterOpen}
         onClose={() => dispatch({ type: 'CLOSE_FILTER' })}
@@ -390,193 +279,8 @@ export default function SearchTab() {
   );
 }
 
-function ActiveChip({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <Pressable style={styles.activeChip} onPress={onRemove}>
-      <Text style={styles.activeChipText}>{label}</Text>
-      <X size={13} color={colors.brand.primary} strokeWidth={2.8} />
-    </Pressable>
-  );
-}
-
-interface LandingProps {
-  readonly history: string[];
-  readonly onRunTerm: (t: string) => void;
-  readonly onRemoveTerm: (t: string) => void;
-  readonly onClearHistory: () => void;
-  readonly categories: Category[];
-  readonly onPickCategory: (id: string) => void;
-}
-function SearchLanding({
-  history,
-  onRunTerm,
-  onRemoveTerm,
-  onClearHistory,
-  categories,
-  onPickCategory,
-}: LandingProps) {
-  const { tr, catName } = useTranslation();
-  return (
-    <ScrollView
-      style={styles.landing}
-      contentContainerStyle={styles.landingContent}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}>
-      {history.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHead}>
-            <View style={styles.sectionHeadLeft}>
-              <Clock size={15} color={colors.text.secondary} strokeWidth={2.4} />
-              <Text style={styles.sectionTitle}>{tr('search.recent')}</Text>
-            </View>
-            <Pressable onPress={onClearHistory} hitSlop={8}>
-              <Text style={styles.clearAll}>{tr('search.clear')}</Text>
-            </Pressable>
-          </View>
-          <View style={styles.wrap}>
-            {history.map((term) => (
-              <View key={term} style={styles.historyChip}>
-                <Pressable
-                  style={styles.historyChipMain}
-                  onPress={() => onRunTerm(term)}
-                  hitSlop={6}>
-                  <Clock size={12} color={colors.text.tertiary} strokeWidth={2.4} />
-                  <Text style={styles.historyChipText} numberOfLines={1}>
-                    {term}
-                  </Text>
-                </Pressable>
-                <Pressable onPress={() => onRemoveTerm(term)} hitSlop={8} style={styles.historyX}>
-                  <X size={13} color={colors.text.tertiary} strokeWidth={2.6} />
-                </Pressable>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeadLeft}>
-          <Tag size={15} color={colors.text.secondary} strokeWidth={2.4} />
-          <Text style={styles.sectionTitle}>{tr('search.categories')}</Text>
-        </View>
-        <View style={[styles.wrap, { marginTop: spacing.md }]}>
-          {categories.map((c) => (
-            <Pressable key={c.id} style={styles.catChip} onPress={() => onPickCategory(c.id)}>
-              <Text style={styles.catChipText}>{catName(c)}</Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-    </ScrollView>
-  );
-}
-
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg.canvas },
-  searchHeader: {
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.bg.surface,
-  },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.bg.surfaceMuted,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    height: layout.inputHeight,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  input: { flex: 1, ...typography.body, paddingVertical: 0 },
-  filterBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.bg.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  filterBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: colors.brand.primaryBorder,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  filterBtnText: { ...typography.caption, color: colors.brand.primary, fontWeight: '800' },
-  filterBadge: {
-    minWidth: 18,
-    height: 18,
-    borderRadius: radius.full,
-    paddingHorizontal: 5,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterBadgeText: { color: colors.text.onPrimary, fontSize: 11, fontWeight: '800' },
-  filterHint: { flex: 1, ...typography.caption, color: colors.text.hint, fontWeight: '600' },
-  activeRow: { gap: spacing.sm, alignItems: 'center', paddingRight: spacing.md },
-  activeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingLeft: spacing.md,
-    paddingRight: spacing.sm,
-    paddingVertical: 6,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-  },
-  activeChipText: { ...typography.caption, color: colors.brand.primary, fontWeight: '700' },
   list: { paddingHorizontal: layout.screenPadding, paddingTop: spacing.md, paddingBottom: spacing['3xl'] },
   row: { flexDirection: 'row', gap: GUTTER, marginBottom: GUTTER },
-
-  // Landing (empty state)
-  landing: { flex: 1 },
-  landingContent: { padding: layout.screenPadding, paddingBottom: spacing['3xl'] },
-  section: { marginBottom: spacing.xl },
-  sectionHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  sectionHeadLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  sectionTitle: { ...typography.bodyStrong, color: colors.text.primary },
-  clearAll: { ...typography.caption, color: colors.brand.primary, fontWeight: '700' },
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  historyChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    paddingLeft: spacing.md,
-    paddingRight: spacing.sm,
-    height: 38,
-    maxWidth: SCREEN_W * 0.6,
-  },
-  historyChipMain: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
-  historyChipText: { ...typography.bodySmall, color: colors.text.primary, fontWeight: '600', flexShrink: 1 },
-  historyX: { paddingLeft: spacing.sm },
-  catChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    backgroundColor: colors.bg.surface,
-  },
-  catChipText: { ...typography.caption, color: colors.text.secondary, fontWeight: '700' },
 });
