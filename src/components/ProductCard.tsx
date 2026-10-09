@@ -150,15 +150,11 @@ export function ProductCard({
           )}
 
           {hasDiscount && (
-            <View className="absolute top-2 left-2 flex-row items-center gap-1">
-              <View className="px-1.5 py-0.5 rounded-full bg-brand-primary">
-                <Text className="text-white font-extrabold text-[10px]">−{discountPct}%</Text>
-              </View>
-              <View className="px-1.5 py-0.5 rounded-md bg-black/60">
-                <Text className="text-white/90 line-through text-[9.5px] font-semibold">
-                  {formatMoney(product.price)}
-                </Text>
-              </View>
+            <View
+              style={{ zIndex: 10, elevation: 5 }}
+              className="absolute top-2 left-2 px-1.5 py-0.5 rounded-full bg-brand-primary"
+            >
+              <Text className="text-white font-extrabold text-[10px]">−{discountPct}%</Text>
             </View>
           )}
 
@@ -202,17 +198,27 @@ export function ProductCard({
             </View>
           ) : null}
 
-          {/* Single Compact Row: Real Price + Action Button */}
+          {/* Single Compact Row: Real Price + Discount Price + Action Button */}
           <View className="flex-row items-center justify-between mt-2">
-            <Text
-              className="text-[13px] font-extrabold leading-[17px] text-text-primary flex-1 mr-1"
-              numberOfLines={1}
-            >
-              {formatMoney(finalPrice)}{' '}
-              <Text className="text-[10px] font-semibold text-text-secondary">
-                {tr('common.som')}
+            <View className="flex-1 mr-1 flex-row items-baseline gap-1.5">
+              <Text
+                className="text-[13px] font-extrabold leading-[17px] text-text-primary"
+                numberOfLines={1}
+              >
+                {formatMoney(finalPrice)}{' '}
+                <Text className="text-[10px] font-semibold text-text-secondary">
+                  {tr('common.som')}
+                </Text>
               </Text>
-            </Text>
+              {hasDiscount && (
+                <Text
+                  className="text-[10px] line-through text-text-hint"
+                  numberOfLines={1}
+                >
+                  {formatMoney(product.price)}
+                </Text>
+              )}
+            </View>
 
             {/* Quick Counter or Add Button */}
             {inCart ? (
