@@ -2,32 +2,31 @@ import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import {
   Bell,
-  ChevronRight,
   ClipboardList,
-  Clock,
   CreditCard,
   Globe,
   Heart,
-  LogIn,
   MapPin,
   Moon,
-  Plus,
   QrCode,
-  Settings,
   ShieldAlert,
   Store,
   Sun,
-  XCircle,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LanguagePickerSheet, LANG_LABELS } from '@/components/LanguagePickerSheet';
 import { ThemePickerSheet } from '@/components/ThemePickerSheet';
-import { Badge } from '@/components/ui/Badge';
-import { Card } from '@/components/ui/Card';
-import { avatarSource } from '@/constants/avatars';
+import {
+  ProfileHeader,
+  ProfileMenuRow,
+  ProfileMenuSection,
+  ProfileSellerSection,
+  ProfileStaffSection,
+  SellerApplication,
+} from '@/components/profile';
 import { useLangStore, useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { useIsGuest, useRequireAuth } from '@/lib/useRequireAuth';
@@ -35,14 +34,8 @@ import type { WorkingForMeEntry } from '@/lib/useIsShopOwner';
 import { MeUser, MyShop } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/stores/theme';
-import { colors, hitSlop, layout, radius, spacing, typography } from '@/theme';
+import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
-
-interface SellerApplication {
-  id: string;
-  status: 'pending' | 'approved' | 'rejected';
-  rejectionReason: string | null;
-}
 
 export default function ProfileTab() {
   const { tr } = useTranslation();
@@ -92,8 +85,6 @@ export default function ProfileTab() {
     enabled: !!meQuery.data && !meQuery.data.isSellerApproved,
   });
 
-  // Shops where this user works as staff (courier, cashier, …) — any user can
-  // be invited regardless of seller status.
   const staffShopsQuery = useQuery({
     queryKey: ['working-for-me'],
     queryFn: async () => {
@@ -128,227 +119,75 @@ export default function ProfileTab() {
               colors={[colors.brand.primary]}
             />
           )
-        }>
-        {isGuest ? (
-          <Pressable
-            style={[
-              styles.guestCard,
-              {
-                backgroundColor: activeColors.bg.surface,
-                borderColor: activeColors.brand.primaryBorder,
-              },
-            ]}
-            onPress={() => {
-              haptics.medium();
-              router.push('/(auth)/phone');
-            }}>
-            <View
-              style={[
-                styles.guestIcon,
-                { backgroundColor: activeColors.brand.primarySurface },
-              ]}>
-              <LogIn size={24} color={activeColors.brand.primary} strokeWidth={2.4} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={[
-                  styles.guestTitle,
-                  { color: activeColors.brand.primary },
-                ]}>
-                {tr('profile.guest.title')}
-              </Text>
-              <Text
-                style={[
-                  styles.guestSub,
-                  { color: activeColors.text.secondary },
-                ]}>
-                {tr('profile.guest.sub')}
-              </Text>
-            </View>
-            <ChevronRight
-              size={18}
-              color={activeColors.brand.primary}
-              strokeWidth={2.4}
-            />
-          </Pressable>
-        ) : (
-          <View style={styles.headerBanner}>
-            <View style={styles.topRow}>
-              <View style={styles.topRowSpacer} />
-              <Text style={styles.bannerTitle}>{tr('tab.profile')}</Text>
-              <Pressable
-                style={styles.gearBtn}
-                hitSlop={hitSlop}
-                onPress={() => {
-                  haptics.selection();
-                  router.push('/profile/edit');
-                }}>
-                <Settings size={20} color={colors.text.onPrimary} strokeWidth={2.2} />
-              </Pressable>
-            </View>
+        }
+      >
+        {/* Header / Guest banner */}
+        <ProfileHeader isGuest={isGuest} user={me} />
 
-            <Pressable
-              style={styles.headerRow}
-              onPress={() => {
-                haptics.selection();
-                router.push('/profile/edit');
-              }}>
-              <View style={styles.avatarWrap}>
-                {avatarSource(me?.avatarUrl) ? (
-                  <Image
-                    source={avatarSource(me?.avatarUrl)!}
-                    style={styles.avatarImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={styles.avatarFallback}>
-                    <Text style={styles.avatarText}>
-                      {(me?.name?.[0] ?? me?.phone?.slice(-2) ?? 'Y').toUpperCase()}
-                    </Text>
-                  </View>
-                )}
-                {!me?.name && (
-                  <View style={styles.fixCaption}>
-                    <Text style={styles.fixCaptionText} numberOfLines={1}>
-                      {tr('profile.fixProfile')}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={styles.nameRow}>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {me?.name || tr('profile.namePrompt')}
-                  </Text>
-                  {me?.isAdmin && <Badge label="ADMIN" tone="info" />}
-                </View>
-                <Text style={styles.phone}>{me?.phone}</Text>
-              </View>
-            </Pressable>
-          </View>
-        )}
-
-        {/* Notifications — available to everyone (empty for guests). */}
-        <Section>
-          <Row
+        {/* Notifications */}
+        <ProfileMenuSection>
+          <ProfileMenuRow
             icon={Bell}
             title={tr('notifications.title')}
             badge={isGuest ? undefined : unreadQuery.data}
             borderBottom={false}
             onPress={() => router.push('/notifications')}
           />
-        </Section>
+        </ProfileMenuSection>
 
         {isGuest ? (
-          <Section>
-            <Row
+          <ProfileMenuSection>
+            <ProfileMenuRow
               icon={Store}
               title={tr('profile.openShopShort')}
               onPress={() => requireAuth(() => router.push('/seller-application'))}
             />
-            <Row
+            <ProfileMenuRow
               icon={QrCode}
               title={tr('profile.joinAsStaff')}
               borderBottom={false}
               onPress={() => requireAuth(() => router.push('/staff-scan'))}
             />
-          </Section>
+          </ProfileMenuSection>
         ) : null}
 
         {!isGuest ? (
           <>
-            {myShops.length > 0 ? (
-              <Section>
-                {myShops.map((shop) => (
-                  <Row
-                    key={shop.id}
-                    icon={Store}
-                    title={shop.name}
-                    subtitle={`${shop.isOpenManual ? tr('profile.openShop') : tr('profile.closedShop')} · ${shop.address}`}
-                    badge={shop.newOrderCount}
-                    onPress={() => router.push(`/seller/${shop.id}/orders`)}
-                  />
-                ))}
-                <Row icon={Plus} title={tr('nav.newShop')} borderBottom={false} onPress={() => router.push('/seller/new')} />
-              </Section>
-            ) : latestApp?.status === 'pending' ? (
-              <Section>
-                <View style={styles.pendingCta}>
-                  <View style={styles.pendingIcon}>
-                    <Clock size={24} color={colors.feedback.warning} strokeWidth={2.4} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.pendingTitle}>{tr('seller.pending.title')}</Text>
-                    <Text style={styles.applySub}>{tr('seller.pending.desc')}</Text>
-                  </View>
-                </View>
-              </Section>
-            ) : latestApp?.status === 'rejected' ? (
-              <Section>
-                <Pressable style={styles.rejectedCta} onPress={() => router.push('/seller-application')}>
-                  <View style={styles.rejectedIcon}>
-                    <XCircle size={24} color={colors.brand.primary} strokeWidth={2.4} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.rejectedTitle}>{tr('seller.rejected.title')}</Text>
-                    {latestApp.rejectionReason ? (
-                      <Text style={styles.applySub} numberOfLines={2}>
-                        {tr('seller.rejected.reason', { reason: latestApp.rejectionReason })}
-                      </Text>
-                    ) : null}
-                    <Text style={styles.retryText}>{tr('profile.reapply')}</Text>
-                  </View>
-                </Pressable>
-              </Section>
-            ) : (
-              <Section>
-                <Row
-                  icon={Store}
-                  title={tr('profile.openShopShort')}
-                  borderBottom={false}
-                  onPress={() => requireAuth(() => router.push('/seller-application'))}
-                />
-              </Section>
-            )}
+            {/* Seller shops & applications */}
+            <ProfileSellerSection
+              myShops={myShops}
+              latestApp={latestApp}
+              onOpenApplication={() => requireAuth(() => router.push('/seller-application'))}
+            />
 
-            {staffShops.length > 0 ? (
-              <Section>
-                {staffShops.map(({ shop, role }, idx) => (
-                  <Row
-                    key={shop.id}
-                    icon={Store}
-                    title={shop.name}
-                    subtitle={`${role ?? tr('profile.staffRole')} · ${shop.address}`}
-                    borderBottom={idx !== staffShops.length - 1}
-                    onPress={() => router.push(`/seller/${shop.id}/orders`)}
-                  />
-                ))}
-              </Section>
-            ) : null}
+            {/* Staff member shops */}
+            <ProfileStaffSection staffShops={staffShops} />
 
-            <Section>
-              <Row icon={MapPin} title={tr('profile.addresses')} onPress={() => router.push('/addresses')} />
-              <Row icon={CreditCard} title={tr('cards.title')} onPress={() => router.push('/saved-cards')} />
-              <Row icon={ClipboardList} title={tr('profile.orders')} onPress={() => router.push('/orders')} />
-              <Row icon={Heart} title={tr('nav.favorites')} onPress={() => router.push('/favorites')} />
-              <Row
+            {/* Customer links */}
+            <ProfileMenuSection>
+              <ProfileMenuRow icon={MapPin} title={tr('profile.addresses')} onPress={() => router.push('/addresses')} />
+              <ProfileMenuRow icon={CreditCard} title={tr('cards.title')} onPress={() => router.push('/saved-cards')} />
+              <ProfileMenuRow icon={ClipboardList} title={tr('profile.orders')} onPress={() => router.push('/orders')} />
+              <ProfileMenuRow icon={Heart} title={tr('nav.favorites')} onPress={() => router.push('/favorites')} />
+              <ProfileMenuRow
                 icon={QrCode}
                 title={tr('profile.joinAsStaff')}
                 borderBottom={false}
                 onPress={() => router.push('/staff-scan')}
               />
-            </Section>
+            </ProfileMenuSection>
           </>
         ) : null}
 
-        <Section>
-          <Row
+        {/* Settings & Preferences */}
+        <ProfileMenuSection>
+          <ProfileMenuRow
             icon={Globe}
             title={tr('profile.language')}
             value={LANG_LABELS[lang]}
             onPress={() => setLangSheetVisible(true)}
           />
-          <Row
+          <ProfileMenuRow
             icon={isDark ? Moon : Sun}
             title={tr('profile.theme')}
             value={
@@ -362,7 +201,7 @@ export default function ProfileTab() {
             onPress={() => setThemeSheetVisible(true)}
           />
           {!isGuest && (
-            <Row
+            <ProfileMenuRow
               icon={ShieldAlert}
               title={tr('deleteAccount.title')}
               titleColor={activeColors.feedback.danger}
@@ -370,8 +209,9 @@ export default function ProfileTab() {
               onPress={() => router.push('/profile/delete-account')}
             />
           )}
-        </Section>
+        </ProfileMenuSection>
 
+        {/* Sign out button */}
         {!isGuest && (
           <View style={styles.authActionsWrap}>
             <Pressable
@@ -389,7 +229,8 @@ export default function ProfileTab() {
                     },
                   },
                 ]);
-              }}>
+              }}
+            >
               <Text style={styles.logoutText}>{tr('auth.signOut')}</Text>
             </Pressable>
           </View>
@@ -413,80 +254,6 @@ export default function ProfileTab() {
   );
 }
 
-interface SectionProps {
-  children: React.ReactNode;
-}
-function Section({ children }: SectionProps) {
-  return (
-    <Card padding="none" elevation="xs">
-      {children}
-    </Card>
-  );
-}
-
-interface RowProps {
-  icon: typeof MapPin;
-  title: string;
-  subtitle?: string;
-  titleColor?: string;
-  /** Trailing value text before the chevron (e.g. current language). */
-  value?: string;
-  /** Optional count badge shown before the chevron (e.g. pending orders). */
-  badge?: number;
-  /** Show bottom divider border? Defaults to true. Pass false for last item in a section. */
-  borderBottom?: boolean;
-  onPress: () => void;
-}
-function Row({
-  icon: Icon,
-  title,
-  subtitle,
-  titleColor,
-  value,
-  badge,
-  borderBottom = true,
-  onPress,
-}: RowProps) {
-  const { colors: activeColors } = useTheme();
-  return (
-    <Pressable
-      onPress={() => {
-        haptics.selection();
-        onPress();
-      }}
-      hitSlop={hitSlop}
-      style={({ pressed }) => [
-        styles.row,
-        {
-          borderBottomWidth: borderBottom ? 1 : 0,
-          borderBottomColor: activeColors.border.subtle,
-        },
-        pressed && { backgroundColor: activeColors.bg.surfaceMuted },
-      ]}>
-      <View style={styles.rowIconWrap}>
-        <Icon size={21} color={activeColors.text.secondary} strokeWidth={1.8} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.rowTitle, { color: activeColors.text.primary }, titleColor && { color: titleColor }]}>
-          {title}
-        </Text>
-        {subtitle && (
-          <Text style={[styles.rowSub, { color: activeColors.text.secondary }]} numberOfLines={1}>
-            {subtitle}
-          </Text>
-        )}
-      </View>
-      {value && <Text style={[styles.rowValue, { color: activeColors.text.secondary }]}>{value}</Text>}
-      {badge && badge > 0 ? (
-        <View style={styles.rowBadge}>
-          <Text style={styles.rowBadgeText}>{badge}</Text>
-        </View>
-      ) : null}
-      <ChevronRight size={18} color={activeColors.text.tertiary} strokeWidth={2.2} />
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg.canvas },
   scroll: {
@@ -494,138 +261,6 @@ const styles = StyleSheet.create({
     paddingBottom: 130,
     gap: spacing.lg,
   },
-  headerBanner: {
-    backgroundColor: colors.brand.primary,
-    borderRadius: radius['2xl'],
-    padding: spacing.lg,
-    gap: spacing.lg,
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  topRowSpacer: { width: 36 },
-  bannerTitle: { ...typography.h3, color: colors.text.onPrimary },
-  gearBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.lg,
-  },
-  avatarWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.full,
-    overflow: 'hidden',
-  },
-  fixCaption: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    paddingVertical: 4,
-    alignItems: 'center',
-  },
-  fixCaptionText: { fontSize: 9, fontWeight: '700', color: colors.text.onPrimary },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  guestCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.lg,
-    backgroundColor: colors.bg.surface,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.brand.primaryBorder,
-  },
-  guestIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  guestTitle: { ...typography.h3, color: colors.brand.primary },
-  guestSub: { ...typography.bodySmall, color: colors.text.secondary, marginTop: 2 },
-  avatarImage: { width: 64, height: 64 },
-  avatarFallback: {
-    width: 64,
-    height: 64,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { color: colors.brand.primary, fontSize: 24, fontWeight: '800' },
-  name: { ...typography.h3, color: colors.text.onPrimary, flexShrink: 1 },
-  phone: { ...typography.bodySmall, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  rowIconWrap: { width: 26, alignItems: 'center' },
-  rowTitle: { ...typography.bodyStrong },
-  rowSub: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
-  rowValue: { ...typography.body, color: colors.text.tertiary },
-  rowBadge: {
-    minWidth: 24,
-    height: 24,
-    paddingHorizontal: 7,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowBadgeText: { color: colors.text.onPrimary, fontSize: 13, fontWeight: '800' },
-  applySub: { ...typography.bodySmall, color: colors.text.secondary, marginTop: 2 },
-  pendingCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.feedback.warningSurface,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-  },
-  pendingIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pendingTitle: { ...typography.h4, color: colors.feedback.warning },
-  rejectedCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.brand.primarySurface,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-  },
-  rejectedIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rejectedTitle: { ...typography.h4, color: colors.brand.primary },
-  retryText: { ...typography.bodySmall, color: colors.brand.primary, fontWeight: '800', marginTop: spacing.xs },
-  dim: { ...typography.bodySmall, padding: spacing.lg, color: colors.text.secondary },
   authActionsWrap: {
     marginTop: spacing.xs,
     marginBottom: spacing.xl,
@@ -638,16 +273,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoutText: { ...typography.button, color: colors.text.onPrimary, fontWeight: '700' },
-  deleteAccountBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-  },
-  deleteAccountText: {
-    ...typography.bodySmall,
-    color: colors.feedback.danger,
-    fontWeight: '600',
-  },
 });
