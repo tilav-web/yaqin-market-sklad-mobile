@@ -1,5 +1,5 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useLocalSearchParams , router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { AlertCircle, Banknote, Check, CreditCard, FileText, MessageCircle, RefreshCw, RotateCcw, Star, X } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
