@@ -7,9 +7,9 @@ interface ChatDateBadgeProps {
 
 export function ChatDateBadge({ dateText }: ChatDateBadgeProps) {
   return (
-    <View className="self-center my-2 items-center justify-center">
-      <View className="px-3.5 py-1 rounded-full bg-black/25 dark:bg-white/25">
-        <Text className="text-[12px] font-semibold text-white tracking-wide">
+    <View className="self-center my-2.5 items-center justify-center">
+      <View className="px-3 py-1 rounded-full bg-white dark:bg-[#1C1C1E] border border-border-subtle shadow-xs">
+        <Text className="text-[11.5px] font-medium text-text-secondary tracking-wide">
           {dateText}
         </Text>
       </View>

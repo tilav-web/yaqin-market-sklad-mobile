@@ -49,7 +49,7 @@ export default function ChatScreen() {
 
   const { tr } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { isDark, colors: activeColors } = useTheme();
+  const { colors: activeColors } = useTheme();
   const myId = useAuthStore((s) => s.user?.id);
   const [text, setText] = useState('');
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
@@ -116,7 +116,7 @@ export default function ChatScreen() {
     sendMessage(body);
   };
 
-  const telegramBg = isDark ? '#0E1621' : '#E2EAF1';
+  const chatBg = activeColors.bg.canvas;
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: activeColors.bg.surface }}>
@@ -129,7 +129,7 @@ export default function ChatScreen() {
       <KeyboardAvoidingView
         style={{
           flex: 1,
-          backgroundColor: telegramBg,
+          backgroundColor: chatBg,
           paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0,
         }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
