@@ -3,6 +3,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
+import { useShoppingListStore } from '@/stores/shoppingList';
 
 interface TelegramSavedMessagesRowProps {
   onPress: () => void;
@@ -16,6 +17,9 @@ interface TelegramSavedMessagesRowProps {
 
 export function TelegramSavedMessagesRow({ onPress, activeColors }: TelegramSavedMessagesRowProps) {
   const { tr } = useTranslation();
+  const items = useShoppingListStore((s) => s.items);
+  const activeCount = items.filter((i) => !i.completed).length;
+  const latestItem = items[0]?.text;
 
   return (
     <Pressable
@@ -45,11 +49,20 @@ export function TelegramSavedMessagesRow({ onPress, activeColors }: TelegramSave
           >
             {tr('chat.savedMessages')}
           </Text>
-          <Pin
-            size={15}
-            color={activeColors.text.secondary}
-            style={{ transform: [{ rotate: '45deg' }] }}
-          />
+          <View className="flex-row items-center gap-1.5">
+            {activeCount > 0 && (
+              <View className="bg-brand-primary/15 px-2 py-0.5 rounded-full">
+                <Text className="text-xs font-bold text-brand-primary">
+                  {activeCount}
+                </Text>
+              </View>
+            )}
+            <Pin
+              size={15}
+              color={activeColors.text.secondary}
+              style={{ transform: [{ rotate: '45deg' }] }}
+            />
+          </View>
         </View>
         <View className="flex-row items-center justify-between">
           <Text
@@ -57,7 +70,7 @@ export function TelegramSavedMessagesRow({ onPress, activeColors }: TelegramSave
             style={{ color: activeColors.text.secondary }}
             numberOfLines={1}
           >
-            {tr('chat.savedMessagesDesc')}
+            {latestItem ? `📝 ${latestItem}` : tr('chat.savedMessagesDesc')}
           </Text>
         </View>
       </View>

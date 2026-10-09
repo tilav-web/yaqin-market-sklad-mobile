@@ -190,7 +190,7 @@ export default function ChatsTabScreen() {
 
   const handleOpenSaved = useCallback(() => {
     haptics.selection();
-    router.push('/favorites');
+    router.push('/saved-messages');
   }, []);
 
   const handleRefresh = useCallback(() => {
