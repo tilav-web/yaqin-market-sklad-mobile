@@ -65,19 +65,20 @@ export function HomeTopBar({
             haptics.selection();
             router.push('/(tabs)/carts');
           }}
-          className="w-9 h-9 rounded-full items-center justify-center"
+          className="w-9 h-9 rounded-full items-center justify-center relative"
           style={{ backgroundColor: activeColors.bg.surfaceMuted }}
         >
           <ShoppingBag size={19} color={activeColors.text.primary} />
           {totalCartCount > 0 && (
             <View
-              className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] rounded-full items-center justify-center px-1 border-[1.5px]"
+              className="absolute -top-1 -right-1 min-w-[19px] h-[19px] rounded-full items-center justify-center px-1"
               style={{
                 backgroundColor: activeColors.brand.primary,
+                borderWidth: 1.5,
                 borderColor: activeColors.bg.surface,
               }}
             >
-              <Text className="text-white text-[9.5px] font-extrabold leading-3">
+              <Text className="text-white text-[10px] font-black leading-3 text-center">
                 {totalCartCount > 99 ? '99+' : totalCartCount}
               </Text>
             </View>

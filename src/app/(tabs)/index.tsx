@@ -7,7 +7,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AddressPickerSheet } from '@/components/AddressPickerSheet';
 import {
   CategoryTabFeed,
-  HomeFloatingCartBar,
   HomeProductGrid,
   HomeTopBar,
 } from '@/components/home';
@@ -59,28 +58,12 @@ export default function TelegramHomeScreen() {
     }
   }, [targetShopId, activeShopId]);
 
-  const totalUnits = useCartStore((s) => {
+  const totalCartCount = useCartStore((s) => {
     let count = 0;
     for (const id in s.carts) {
       for (const line of s.carts[id] ?? []) count += line.quantity;
     }
     return count;
-  });
-
-  const totalTypes = useCartStore((s) => {
-    let count = 0;
-    for (const id in s.carts) {
-      count += (s.carts[id] ?? []).length;
-    }
-    return count;
-  });
-
-  const totalPrice = useCartStore((s) => {
-    let sum = 0;
-    for (const id in s.carts) {
-      for (const line of s.carts[id] ?? []) sum += line.unitPrice * line.quantity;
-    }
-    return sum;
   });
 
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -206,7 +189,7 @@ export default function TelegramHomeScreen() {
       <HomeTopBar
         locationLabel={locationLabel}
         onOpenLocationPicker={() => setPickerOpen(true)}
-        totalCartCount={totalTypes}
+        totalCartCount={totalCartCount}
       />
 
       {/* Swipeable Category Folder Tabs */}
@@ -257,7 +240,7 @@ export default function TelegramHomeScreen() {
               }
             }}
             isFetchingNextPage={feedQuery.isFetchingNextPage}
-            bottomInset={insets.bottom + (totalTypes > 0 ? 68 : 0)}
+            bottomInset={insets.bottom}
           />
         </View>
 
@@ -276,21 +259,13 @@ export default function TelegramHomeScreen() {
                   coords={coords}
                   cardWidth={cardWidth}
                   activeShopId={activeShopId}
-                  bottomInset={insets.bottom + (totalTypes > 0 ? 68 : 0)}
+                  bottomInset={insets.bottom}
                 />
               ) : null}
             </View>
           );
         })}
       </PagerView>
-
-      {/* Floating Bottom Cart Bar */}
-      <HomeFloatingCartBar
-        totalTypes={totalTypes}
-        totalUnits={totalUnits}
-        totalPrice={totalPrice}
-        bottomOffset={insets.bottom + 68}
-      />
 
       <AddressPickerSheet visible={pickerOpen} onClose={() => setPickerOpen(false)} />
     </SafeAreaView>
