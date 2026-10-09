@@ -184,6 +184,7 @@ export default function ChatsTabScreen() {
         conversationId: chat.isOrder ? undefined : chat.id,
         shopId: chat.shopId,
         title: chat.title,
+        avatarUrl: chat.avatarUrl ?? undefined,
       },
     });
   }, []);

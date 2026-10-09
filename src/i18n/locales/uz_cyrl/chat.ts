@@ -6,6 +6,7 @@ export const chat = {
   'chat.noChats': 'Ҳозирча хабарлар йўқ',
   'chat.noChatsDesc': 'Селлерлар билан тўғридан-тўғри боғланиб, товарлар ҳақида сўранг.',
   'chat.online': 'Онлайн',
+  'chat.lastSeenRecently': 'охирги марта яқинда бўлган',
   'chat.typing': 'ёзмоқда...',
   'chat.attachProduct': 'Маҳсулотни улашиш',
   'chat.viewProduct': 'Товарни кўриш',

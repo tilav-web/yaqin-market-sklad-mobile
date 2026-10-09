@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -13,17 +13,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   ChatAttachedProduct,
+  ChatDateBadge,
   ChatHeader,
   ChatInputBar,
   ChatMessageBubble,
   ChatTemplatesDrawer,
+  formatChatGroupDate,
+  useChatSession,
 } from '@/components/chat';
-import { useToast } from '@/components/ui/Toast';
 import { useTranslation } from '@/i18n';
-import { api, extractErrorMessage } from '@/lib/api';
-import { getSocket } from '@/lib/socket';
-import { ChatMessage, ChatTemplate, ConversationMessage, PublicProductVariant } from '@/lib/types';
+import { api } from '@/lib/api';
+import { PublicProductVariant } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
+import { useTheme } from '@/stores/theme';
 import { colors } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -33,23 +35,23 @@ export default function ChatScreen() {
     conversationId?: string;
     shopId?: string;
     title?: string;
+    avatarUrl?: string;
     productId?: string;
   }>();
 
   const effectiveId = params.conversationId || params.orderId;
   const shopId = params.shopId;
   const chatTitle = params.title;
+  const avatarUrl = params.avatarUrl;
   const productId = params.productId;
 
   const { tr } = useTranslation();
-  const qc = useQueryClient();
-  const toast = useToast();
+  const { isDark, colors: activeColors } = useTheme();
   const myId = useAuthStore((s) => s.user?.id);
   const [text, setText] = useState('');
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const listRef = useRef<FlatList<any>>(null);
 
-  // If a product was attached when entering chat
   const productQuery = useQuery({
     queryKey: ['product-variant', productId],
     queryFn: async () => {
@@ -59,120 +61,23 @@ export default function ChatScreen() {
     enabled: !!productId,
   });
 
-  const templatesQuery = useQuery({
-    queryKey: ['chat-templates', shopId],
-    queryFn: async () => {
-      const res = await api.get<ChatTemplate[]>(`/seller/shops/${shopId}/chat-templates`);
-      return res.data;
-    },
-    enabled: !!shopId && templatesOpen,
-    staleTime: 5 * 60_000,
-  });
-
-  // Decide whether this is a direct conversation or an order chat
   const isDirectConv = Boolean(params.conversationId || (!params.orderId?.startsWith('ord_') && params.title));
 
-  const messagesQuery = useQuery({
-    queryKey: isDirectConv ? ['conversation-messages', effectiveId] : ['chat', effectiveId],
-    queryFn: async () => {
-      try {
-        if (isDirectConv) {
-          const res = await api.get<ConversationMessage[]>(`/conversations/${effectiveId}/messages`);
-          void api.post(`/conversations/${effectiveId}/read`).catch(() => {});
-          return res.data;
-        } else {
-          const res = await api.get<ChatMessage[]>(`/orders/${effectiveId}/messages`);
-          return res.data;
-        }
-      } catch {
-        try {
-          const res = await api.get<ChatMessage[]>(`/orders/${effectiveId}/messages`);
-          return res.data;
-        } catch {
-          const res = await api.get<ConversationMessage[]>(`/conversations/${effectiveId}/messages`);
-          return res.data;
-        }
-      }
-    },
-    enabled: !!effectiveId,
+  const {
+    messages,
+    isLoadingMessages,
+    templates,
+    isLoadingTemplates,
+    sendMessage,
+    isSending,
+  } = useChatSession({
+    effectiveId,
+    isDirectConv,
+    productId,
+    shopId,
+    templatesOpen,
+    onSentSuccess: () => setText(''),
   });
-
-  // Live updates: append incoming messages to cache
-  useEffect(() => {
-    if (!effectiveId) return;
-    let cancelled = false;
-    let cleanup: (() => void) | undefined;
-
-    void getSocket().then((socket) => {
-      if (cancelled) return;
-
-      const onOrderMessage = (m: ChatMessage) => {
-        if (m.orderId !== effectiveId) return;
-        qc.setQueryData<ChatMessage[]>(['chat', effectiveId], (prev) => {
-          if (!prev) return [m];
-          if (prev.some((x) => x.id === m.id)) return prev;
-          return [...prev, m];
-        });
-      };
-
-      const onConvMessage = (m: ConversationMessage) => {
-        if (m.conversationId !== effectiveId) return;
-        qc.setQueryData<ConversationMessage[]>(['conversation-messages', effectiveId], (prev) => {
-          if (!prev) return [m];
-          if (prev.some((x) => x.id === m.id)) return prev;
-          return [...prev, m];
-        });
-        void qc.invalidateQueries({ queryKey: ['conversations'] });
-      };
-
-      socket.on('chat:message', onOrderMessage);
-      socket.on('conversation:message', onConvMessage);
-
-      cleanup = () => {
-        socket.off('chat:message', onOrderMessage);
-        socket.off('conversation:message', onConvMessage);
-      };
-    });
-
-    return () => {
-      cancelled = true;
-      cleanup?.();
-    };
-  }, [effectiveId, qc]);
-
-  const send = useMutation({
-    mutationFn: async (body: string) => {
-      if (isDirectConv) {
-        const payload: any = { text: body };
-        if (productId) payload.attachedProductId = productId;
-        const res = await api.post<ConversationMessage>(`/conversations/${effectiveId}/messages`, payload);
-        return { isConv: true, data: res.data };
-      } else {
-        const res = await api.post<ChatMessage>(`/orders/${effectiveId}/messages`, { text: body });
-        return { isConv: false, data: res.data };
-      }
-    },
-    onSuccess: (result) => {
-      if (result.isConv) {
-        qc.setQueryData<ConversationMessage[]>(['conversation-messages', effectiveId], (prev) => {
-          if (!prev) return [result.data as ConversationMessage];
-          if (prev.some((x) => x.id === result.data.id)) return prev;
-          return [...prev, result.data as ConversationMessage];
-        });
-        void qc.invalidateQueries({ queryKey: ['conversations'] });
-      } else {
-        qc.setQueryData<ChatMessage[]>(['chat', effectiveId], (prev) => {
-          if (!prev) return [result.data as ChatMessage];
-          if (prev.some((x) => x.id === result.data.id)) return prev;
-          return [...prev, result.data as ChatMessage];
-        });
-      }
-      setText('');
-    },
-    onError: (e) => toast.error(extractErrorMessage(e)),
-  });
-
-  const messages = messagesQuery.data ?? [];
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -182,25 +87,27 @@ export default function ChatScreen() {
 
   const handleSend = () => {
     const body = text.trim();
-    if (!body || send.isPending) return;
+    if (!body || isSending) return;
     haptics.light();
-    send.mutate(body);
+    sendMessage(body);
   };
 
-  return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
-      {/* Header */}
-      <ChatHeader chatTitle={chatTitle} shopId={shopId} />
+  const telegramBg = isDark ? '#0E1621' : '#E2EAF1';
 
-      {/* Attached Product Preview */}
+  return (
+    <SafeAreaView className="flex-1" edges={['top', 'bottom']} style={{ backgroundColor: activeColors.bg.surface }}>
+      {/* Telegram-style Top Header */}
+      <ChatHeader chatTitle={chatTitle} shopId={shopId} avatarUrl={avatarUrl} />
+
+      {/* Attached Product Preview Card */}
       {productQuery.data && <ChatAttachedProduct product={productQuery.data} />}
 
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        style={{ flex: 1, backgroundColor: telegramBg }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
       >
-        {messagesQuery.isLoading ? (
+        {isLoadingMessages ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator color={colors.brand.primary} />
           </View>
@@ -209,26 +116,42 @@ export default function ChatScreen() {
             ref={listRef}
             data={messages}
             keyExtractor={(m) => m.id}
-            contentContainerStyle={{ padding: 16, gap: 10, flexGrow: 1 }}
+            contentContainerStyle={{ paddingHorizontal: 10, paddingVertical: 12, flexGrow: 1 }}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
-              <Text className="text-sm text-text-secondary text-center mt-12">{tr('chat.empty')}</Text>
+              <View className="flex-1 items-center justify-center py-12">
+                <View className="px-4 py-2 rounded-full bg-black/20 dark:bg-white/20">
+                  <Text className="text-xs font-semibold text-white">{tr('chat.empty')}</Text>
+                </View>
+              </View>
             }
-            renderItem={({ item }) => (
-              <ChatMessageBubble
-                text={item.text}
-                createdAt={item.createdAt}
-                isMine={item.senderUserId === myId}
-              />
-            )}
+            renderItem={({ item, index }) => {
+              const isNewDay =
+                index === 0 ||
+                new Date(item.createdAt).toDateString() !==
+                  new Date(messages[index - 1].createdAt).toDateString();
+
+              return (
+                <View key={item.id}>
+                  {isNewDay && (
+                    <ChatDateBadge dateText={formatChatGroupDate(item.createdAt, tr)} />
+                  )}
+                  <ChatMessageBubble
+                    text={item.text}
+                    createdAt={item.createdAt}
+                    isMine={item.senderUserId === myId}
+                  />
+                </View>
+              );
+            }}
           />
         )}
 
-        {/* Quick reply templates for shop sellers */}
+        {/* Quick reply templates drawer */}
         {templatesOpen && shopId && (
           <ChatTemplatesDrawer
-            isLoading={templatesQuery.isLoading}
-            templates={templatesQuery.data ?? []}
+            isLoading={isLoadingTemplates}
+            templates={templates}
             onSelectTemplate={(templateText) => {
               setText(templateText);
               setTemplatesOpen(false);
@@ -236,12 +159,12 @@ export default function ChatScreen() {
           />
         )}
 
-        {/* Message Input Bar */}
+        {/* Telegram-style Bottom Input Bar */}
         <ChatInputBar
           text={text}
           onChangeText={setText}
           onSend={handleSend}
-          isSending={send.isPending}
+          isSending={isSending}
           hasShop={Boolean(shopId)}
           templatesOpen={templatesOpen}
           onToggleTemplates={() => setTemplatesOpen((v) => !v)}

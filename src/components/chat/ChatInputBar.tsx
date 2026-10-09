@@ -1,18 +1,19 @@
-import { Send, Zap } from 'lucide-react-native';
+import { Mic, Paperclip, Send, Smile, Zap } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { useTheme } from '@/stores/theme';
+import { haptics } from '@/utils/haptics';
 
 interface ChatInputBarProps {
-  text: string;
-  onChangeText: (text: string) => void;
-  onSend: () => void;
-  isSending: boolean;
-  hasShop: boolean;
-  templatesOpen: boolean;
-  onToggleTemplates: () => void;
+  readonly text: string;
+  readonly onChangeText: (text: string) => void;
+  readonly onSend: () => void;
+  readonly isSending: boolean;
+  readonly hasShop: boolean;
+  readonly templatesOpen: boolean;
+  readonly onToggleTemplates: () => void;
 }
 
 export function ChatInputBar({
@@ -27,52 +28,85 @@ export function ChatInputBar({
   const { tr } = useTranslation();
   const { colors: activeColors } = useTheme();
 
+  const hasContent = Boolean(text.trim());
+
+  const handlePressSend = () => {
+    if (!hasContent || isSending) return;
+    haptics.light();
+    onSend();
+  };
+
   return (
     <View
-      className="flex-row items-center gap-1.5 px-4 py-1.5 border-t"
-      style={{
-        backgroundColor: activeColors.bg.surface,
-        borderTopColor: activeColors.border.subtle,
-      }}
+      className="flex-row items-end gap-2 px-3 py-2 border-t bg-bg-surface"
+      style={{ borderTopColor: activeColors.border.subtle }}
     >
-      {hasShop && (
+      {/* Left Action: Quick Templates or Attachment */}
+      {hasShop ? (
         <Pressable
-          className={`w-[38px] h-[38px] rounded-full border items-center justify-center ${
-            templatesOpen ? 'bg-[#E8392E] border-[#E8392E]' : 'bg-[#FDECEA] border-[#FBD9D5]'
+          onPress={() => {
+            haptics.selection();
+            onToggleTemplates();
+          }}
+          className={`w-9 h-9 rounded-full items-center justify-center mb-0.5 active:scale-95 ${
+            templatesOpen ? 'bg-brand-primary' : 'bg-surface-muted'
           }`}
-          onPress={onToggleTemplates}
+          hitSlop={6}
         >
           <Zap
             size={18}
-            color={templatesOpen ? activeColors.text.onPrimary : activeColors.brand.primary}
-            strokeWidth={2.2}
+            color={templatesOpen ? '#FFFFFF' : activeColors.brand.primary}
+            strokeWidth={2.4}
           />
+        </Pressable>
+      ) : (
+        <Pressable
+          className="w-9 h-9 rounded-full items-center justify-center mb-0.5 bg-surface-muted active:opacity-70"
+          hitSlop={6}
+        >
+          <Paperclip size={18} color={activeColors.text.secondary} />
         </Pressable>
       )}
 
-      <TextInput
-        className="flex-1 text-sm max-h-[100px] min-h-[40px] rounded-2xl px-3.5 py-2"
-        style={{
-          color: activeColors.text.primary,
-          backgroundColor: activeColors.bg.surfaceMuted,
-        }}
-        value={text}
-        onChangeText={onChangeText}
-        placeholder={tr('chat.placeholder')}
-        placeholderTextColor={activeColors.text.tertiary}
-        multiline
-        onSubmitEditing={onSend}
-      />
+      {/* Pill TextInput Container */}
+      <View className="flex-1 flex-row items-end rounded-[22px] px-3.5 py-1.5 bg-surface-muted border border-border-subtle min-h-[40px] max-h-[120px]">
+        <TextInput
+          className="flex-1 text-[15px] text-text-primary py-1 pr-2 max-h-[110px]"
+          value={text}
+          onChangeText={onChangeText}
+          placeholder={tr('chat.placeholder')}
+          placeholderTextColor={activeColors.text.hint}
+          multiline
+        />
 
-      <Pressable
-        className={`w-[38px] h-[38px] rounded-full items-center justify-center ${
-          !text.trim() || isSending ? 'bg-[#C5BFB9]' : 'bg-[#E8392E]'
-        }`}
-        onPress={onSend}
-        disabled={!text.trim() || isSending}
-      >
-        <Send size={18} color="#FFFFFF" strokeWidth={2.4} />
-      </Pressable>
+        <Pressable
+          hitSlop={6}
+          className="mb-1 opacity-70 active:opacity-100"
+          onPress={() => haptics.selection()}
+        >
+          <Smile size={19} color={activeColors.text.secondary} />
+        </Pressable>
+      </View>
+
+      {/* Right Send / Mic Button */}
+      {hasContent ? (
+        <Pressable
+          onPress={handlePressSend}
+          disabled={isSending}
+          className="w-10 h-10 rounded-full items-center justify-center bg-brand-primary active:scale-95 shadow-sm mb-0.5"
+          hitSlop={6}
+        >
+          <Send size={18} color="#FFFFFF" strokeWidth={2.6} />
+        </Pressable>
+      ) : (
+        <Pressable
+          onPress={() => haptics.light()}
+          className="w-10 h-10 rounded-full items-center justify-center bg-surface-muted active:opacity-70 mb-0.5"
+          hitSlop={6}
+        >
+          <Mic size={19} color={activeColors.text.secondary} />
+        </Pressable>
+      )}
     </View>
   );
 }

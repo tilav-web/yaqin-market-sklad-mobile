@@ -6,6 +6,7 @@ export const chat = {
   'chat.noChats': 'Пока нет сообщений',
   'chat.noChatsDesc': 'Связывайтесь напрямую с продавцами и задавайте вопросы о товарах.',
   'chat.online': 'В сети',
+  'chat.lastSeenRecently': 'был(а) недавно',
   'chat.typing': 'печатает...',
   'chat.attachProduct': 'Поделиться товаром',
   'chat.viewProduct': 'Посмотреть товар',

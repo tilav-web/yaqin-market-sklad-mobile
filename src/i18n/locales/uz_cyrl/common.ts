@@ -33,6 +33,8 @@ export const common = {
   'nav.newShop': 'Янги дўкон',
   'nav.returnItems': 'Қайтариш',
   'nav.favorites': 'Севимлилар',
+  'day.today': "Бугун",
+  'day.yesterday': "Кеча",
   'day.sun': "Якшанба",
   'day.mon': "Душанба",
   'day.tue': "Сешанба",

@@ -33,6 +33,8 @@ export const common = {
   'nav.newShop': 'Новый магазин',
   'nav.returnItems': 'Возврат',
   'nav.favorites': 'Избранное',
+  'day.today': "Сегодня",
+  'day.yesterday': "Вчера",
   'day.sun': "Воскресенье",
   'day.mon': "Понедельник",
   'day.tue': "Вторник",
