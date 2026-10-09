@@ -4,7 +4,8 @@ import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTranslation } from '@/i18n';
-import { colors, typography } from '@/theme';
+import { useTheme } from '@/stores/theme';
+import { typography } from '@/theme';
 
 interface ProductBottomBarProps {
   outOfStock: boolean;
@@ -12,10 +13,7 @@ interface ProductBottomBarProps {
   onAddToCart: () => void;
   onUpdateQty: (delta: number) => void;
   onGoToCart: () => void;
-  activeColors: {
-    bg: { surface: string };
-    border: { subtle: string };
-  };
+  activeColors?: any;
 }
 
 export function ProductBottomBar({
@@ -24,17 +22,17 @@ export function ProductBottomBar({
   onAddToCart,
   onUpdateQty,
   onGoToCart,
-  activeColors,
 }: ProductBottomBarProps) {
   const { tr } = useTranslation();
+  const { colors } = useTheme();
 
   return (
     <SafeAreaView
       edges={['bottom']}
       className="border-t px-4 py-2"
       style={{
-        backgroundColor: activeColors.bg.surface,
-        borderTopColor: activeColors.border.subtle,
+        backgroundColor: colors.bg.surface,
+        borderTopColor: colors.border.subtle,
       }}
     >
       {outOfStock ? (

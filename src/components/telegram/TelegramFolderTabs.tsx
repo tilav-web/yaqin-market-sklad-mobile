@@ -57,32 +57,32 @@ export function TelegramFolderTabs({
                 haptics.selection();
                 onSelectTab(idx);
               }}
-              className={`flex-row items-center gap-1.5 px-3.5 py-1.5 rounded-full ${
-                isActive ? 'border border-[#FBD9D5]' : ''
-              }`}
+              className="flex-row items-center gap-1.5 px-3.5 py-1.5 rounded-full"
               style={{
                 backgroundColor: isActive ? colors.brand.primarySurface : colors.bg.surfaceMuted,
+                borderWidth: isActive ? 1 : 0,
+                borderColor: isActive ? colors.brand.primaryBorder : 'transparent',
               }}
             >
               <Text
-                className={`text-[13px] ${
-                  isActive ? 'font-extrabold text-[#E8392E]' : 'font-semibold'
-                }`}
-                style={isActive ? undefined : { color: colors.text.secondary }}
+                className={`text-[13px] ${isActive ? 'font-extrabold' : 'font-semibold'}`}
+                style={{ color: isActive ? colors.brand.primary : colors.text.secondary }}
               >
                 {tab.title}
               </Text>
 
               {typeof tab.badge === 'number' && tab.badge > 0 && (
                 <View
-                  className={`rounded-full px-1.5 py-0.5 min-w-[16px] items-center justify-center ${
-                    isActive ? 'bg-[#E8392E]' : 'bg-[#DEDAD6]'
-                  }`}
+                  className="rounded-full px-1.5 py-0.5 min-w-[16px] items-center justify-center"
+                  style={{
+                    backgroundColor: isActive ? colors.brand.primary : colors.bg.surfaceElevated,
+                  }}
                 >
                   <Text
-                    className={`text-[10px] font-bold ${
-                      isActive ? 'text-white' : 'text-[#7E7872]'
-                    }`}
+                    className="text-[10px] font-bold"
+                    style={{
+                      color: isActive ? '#FFFFFF' : colors.text.secondary,
+                    }}
                   >
                     {tab.badge > 99 ? '99+' : tab.badge}
                   </Text>

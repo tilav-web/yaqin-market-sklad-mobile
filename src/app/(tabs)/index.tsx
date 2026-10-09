@@ -21,10 +21,11 @@ import {
   TelegramFolderTabs,
 } from '@/components/telegram/TelegramFolderTabs';
 import { api } from '@/lib/api';
-import { Category, FeedProduct, FeedResponse, PublicShop } from '@/lib/types';
+import { Category, FeedProduct, FeedResponse, PublicProductVariant, PublicShop } from '@/lib/types';
 import { useCartStore } from '@/stores/cart';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
 import { useTheme } from '@/stores/theme';
+import { interleaveProductsByShop } from '@/utils/productMixer';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -44,11 +45,38 @@ export default function TelegramHomeScreen() {
   const requestPermission = useLocationStore((s) => s.requestPermission);
   const refresh = useLocationStore((s) => s.refresh);
   const permissionStatus = useLocationStore((s) => s.permissionStatus);
-  const carts = useCartStore((s) => s.carts);
-  const clearAll = useCartStore((s) => s.clearAll);
+
+  // Optimized primitive selectors: will NOT trigger screen re-renders on quantity changes
+  const activeShopId = useCartStore((s) => {
+    for (const id in s.carts) {
+      if ((s.carts[id]?.length ?? 0) > 0) return id;
+    }
+    return null;
+  });
+
+  const activeShopNameInCart = useCartStore((s) => {
+    for (const id in s.carts) {
+      const lines = s.carts[id];
+      if (lines && lines.length > 0 && lines[0].shopName) {
+        return lines[0].shopName;
+      }
+    }
+    return null;
+  });
+
+  const totalCartCount = useCartStore((s) => {
+    let count = 0;
+    for (const id in s.carts) {
+      for (const line of s.carts[id] ?? []) {
+        count += line.quantity;
+      }
+    }
+    return count;
+  });
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const [visitedTabs, setVisitedTabs] = useState<Set<number>>(() => new Set([0]));
   const pagerRef = useRef<PagerView>(null);
 
   useEffect(() => {
@@ -88,6 +116,18 @@ export default function TelegramHomeScreen() {
     getNextPageParam: (last) => last.nextPage,
   });
 
+  // Active Shop Full Catalog Query (loads all products of active shop into the feed)
+  const activeShopCatalogQuery = useQuery({
+    queryKey: ['active-shop-catalog', activeShopId],
+    queryFn: async () => {
+      if (!activeShopId) return [];
+      const res = await api.get<PublicProductVariant[]>(`/catalog/shops/${activeShopId}/products`);
+      return res.data;
+    },
+    enabled: !!activeShopId,
+    staleTime: 60_000,
+  });
+
   // Categories Query
   const categoriesQuery = useQuery({
     queryKey: ['categories'],
@@ -110,38 +150,21 @@ export default function TelegramHomeScreen() {
     return list;
   }, [categoriesQuery.data]);
 
-  const allProducts = useMemo<FeedProduct[]>(
+  const allFeedProducts = useMemo<FeedProduct[]>(
     () => feedQuery.data?.pages.flatMap((p) => p.items) ?? [],
     [feedQuery.data],
   );
 
   const shops = useMemo(() => shopsQuery.data ?? [], [shopsQuery.data]);
 
-  // Active shop restriction
-  const cartShopIds = useMemo(
-    () => Object.keys(carts).filter((id) => (carts[id]?.length ?? 0) > 0),
-    [carts],
-  );
-  const activeShopId = cartShopIds.length > 0 ? cartShopIds[0] : null;
-
   const activeShopName = useMemo(() => {
     if (!activeShopId) return null;
-    const lines = carts[activeShopId];
-    if (lines && lines.length > 0 && lines[0].shopName) {
-      return lines[0].shopName;
-    }
+    if (activeShopNameInCart) return activeShopNameInCart;
     const found = shops.find((s) => s.id === activeShopId);
     return found?.name ?? "Tanlangan do'kon";
-  }, [activeShopId, carts, shops]);
+  }, [activeShopId, activeShopNameInCart, shops]);
 
-  const totalCartCount = useMemo(() => {
-    return Object.values(carts).reduce(
-      (acc, lines) => acc + lines.reduce((sum, l) => sum + l.quantity, 0),
-      0,
-    );
-  }, [carts]);
-
-  // Animate product list filtering on cart changes
+  // Animate product list filtering ONLY when activeShopId transitions
   const prevShopIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (prevShopIdRef.current !== activeShopId) {
@@ -150,10 +173,45 @@ export default function TelegramHomeScreen() {
     }
   }, [activeShopId]);
 
-  const displayedProducts = useMemo(() => {
-    if (!activeShopId) return allProducts;
-    return allProducts.filter((p) => p.shop.id === activeShopId);
-  }, [allProducts, activeShopId]);
+  // Mixed marketplace products feed (Uzum Market style interleaved across shops)
+  const mixedAllProducts = useMemo(() => {
+    return interleaveProductsByShop(allFeedProducts);
+  }, [allFeedProducts]);
+
+  // When a shop is active in cart, load its full catalog to replace vacated spots
+  const displayedProducts = useMemo<FeedProduct[]>(() => {
+    if (!activeShopId) return mixedAllProducts;
+
+    const fromFeed = allFeedProducts.filter((p) => p.shop.id === activeShopId);
+    const shopSummary = shops.find((s) => s.id === activeShopId);
+
+    const map = new Map<string, FeedProduct>();
+    for (const p of fromFeed) map.set(p.id, p);
+
+    if (shopSummary && activeShopCatalogQuery.data) {
+      for (const v of activeShopCatalogQuery.data) {
+        if (!map.has(v.id)) {
+          map.set(v.id, {
+            ...v,
+            shop: {
+              id: shopSummary.id,
+              name: shopSummary.name,
+              distanceKm: shopSummary.distanceKm ?? 0,
+              deliveryFeeAtUser: shopSummary.deliveryFeeAtUser ?? 0,
+              isOpen: shopSummary.isOpenManual,
+              isDeliveryOpen: shopSummary.isDeliveryOpenNow,
+              isDeliveryEnabled: shopSummary.isDeliveryEnabled,
+              isPickupEnabled: shopSummary.isPickupEnabled,
+              phone: shopSummary.phone,
+              photos: shopSummary.photos,
+            },
+          });
+        }
+      }
+    }
+
+    return Array.from(map.values());
+  }, [activeShopId, mixedAllProducts, allFeedProducts, shops, activeShopCatalogQuery.data]);
 
   // Telegram Top Folder Tabs List
   const folderTabs = useMemo<FolderTabItem[]>(() => {
@@ -169,6 +227,12 @@ export default function TelegramHomeScreen() {
 
   const handleSelectTab = useCallback((index: number) => {
     setActiveTabIndex(index);
+    setVisitedTabs((prev) => {
+      if (prev.has(index)) return prev;
+      const next = new Set(prev);
+      next.add(index);
+      return next;
+    });
     pagerRef.current?.setPage(index);
   }, []);
 
@@ -183,7 +247,6 @@ export default function TelegramHomeScreen() {
     <HomeShopFilterBanner
       activeShopId={activeShopId}
       activeShopName={activeShopName}
-      onClear={clearAll}
     />
   );
 
@@ -203,12 +266,21 @@ export default function TelegramHomeScreen() {
         onSelectTab={handleSelectTab}
       />
 
-      {/* Horizontal Pager for category folders */}
+      {/* Horizontal Pager with lazy mounted tabs */}
       <PagerView
         ref={pagerRef}
         style={{ flex: 1 }}
         initialPage={0}
-        onPageSelected={(e) => setActiveTabIndex(e.nativeEvent.position)}
+        onPageSelected={(e) => {
+          const pos = e.nativeEvent.position;
+          setActiveTabIndex(pos);
+          setVisitedTabs((prev) => {
+            if (prev.has(pos)) return prev;
+            const next = new Set(prev);
+            next.add(pos);
+            return next;
+          });
+        }}
       >
         {/* Tab 0: Barchasi */}
         <View key="all" style={{ flex: 1, backgroundColor: activeColors.bg.canvas }}>
@@ -226,6 +298,7 @@ export default function TelegramHomeScreen() {
             onRefresh={() => {
               void feedQuery.refetch();
               void shopsQuery.refetch();
+              if (activeShopId) void activeShopCatalogQuery.refetch();
             }}
             onEndReached={() => {
               if (feedQuery.hasNextPage && !feedQuery.isFetchingNextPage) {
@@ -239,23 +312,29 @@ export default function TelegramHomeScreen() {
         </View>
 
         {/* Dynamic Category Folders */}
-        {leafCategories.map((category) => {
-          let categoryProducts = allProducts.filter((p) => p.categoryId === category.id);
-          if (activeShopId) {
-            categoryProducts = categoryProducts.filter((p) => p.shop.id === activeShopId);
+        {leafCategories.map((category, idx) => {
+          const tabIndex = idx + 1;
+          const isMounted = visitedTabs.has(tabIndex);
+
+          let categoryProducts = displayedProducts.filter((p) => p.categoryId === category.id);
+          if (!activeShopId) {
+            categoryProducts = interleaveProductsByShop(categoryProducts);
           }
+
           return (
             <View key={category.id} style={{ flex: 1, backgroundColor: activeColors.bg.canvas }}>
-              <HomeProductGrid
-                products={categoryProducts}
-                cardWidth={cardWidth}
-                emptyTitle={`${category.nameUzLatn} bo'yicha tovar yo'q`}
-                emptyDescription="Tez orada yangi mahsulotlar qo'shiladi"
-                isRefetching={feedQuery.isRefetching}
-                onRefresh={() => void feedQuery.refetch()}
-                bottomInset={insets.bottom}
-                headerComponent={shopFilterHeader}
-              />
+              {isMounted ? (
+                <HomeProductGrid
+                  products={categoryProducts}
+                  cardWidth={cardWidth}
+                  emptyTitle={`${category.nameUzLatn} bo'yicha tovar yo'q`}
+                  emptyDescription="Tez orada yangi mahsulotlar qo'shiladi"
+                  isRefetching={feedQuery.isRefetching}
+                  onRefresh={() => void feedQuery.refetch()}
+                  bottomInset={insets.bottom}
+                  headerComponent={shopFilterHeader}
+                />
+              ) : null}
             </View>
           );
         })}
