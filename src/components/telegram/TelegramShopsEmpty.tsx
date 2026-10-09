@@ -3,11 +3,11 @@ import React from 'react';
 import { Text, View } from 'react-native';
 
 interface TelegramShopsEmptyProps {
-  readonly searchQuery: string;
+  readonly searchQuery?: string;
   readonly activeColors: any;
 }
 
-export function TelegramShopsEmpty({ searchQuery, activeColors }: TelegramShopsEmptyProps) {
+export function TelegramShopsEmpty({ searchQuery = '', activeColors }: TelegramShopsEmptyProps) {
   return (
     <View className="items-center justify-center py-14 px-6">
       <View

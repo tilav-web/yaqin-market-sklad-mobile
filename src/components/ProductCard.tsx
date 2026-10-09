@@ -151,19 +151,19 @@ export function ProductCard({
 
           {hasDiscount && (
             <View
-              style={{ zIndex: 10, elevation: 5 }}
-              className="absolute top-2 left-2 px-1.5 py-0.5 rounded-full bg-brand-primary"
+              style={{ zIndex: 10, elevation: 4 }}
+              className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-brand-primary shadow-sm"
             >
-              <Text className="text-white font-extrabold text-[10px]">−{discountPct}%</Text>
+              <Text className="text-white font-extrabold text-[10.5px]">−{discountPct}%</Text>
             </View>
           )}
 
           {product.unitSize ? (
             <View
-              style={{ zIndex: 10, elevation: 5 }}
-              className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/80 border border-white/15"
+              style={{ zIndex: 10, elevation: 4 }}
+              className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-white border border-stone-200/90 shadow-sm"
             >
-              <Text className="text-white font-bold text-[10px] tracking-tight">
+              <Text className="text-stone-800 font-extrabold text-[10.5px] tracking-tight">
                 {product.unitSize} {product.unitType || ''}
               </Text>
             </View>

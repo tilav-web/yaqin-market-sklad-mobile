@@ -11,7 +11,6 @@ interface TelegramShopsTabPageProps {
   isLoadingShops: boolean;
   filteredShops: PublicShop[];
   isRefetchingShops: boolean;
-  searchQuery: string;
   activeColors: ReturnType<typeof useTheme>['colors'];
   bottomInset: number;
   onRefresh: () => void;
@@ -21,7 +20,6 @@ export function TelegramShopsTabPage({
   isLoadingShops,
   filteredShops,
   isRefetchingShops,
-  searchQuery,
   activeColors,
   bottomInset,
   onRefresh,
@@ -45,7 +43,7 @@ export function TelegramShopsTabPage({
               <ActivityIndicator size="large" color={activeColors.brand.primary} />
             </View>
           ) : (
-            <TelegramShopsEmpty searchQuery={searchQuery} activeColors={activeColors} />
+            <TelegramShopsEmpty activeColors={activeColors} />
           )
         }
         refreshControl={

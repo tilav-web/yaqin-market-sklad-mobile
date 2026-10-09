@@ -29,7 +29,6 @@ export default function ChatsTabScreen() {
   const qc = useQueryClient();
   const coords = useEffectiveCoords();
   const isAuthenticated = useAuthStore((s) => !!s.user);
-  const [searchQuery, setSearchQuery] = useState('');
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const pagerRef = useRef<PagerView>(null);
 
@@ -162,27 +161,6 @@ export default function ChatsTabScreen() {
     });
   }, [conversations, orders, tr]);
 
-  // Filter chats by query
-  const filteredChats = useMemo(() => {
-    return unifiedChats.filter((item) => {
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
-      return (
-        item.title.toLowerCase().includes(q) ||
-        item.subtitle.toLowerCase().includes(q)
-      );
-    });
-  }, [unifiedChats, searchQuery]);
-
-  const filteredShops = useMemo(() => {
-    if (!searchQuery.trim()) return shops;
-    const q = searchQuery.toLowerCase();
-    return shops.filter((s) =>
-      s.name.toLowerCase().includes(q) ||
-      (s.address && s.address.toLowerCase().includes(q)),
-    );
-  }, [shops, searchQuery]);
-
   const unreadTotal = useMemo(() => {
     return unifiedChats.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
   }, [unifiedChats]);
@@ -228,9 +206,6 @@ export default function ChatsTabScreen() {
       {/* Top Header */}
       <TelegramChatsHeader
         unreadTotal={unreadTotal}
-        searchQuery={searchQuery}
-        onChangeSearch={setSearchQuery}
-        activeTabIndex={activeTabIndex}
         activeColors={activeColors}
       />
 
@@ -253,7 +228,7 @@ export default function ChatsTabScreen() {
           key="chats"
           isLoading={isLoading}
           isAuthenticated={isAuthenticated}
-          filteredChats={filteredChats}
+          filteredChats={unifiedChats}
           activeColors={activeColors}
           isRefreshing={isRefreshing}
           bottomInset={insets.bottom}
@@ -268,9 +243,8 @@ export default function ChatsTabScreen() {
         <TelegramShopsTabPage
           key="shops"
           isLoadingShops={isLoadingShops}
-          filteredShops={filteredShops}
+          filteredShops={shops}
           isRefetchingShops={isRefetchingShops}
-          searchQuery={searchQuery}
           activeColors={activeColors}
           bottomInset={insets.bottom}
           onRefresh={() => void refetchShops()}
