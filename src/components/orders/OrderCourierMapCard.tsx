@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
 import { useTranslation } from '@/i18n';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, typography } from '@/theme';
 
 interface OrderCourierMapCardProps {
   courierLocation: {
@@ -30,11 +30,19 @@ export function OrderCourierMapCard({ courierLocation, deliveryAddress }: OrderC
   }, [courierLocation]);
 
   return (
-    <View style={styles.mapCard}>
-      <View style={styles.mapTitleRow}>
-        <Text style={styles.mapTitle}>{tr('orderDet.courierLocation')}</Text>
+    <View
+      className="rounded-2xl overflow-hidden border"
+      style={{
+        backgroundColor: colors.bg.surface,
+        borderColor: colors.border.subtle,
+      }}
+    >
+      <View className="flex-row justify-between items-center p-3">
+        <Text style={[typography.bodyStrong, { color: colors.text.primary }]}>
+          {tr('orderDet.courierLocation')}
+        </Text>
         {courierLocation.etaMinutes != null ? (
-          <Text style={styles.mapEta}>
+          <Text className="font-bold" style={[typography.caption, { color: colors.brand.primary }]}>
             {tr('orderDet.courierEta', { n: courierLocation.etaMinutes })}
           </Text>
         ) : null}
@@ -42,7 +50,7 @@ export function OrderCourierMapCard({ courierLocation, deliveryAddress }: OrderC
       <MapView
         ref={mapRef}
         provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-        style={styles.map}
+        className="w-full h-[200px]"
         initialRegion={{
           latitude: courierLocation.lat,
           longitude: courierLocation.lng,
@@ -68,22 +76,3 @@ export function OrderCourierMapCard({ courierLocation, deliveryAddress }: OrderC
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  mapCard: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  mapTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.md,
-  },
-  mapTitle: { ...typography.bodyStrong },
-  mapEta: { ...typography.caption, color: colors.brand.primary, fontWeight: '700' },
-  map: { width: '100%', height: 200 },
-});

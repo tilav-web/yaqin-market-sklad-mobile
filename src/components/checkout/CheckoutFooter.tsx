@@ -1,10 +1,10 @@
 import { AlertCircle } from 'lucide-react-native';
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTranslation } from '@/i18n';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { colors, shadow, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 export interface CheckoutBlocker {
@@ -31,31 +31,51 @@ export function CheckoutFooter({
   const { tr } = useTranslation();
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.footer}>
+    <SafeAreaView
+      edges={['bottom']}
+      className="border-t"
+      style={[{ backgroundColor: colors.bg.surface, borderTopColor: colors.border.subtle }, shadow.lg]}
+    >
       {/* Why the button is off, stated once in a slim band */}
       {blocker && (
-        <View style={[styles.blocker, blocker.danger && styles.blockerDanger]}>
-          <View style={styles.blockerRow}>
+        <View
+          className="px-4 py-2 gap-1.5"
+          style={{
+            backgroundColor: blocker.danger
+              ? colors.feedback.dangerSurface
+              : colors.feedback.warningSurface,
+          }}
+        >
+          <View className="flex-row items-center gap-1.5">
             <AlertCircle
               size={14}
               color={blocker.danger ? colors.feedback.danger : colors.feedback.warning}
               strokeWidth={2.6}
             />
-            <Text style={[styles.blockerText, blocker.danger && styles.blockerTextDanger]}>
+            <Text
+              className="flex-1 font-bold"
+              style={[
+                typography.caption,
+                { color: blocker.danger ? colors.feedback.danger : colors.feedback.warning },
+              ]}
+            >
               {blocker.text}
             </Text>
           </View>
           {blocker.progress != null && (
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${blocker.progress}%` }]} />
+            <View className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: colors.bg.surface }}>
+              <View
+                className="h-full rounded-full"
+                style={{ width: `${blocker.progress}%`, backgroundColor: colors.feedback.warning }}
+              />
             </View>
           )}
         </View>
       )}
-      <View style={styles.footerRow}>
-        <View style={styles.footerTotal}>
-          <Text style={styles.footerTotalLabel}>{tr('cart.total')}</Text>
-          <Text style={styles.footerTotalValue}>
+      <View className="flex-row items-center gap-3 px-4 pt-3 pb-2">
+        <View>
+          <Text style={[typography.caption, { color: colors.text.tertiary }]}>{tr('cart.total')}</Text>
+          <Text style={[typography.h3, { color: colors.text.primary }]}>
             {total.toLocaleString()} {tr('common.som')}
           </Text>
         </View>
@@ -65,62 +85,20 @@ export function CheckoutFooter({
             onSubmit();
           }}
           disabled={!canOrder || isPending}
-          style={[styles.orderBtn, (!canOrder || isPending) && styles.orderBtnDisabled]}
+          className="flex-1 h-12 rounded-xl items-center justify-center"
+          style={{
+            backgroundColor: !canOrder || isPending ? colors.text.hint : colors.brand.primary,
+          }}
         >
           {isPending ? (
             <ActivityIndicator color={colors.text.onPrimary} />
           ) : (
-            <Text style={styles.orderBtnText}>{tr('cart.proceed')}</Text>
+            <Text style={[typography.button, { color: colors.text.onPrimary }]}>
+              {tr('cart.proceed')}
+            </Text>
           )}
         </Pressable>
       </View>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  footer: {
-    backgroundColor: colors.bg.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    ...shadow.lg,
-  },
-  blocker: {
-    backgroundColor: colors.feedback.warningSurface,
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.sm,
-    gap: 6,
-  },
-  blockerDanger: { backgroundColor: colors.feedback.dangerSurface },
-  blockerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  blockerText: { ...typography.caption, color: colors.feedback.warning, fontWeight: '700', flex: 1 },
-  blockerTextDanger: { color: colors.feedback.danger },
-  progressTrack: {
-    height: 4,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surface,
-    overflow: 'hidden',
-  },
-  progressFill: { height: '100%', borderRadius: radius.full, backgroundColor: colors.feedback.warning },
-  footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  footerTotal: {},
-  footerTotalLabel: { ...typography.caption, color: colors.text.tertiary },
-  footerTotalValue: { ...typography.h3, color: colors.text.primary },
-  orderBtn: {
-    flex: 1,
-    height: layout.buttonHeight.lg,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orderBtnDisabled: { backgroundColor: colors.text.hint },
-  orderBtnText: { ...typography.button, color: colors.text.onPrimary },
-});

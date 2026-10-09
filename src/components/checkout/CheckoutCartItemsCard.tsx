@@ -1,11 +1,11 @@
 import { Minus, Plus, Store, Trash2 } from 'lucide-react-native';
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { resolveMedia } from '@/lib/api';
 import { CartLine, PublicShop } from '@/lib/types';
-import { colors, radius, shadow, spacing, typography } from '@/theme';
+import { colors, shadow, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 interface CheckoutCartItemsCardProps {
@@ -26,39 +26,64 @@ export function CheckoutCartItemsCard({
   const { tr } = useTranslation();
 
   return (
-    <View style={styles.section}>
-      <View style={styles.shopRow}>
-        <View style={styles.shopIcon}>
+    <View
+      className="p-4 rounded-2xl border"
+      style={[{ backgroundColor: colors.bg.surface, borderColor: colors.border.subtle }, shadow.xs]}
+    >
+      <View className="flex-row items-center gap-2">
+        <View
+          className="w-8 h-8 rounded-full items-center justify-center"
+          style={{ backgroundColor: colors.brand.primarySurface }}
+        >
           <Store size={16} color={colors.brand.primary} strokeWidth={2.4} />
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.shopName} numberOfLines={1}>
+        <View className="flex-1">
+          <Text style={[typography.h4, { color: colors.text.primary }]} numberOfLines={1}>
             {shop?.name ?? tr('checkout.itemsTitle')}
           </Text>
-          <Text style={styles.shopMeta}>{tr('cart.itemsCount', { n: cartLines.length })}</Text>
+          <Text style={[typography.caption, { color: colors.text.tertiary }]}>
+            {tr('cart.itemsCount', { n: cartLines.length })}
+          </Text>
         </View>
       </View>
 
       {cartLines.map((line, i) => (
-        <View key={line.variantId} style={[styles.cartItem, i > 0 && styles.cartItemBordered]}>
-          <View style={styles.itemThumb}>
+        <View
+          key={line.variantId}
+          className={`flex-row gap-3 py-3 items-center ${i > 0 ? 'border-t' : ''}`}
+          style={i > 0 ? { borderTopColor: colors.border.subtle } : undefined}
+        >
+          <View
+            className="w-13 h-13 rounded-xl overflow-hidden"
+            style={{ backgroundColor: colors.bg.surfaceMuted }}
+          >
             {line.photoUrl ? (
-              <Image source={{ uri: resolveMedia(line.photoUrl) }} style={styles.itemImg} />
+              <Image source={{ uri: resolveMedia(line.photoUrl) }} className="w-full h-full" />
             ) : (
-              <View style={[styles.itemImg, styles.itemImgPlaceholder]} />
+              <View
+                className="w-full h-full"
+                style={{ backgroundColor: colors.brand.primarySurface }}
+              />
             )}
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.itemName} numberOfLines={2}>
+          <View className="flex-1">
+            <Text
+              className="font-semibold"
+              style={[typography.bodySmall, { color: colors.text.primary }]}
+              numberOfLines={2}
+            >
               {line.productName}
             </Text>
-            <Text style={styles.itemPrice}>
+            <Text className="mt-0.5" style={typography.priceSmall}>
               {(line.unitPrice * line.quantity).toLocaleString()} {tr('common.som')}
             </Text>
           </View>
-          <View style={styles.qtyControls}>
+          <View
+            className="flex-row items-center gap-1 rounded-full px-1"
+            style={{ backgroundColor: colors.brand.primarySurface }}
+          >
             <Pressable
-              style={styles.qtyBtn}
+              className="w-8 h-8 items-center justify-center"
               hitSlop={4}
               onPress={() => {
                 haptics.light();
@@ -71,9 +96,14 @@ export function CheckoutCartItemsCard({
                 <Minus size={16} color={colors.brand.primary} strokeWidth={3} />
               )}
             </Pressable>
-            <Text style={styles.qty}>{line.quantity}</Text>
+            <Text
+              className="min-w-[20px] text-center"
+              style={[typography.bodyStrong, { color: colors.brand.primary }]}
+            >
+              {line.quantity}
+            </Text>
             <Pressable
-              style={styles.qtyBtn}
+              className="w-8 h-8 items-center justify-center"
               hitSlop={4}
               onPress={() => {
                 haptics.light();
@@ -86,7 +116,7 @@ export function CheckoutCartItemsCard({
         </View>
       ))}
 
-      <View style={styles.divider} />
+      <View className="h-px mt-2 mb-3" style={{ backgroundColor: colors.border.subtle }} />
       <Row label={tr('cart.subtotal')} value={`${subTotal.toLocaleString()} ${tr('common.som')}`} />
       <Row
         label={tr('cart.deliveryFee')}
@@ -113,59 +143,19 @@ function Row({
   readonly free?: boolean;
 }) {
   return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={[styles.rowValue, free && styles.rowValueFree]}>{value}</Text>
+    <View className="flex-row justify-between items-center py-1">
+      <Text style={[typography.body, { color: colors.text.secondary }]}>{label}</Text>
+      <Text
+        style={[
+          typography.body,
+          {
+            fontWeight: free ? '700' : '600',
+            color: free ? colors.feedback.success : undefined,
+          },
+        ]}
+      >
+        {value}
+      </Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  section: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    ...shadow.xs,
-  },
-  shopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  shopIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shopName: { ...typography.h4, color: colors.text.primary },
-  shopMeta: { ...typography.caption, color: colors.text.tertiary },
-  cartItem: { flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md, alignItems: 'center' },
-  cartItemBordered: { borderTopWidth: 1, borderTopColor: colors.border.subtle },
-  itemThumb: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.md,
-    overflow: 'hidden',
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  itemImg: { width: '100%', height: '100%' },
-  itemImgPlaceholder: { backgroundColor: colors.brand.primarySurface },
-  itemName: { ...typography.bodySmall, color: colors.text.primary, fontWeight: '600' },
-  itemPrice: { ...typography.priceSmall, marginTop: 2 },
-  qtyControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.brand.primarySurface,
-    borderRadius: radius.full,
-    paddingHorizontal: 4,
-  },
-  qtyBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  qty: { ...typography.bodyStrong, color: colors.brand.primary, minWidth: 20, textAlign: 'center' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 3 },
-  rowLabel: { ...typography.body, color: colors.text.secondary },
-  rowValue: { ...typography.body, fontWeight: '600' },
-  rowValueFree: { color: colors.feedback.success, fontWeight: '700' },
-  divider: { height: 1, backgroundColor: colors.border.subtle, marginTop: spacing.sm, marginBottom: spacing.md },
-});

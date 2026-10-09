@@ -1,10 +1,10 @@
 import { FileText } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { Order } from '@/lib/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 interface OrderSummaryCardProps {
@@ -26,14 +26,25 @@ function SummaryRow({
   readonly tone?: 'warning';
 }) {
   return (
-    <View style={styles.row}>
-      <Text style={[styles.rowLabel, bold && styles.rowLabelBold]}>{label}</Text>
+    <View className="flex-row justify-between items-center">
       <Text
         style={[
-          styles.rowValue,
-          bold && styles.rowValueBold,
-          tone === 'warning' && { color: colors.feedback.warning, fontWeight: '700' },
-        ]}>
+          bold ? typography.bodyStrong : typography.bodySmall,
+          { color: bold ? colors.text.primary : colors.text.secondary },
+        ]}
+      >
+        {label}
+      </Text>
+      <Text
+        style={[
+          bold ? typography.bodyStrong : typography.bodySmall,
+          {
+            color: tone === 'warning' ? colors.feedback.warning : colors.text.primary,
+            fontWeight: bold || tone === 'warning' ? '700' : '400',
+            fontSize: bold ? 16 : undefined,
+          },
+        ]}
+      >
         {value}
       </Text>
     </View>
@@ -49,7 +60,13 @@ export function OrderSummaryCard({
   const { tr } = useTranslation();
 
   return (
-    <View style={styles.section}>
+    <View
+      className="p-4 rounded-2xl border gap-3"
+      style={{
+        backgroundColor: colors.bg.surface,
+        borderColor: colors.border.subtle,
+      }}
+    >
       {hasReturns && (
         <>
           <SummaryRow
@@ -57,13 +74,13 @@ export function OrderSummaryCard({
             value={`− ${returnedTotal.toLocaleString()} ${tr('common.som')}`}
             tone="warning"
           />
-          <View style={styles.divider} />
+          <View className="h-px" style={{ backgroundColor: colors.border.subtle }} />
         </>
       )}
       <SummaryRow label={tr('cart.subtotal')} value={`${order.subTotal.toLocaleString()} ${tr('common.som')}`} />
       <SummaryRow label={tr('cart.deliveryFee')} value={`${order.deliveryFee.toLocaleString()} ${tr('common.som')}`} />
       <SummaryRow label={tr('cart.distance')} value={`${order.distanceKm.toFixed(2)} km`} />
-      <View style={styles.divider} />
+      <View className="h-px" style={{ backgroundColor: colors.border.subtle }} />
       <SummaryRow
         label={hasReturns ? tr('orderDet.newTotalAfterReturn') : tr('cart.total')}
         value={`${order.total.toLocaleString()} ${tr('common.som')}`}
@@ -71,19 +88,33 @@ export function OrderSummaryCard({
       />
       {(order.paymentStatus === 'paid' || order.status === 'delivered') && (
         <>
-          <View style={styles.divider} />
+          <View className="h-px" style={{ backgroundColor: colors.border.subtle }} />
           <Pressable
-            style={styles.fiscalReceiptBtn}
+            className="flex-row items-center justify-between py-2 px-3 rounded-xl border"
+            style={{
+              backgroundColor: colors.brand.primarySurface,
+              borderColor: colors.brand.primaryBorder,
+            }}
             onPress={() => {
               haptics.selection();
               onOpenReceipt();
             }}>
-            <View style={styles.fiscalReceiptBtnLeft}>
+            <View className="flex-row items-center gap-2">
               <FileText size={18} color={colors.brand.primary} strokeWidth={2.4} />
-              <Text style={styles.fiscalReceiptBtnText}>{tr('fiscal.viewReceiptBtn')}</Text>
+              <Text style={[typography.bodyStrong, { color: colors.brand.primary }]}>
+                {tr('fiscal.viewReceiptBtn')}
+              </Text>
             </View>
-            <View style={styles.fiscalReceiptBtnTagWrap}>
-              <Text style={styles.fiscalReceiptBtnTag}>1% keshbek</Text>
+            <View
+              className="px-2 py-0.5 rounded-full border"
+              style={{
+                backgroundColor: colors.feedback.successSurface,
+                borderColor: colors.feedback.success,
+              }}
+            >
+              <Text className="text-[11px] font-extrabold" style={{ color: colors.feedback.success }}>
+                1% keshbek
+              </Text>
             </View>
           </Pressable>
         </>
@@ -91,42 +122,3 @@ export function OrderSummaryCard({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  section: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    gap: spacing.md,
-  },
-  divider: { height: 1, backgroundColor: colors.border.subtle },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rowLabel: { ...typography.bodySmall, color: colors.text.secondary },
-  rowLabelBold: { ...typography.bodyStrong, color: colors.text.primary },
-  rowValue: { ...typography.bodySmall, color: colors.text.primary },
-  rowValueBold: { ...typography.bodyStrong, fontSize: 16 },
-  fiscalReceiptBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.brand.primarySurface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-  },
-  fiscalReceiptBtnLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  fiscalReceiptBtnText: { ...typography.bodyStrong, color: colors.brand.primary },
-  fiscalReceiptBtnTagWrap: {
-    backgroundColor: colors.feedback.successSurface,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.feedback.success,
-  },
-  fiscalReceiptBtnTag: { ...typography.caption, fontSize: 11, fontWeight: '800', color: colors.feedback.success },
-});

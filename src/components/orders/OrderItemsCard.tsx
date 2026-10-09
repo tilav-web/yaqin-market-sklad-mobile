@@ -1,10 +1,10 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { resolveMedia } from '@/lib/api';
 import { OrderItem } from '@/lib/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, typography } from '@/theme';
 import { getLocalizedText } from '@/utils/text';
 
 interface OrderItemsCardProps {
@@ -16,55 +16,48 @@ export function OrderItemsCard({ items, hasReturns }: OrderItemsCardProps) {
   const { tr } = useTranslation();
 
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{tr('shop.products')}</Text>
+    <View
+      className="p-4 rounded-2xl border gap-3"
+      style={{
+        backgroundColor: colors.bg.surface,
+        borderColor: colors.border.subtle,
+      }}
+    >
+      <Text className="text-base font-bold" style={{ color: colors.text.primary }}>
+        {tr('shop.products')}
+      </Text>
       {items.map((it) => {
         const photo = it.productVariant?.globalProduct?.photos?.[0];
         return (
-          <View key={it.id} style={styles.itemRow}>
+          <View key={it.id} className="flex-row items-center gap-3">
             {photo ? (
-              <Image source={{ uri: resolveMedia(photo) }} style={styles.itemImage} />
+              <Image
+                source={{ uri: resolveMedia(photo) }}
+                className="w-12 h-12 rounded-xl"
+                style={{ backgroundColor: colors.bg.canvas }}
+              />
             ) : (
-              <View style={styles.itemImage} />
+              <View className="w-12 h-12 rounded-xl" style={{ backgroundColor: colors.bg.canvas }} />
             )}
-            <View style={{ flex: 1 }}>
-              <Text style={styles.itemName}>{getLocalizedText(it.productName)}</Text>
-              <Text style={styles.itemQty}>
+            <View className="flex-1">
+              <Text style={[typography.bodyStrong, { color: colors.text.primary }]}>
+                {getLocalizedText(it.productName)}
+              </Text>
+              <Text className="mt-0.5" style={[typography.caption, { color: colors.text.secondary }]}>
                 {it.quantity} × {it.unitPrice.toLocaleString()} {tr('common.som')}
               </Text>
               {hasReturns && it.returnedQuantity > 0 && (
-                <Text style={styles.returnedTag}>
+                <Text className="mt-0.5" style={[typography.caption, { color: colors.feedback.warning }]}>
                   {tr('orderDet.returnedCount', { n: it.returnedQuantity })}
                 </Text>
               )}
             </View>
-            <Text style={styles.itemTotal}>{it.lineTotal.toLocaleString()}</Text>
+            <Text style={[typography.bodyStrong, { color: colors.text.primary }]}>
+              {it.lineTotal.toLocaleString()}
+            </Text>
           </View>
         );
       })}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  section: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    gap: spacing.md,
-  },
-  sectionTitle: { ...typography.h3, fontSize: 16 },
-  itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  itemImage: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.md,
-    backgroundColor: colors.bg.canvas,
-  },
-  itemName: { ...typography.bodyStrong },
-  itemQty: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
-  returnedTag: { ...typography.caption, color: colors.feedback.warning, marginTop: 2 },
-  itemTotal: { ...typography.bodyStrong },
-});

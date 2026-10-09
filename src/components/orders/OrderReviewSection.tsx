@@ -1,10 +1,10 @@
 import { Star } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { OrderItem } from '@/lib/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 import { getLocalizedText } from '@/utils/text';
 
@@ -27,7 +27,7 @@ export function StarPicker({
   readonly onChange: (v: number) => void;
 }) {
   return (
-    <View style={styles.starRow}>
+    <View className="flex-row gap-1.5 my-1">
       {[1, 2, 3, 4, 5].map((i) => (
         <Pressable key={i} onPress={() => onChange(i)} hitSlop={4}>
           <Star
@@ -110,11 +110,21 @@ export function OrderReviewSection({
     <>
       {/* Products review */}
       {unreviewedItems.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{tr('orderDet.rateProducts')}</Text>
+        <View
+          className="p-4 rounded-2xl border gap-3"
+          style={{
+            backgroundColor: colors.bg.surface,
+            borderColor: colors.border.subtle,
+          }}
+        >
+          <Text className="text-base font-bold" style={{ color: colors.text.primary }}>
+            {tr('orderDet.rateProducts')}
+          </Text>
           {unreviewedItems.map((it) => (
-            <View key={it.id} style={styles.rateRow}>
-              <Text style={styles.rateName}>{getLocalizedText(it.productName)}</Text>
+            <View key={it.id} className="gap-1.5 pb-2">
+              <Text style={[typography.bodyStrong, { color: colors.text.primary }]}>
+                {getLocalizedText(it.productName)}
+              </Text>
               <StarPicker
                 value={ratingDraft[it.productVariantId] ?? 0}
                 onChange={(v) => {
@@ -124,7 +134,14 @@ export function OrderReviewSection({
               />
               {(ratingDraft[it.productVariantId] ?? 0) > 0 && (
                 <TextInput
-                  style={styles.reviewInput}
+                  className="border rounded-xl p-3 mt-1"
+                  style={[
+                    typography.body,
+                    {
+                      borderColor: colors.border.default,
+                      backgroundColor: colors.bg.canvas,
+                    },
+                  ]}
                   placeholder={tr('orderDet.reviewPlaceholder')}
                   placeholderTextColor={colors.text.hint}
                   value={reviewText[it.productVariantId] ?? ''}
@@ -137,13 +154,14 @@ export function OrderReviewSection({
           ))}
           {pendingRatings > 0 && (
             <Pressable
-              style={styles.primaryBtn}
+              className="h-12 rounded-2xl items-center justify-center mt-1"
+              style={{ backgroundColor: colors.brand.primary }}
               onPress={handleProductSubmit}
               disabled={productLoading}>
               {productLoading ? (
                 <ActivityIndicator color={colors.text.onPrimary} />
               ) : (
-                <Text style={styles.primaryBtnText}>
+                <Text style={[typography.button, { color: colors.text.onPrimary }]}>
                   {tr('orderDet.submitReviews', { n: pendingRatings })}
                 </Text>
               )}
@@ -152,12 +170,24 @@ export function OrderReviewSection({
         </View>
       )}
 
-      {allReviewed && <Text style={styles.allReviewed}>{tr('orderDet.allReviewed')}</Text>}
+      {allReviewed && (
+        <Text className="text-center" style={[typography.caption, { color: colors.text.tertiary }]}>
+          {tr('orderDet.allReviewed')}
+        </Text>
+      )}
 
       {/* Courier review */}
       {hasDeliveredCourier && !courierReviewed && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{tr('orderDet.rateCourier')}</Text>
+        <View
+          className="p-4 rounded-2xl border gap-3"
+          style={{
+            backgroundColor: colors.bg.surface,
+            borderColor: colors.border.subtle,
+          }}
+        >
+          <Text className="text-base font-bold" style={{ color: colors.text.primary }}>
+            {tr('orderDet.rateCourier')}
+          </Text>
           <StarPicker
             value={courierStars}
             onChange={(v) => {
@@ -167,13 +197,16 @@ export function OrderReviewSection({
           />
           {courierStars > 0 && (
             <Pressable
-              style={styles.primaryBtn}
+              className="h-12 rounded-2xl items-center justify-center mt-1"
+              style={{ backgroundColor: colors.brand.primary }}
               onPress={handleCourierSubmit}
               disabled={courierLoading}>
               {courierLoading ? (
                 <ActivityIndicator color={colors.text.onPrimary} />
               ) : (
-                <Text style={styles.primaryBtnText}>{tr('orderDet.submitRating')}</Text>
+                <Text style={[typography.button, { color: colors.text.onPrimary }]}>
+                  {tr('orderDet.submitRating')}
+                </Text>
               )}
             </Pressable>
           )}
@@ -182,8 +215,16 @@ export function OrderReviewSection({
 
       {/* Shop review */}
       {!shopReviewed && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{tr('orderDet.rateShop')}</Text>
+        <View
+          className="p-4 rounded-2xl border gap-3"
+          style={{
+            backgroundColor: colors.bg.surface,
+            borderColor: colors.border.subtle,
+          }}
+        >
+          <Text className="text-base font-bold" style={{ color: colors.text.primary }}>
+            {tr('orderDet.rateShop')}
+          </Text>
           <StarPicker
             value={shopStars}
             onChange={(v) => {
@@ -193,13 +234,16 @@ export function OrderReviewSection({
           />
           {shopStars > 0 && (
             <Pressable
-              style={styles.primaryBtn}
+              className="h-12 rounded-2xl items-center justify-center mt-1"
+              style={{ backgroundColor: colors.brand.primary }}
               onPress={handleShopSubmit}
               disabled={shopLoading}>
               {shopLoading ? (
                 <ActivityIndicator color={colors.text.onPrimary} />
               ) : (
-                <Text style={styles.primaryBtnText}>{tr('orderDet.submitRating')}</Text>
+                <Text style={[typography.button, { color: colors.text.onPrimary }]}>
+                  {tr('orderDet.submitRating')}
+                </Text>
               )}
             </Pressable>
           )}
@@ -208,37 +252,3 @@ export function OrderReviewSection({
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  section: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    gap: spacing.md,
-  },
-  sectionTitle: { ...typography.h3, fontSize: 16 },
-  rateRow: { gap: spacing.xs, paddingBottom: spacing.sm },
-  rateName: { ...typography.bodyStrong },
-  starRow: { flexDirection: 'row', gap: spacing.xs, marginVertical: 4 },
-  reviewInput: {
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    ...typography.body,
-    backgroundColor: colors.bg.canvas,
-    marginTop: 4,
-  },
-  primaryBtn: {
-    backgroundColor: colors.brand.primary,
-    height: 48,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.xs,
-  },
-  primaryBtnText: { ...typography.button, color: colors.text.onPrimary },
-  allReviewed: { ...typography.caption, color: colors.text.tertiary, textAlign: 'center' },
-});

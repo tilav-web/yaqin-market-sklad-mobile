@@ -1,10 +1,10 @@
 import { AlertCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { OrderComplaint } from '@/lib/types';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors, typography } from '@/theme';
 
 const COMPLAINT_REASONS = [
   { value: 'Mahsulot yetkazilmadi', labelKey: 'orderDet.complaintNotDelivered' },
@@ -51,25 +51,37 @@ export function OrderComplaintCard({
 
   if (complaint) {
     return (
-      <View style={[styles.section, styles.complaintCard]}>
-        <View style={styles.complaintHeader}>
+      <View
+        className="p-4 rounded-2xl border-[1.5px] gap-3"
+        style={{
+          backgroundColor: colors.bg.surface,
+          borderColor: colors.feedback.danger,
+        }}>
+        <View className="flex-row items-center gap-1.5">
           <AlertCircle size={16} color={colors.feedback.danger} strokeWidth={2.2} />
-          <Text style={styles.sectionTitle}>{tr('orderDet.complaintTitle')}</Text>
+          <Text className="text-base font-bold" style={{ color: colors.text.primary }}>
+            {tr('orderDet.complaintTitle')}
+          </Text>
         </View>
-        <Text style={styles.complaintReasonText}>"{complaint.reason}"</Text>
+        <Text className="italic" style={[typography.body, { color: colors.text.secondary }]}>
+          "{complaint.reason}"
+        </Text>
         <View
-          style={[
-            styles.complaintStatusBadge,
-            complaint.status === 'resolved'
-              ? styles.complaintStatusResolved
-              : styles.complaintStatusOpen,
-          ]}>
+          className="self-start px-3 py-1 rounded-full"
+          style={{
+            backgroundColor: complaint.status === 'resolved'
+              ? colors.feedback.successSurface
+              : colors.feedback.warningSurface,
+          }}>
           <Text
+            className="font-extrabold"
             style={[
-              styles.complaintStatusText,
-              complaint.status === 'resolved'
-                ? styles.complaintStatusTextResolved
-                : styles.complaintStatusTextOpen,
+              typography.caption,
+              {
+                color: complaint.status === 'resolved'
+                  ? colors.feedback.success
+                  : colors.feedback.warning,
+              },
             ]}>
             {complaint.status === 'resolved'
               ? tr('orderDet.complaintResolved')
@@ -77,7 +89,7 @@ export function OrderComplaintCard({
           </Text>
         </View>
         {complaint.resolvedAt && (
-          <Text style={styles.complaintMeta}>
+          <Text style={[typography.caption, { color: colors.text.tertiary }]}>
             {tr('orderDet.complaintResolvedAt', {
               date: new Date(complaint.resolvedAt).toLocaleDateString('uz-UZ'),
             })}
@@ -90,28 +102,47 @@ export function OrderComplaintCard({
   if (!canComplain) return null;
 
   return (
-    <View style={styles.section}>
+    <View
+      className="p-4 rounded-2xl border gap-3"
+      style={{
+        backgroundColor: colors.bg.surface,
+        borderColor: colors.border.subtle,
+      }}>
       {!open ? (
-        <Pressable style={styles.complaintOpenBtn} onPress={() => setOpen(true)}>
+        <Pressable
+          className="flex-row items-center justify-center gap-2 h-12 rounded-xl border-[1.5px]"
+          style={{
+            borderColor: colors.feedback.danger,
+            backgroundColor: colors.feedback.dangerSurface,
+          }}
+          onPress={() => setOpen(true)}>
           <AlertCircle size={16} color={colors.feedback.danger} strokeWidth={2.2} />
-          <Text style={styles.complaintOpenBtnText}>{tr('orderDet.fileComplaint')}</Text>
+          <Text style={[typography.buttonSmall, { color: colors.feedback.danger }]}>
+            {tr('orderDet.fileComplaint')}
+          </Text>
         </Pressable>
       ) : (
         <>
-          <Text style={styles.sectionTitle}>{tr('orderDet.complaintReasonTitle')}</Text>
-          <View style={styles.wrap}>
+          <Text className="text-base font-bold" style={{ color: colors.text.primary }}>
+            {tr('orderDet.complaintReasonTitle')}
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
             {COMPLAINT_REASONS.map((r) => (
               <Pressable
                 key={r.value}
                 onPress={() => setReason(r.value)}
-                style={[
-                  styles.reasonChip,
-                  reason === r.value && styles.reasonChipActive,
-                ]}>
+                className="px-3 py-2 rounded-full border"
+                style={{
+                  borderColor: reason === r.value ? colors.brand.primary : colors.border.default,
+                  backgroundColor: reason === r.value ? colors.brand.primarySurface : colors.bg.surface,
+                }}>
                 <Text
                   style={[
-                    styles.reasonChipText,
-                    reason === r.value && styles.reasonChipTextActive,
+                    typography.bodySmall,
+                    {
+                      color: reason === r.value ? colors.brand.primary : colors.text.secondary,
+                      fontWeight: reason === r.value ? '700' : '400',
+                    },
                   ]}>
                   {tr(r.labelKey)}
                 </Text>
@@ -120,7 +151,14 @@ export function OrderComplaintCard({
           </View>
           {reason === 'Boshqa' && (
             <TextInput
-              style={styles.reviewInput}
+              className="border rounded-xl p-3"
+              style={[
+                typography.body,
+                {
+                  borderColor: colors.border.default,
+                  backgroundColor: colors.bg.canvas,
+                },
+              ]}
               placeholder={tr('orderDet.writeReason')}
               placeholderTextColor={colors.text.hint}
               value={customReason}
@@ -128,36 +166,49 @@ export function OrderComplaintCard({
             />
           )}
           <TextInput
-            style={[styles.reviewInput, styles.complaintTextarea]}
+            className="border rounded-xl p-3 h-18"
+            style={[
+              typography.body,
+              {
+                borderColor: colors.border.default,
+                backgroundColor: colors.bg.canvas,
+                textAlignVertical: 'top',
+              },
+            ]}
             placeholder={tr('orderDet.extraNotePlaceholder')}
             placeholderTextColor={colors.text.hint}
             value={desc}
             onChangeText={setDesc}
             multiline
           />
-          <View style={styles.complaintActions}>
+          <View className="flex-row gap-2 mt-1">
             <Pressable
-              style={styles.ghostBtn}
+              className="h-12 px-4 rounded-xl items-center justify-center border"
+              style={{ borderColor: colors.border.default }}
               onPress={() => {
                 setOpen(false);
                 setReason('');
                 setCustomReason('');
                 setDesc('');
               }}>
-              <Text style={styles.ghostBtnText}>{tr('common.cancel')}</Text>
+              <Text style={[typography.button, { color: colors.text.secondary }]}>
+                {tr('common.cancel')}
+              </Text>
             </Pressable>
             <Pressable
-              style={[
-                styles.primaryBtn,
-                { flex: 1 },
-                !canSubmit && styles.primaryBtnDisabled,
-              ]}
+              className="flex-1 h-12 rounded-xl items-center justify-center"
+              style={{
+                backgroundColor: colors.brand.primary,
+                opacity: !canSubmit ? 0.5 : 1,
+              }}
               disabled={!canSubmit || loading}
               onPress={handleSubmit}>
               {loading ? (
                 <ActivityIndicator color={colors.text.onPrimary} />
               ) : (
-                <Text style={styles.primaryBtnText}>{tr('orderDet.send')}</Text>
+                <Text style={[typography.button, { color: colors.text.onPrimary }]}>
+                  {tr('orderDet.send')}
+                </Text>
               )}
             </Pressable>
           </View>
@@ -166,86 +217,3 @@ export function OrderComplaintCard({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  section: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    gap: spacing.md,
-  },
-  sectionTitle: { ...typography.h3, fontSize: 16 },
-  complaintCard: { borderColor: colors.feedback.danger, borderWidth: 1.5 },
-  complaintHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  complaintReasonText: { ...typography.body, color: colors.text.secondary, fontStyle: 'italic' },
-  complaintStatusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.md,
-    paddingVertical: 4,
-    borderRadius: radius.full,
-  },
-  complaintStatusOpen: { backgroundColor: colors.feedback.warningSurface },
-  complaintStatusResolved: { backgroundColor: colors.feedback.successSurface },
-  complaintStatusText: { ...typography.caption, fontWeight: '800' },
-  complaintStatusTextOpen: { color: colors.feedback.warning },
-  complaintStatusTextResolved: { color: colors.feedback.success },
-  complaintMeta: { ...typography.caption, color: colors.text.tertiary },
-  complaintOpenBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    height: layout.buttonHeight.md,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.feedback.danger,
-    backgroundColor: colors.feedback.dangerSurface,
-  },
-  complaintOpenBtnText: { ...typography.buttonSmall, color: colors.feedback.danger },
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  reasonChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    backgroundColor: colors.bg.surface,
-  },
-  reasonChipActive: {
-    borderColor: colors.brand.primary,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  reasonChipText: { ...typography.bodySmall, color: colors.text.secondary },
-  reasonChipTextActive: { color: colors.brand.primary, fontWeight: '700' },
-  reviewInput: {
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    ...typography.body,
-    backgroundColor: colors.bg.canvas,
-  },
-  complaintTextarea: { height: 72, textAlignVertical: 'top' },
-  complaintActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
-  ghostBtn: {
-    height: 48,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  ghostBtnText: { ...typography.button, color: colors.text.secondary },
-  primaryBtn: {
-    backgroundColor: colors.brand.primary,
-    height: 48,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryBtnDisabled: { opacity: 0.5 },
-  primaryBtnText: { ...typography.button, color: colors.text.onPrimary },
-});

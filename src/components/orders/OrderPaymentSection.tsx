@@ -1,14 +1,14 @@
 import * as WebBrowser from 'expo-web-browser';
 import { AlertCircle, Banknote, CreditCard } from 'lucide-react-native';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { CardVisual } from '@/components/CardVisual';
 import { Button } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { Order, SavedCard } from '@/lib/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, typography } from '@/theme';
 import { detectCardBrand } from '@/utils/cardBrand';
 
 interface OrderPaymentSectionProps {
@@ -48,10 +48,18 @@ export function OrderPaymentSection({
     <>
       {/* Switch cash <-> card any time before payment actually succeeds */}
       {canChangePayment && (
-        <View style={styles.paymentSwitchRow}>
-          <Text style={styles.paymentSwitchLabel}>{tr('checkout.paymentTitle')}</Text>
-          <View style={styles.paymentSwitchOptions}>
-            <View style={styles.paymentOption}>
+        <View
+          className="p-3 rounded-2xl border gap-2"
+          style={{
+            backgroundColor: colors.bg.surface,
+            borderColor: colors.border.subtle,
+          }}
+        >
+          <Text style={[typography.bodyStrong, { color: colors.text.secondary }]}>
+            {tr('checkout.paymentTitle')}
+          </Text>
+          <View className="flex-row gap-2">
+            <View className="flex-1">
               <Button
                 label={tr('checkout.cash')}
                 leftIcon={Banknote}
@@ -61,7 +69,7 @@ export function OrderPaymentSection({
                 onPress={() => onChangePaymentMethod('cash')}
               />
             </View>
-            <View style={styles.paymentOption}>
+            <View className="flex-1">
               <Button
                 label={tr('checkout.cardPayment')}
                 leftIcon={CreditCard}
@@ -77,24 +85,39 @@ export function OrderPaymentSection({
 
       {/* Failed charge banner */}
       {order.paymentMethod === 'click_online' && order.paymentStatus === 'failed' && (
-        <View style={styles.failedBadge}>
+        <View
+          className="flex-row items-center gap-2 rounded-xl px-3 py-2 border"
+          style={{
+            backgroundColor: colors.feedback.dangerSurface,
+            borderColor: colors.feedback.danger,
+          }}
+        >
           <AlertCircle size={16} color={colors.feedback.danger} strokeWidth={2.2} />
-          <Text style={styles.failedBadgeText}>{tr('checkout.paymentFailedBadge')}</Text>
+          <Text className="font-bold" style={[typography.bodySmall, { color: colors.feedback.danger }]}>
+            {tr('checkout.paymentFailedBadge')}
+          </Text>
         </View>
       )}
 
       {/* Saved cards retry */}
       {isOnlinePendingOrFailed &&
         activeCards.map((card) => (
-          <View key={card.id} style={styles.savedCardRow}>
-            <View style={styles.savedCardInfo}>
+          <View
+            key={card.id}
+            className="flex-row items-center justify-between p-3 rounded-2xl border"
+            style={{
+              backgroundColor: colors.bg.surface,
+              borderColor: colors.border.subtle,
+            }}
+          >
+            <View className="flex-row items-center gap-3 flex-1">
               <CardVisual
                 size="mini"
                 brand={detectCardBrand(card.cardNumberMasked ?? '')}
                 numberText={card.cardNumberMasked ?? '••••'}
                 fallbackLabel={tr('cards.genericName')}
               />
-              <Text style={styles.savedCardNumber} numberOfLines={1}>
+              <Text className="text-[15px]" style={[typography.bodyStrong, { color: colors.text.primary }]} numberOfLines={1}>
                 {card.cardNumberMasked ?? '••••'}
               </Text>
             </View>
@@ -128,58 +151,18 @@ export function OrderPaymentSection({
       )}
 
       {order.paymentMethod === 'click_online' && order.paymentStatus === 'paid' && !order.refundedAt && (
-        <View style={styles.paidBadge}>
-          <Text style={styles.paidBadgeText}>{tr('checkout.paidBadge')}</Text>
+        <View
+          className="rounded-xl py-2 px-3 items-center border"
+          style={{
+            backgroundColor: colors.feedback.successSurface,
+            borderColor: colors.feedback.success,
+          }}
+        >
+          <Text className="font-bold" style={[typography.bodySmall, { color: colors.feedback.success }]}>
+            {tr('checkout.paidBadge')}
+          </Text>
         </View>
       )}
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  paymentSwitchRow: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    gap: spacing.sm,
-  },
-  paymentSwitchLabel: { ...typography.bodyStrong, color: colors.text.secondary },
-  paymentSwitchOptions: { flexDirection: 'row', gap: spacing.sm },
-  paymentOption: { flex: 1 },
-  failedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.feedback.dangerSurface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.feedback.danger,
-  },
-  failedBadgeText: { ...typography.bodySmall, color: colors.feedback.danger, fontWeight: '700' },
-  savedCardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.bg.surface,
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  savedCardInfo: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 },
-  savedCardNumber: { ...typography.bodyStrong, fontSize: 15 },
-  paidBadge: {
-    backgroundColor: colors.feedback.successSurface,
-    borderRadius: radius.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.feedback.success,
-  },
-  paidBadgeText: { ...typography.bodySmall, color: colors.feedback.success, fontWeight: '700' },
-});

@@ -1,9 +1,9 @@
 import { RotateCcw } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, typography } from '@/theme';
 
 interface OrderReturnReasonCardProps {
   returnReason?: string | null;
@@ -30,18 +30,31 @@ export function OrderReturnReasonCard({
   };
 
   return (
-    <View style={styles.section}>
-      <View style={styles.returnHeader}>
+    <View
+      className="p-4 rounded-2xl border gap-3"
+      style={{
+        backgroundColor: colors.bg.surface,
+        borderColor: colors.border.subtle,
+      }}
+    >
+      <View className="flex-row items-center gap-1.5">
         <RotateCcw size={16} color={colors.feedback.warning} strokeWidth={2.4} />
-        <Text style={styles.sectionTitle}>{tr('orderDet.returnedTitle')}</Text>
+        <Text className="text-base font-bold" style={{ color: colors.text.primary }}>
+          {tr('orderDet.returnedTitle')}
+        </Text>
       </View>
       {returnReason ? (
-        <Text style={styles.reasonSaved}>"{returnReason}"</Text>
+        <Text className="italic" style={[typography.body, { color: colors.text.secondary }]}>
+          "{returnReason}"
+        </Text>
       ) : (
         <>
-          <Text style={styles.reasonHint}>{tr('orderDet.returnReasonHint')}</Text>
+          <Text style={[typography.bodySmall, { color: colors.text.secondary }]}>
+            {tr('orderDet.returnReasonHint')}
+          </Text>
           <TextInput
-            style={styles.reviewInput}
+            className="border rounded-xl p-3"
+            style={[typography.body, { borderColor: colors.border.default, backgroundColor: colors.bg.canvas }]}
             placeholder={tr('orderDet.returnReasonPlaceholder')}
             placeholderTextColor={colors.text.hint}
             value={draft}
@@ -50,13 +63,16 @@ export function OrderReturnReasonCard({
           />
           {draft.trim().length > 0 && (
             <Pressable
-              style={styles.primaryBtn}
+              className="h-12 rounded-2xl items-center justify-center"
+              style={{ backgroundColor: colors.brand.primary }}
               onPress={handleSubmit}
               disabled={loading}>
               {loading ? (
                 <ActivityIndicator color={colors.text.onPrimary} />
               ) : (
-                <Text style={styles.primaryBtnText}>{tr('orderDet.saveReason')}</Text>
+                <Text style={[typography.button, { color: colors.text.onPrimary }]}>
+                  {tr('orderDet.saveReason')}
+                </Text>
               )}
             </Pressable>
           )}
@@ -65,34 +81,3 @@ export function OrderReturnReasonCard({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  section: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    gap: spacing.md,
-  },
-  returnHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  sectionTitle: { ...typography.h3, fontSize: 16 },
-  reasonSaved: { ...typography.body, color: colors.text.secondary, fontStyle: 'italic' },
-  reasonHint: { ...typography.bodySmall, color: colors.text.secondary },
-  reviewInput: {
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    ...typography.body,
-    backgroundColor: colors.bg.canvas,
-  },
-  primaryBtn: {
-    backgroundColor: colors.brand.primary,
-    height: 48,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryBtnText: { ...typography.button, color: colors.text.onPrimary },
-});
