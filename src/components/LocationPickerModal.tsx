@@ -6,7 +6,6 @@ import {
   Animated,
   Modal,
   Pressable,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -16,14 +15,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PILOT_CITY_CENTER } from '@/constants/geo';
 import { useTranslation } from '@/i18n';
 import { captureEvidence, LocationEvidencePayload, toEvidence } from '@/lib/location-evidence';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { colors, shadow, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 export interface PickedLocation {
   latitude: number;
   longitude: number;
   address: string;
-  /** Device fix captured while the picker was open (anti-fraud) — best-effort, may be absent. */
   evidence?: LocationEvidencePayload;
 }
 
@@ -34,8 +32,6 @@ interface Props {
   readonly onConfirm: (result: PickedLocation) => void;
 }
 
-// GPS-denied/unavailable fallback — see constants/geo.ts for why this is a
-// single-city (Qarshi pilot) hardcode rather than a config value.
 const FALLBACK = PILOT_CITY_CENTER;
 
 function formatGeocode(parts: Location.LocationGeocodedAddress | undefined): string {
@@ -46,18 +42,13 @@ function formatGeocode(parts: Location.LocationGeocodedAddress | undefined): str
     parts.district,
     parts.city ?? parts.subregion,
   ].filter((s): s is string => !!s && s.trim().length > 0);
-  // De-dupe adjacent repeats (geocoder sometimes returns city == subregion).
   const seen = new Set<string>();
   const unique = segments.filter((s) => (seen.has(s) ? false : (seen.add(s), true)));
   return unique.join(', ');
 }
 
 /**
- * Full-screen map picker. A pin stays fixed at the screen center while the map
- * pans beneath it; whatever sits under the pin is the chosen point. The address
- * label is reverse-geocoded (debounced) after each pan settles. The pin lifts
- * off the map while panning and drops back down on release — mirrors the
- * Yandex/Google Maps "drag to pin a spot" feel.
+ * Full-screen map picker with NativeWind.
  */
 export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: Props) {
   const { tr } = useTranslation();
@@ -69,13 +60,8 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mapRef = useRef<MapView>(null);
   const [lift] = useState(() => new Animated.Value(0));
-  // Passive device-fix captured while the picker is open — surfaces even if
-  // the customer never taps "my location". Never blocks/warns; anti-fraud
-  // evidence only, see LocationPickerModal's caller for where it's sent.
   const deviceFixRef = useRef<LocationEvidencePayload | null>(null);
 
-  // Reset to the starting point whenever the modal (re)opens — during render,
-  // so the map never opens on the previously picked spot for a frame.
   const [syncedVisible, setSyncedVisible] = useState<boolean | null>(null);
   if (syncedVisible !== visible) {
     setSyncedVisible(visible);
@@ -125,8 +111,6 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return;
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      // A deliberate "use my location" tap is a stronger signal than the
-      // passive on-open capture — overwrite it.
       deviceFixRef.current = toEvidence(pos, 'foreground');
       haptics.selection();
       mapRef.current?.animateToRegion(
@@ -139,7 +123,7 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
         450,
       );
     } catch {
-      // GPS unavailable/denied — the map simply stays put.
+      // GPS unavailable
     } finally {
       setLocating(false);
     }
@@ -162,10 +146,10 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onCancel}>
-      <View style={styles.fill}>
+      <View className="flex-1">
         <MapView
           ref={mapRef}
-          style={styles.fill}
+          className="flex-1"
           provider={PROVIDER_GOOGLE}
           initialRegion={{
             latitude: start.latitude,
@@ -179,33 +163,51 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
           showsMyLocationButton={false}
         />
 
-        {/* Fixed center pin (sits visually above the map's center point). Lifts
-            off the map while panning, drops back down on release. */}
-        <View pointerEvents="none" style={styles.pinWrap}>
+        {/* Fixed center pin */}
+        <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
           <Animated.View style={{ transform: [{ translateY: pinTranslateY }, { scale: pinScale }] }}>
-            <View style={styles.pinShadow}>
+            <View style={shadow.md}>
               <MapPin size={46} color={colors.brand.primary} strokeWidth={2.3} fill={colors.brand.primarySurface} />
             </View>
           </Animated.View>
           <Animated.View
-            style={[styles.groundShadow, { opacity: groundOpacity, transform: [{ scaleX: groundScale }] }]}
+            className="w-4 h-1.5 rounded-full bg-black -mt-1"
+            style={[
+              {
+                opacity: groundOpacity,
+                transform: [{ scaleX: groundScale }],
+              },
+            ]}
           />
         </View>
 
         {/* Top bar */}
-        <SafeAreaView edges={['top']} style={styles.topBar} pointerEvents="box-none">
-          <Pressable style={styles.closeBtn} onPress={onCancel} hitSlop={8}>
+        <SafeAreaView edges={['top']} className="absolute top-0 inset-x-0 flex-row items-center gap-2 px-4 pt-2" pointerEvents="box-none">
+          <Pressable
+            className="w-10 h-10 rounded-full items-center justify-center"
+            style={[{ backgroundColor: colors.bg.surface }, shadow.md]}
+            onPress={onCancel}
+            hitSlop={8}
+          >
             <X size={22} color={colors.text.primary} strokeWidth={2.4} />
           </Pressable>
-          <View style={styles.topHint}>
-            <Text style={styles.topHintText} numberOfLines={1}>
+          <View
+            className="flex-1 rounded-full px-3 py-2"
+            style={[{ backgroundColor: colors.bg.surface }, shadow.md]}
+          >
+            <Text className="text-xs" style={{ color: colors.text.secondary }} numberOfLines={1}>
               {tr('locpicker.dragHint')}
             </Text>
           </View>
         </SafeAreaView>
 
-        {/* Floating "use my current location" button. */}
-        <Pressable style={styles.locateBtn} onPress={recenterToMyLocation} hitSlop={8}>
+        {/* Floating "use my current location" button */}
+        <Pressable
+          className="absolute right-4 bottom-52 w-12 h-12 rounded-full items-center justify-center"
+          style={[{ backgroundColor: colors.bg.surface }, shadow.md]}
+          onPress={recenterToMyLocation}
+          hitSlop={8}
+        >
           {locating ? (
             <ActivityIndicator size="small" color={colors.brand.primary} />
           ) : (
@@ -214,23 +216,32 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
         </Pressable>
 
         {/* Bottom confirmation card */}
-        <SafeAreaView edges={['bottom']} style={styles.bottom} pointerEvents="box-none">
-          <View style={styles.card}>
-            <View style={styles.addrRow}>
+        <SafeAreaView edges={['bottom']} className="absolute inset-x-0 bottom-0" pointerEvents="box-none">
+          <View
+            className="m-4 rounded-3xl p-4 gap-3"
+            style={[{ backgroundColor: colors.bg.surface }, shadow.lg]}
+          >
+            <View className="flex-row items-center gap-2">
               <MapPin size={18} color={colors.brand.primary} strokeWidth={2.4} />
-              <View style={{ flex: 1 }}>
+              <View className="flex-1">
                 {geocoding ? (
-                  <Text style={styles.addrText}>{tr('locpicker.detecting')}</Text>
+                  <Text style={[typography.body, { color: colors.text.primary }]}>{tr('locpicker.detecting')}</Text>
                 ) : (
-                  <Text style={styles.addrText} numberOfLines={2}>
+                  <Text className="font-semibold" style={[typography.body, { color: colors.text.primary }]} numberOfLines={2}>
                     {addressLabel || tr('locpicker.selectedPoint')}
                   </Text>
                 )}
               </View>
             </View>
-            <Pressable style={styles.confirmBtn} onPress={handleConfirm}>
+            <Pressable
+              className="flex-row items-center justify-center gap-2 h-12 rounded-2xl"
+              style={{ backgroundColor: colors.brand.primary }}
+              onPress={handleConfirm}
+            >
               <Check size={18} color={colors.text.onPrimary} strokeWidth={2.6} />
-              <Text style={styles.confirmText}>{tr('locpicker.confirm')}</Text>
+              <Text className="font-bold" style={[typography.body, { color: colors.text.onPrimary }]}>
+                {tr('locpicker.confirm')}
+              </Text>
             </Pressable>
           </View>
         </SafeAreaView>
@@ -238,95 +249,3 @@ export function LocationPickerModal({ visible, initial, onCancel, onConfirm }: P
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  fill: { flex: 1 },
-  pinWrap: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pinShadow: {
-    ...shadow.md,
-  },
-  // Sits at the true center point (the pin's tip lifts above it); shrinks and
-  // fades while the pin is lifted, mimicking a dropped shadow gaining distance.
-  groundShadow: {
-    width: 16,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.palette.black,
-    marginTop: -4,
-  },
-  topBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.sm,
-  },
-  closeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadow.md,
-  },
-  topHint: {
-    flex: 1,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    ...shadow.md,
-  },
-  topHintText: { ...typography.caption, color: colors.text.secondary },
-  locateBtn: {
-    position: 'absolute',
-    right: layout.screenPadding,
-    bottom: 200,
-    width: 48,
-    height: 48,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadow.md,
-  },
-  bottom: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  card: {
-    margin: layout.screenPadding,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadow.lg,
-  },
-  addrRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  addrText: { ...typography.body, fontWeight: '600', color: colors.text.primary },
-  confirmBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.brand.primary,
-    height: layout.buttonHeight.md,
-    borderRadius: radius.lg,
-  },
-  confirmText: { ...typography.body, fontWeight: '700', color: colors.text.onPrimary },
-});

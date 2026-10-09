@@ -3,7 +3,6 @@ import {
   FlatList,
   NativeScrollEvent,
   NativeSyntheticEvent,
-  StyleSheet,
   View,
 } from 'react-native';
 
@@ -11,7 +10,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MAP_CARD_GAP, MAP_CARD_WIDTH, MapShopCard } from '@/components/MapShopCard';
 import { PublicShop } from '@/lib/types';
-import { layout, spacing } from '@/theme';
 
 interface Props {
   readonly shops: PublicShop[];
@@ -33,7 +31,7 @@ export const MapShopCarousel = React.memo(function MapShopCarousel({
   const flatListRef = useRef<FlatList<PublicShop>>(null);
   const isScrollingByCode = useRef(false);
 
-  // When selectedId changes externally (e.g. user tapped a map pin), scroll carousel to that card
+  // When selectedId changes externally, scroll carousel to that card
   useEffect(() => {
     if (!selectedId || shops.length === 0) return;
     const index = shops.findIndex((s) => s.id === selectedId);
@@ -72,7 +70,7 @@ export const MapShopCarousel = React.memo(function MapShopCarousel({
   if (shops.length === 0) return null;
 
   return (
-    <View style={[styles.container, { bottom: bottomOffset }]} pointerEvents="box-none">
+    <View className="absolute inset-x-0" style={{ bottom: bottomOffset }} pointerEvents="box-none">
       <FlatList
         ref={flatListRef}
         data={shops}
@@ -82,7 +80,7 @@ export const MapShopCarousel = React.memo(function MapShopCarousel({
         snapToInterval={ITEM_SIZE}
         snapToAlignment="center"
         decelerationRate="fast"
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 4 }}
         onMomentumScrollEnd={handleMomentumScrollEnd}
         getItemLayout={(_data, index) => ({
           length: ITEM_SIZE,
@@ -110,17 +108,4 @@ export const MapShopCarousel = React.memo(function MapShopCarousel({
       />
     </View>
   );
-});
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 24,
-  },
-  contentContainer: {
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.xs,
-  },
 });

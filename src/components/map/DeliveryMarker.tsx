@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Marker } from 'react-native-maps';
 
-import { colors, radius, shadow, spacing, typography } from '@/theme';
+import { colors, shadow } from '@/theme';
 
 interface DeliveryMarkerProps {
   latitude: number;
   longitude: number;
   label: string;
 }
+
+const DELIVERY = colors.feedback.info;
 
 export function DeliveryMarker({ latitude, longitude, label }: DeliveryMarkerProps) {
   const text = label.length > 10 ? label.slice(0, 10) : label;
@@ -28,45 +30,36 @@ export function DeliveryMarker({ latitude, longitude, label }: DeliveryMarkerPro
       anchor={{ x: 0.5, y: 1 }}
       zIndex={999}
     >
-      <View style={styles.wrap}>
-        <View style={styles.labelPill}>
-          <Text style={styles.labelText} allowFontScaling={false}>
+      <View className="items-center">
+        <View
+          className="px-3 py-1 rounded-full border-2"
+          style={[
+            {
+              backgroundColor: DELIVERY,
+              borderColor: colors.bg.surface,
+            },
+            shadow.md,
+          ]}
+        >
+          <Text
+            className="text-[13px] font-extrabold text-white"
+            allowFontScaling={false}
+          >
             {text}
           </Text>
         </View>
-        <View style={styles.tail} />
+        <View
+          className="-mt-0.25 w-0 h-0"
+          style={{
+            borderLeftWidth: 6,
+            borderRightWidth: 6,
+            borderTopWidth: 8,
+            borderLeftColor: 'transparent',
+            borderRightColor: 'transparent',
+            borderTopColor: DELIVERY,
+          }}
+        />
       </View>
     </Marker>
   );
 }
-
-const DELIVERY = colors.feedback.info;
-const styles = StyleSheet.create({
-  wrap: { alignItems: 'center' },
-  labelPill: {
-    backgroundColor: DELIVERY,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 5,
-    borderRadius: radius.full,
-    borderWidth: 2,
-    borderColor: colors.bg.surface,
-    ...shadow.md,
-  },
-  labelText: {
-    ...typography.caption,
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.text.onPrimary,
-  },
-  tail: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 8,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: DELIVERY,
-    marginTop: -1,
-  },
-});

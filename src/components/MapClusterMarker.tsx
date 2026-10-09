@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Marker } from 'react-native-maps';
 
 import { PublicShop } from '@/lib/types';
@@ -47,16 +47,23 @@ export const MapClusterMarker = React.memo(function MapClusterMarker({
         onPress(shops, latitude, longitude, expansionZoom);
       }}
       zIndex={hasPrime ? 80 : 50}>
-      {/* Fixed generous container prevents clipping on Android bitmap rasterizer */}
-      <View style={styles.fixedContainer}>
+      <View className="w-14 h-14 items-center justify-center">
         <View
+          className={`items-center justify-center ${
+            isLarge ? 'w-11 h-11 rounded-full border-[3px]' : 'w-9.5 h-9.5 rounded-full border-[2.6px]'
+          }`}
           style={[
-            styles.badge,
-            isLarge && styles.badgeLarge,
-            hasPrime && styles.badgePrime,
+            {
+              backgroundColor: hasPrime ? '#0F172A' : colors.brand.primary,
+              borderColor: hasPrime ? '#F59E0B' : '#FFFFFF',
+            },
+            hasPrime ? shadow.lg : shadow.md,
           ]}>
           <Text
-            style={[styles.countText, isLarge && styles.countTextLarge, hasPrime && styles.countTextPrime]}
+            className={`font-black text-center ${
+              isLarge ? 'text-[15px]' : 'text-sm'
+            }`}
+            style={{ color: hasPrime ? '#FEF3C7' : '#FFFFFF' }}
             allowFontScaling={false}>
             {count}
           </Text>
@@ -64,49 +71,4 @@ export const MapClusterMarker = React.memo(function MapClusterMarker({
       </View>
     </Marker>
   );
-});
-
-const styles = StyleSheet.create({
-  fixedContainer: {
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badge: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2.6,
-    borderColor: '#FFFFFF',
-    ...shadow.md,
-  },
-  badgeLarge: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 3,
-  },
-  badgePrime: {
-    backgroundColor: '#0F172A',
-    borderColor: '#F59E0B',
-    borderWidth: 2.6,
-    ...shadow.lg,
-  },
-  countText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '900',
-    textAlign: 'center',
-    includeFontPadding: false,
-  },
-  countTextLarge: {
-    fontSize: 15,
-  },
-  countTextPrime: {
-    color: '#FEF3C7',
-  },
 });

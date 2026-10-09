@@ -8,7 +8,7 @@ import {
   UtensilsCrossed,
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { Marker } from 'react-native-maps';
 import Svg, { Circle, Path } from 'react-native-svg';
 
@@ -27,9 +27,6 @@ interface CategoryConfig {
   icon: React.ReactNode;
 }
 
-/**
- * Returns category color & icon based on shop name keywords.
- */
 function getCategoryConfig(name: string, isPrime: boolean, closed: boolean): CategoryConfig {
   const size = 18;
   const color = '#FFFFFF';
@@ -51,58 +48,50 @@ function getCategoryConfig(name: string, isPrime: boolean, closed: boolean): Cat
 
   const lower = name.toLowerCase();
 
-  // Food / Cafe / Fast-food / Meat / Restaurant
   if (/go['’`]?sht|osh|kabob|burger|lavash|kafe|restoran|somsa|pizza|choyxona|shashlik|tandir/.test(lower)) {
     return {
-      bg: '#E11D48', // Vibrant Crimson
+      bg: '#E11D48',
       icon: <UtensilsCrossed size={size} color={color} strokeWidth={strokeWidth} />,
     };
   }
 
-  // Bakery / Pastry
   if (/non|novvoy|shirinlik|tort|pechenye|bakery|patir|pishiriq/.test(lower)) {
     return {
-      bg: '#D97706', // Warm Amber Gold
+      bg: '#D97706',
       icon: <Croissant size={size} color={color} strokeWidth={strokeWidth} />,
     };
   }
 
-  // Pharmacy / Medical
   if (/dori|shifo|apteka|farm|tib|med/.test(lower)) {
     return {
-      bg: '#0284C7', // Medical Sky Blue
+      bg: '#0284C7',
       icon: <Pill size={size} color={color} strokeWidth={strokeWidth} />,
     };
   }
 
-  // Fruits / Organic / Green
   if (/meva|sabzavot|bog['’`]?|mevazor|poliz|chashma|organik|green/.test(lower)) {
     return {
-      bg: '#059669', // Fresh Emerald Green
+      bg: '#059669',
       icon: <Apple size={size} color={color} strokeWidth={strokeWidth} />,
     };
   }
 
-  // Supermarket / Store
   if (/super|market|bozor|savdo|store|minimarket|hyper/.test(lower)) {
     return {
-      bg: '#2563EB', // Royal Blue
+      bg: '#2563EB',
       icon: <ShoppingBag size={size} color={color} strokeWidth={strokeWidth} />,
     };
   }
 
   return {
-    bg: colors.brand.primary, // Brand Primary Blue
+    bg: colors.brand.primary,
     icon: <Store size={size} color={color} strokeWidth={strokeWidth} />,
   };
 }
 
-// Vector Teardrop Pin Path in 42x50 canvas:
-// Circle center: (21, 19), radius: 17. Needle tip: (21, 48).
 const PIN_PATH = 'M 21 48 C 13.5 36.5 4 28.5 4 19 A 17 17 0 1 1 38 19 C 38 28.5 28.5 36.5 21 48 Z';
 
 function MapShopMarkerComponent({ shop, selected, onPress }: Props) {
-  // Allow initial render snapshot on Android, then freeze to keep 60 FPS
   const [tracks, setTracks] = useState(true);
 
   useEffect(() => {
@@ -121,7 +110,6 @@ function MapShopMarkerComponent({ shop, selected, onPress }: Props) {
   const isFreeDelivery = (shop.deliveryFeeAtUser ?? 0) === 0 && shop.isDeliveryEnabled !== false && !closed;
   const config = getCategoryConfig(shop.name, isPrime, closed);
 
-  // Selected pins get a bold dark outline and elevated zIndex
   const strokeColor = selected ? '#0F172A' : isPrime ? '#F59E0B' : '#FFFFFF';
   const strokeWidth = selected ? 3.2 : 2.2;
 
@@ -136,22 +124,16 @@ function MapShopMarkerComponent({ shop, selected, onPress }: Props) {
         onPress();
       }}
       zIndex={selected ? 999 : isPrime ? 120 : closed ? 10 : 40}>
-      {/* 
-        Constant fixed-size container (44x52):
-        Because the container size NEVER changes when selected, Android Google Maps
-        native texture never clips or resizes awkwardly.
-      */}
-      <View style={styles.markerBox}>
+      <View
+        className="w-11 h-13 items-center justify-center relative"
+        style={shadow.md}>
         <Svg width={42} height={50} viewBox="0 0 42 50">
-          {/* Main Pin Teardrop */}
           <Path
             d={PIN_PATH}
             fill={config.bg}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
           />
-
-          {/* Integrated Free Delivery Dot (never clipped outside viewBox) */}
           {isFreeDelivery && !selected && !isPrime && (
             <Circle
               cx={34}
@@ -164,8 +146,7 @@ function MapShopMarkerComponent({ shop, selected, onPress }: Props) {
           )}
         </Svg>
 
-        {/* Spacious, perfectly centered category icon */}
-        <View style={styles.iconContainer} pointerEvents="none">
+        <View className="absolute top-2.25 left-3 w-5 h-5 items-center justify-center" pointerEvents="none">
           {config.icon}
         </View>
       </View>
@@ -184,25 +165,3 @@ export const MapShopMarker = React.memo(
     prev.shop.ratingAverage === next.shop.ratingAverage &&
     prev.shop.deliveryFeeAtUser === next.shop.deliveryFeeAtUser,
 );
-
-const styles = StyleSheet.create({
-  // Fixed bounds: 100% constant layout ensures Android native Bitmap never clips
-  markerBox: {
-    width: 44,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    ...shadow.md,
-  },
-  // Aligns precisely with circle center (21, 19) in 42x50 SVG
-  iconContainer: {
-    position: 'absolute',
-    top: 9,
-    left: 12,
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

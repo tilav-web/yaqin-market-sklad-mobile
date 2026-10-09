@@ -14,13 +14,13 @@ import {
   UtensilsCrossed,
 } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { resolveMedia } from '@/lib/api';
 import { PublicShop } from '@/lib/types';
 import { useTheme } from '@/stores/theme';
-import { colors, radius, shadow, spacing } from '@/theme';
+import { colors, shadow } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 export const MAP_CARD_WIDTH = Math.min(310, Dimensions.get('window').width - 64);
@@ -83,80 +83,97 @@ export const MapShopCard = React.memo(function MapShopCard({
 
   return (
     <Pressable
+      className="rounded-3xl p-2 border-[1.5px]"
       style={[
-        styles.card,
         {
+          width: MAP_CARD_WIDTH,
           backgroundColor: isDark ? '#1C2733' : '#FFFFFF',
-          borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#E2E8F0',
+          borderColor: selected
+            ? colors.brand.primary
+            : isPrime
+              ? '#F59E0B'
+              : isDark
+                ? 'rgba(255, 255, 255, 0.15)'
+                : '#E2E8F0',
+          borderWidth: selected ? 2 : 1.5,
         },
-        selected && styles.cardSelected,
-        isPrime && styles.cardPrime,
+        shadow.lg,
       ]}
       onPress={handleCardPress}>
       {/* Prime Badge Bar if Prime */}
       {isPrime && (
-        <View style={styles.primeTopBar}>
+        <View className="flex-row items-center gap-1 bg-amber-100 px-2 py-0.5 rounded mb-1.5 self-start">
           <Crown size={11} color="#B45309" strokeWidth={2.4} />
-          <Text style={styles.primeTopBarText}>
+          <Text className="text-[10px] font-extrabold text-amber-800">
             {shop.primeBadgeText ? `${shop.primeBadgeText} Hamkor` : 'Prime Hamkor'}
           </Text>
         </View>
       )}
 
-      <View style={styles.contentRow}>
+      <View className="flex-row gap-2 items-center">
         {/* Shop Image / Icon */}
-        <View style={styles.imageWrap}>
+        <View
+          className="w-15.5 h-15.5 rounded-2xl overflow-hidden relative"
+          style={{ backgroundColor: colors.bg.surfaceMuted }}>
           {imageUri && !imgError ? (
             <Image
               source={{ uri: imageUri }}
-              style={styles.image}
+              className="w-full h-full"
               contentFit="cover"
               transition={150}
               onError={() => setImgError(true)}
             />
           ) : (
-            <View style={styles.placeholderImage}>
+            <View className="w-full h-full items-center justify-center bg-sky-50">
               {getShopCategoryIcon(shop.name)}
             </View>
           )}
 
           {/* Micro Status Dot */}
-          <View style={[styles.statusDot, isClosed ? styles.statusDotClosed : styles.statusDotOpen]} />
+          <View
+            className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full border-[1.5px] border-white"
+            style={{ backgroundColor: isClosed ? colors.feedback.danger : colors.feedback.success }}
+          />
         </View>
 
         {/* Shop Details */}
-        <View style={styles.infoCol}>
-          <View style={styles.titleRow}>
+        <View className="flex-1 min-w-0">
+          <View className="flex-row items-center justify-between gap-1 mb-1">
             <Text
-              style={[styles.shopName, { color: isDark ? '#FFFFFF' : '#0F172A' }]}
+              className="text-[13px] font-black flex-1"
+              style={{ color: isDark ? '#FFFFFF' : '#0F172A' }}
               numberOfLines={1}>
               {shop.name}
             </Text>
             {shop.ratingAverage > 0 && (
-              <View style={styles.ratingWrap}>
+              <View className="flex-row items-center gap-0.5 bg-amber-50 px-1 py-0.5 rounded">
                 <Star size={10} color="#F59E0B" fill="#F59E0B" />
-                <Text style={styles.ratingText}>{shop.ratingAverage.toFixed(1)}</Text>
+                <Text className="text-[10px] font-extrabold text-amber-800">{shop.ratingAverage.toFixed(1)}</Text>
               </View>
             )}
           </View>
 
           {/* Address / Distance */}
-          <View style={styles.metaRow}>
+          <View className="flex-row items-center gap-1 mb-1.5">
             {shop.distanceKm !== undefined && (
-              <View style={[styles.metaPill, { backgroundColor: isDark ? '#243242' : '#F1F5F9' }]}>
+              <View
+                className="flex-row items-center gap-0.5 px-1.5 py-0.5 rounded"
+                style={{ backgroundColor: isDark ? '#243242' : '#F1F5F9' }}>
                 <MapPin size={10} color={activeColors.text.secondary} />
-                <Text style={[styles.metaText, { color: activeColors.text.secondary }]}>{shop.distanceKm.toFixed(1)} km</Text>
+                <Text className="text-[10px] font-bold" style={{ color: activeColors.text.secondary }}>{shop.distanceKm.toFixed(1)} km</Text>
               </View>
             )}
 
-            <View style={[styles.metaPill, { backgroundColor: isDark ? '#243242' : '#F1F5F9' }]}>
+            <View
+              className="flex-row items-center gap-0.5 px-1.5 py-0.5 rounded"
+              style={{ backgroundColor: isDark ? '#243242' : '#F1F5F9' }}>
               <Truck size={10} color={isFreeDelivery ? colors.feedback.success : activeColors.text.secondary} />
               <Text
-                style={[
-                  styles.metaText,
-                  { color: activeColors.text.secondary },
-                  isFreeDelivery && styles.metaTextFree,
-                ]}>
+                className="text-[10px] font-bold"
+                style={{
+                  color: isFreeDelivery ? colors.feedback.success : activeColors.text.secondary,
+                  fontWeight: isFreeDelivery ? '800' : '700',
+                }}>
                 {isFreeDelivery
                   ? tr('shop.freeShort')
                   : `${(shop.deliveryFeeAtUser ?? 0).toLocaleString()} ${tr('common.som')}`}
@@ -165,20 +182,20 @@ export const MapShopCard = React.memo(function MapShopCard({
           </View>
 
           {/* Action Buttons Row */}
-          <View style={styles.actionRow}>
+          <View className="flex-row items-center justify-between">
             <Pressable
-              style={[
-                styles.previewBtn,
-                { backgroundColor: isDark ? 'rgba(232, 57, 46, 0.18)' : '#FEE2E2' },
-              ]}
+              className="flex-row items-center gap-1 px-2 py-1 rounded-full"
+              style={{ backgroundColor: isDark ? 'rgba(232, 57, 46, 0.18)' : '#FEE2E2' }}
               onPress={handlePreviewPress}
               hitSlop={4}>
               <ShoppingBag size={11} color={activeColors.brand.primary} strokeWidth={2.2} />
-              <Text style={styles.previewBtnText}>{tr('shop.products')}</Text>
+              <Text className="text-[10.5px] font-extrabold" style={{ color: activeColors.brand.primary }}>
+                {tr('shop.products')}
+              </Text>
             </Pressable>
 
-            <View style={styles.enterLink}>
-              <Text style={[styles.enterLinkText, { color: activeColors.text.tertiary }]}>{tr('shop.enter')}</Text>
+            <View className="flex-row items-center gap-0.5">
+              <Text className="text-[11px] font-bold" style={{ color: activeColors.text.tertiary }}>{tr('shop.enter')}</Text>
               <ChevronRight size={13} color={activeColors.text.tertiary} strokeWidth={2.4} />
             </View>
           </View>
@@ -186,160 +203,4 @@ export const MapShopCard = React.memo(function MapShopCard({
       </View>
     </Pressable>
   );
-});
-
-const styles = StyleSheet.create({
-  card: {
-    width: MAP_CARD_WIDTH,
-    backgroundColor: '#FFFFFF',
-    borderRadius: radius.xl,
-    padding: spacing.sm,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    ...shadow.lg,
-  },
-  cardSelected: {
-    borderColor: colors.brand.primary,
-    borderWidth: 2,
-    backgroundColor: '#FFFFFF',
-  },
-  cardPrime: {
-    borderColor: '#F59E0B',
-    borderWidth: 1.5,
-  },
-  primeTopBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 8,
-    paddingVertical: 2.5,
-    borderRadius: radius.sm,
-    marginBottom: 6,
-    alignSelf: 'flex-start',
-  },
-  primeTopBarText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#B45309',
-  },
-  contentRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    alignItems: 'center',
-  },
-  imageWrap: {
-    width: 62,
-    height: 62,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    position: 'relative',
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  placeholderImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statusDot: {
-    position: 'absolute',
-    bottom: 3,
-    right: 3,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  statusDotOpen: {
-    backgroundColor: colors.feedback.success,
-  },
-  statusDotClosed: {
-    backgroundColor: colors.text.tertiary,
-  },
-  infoCol: {
-    flex: 1,
-    gap: 3,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 4,
-  },
-  shopName: {
-    fontSize: 13.5,
-    fontWeight: '800',
-    color: '#0F172A',
-    flex: 1,
-  },
-  ratingWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-    borderRadius: radius.sm,
-  },
-  ratingText: {
-    fontSize: 10.5,
-    fontWeight: '800',
-    color: '#D97706',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  metaPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  metaText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.text.secondary,
-  },
-  metaTextFree: {
-    color: colors.feedback.success,
-    fontWeight: '700',
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 2,
-  },
-  previewBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3.5,
-    backgroundColor: colors.brand.primarySurface,
-    paddingHorizontal: 8,
-    paddingVertical: 3.5,
-    borderRadius: radius.md,
-  },
-  previewBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.brand.primary,
-  },
-  enterLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 1,
-  },
-  enterLinkText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.text.tertiary,
-  },
 });

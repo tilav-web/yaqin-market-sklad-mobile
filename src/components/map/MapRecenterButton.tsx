@@ -1,8 +1,8 @@
 import { Navigation } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
-import { colors, layout, radius, shadow } from '@/theme';
+import { colors, shadow } from '@/theme';
 
 interface MapRecenterButtonProps {
   bottomInset: number;
@@ -12,9 +12,16 @@ interface MapRecenterButtonProps {
 
 export function MapRecenterButton({ bottomInset, onPress, isDark }: MapRecenterButtonProps) {
   return (
-    <View style={[styles.recenterWrap, { bottom: bottomInset }]} pointerEvents="box-none">
+    <View className="absolute right-4" style={{ bottom: bottomInset }} pointerEvents="box-none">
       <Pressable
-        style={[styles.recenterBtn, isDark && styles.recenterBtnDark]}
+        className="w-11 h-11 rounded-full items-center justify-center border"
+        style={[
+          {
+            backgroundColor: isDark ? '#1C2733' : '#FFFFFF',
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#E2E8F0',
+          },
+          shadow.lg,
+        ]}
         onPress={onPress}
         hitSlop={8}
         accessibilityLabel="Recenter map"
@@ -24,25 +31,3 @@ export function MapRecenterButton({ bottomInset, onPress, isDark }: MapRecenterB
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  recenterWrap: {
-    position: 'absolute',
-    right: layout.screenPadding,
-  },
-  recenterBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...shadow.lg,
-  },
-  recenterBtnDark: {
-    backgroundColor: '#1C2733',
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-});

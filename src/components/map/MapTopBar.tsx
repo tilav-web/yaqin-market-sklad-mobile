@@ -1,11 +1,11 @@
 import { Gift, MapPin, X } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTranslation } from '@/i18n';
 import { District } from '@/lib/types';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { colors, shadow } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 interface MapTopBarProps {
@@ -28,13 +28,22 @@ export function MapTopBar({
   const { tr, t } = useTranslation();
 
   return (
-    <SafeAreaView edges={['top']} style={styles.topContainer} pointerEvents="box-none">
-      <View style={styles.topBar}>
+    <SafeAreaView edges={['top']} className="absolute top-0 inset-x-0 px-4" pointerEvents="box-none">
+      <View className="flex-row items-center justify-between gap-1 mt-1">
         {/* District Name Badge */}
         {district && !searchQuery && (
-          <View style={[styles.districtBadge, isDark && styles.districtBadgeDark]}>
+          <View
+            className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border-[1.5px] flex-shrink"
+            style={[
+              {
+                backgroundColor: isDark ? '#1C2733' : '#FFFFFF',
+                borderColor: isDark ? 'rgba(232, 57, 46, 0.4)' : colors.brand.primaryBorder,
+              },
+              shadow.md,
+            ]}
+          >
             <MapPin size={13} color={colors.brand.primary} strokeWidth={2.6} />
-            <Text style={styles.districtBadgeText} numberOfLines={1}>
+            <Text className="text-xs font-extrabold" style={{ color: colors.brand.primary }} numberOfLines={1}>
               {t(district.name)}
             </Text>
           </View>
@@ -42,11 +51,29 @@ export function MapTopBar({
 
         {/* Product Search Pill */}
         {searchQuery && (
-          <View style={[styles.searchPill, isDark && styles.searchPillDark]}>
-            <Text style={styles.searchPillText} numberOfLines={1}>
+          <View
+            className="flex-row items-center gap-1 pl-3 pr-2 py-1.5 rounded-full border"
+            style={[
+              {
+                backgroundColor: isDark ? '#1C2733' : '#FFFFFF',
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : colors.border.subtle,
+              },
+              shadow.md,
+            ]}
+          >
+            <Text
+              className="text-xs font-bold max-w-[160px]"
+              style={{ color: colors.brand.primary }}
+              numberOfLines={1}
+            >
               “{searchQuery}”
             </Text>
-            <Pressable onPress={onClearSearch} hitSlop={8} style={styles.searchCloseBtn}>
+            <Pressable
+              onPress={onClearSearch}
+              hitSlop={8}
+              className="w-5 h-5 rounded-full items-center justify-center"
+              style={{ backgroundColor: colors.bg.surfaceMuted }}
+            >
               <X size={13} color={colors.text.secondary} strokeWidth={2.4} />
             </Pressable>
           </View>
@@ -54,10 +81,21 @@ export function MapTopBar({
 
         {/* Minimal Free Delivery Toggle Switch */}
         <Pressable
+          className="flex-row items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-full border-[1.5px]"
           style={[
-            styles.freeToggleBtn,
-            isDark && styles.freeToggleBtnDark,
-            onlyFreeDelivery && styles.freeToggleBtnActive,
+            {
+              backgroundColor: onlyFreeDelivery
+                ? colors.brand.primary
+                : isDark
+                  ? '#1C2733'
+                  : '#FFFFFF',
+              borderColor: onlyFreeDelivery
+                ? colors.brand.primary
+                : isDark
+                  ? 'rgba(255, 255, 255, 0.15)'
+                  : colors.border.subtle,
+            },
+            shadow.md,
           ]}
           onPress={() => {
             haptics.selection();
@@ -70,131 +108,17 @@ export function MapTopBar({
             strokeWidth={2.4}
           />
           <Text
-            style={[
-              styles.freeToggleText,
-              onlyFreeDelivery && styles.freeToggleTextActive,
-            ]}
+            className="text-[11.5px] font-extrabold"
+            style={{ color: onlyFreeDelivery ? '#FFFFFF' : colors.brand.primary }}
           >
             {tr('shop.freeShort')} {tr('map.filterDelivery')}
           </Text>
           <View
-            style={[
-              styles.switchThumb,
-              onlyFreeDelivery && styles.switchThumbActive,
-            ]}
+            className="w-3.5 h-3.5 rounded-full"
+            style={{ backgroundColor: onlyFreeDelivery ? '#10B981' : '#CBD5E1' }}
           />
         </Pressable>
       </View>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  topContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: layout.screenPadding,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.xs,
-    marginTop: spacing.xs,
-  },
-  districtBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: spacing.md,
-    paddingVertical: 7,
-    borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: colors.brand.primaryBorder,
-    flexShrink: 1,
-    ...shadow.md,
-  },
-  districtBadgeDark: {
-    backgroundColor: '#1C2733',
-    borderColor: 'rgba(232, 57, 46, 0.4)',
-  },
-  districtBadgeText: {
-    ...typography.caption,
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.brand.primary,
-  },
-  searchPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: '#FFFFFF',
-    paddingLeft: spacing.md,
-    paddingRight: spacing.sm,
-    paddingVertical: 6,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    ...shadow.md,
-  },
-  searchPillDark: {
-    backgroundColor: '#1C2733',
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  searchPillText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.brand.primary,
-    maxWidth: 160,
-  },
-  searchCloseBtn: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.bg.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  freeToggleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#FFFFFF',
-    paddingLeft: spacing.md,
-    paddingRight: 8,
-    paddingVertical: 6,
-    borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: colors.border.subtle,
-    ...shadow.md,
-  },
-  freeToggleBtnDark: {
-    backgroundColor: '#1C2733',
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  freeToggleBtnActive: {
-    backgroundColor: colors.brand.primary,
-    borderColor: colors.brand.primary,
-  },
-  freeToggleText: {
-    ...typography.caption,
-    fontSize: 11.5,
-    fontWeight: '800',
-    color: colors.brand.primary,
-  },
-  freeToggleTextActive: {
-    color: '#FFFFFF',
-  },
-  switchThumb: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#CBD5E1',
-  },
-  switchThumbActive: {
-    backgroundColor: '#10B981',
-  },
-});
