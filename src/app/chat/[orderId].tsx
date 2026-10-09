@@ -1,29 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router, useLocalSearchParams } from 'expo-router';
-import {
-  ArrowLeft,
-  ChevronRight,
-  Package,
-  Send,
-  Store,
-  Zap,
-} from 'lucide-react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import {
+  ChatAttachedProduct,
+  ChatHeader,
+  ChatInputBar,
+  ChatMessageBubble,
+  ChatTemplatesDrawer,
+} from '@/components/chat';
 import { useToast } from '@/components/ui/Toast';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
@@ -31,8 +26,7 @@ import { getSocket } from '@/lib/socket';
 import { ChatMessage, ChatTemplate, ConversationMessage, PublicProductVariant } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/stores/theme';
-import { colors, layout, radius, spacing, typography } from '@/theme';
-import { formatMoney } from '@/utils/formatMoney';
+import { colors, layout, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 export default function ChatScreen() {
@@ -133,7 +127,6 @@ export default function ChatScreen() {
           if (prev.some((x) => x.id === m.id)) return prev;
           return [...prev, m];
         });
-        // Also refresh conversations list
         void qc.invalidateQueries({ queryKey: ['conversations'] });
       };
 
@@ -201,61 +194,17 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: activeColors.bg.canvas }]} edges={['top', 'bottom']}>
-      {/* Telegram Style Chat Header */}
-      <View style={[styles.header, { backgroundColor: activeColors.bg.surface, borderBottomColor: activeColors.border.subtle }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
-          <ArrowLeft size={22} color={activeColors.text.primary} />
-        </Pressable>
+      {/* Header */}
+      <ChatHeader chatTitle={chatTitle} shopId={shopId} />
 
-        <View style={styles.headerTitleWrap}>
-          <Text style={[styles.headerTitle, { color: activeColors.text.primary }]} numberOfLines={1}>
-            {chatTitle || (shopId ? tr('nav.shop') : tr('nav.chat'))}
-          </Text>
-          <Text style={styles.headerStatus}>{tr('chat.online')}</Text>
-        </View>
-
-        {shopId ? (
-          <Pressable
-            onPress={() => router.push(`/shop/${shopId}` as any)}
-            style={[styles.shopNavBtn, { backgroundColor: activeColors.brand.primarySurface }]}>
-            <Store size={20} color={activeColors.brand.primary} />
-          </Pressable>
-        ) : (
-          <View style={{ width: 32 }} />
-        )}
-      </View>
-
-      {/* Attached Product Preview Banner if asking about a product */}
-      {productQuery.data && (
-        <View style={styles.attachedProductBanner}>
-          {productQuery.data.photos?.[0] ? (
-            <Image source={{ uri: productQuery.data.photos[0] }} style={styles.attachedImg} />
-          ) : (
-            <View style={styles.attachedFallback}>
-              <Package size={20} color={colors.brand.primary} />
-            </View>
-          )}
-          <View style={styles.attachedInfo}>
-            <Text style={styles.attachedTitle} numberOfLines={1}>
-              {productQuery.data.name}
-            </Text>
-            <Text style={styles.attachedPrice}>
-              {formatMoney(productQuery.data.discountPrice ?? productQuery.data.price)} {tr('common.som')}
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => router.push(`/product/${productQuery.data.id}` as any)}
-            style={styles.attachedAction}>
-            <Text style={styles.attachedActionText}>{tr('chat.viewProduct')}</Text>
-            <ChevronRight size={14} color={colors.brand.primary} />
-          </Pressable>
-        </View>
-      )}
+      {/* Attached Product Preview */}
+      {productQuery.data && <ChatAttachedProduct product={productQuery.data} />}
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}>
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+      >
         {messagesQuery.isLoading ? (
           <View style={styles.center}>
             <ActivityIndicator color={colors.brand.primary} />
@@ -267,88 +216,39 @@ export default function ChatScreen() {
             keyExtractor={(m) => m.id}
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <Text style={styles.empty}>{tr('chat.empty')}</Text>
-            }
-            renderItem={({ item }) => {
-              const mine = item.senderUserId === myId;
-              return (
-                <View style={[styles.bubbleRow, mine ? styles.rowMine : styles.rowTheirs]}>
-                  <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
-                    <Text style={[styles.bubbleText, mine && styles.bubbleTextMine]}>
-                      {item.text}
-                    </Text>
-                    <Text style={[styles.time, mine && styles.timeMine]}>
-                      {new Date(item.createdAt).toLocaleTimeString('uz-UZ', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </Text>
-                  </View>
-                </View>
-              );
+            ListEmptyComponent={<Text style={styles.empty}>{tr('chat.empty')}</Text>}
+            renderItem={({ item }) => (
+              <ChatMessageBubble
+                text={item.text}
+                createdAt={item.createdAt}
+                isMine={item.senderUserId === myId}
+              />
+            )}
+          />
+        )}
+
+        {/* Quick reply templates for shop sellers */}
+        {templatesOpen && shopId && (
+          <ChatTemplatesDrawer
+            isLoading={templatesQuery.isLoading}
+            templates={templatesQuery.data ?? []}
+            onSelectTemplate={(templateText) => {
+              setText(templateText);
+              setTemplatesOpen(false);
             }}
           />
         )}
 
-        {templatesOpen && shopId && (
-          <View style={styles.templatesPanel}>
-            {templatesQuery.isLoading ? (
-              <ActivityIndicator color={colors.brand.primary} style={{ margin: spacing.md }} />
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.templatesList}>
-                {(templatesQuery.data ?? []).map((t) => (
-                  <Pressable
-                    key={t.id}
-                    style={styles.templateChip}
-                    onPress={() => {
-                      setText(t.text);
-                      setTemplatesOpen(false);
-                    }}>
-                    <Text style={styles.templateChipText} numberOfLines={2}>
-                      {t.text}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            )}
-          </View>
-        )}
-
-        {/* Telegram Input Bar */}
-        <View style={[styles.inputBar, { backgroundColor: activeColors.bg.surface, borderTopColor: activeColors.border.subtle }]}>
-          {shopId && (
-            <Pressable
-              style={[styles.templateBtn, templatesOpen && styles.templateBtnActive]}
-              onPress={() => setTemplatesOpen((v) => !v)}>
-              <Zap
-                size={18}
-                color={templatesOpen ? activeColors.text.onPrimary : activeColors.brand.primary}
-                strokeWidth={2.2}
-              />
-            </Pressable>
-          )}
-
-          <TextInput
-            style={[styles.input, { color: activeColors.text.primary, backgroundColor: activeColors.bg.surfaceMuted }]}
-            value={text}
-            onChangeText={setText}
-            placeholder={tr('chat.placeholder')}
-            placeholderTextColor={activeColors.text.tertiary}
-            multiline
-            onSubmitEditing={handleSend}
-          />
-
-          <Pressable
-            style={[styles.sendBtn, { backgroundColor: activeColors.brand.primary }, !text.trim() && styles.sendBtnDisabled]}
-            onPress={handleSend}
-            disabled={!text.trim() || send.isPending}>
-            <Send size={18} color="#FFFFFF" strokeWidth={2.4} />
-          </Pressable>
-        </View>
+        {/* Message Input Bar */}
+        <ChatInputBar
+          text={text}
+          onChangeText={setText}
+          onSend={handleSend}
+          isSending={send.isPending}
+          hasShop={Boolean(shopId)}
+          templatesOpen={templatesOpen}
+          onToggleTemplates={() => setTemplatesOpen((v) => !v)}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -358,92 +258,6 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.bg.canvas,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    backgroundColor: colors.bg.surface,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border.subtle,
-  },
-  backButton: {
-    padding: 6,
-    borderRadius: radius.full,
-  },
-  headerTitleWrap: {
-    flex: 1,
-    alignItems: 'center',
-    marginHorizontal: spacing.sm,
-  },
-  headerTitle: {
-    ...typography.title,
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text.primary,
-  },
-  headerStatus: {
-    ...typography.caption,
-    fontSize: 11,
-    color: colors.feedback.success,
-    fontWeight: '500',
-  },
-  shopNavBtn: {
-    padding: 6,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  attachedProductBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.bg.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.brand.primaryBorder,
-  },
-  attachedImg: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  attachedFallback: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  attachedInfo: {
-    flex: 1,
-    marginHorizontal: spacing.sm,
-  },
-  attachedTitle: {
-    ...typography.caption,
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.text.primary,
-  },
-  attachedPrice: {
-    ...typography.caption,
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.brand.primary,
-  },
-  attachedAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  attachedActionText: {
-    ...typography.caption,
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.brand.primary,
   },
   center: {
     flex: 1,
@@ -460,121 +274,5 @@ const styles = StyleSheet.create({
     color: colors.text.tertiary,
     textAlign: 'center',
     marginTop: spacing['4xl'],
-  },
-  bubbleRow: {
-    flexDirection: 'row',
-  },
-  rowMine: {
-    justifyContent: 'flex-end',
-  },
-  rowTheirs: {
-    justifyContent: 'flex-start',
-  },
-  bubble: {
-    maxWidth: '78%',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.xl,
-  },
-  bubbleMine: {
-    backgroundColor: colors.brand.primary,
-    borderBottomRightRadius: radius.xs,
-  },
-  bubbleTheirs: {
-    backgroundColor: colors.bg.surface,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    borderBottomLeftRadius: radius.xs,
-  },
-  bubbleText: {
-    ...typography.body,
-    fontSize: 14.5,
-    color: colors.text.primary,
-    lineHeight: 20,
-  },
-  bubbleTextMine: {
-    color: colors.text.onPrimary,
-  },
-  time: {
-    ...typography.caption,
-    fontSize: 10,
-    color: colors.text.tertiary,
-    marginTop: 2,
-    alignSelf: 'flex-end',
-  },
-  timeMine: {
-    color: colors.text.onPrimary,
-    opacity: 0.85,
-  },
-  templatesPanel: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    backgroundColor: colors.bg.surfaceMuted,
-    paddingVertical: spacing.sm,
-  },
-  templatesList: {
-    paddingHorizontal: layout.screenPadding,
-    gap: spacing.sm,
-  },
-  templateChip: {
-    maxWidth: 200,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.lg,
-    backgroundColor: colors.bg.surface,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-  },
-  templateChipText: {
-    ...typography.bodySmall,
-    color: colors.text.primary,
-    lineHeight: 18,
-  },
-  templateBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  templateBtnActive: {
-    backgroundColor: colors.brand.primary,
-    borderColor: colors.brand.primary,
-  },
-  inputBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.xs,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border.subtle,
-    backgroundColor: colors.bg.surface,
-  },
-  input: {
-    flex: 1,
-    ...typography.body,
-    fontSize: 14,
-    maxHeight: 100,
-    minHeight: 40,
-    backgroundColor: colors.bg.surfaceMuted,
-    borderRadius: radius.xl,
-    paddingHorizontal: spacing.md,
-    paddingTop: 8,
-    paddingBottom: 8,
-  },
-  sendBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendBtnDisabled: {
-    backgroundColor: colors.text.hint,
   },
 });
