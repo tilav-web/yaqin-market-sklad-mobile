@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { ShoppingBag } from 'lucide-react-native';
 import React from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native';
 
 import { ProductCard } from '@/components/ProductCard';
 import { EmptyState } from '@/components/ui';
@@ -42,7 +42,7 @@ export function HomeProductGrid({
       data={products}
       keyExtractor={(item) => item.id}
       numColumns={2}
-      columnWrapperStyle={styles.gridColumnWrapper}
+      columnWrapperStyle={{ paddingHorizontal: 14, gap: 10 }}
       renderItem={({ item }) => (
         <ProductCard
           product={item}
@@ -50,16 +50,16 @@ export function HomeProductGrid({
           onPress={() => router.push(`/product/${item.id}` as never)}
         />
       )}
-      ItemSeparatorComponent={() => <View style={styles.gridSeparator} />}
-      contentContainerStyle={[styles.listContent, { paddingBottom: bottomInset + 85 }]}
+      ItemSeparatorComponent={() => <View className="h-2.5" />}
+      contentContainerStyle={{ paddingTop: 4, paddingBottom: bottomInset + 85 }}
       ListHeaderComponent={headerComponent}
       ListEmptyComponent={
         isLoading ? (
-          <View style={styles.centerLoading}>
+          <View className="pt-16 items-center justify-center">
             <ActivityIndicator size="large" color={activeColors.brand.primary} />
           </View>
         ) : (
-          <View style={styles.centerLoading}>
+          <View className="pt-16 items-center justify-center">
             <EmptyState
               icon={ShoppingBag}
               title={emptyTitle}
@@ -70,7 +70,7 @@ export function HomeProductGrid({
       }
       ListFooterComponent={
         isFetchingNextPage ? (
-          <View style={styles.footerLoading}>
+          <View className="py-4 items-center justify-center">
             <ActivityIndicator size="small" color={activeColors.brand.primary} />
           </View>
         ) : null
@@ -87,25 +87,3 @@ export function HomeProductGrid({
     />
   );
 }
-
-const styles = StyleSheet.create({
-  listContent: {
-    paddingTop: 4,
-  },
-  gridColumnWrapper: {
-    paddingHorizontal: 14,
-    gap: 10,
-  },
-  gridSeparator: {
-    height: 10,
-  },
-  centerLoading: {
-    paddingTop: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  footerLoading: {
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-});

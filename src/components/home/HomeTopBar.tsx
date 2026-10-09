@@ -1,10 +1,9 @@
 import { router } from 'expo-router';
 import { Bell, ChevronDown, MapPin, ShoppingBag } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { useTheme } from '@/stores/theme';
-import { radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 interface HomeTopBarProps {
@@ -22,13 +21,11 @@ export function HomeTopBar({
 
   return (
     <View
-      style={[
-        styles.header,
-        {
-          backgroundColor: activeColors.bg.surface,
-          borderBottomColor: activeColors.border.subtle,
-        },
-      ]}
+      className="flex-row items-center justify-between px-4 py-2.5 border-b"
+      style={{
+        backgroundColor: activeColors.bg.surface,
+        borderBottomColor: activeColors.border.subtle,
+      }}
     >
       {/* Left: Location Picker */}
       <Pressable
@@ -36,41 +33,50 @@ export function HomeTopBar({
           haptics.selection();
           onOpenLocationPicker();
         }}
-        style={[styles.locationPill, { backgroundColor: activeColors.bg.surfaceMuted }]}
+        className="flex-row items-center gap-1 px-2.5 py-1.5 rounded-full max-w-[135px]"
+        style={{ backgroundColor: activeColors.bg.surfaceMuted }}
       >
         <MapPin size={15} color={activeColors.brand.primary} />
-        <Text style={[styles.locationText, { color: activeColors.text.primary }]} numberOfLines={1}>
+        <Text
+          className="text-xs font-bold max-w-[80px]"
+          style={[{ color: activeColors.text.primary }]}
+          numberOfLines={1}
+        >
           {locationLabel}
         </Text>
         <ChevronDown size={14} color={activeColors.text.secondary} />
       </Pressable>
 
       {/* Center: Brand Name */}
-      <View style={styles.brandContainer}>
-        <Text style={[styles.brandTitle, { color: activeColors.brand.primary }]}>Yaqin</Text>
+      <View className="items-center">
+        <Text
+          className="text-xl font-black tracking-tighter"
+          style={[{ color: activeColors.brand.primary }]}
+        >
+          Yaqin
+        </Text>
       </View>
 
       {/* Right: Cart & Notifications */}
-      <View style={styles.rightActions}>
+      <View className="flex-row items-center gap-1.5">
         <Pressable
           onPress={() => {
             haptics.selection();
             router.push('/(tabs)/carts');
           }}
-          style={[styles.iconButton, { backgroundColor: activeColors.bg.surfaceMuted }]}
+          className="w-9 h-9 rounded-full items-center justify-center"
+          style={{ backgroundColor: activeColors.bg.surfaceMuted }}
         >
           <ShoppingBag size={19} color={activeColors.text.primary} />
           {totalCartCount > 0 && (
             <View
-              style={[
-                styles.cartBadge,
-                {
-                  backgroundColor: activeColors.brand.primary,
-                  borderColor: activeColors.bg.surface,
-                },
-              ]}
+              className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] rounded-full items-center justify-center px-1 border-[1.5px]"
+              style={{
+                backgroundColor: activeColors.brand.primary,
+                borderColor: activeColors.bg.surface,
+              }}
             >
-              <Text style={styles.cartBadgeText}>
+              <Text className="text-white text-[9.5px] font-extrabold leading-3">
                 {totalCartCount > 99 ? '99+' : totalCartCount}
               </Text>
             </View>
@@ -82,7 +88,8 @@ export function HomeTopBar({
             haptics.selection();
             router.push('/notifications');
           }}
-          style={[styles.iconButton, { backgroundColor: activeColors.bg.surfaceMuted }]}
+          className="w-9 h-9 rounded-full items-center justify-center"
+          style={{ backgroundColor: activeColors.bg.surfaceMuted }}
         >
           <Bell size={19} color={activeColors.text.primary} />
         </Pressable>
@@ -90,68 +97,3 @@ export function HomeTopBar({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  locationPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: radius.full,
-    maxWidth: 135,
-  },
-  locationText: {
-    ...typography.caption,
-    fontSize: 12,
-    fontWeight: '700',
-    maxWidth: 80,
-  },
-  brandContainer: {
-    alignItems: 'center',
-  },
-  brandTitle: {
-    ...typography.title,
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-  },
-  rightActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cartBadge: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    minWidth: 17,
-    height: 17,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
-    borderWidth: 1.5,
-  },
-  cartBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 9.5,
-    fontWeight: '800',
-    lineHeight: 12,
-  },
-});

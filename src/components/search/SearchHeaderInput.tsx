@@ -1,10 +1,10 @@
 import { Search as SearchIcon, X } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { useTheme } from '@/stores/theme';
-import { layout, radius, spacing, typography } from '@/theme';
+import { typography } from '@/theme';
 
 interface SearchHeaderInputProps {
   input: string;
@@ -23,19 +23,18 @@ export function SearchHeaderInput({
   const { colors: activeColors } = useTheme();
 
   return (
-    <View style={[styles.searchHeader, { backgroundColor: activeColors.bg.surface }]}>
+    <View className="px-4 pt-1 pb-2" style={{ backgroundColor: activeColors.bg.surface }}>
       <View
-        style={[
-          styles.searchBox,
-          {
-            backgroundColor: activeColors.bg.surfaceMuted,
-            borderColor: activeColors.border.subtle,
-          },
-        ]}
+        className="flex-row items-center gap-2 rounded-2xl px-3 h-11 border"
+        style={{
+          backgroundColor: activeColors.bg.surfaceMuted,
+          borderColor: activeColors.border.subtle,
+        }}
       >
         <SearchIcon size={18} color={activeColors.text.secondary} strokeWidth={2.2} />
         <TextInput
-          style={[styles.input, { color: activeColors.text.primary }]}
+          className="flex-1 py-0"
+          style={[typography.body, { color: activeColors.text.primary }]}
           value={input}
           onChangeText={onChangeInput}
           placeholder={tr('search.placeholder')}
@@ -53,21 +52,3 @@ export function SearchHeaderInput({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  searchHeader: {
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.sm,
-  },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    height: layout.inputHeight,
-    borderWidth: 1,
-  },
-  input: { flex: 1, ...typography.body, paddingVertical: 0 },
-});
