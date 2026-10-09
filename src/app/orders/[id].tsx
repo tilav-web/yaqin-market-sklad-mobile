@@ -1,48 +1,39 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import {
-  AlertCircle,
-  Check,
-  MessageCircle,
-  RefreshCw,
-  X,
-} from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
-  Pressable,
   RefreshControl,
   ScrollView,
-  StyleSheet,
-  Text,
   View,
 } from 'react-native';
-import QRCode from 'react-native-qrcode-svg';
 
-import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
 import { FiscalReceiptModal } from '@/components/FiscalReceiptModal';
-import { OrderAlternativesCard } from '@/components/orders/OrderAlternativesCard';
-import { OrderComplaintCard } from '@/components/orders/OrderComplaintCard';
-import { OrderCourierMapCard } from '@/components/orders/OrderCourierMapCard';
-import { OrderItemsCard } from '@/components/orders/OrderItemsCard';
-import { OrderPaymentSection } from '@/components/orders/OrderPaymentSection';
-import { OrderReviewSection } from '@/components/orders/OrderReviewSection';
-import { OrderReturnReasonCard } from '@/components/orders/OrderReturnReasonCard';
-import { OrderStatusTimeline } from '@/components/orders/OrderStatusTimeline';
-import { OrderSummaryCard } from '@/components/orders/OrderSummaryCard';
+import {
+  OrderAlternativesCard,
+  OrderComplaintCard,
+  OrderCourierMapCard,
+  OrderHandshakeCard,
+  OrderHeaderSection,
+  OrderItemsCard,
+  OrderPaymentSection,
+  OrderReturnReasonCard,
+  OrderReviewSection,
+  OrderStatusActions,
+  OrderStatusTimeline,
+  OrderSummaryCard,
+  useOrderDetailsMutations,
+} from '@/components/orders';
 import { useToast } from '@/components/ui';
-import { useTranslation } from '@/i18n';
-import { api, extractErrorMessage } from '@/lib/api';
-import { captureEvidence } from '@/lib/location-evidence';
+import { api } from '@/lib/api';
 import { useCountdown } from '@/lib/useCountdown';
 import { endOrderActivity, updateOrderActivity } from '@/lib/useOrderLiveActivity';
 import { useOrderSocket } from '@/lib/useOrderSocket';
-import { FiscalReceipt, ORDER_STATUS_KEY, Order, OrderStatus, ProductOffer, PublicProductVariant, SavedCard } from '@/lib/types';
+import { FiscalReceipt, Order, OrderStatus, ProductOffer, PublicProductVariant, SavedCard } from '@/lib/types';
 import { OrderActivityProps } from '@/widgets/order-activity';
 import { useCartStore } from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 import { haptics } from '@/utils/haptics';
 import { getLocalizedText } from '@/utils/text';
 
@@ -57,7 +48,6 @@ function isTerminalStatus(status: OrderStatus | undefined): boolean {
 
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { tr } = useTranslation();
   const qc = useQueryClient();
   const toast = useToast();
 
@@ -134,7 +124,8 @@ export default function OrderDetailScreen() {
     } else {
       void updateOrderActivity(props);
     }
-  }, [order?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.status]);
 
   const cardsQuery = useQuery({
     queryKey: ['saved-cards'],
@@ -144,53 +135,7 @@ export default function OrderDetailScreen() {
       (order?.paymentStatus === 'pending' || order?.paymentStatus === 'failed'),
   });
 
-  const payWithCard = useMutation({
-    mutationFn: async (cardId: string) => {
-      await api.post(`/click/orders/${id}/pay-with-card`, { cardId });
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['order', id] });
-      toast.success(tr('orderDet.paySuccess'));
-    },
-    onError: (e) => toast.error(extractErrorMessage(e)),
-  });
-
-  const changePaymentMethod = useMutation({
-    mutationFn: async (method: 'cash' | 'click_online') => {
-      const res = await api.patch<Order>(`/orders/${id}/payment-method`, { paymentMethod: method });
-      return res.data;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['order', id] }),
-    onError: (e) => toast.error(extractErrorMessage(e)),
-  });
-
-  const setStatus = useMutation({
-    mutationFn: async (status: OrderStatus) => {
-      const evidence = status === 'delivered' ? await captureEvidence() : null;
-      const res = await api.patch<Order>(`/orders/${id}/status`, {
-        status,
-        evidence: evidence ?? undefined,
-      });
-      return res.data;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['order', id] });
-      qc.invalidateQueries({ queryKey: ['orders'] });
-    },
-    onError: (e) => toast.error(extractErrorMessage(e)),
-  });
-
-  const reRequest = useMutation({
-    mutationFn: async () => {
-      const res = await api.post<Order>(`/orders/${id}/re-request`);
-      return res.data;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['order', id] });
-      toast.success(tr('orders.reRequestSent'));
-    },
-    onError: (e) => toast.error(extractErrorMessage(e)),
-  });
+  const mutations = useOrderDetailsMutations(id!, order);
 
   const paidStaleDeadline =
     order &&
@@ -202,66 +147,6 @@ export default function OrderDetailScreen() {
   const paidStaleRemaining = useCountdown(paidStaleDeadline);
   const showPaidStaleOptions = paidStaleRemaining === 0;
 
-  const submitReason = useMutation({
-    mutationFn: async (reason: string) => {
-      const res = await api.post<Order>(`/orders/${id}/return-reason`, { reason });
-      return res.data;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['order', id] });
-      toast.success(tr('orderDet.reasonThanks'));
-    },
-    onError: (e) => toast.error(extractErrorMessage(e)),
-  });
-
-  const submitReviews = useMutation({
-    mutationFn: async (items: { productVariantId: string; stars: number; text?: string }[]) => {
-      const res = await api.post(`/orders/${id}/reviews`, { items });
-      return res.data;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['order', id] });
-      toast.success(tr('orderDet.reviewThanks'));
-    },
-    onError: (e) => toast.error(extractErrorMessage(e)),
-  });
-
-  const submitCourierRating = useMutation({
-    mutationFn: async (stars: number) => {
-      const res = await api.post(`/orders/${id}/review-courier`, { stars });
-      return res.data;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['order', id] });
-      toast.success(tr('orderDet.reviewThanks'));
-    },
-    onError: (e) => toast.error(extractErrorMessage(e)),
-  });
-
-  const submitShopRating = useMutation({
-    mutationFn: async (stars: number) => {
-      const res = await api.post(`/orders/${id}/review-shop`, { stars });
-      return res.data;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['order', id] });
-      toast.success(tr('orderDet.reviewThanks'));
-    },
-    onError: (e) => toast.error(extractErrorMessage(e)),
-  });
-
-  const fileComplaint = useMutation({
-    mutationFn: async ({ reason, description }: { reason: string; description?: string }) => {
-      const res = await api.post(`/orders/${id}/complaint`, { reason, description });
-      return res.data;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['order', id] });
-      toast.success(tr('orderDet.complaintSent'));
-    },
-    onError: (e) => toast.error(extractErrorMessage(e)),
-  });
-
   const reviewed = useMemo(
     () => new Set(order?.reviewedVariantIds ?? []),
     [order?.reviewedVariantIds],
@@ -271,7 +156,7 @@ export default function OrderDetailScreen() {
 
   if (orderQuery.isLoading || !order) {
     return (
-      <View style={styles.center}>
+      <View className="flex-1 items-center justify-center bg-canvas">
         <ActivityIndicator color={colors.brand.primary} />
       </View>
     );
@@ -289,7 +174,7 @@ export default function OrderDetailScreen() {
       const res = await api.get<PublicProductVariant[]>(`/catalog/shops/${shopId}/products`);
       current = res.data;
     } catch {
-      // Fallback to historical prices if catalog lookup fails
+      // Fallback
     }
     const currentById = new Map(current.map((v) => [v.id, v]));
 
@@ -310,7 +195,6 @@ export default function OrderDetailScreen() {
 
   const canReview = order.status === 'delivered';
   const canComplain = order.status === 'delivered' && !order.complaint;
-  const statusColor = colors.status[order.status];
   const isDeadOrder = order.status === 'cancelled' || isSellerDeclined;
   const canChangePayment = order.paymentStatus !== 'paid' && !isTerminalStatus(order.status);
   const hasReturns = !isDeadOrder && order.items.some((i) => i.returnedQuantity > 0);
@@ -318,59 +202,26 @@ export default function OrderDetailScreen() {
   const unreviewed = canReview ? order.items.filter((i) => !reviewed.has(i.productVariantId)) : [];
 
   return (
-    <View style={styles.root}>
+    <View className="flex-1 bg-canvas">
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={orderQuery.isFetching && !orderQuery.isLoading}
-            onRefresh={() => {
-              void orderQuery.refetch();
-            }}
+            onRefresh={() => void orderQuery.refetch()}
             tintColor={colors.brand.primary}
             colors={[colors.brand.primary]}
           />
         }>
-        {/* Header */}
-        <View style={styles.headerCard}>
-          <Text style={styles.orderNum}>#{order.orderNumber}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-            <Text style={styles.statusText}>{tr(ORDER_STATUS_KEY[order.status])}</Text>
-          </View>
-          <AutoCancelCountdown createdAt={order.createdAt} status={order.status} />
-        </View>
+        {/* Header & Status Section */}
+        <OrderHeaderSection
+          order={order}
+          isSellerDeclined={isSellerDeclined}
+          isDeadOrder={isDeadOrder}
+        />
 
-        {/* Refund banners */}
-        {order.refund && (
-          <View style={styles.refundBanner}>
-            <Text style={styles.refundBannerText}>
-              {tr('orderDet.refundedLine', {
-                amount: order.refund.amount.toLocaleString(),
-                date: new Date(order.refund.at).toLocaleDateString('uz-UZ'),
-              })}
-            </Text>
-          </View>
-        )}
-
-        {order.refundedAt && (
-          <View style={[styles.refundBanner, styles.refundBannerRow]}>
-            <Check size={16} color={colors.feedback.success} strokeWidth={2.6} />
-            <Text style={styles.refundBannerText}>{tr('orders.refundedBadge')}</Text>
-          </View>
-        )}
-
-        {/* Seller declined banner */}
-        {isSellerDeclined && (
-          <View style={styles.declinedBanner}>
-            <AlertCircle size={18} color={colors.feedback.warning} strokeWidth={2.4} />
-            <Text style={styles.declinedBannerText}>
-              {tr(order.status === 'seller_no_response' ? 'orders.sellerNoResponseBanner' : 'orders.sellerRejectedBanner')}
-            </Text>
-          </View>
-        )}
-
-        {/* Find elsewhere alternatives */}
+        {/* Alternatives Card */}
         {isSellerDeclined && (
           <OrderAlternativesCard
             items={order.items}
@@ -381,13 +232,6 @@ export default function OrderDetailScreen() {
               router.push(`/product/${variantId}`);
             }}
           />
-        )}
-
-        {!isDeadOrder && (
-          <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${order.id}`)}>
-            <MessageCircle size={18} color={colors.brand.primary} strokeWidth={2.4} />
-            <Text style={styles.chatBtnText}>{tr('orderDet.contactSeller')}</Text>
-          </Pressable>
         )}
 
         {/* Timeline */}
@@ -401,7 +245,7 @@ export default function OrderDetailScreen() {
           <OrderReturnReasonCard
             returnReason={order.returnReason}
             onSubmitReason={async (reason) => {
-              await submitReason.mutateAsync(reason);
+              await mutations.submitReason.mutateAsync(reason);
             }}
           />
         )}
@@ -423,13 +267,13 @@ export default function OrderDetailScreen() {
             courierReviewed={!!order.courierReviewed}
             shopReviewed={!!order.shopReviewed}
             onSubmitProductReviews={async (items) => {
-              await submitReviews.mutateAsync(items);
+              await mutations.submitReviews.mutateAsync(items);
             }}
             onSubmitCourierRating={async (stars) => {
-              await submitCourierRating.mutateAsync(stars);
+              await mutations.submitCourierRating.mutateAsync(stars);
             }}
             onSubmitShopRating={async (stars) => {
-              await submitShopRating.mutateAsync(stars);
+              await mutations.submitShopRating.mutateAsync(stars);
             }}
           />
         )}
@@ -439,19 +283,13 @@ export default function OrderDetailScreen() {
           complaint={order.complaint}
           canComplain={canComplain}
           onSubmitComplaint={async (reason, description) => {
-            await fileComplaint.mutateAsync({ reason, description });
+            await mutations.fileComplaint.mutateAsync({ reason, description });
           }}
         />
 
         {/* QR Handshake */}
         {order.status === 'delivering' && handshakeQuery.data?.required && handshakeQuery.data.token && (
-          <View style={styles.handshakeCard}>
-            <Text style={styles.handshakeTitle}>{tr('orderDet.handshakeTitle')}</Text>
-            <Text style={styles.handshakeBody}>{tr('orderDet.handshakeBody')}</Text>
-            <View style={styles.handshakeQrWrap}>
-              <QRCode value={`yaqinmarket://order/receive?token=${handshakeQuery.data.token}`} size={180} />
-            </View>
-          </View>
+          <OrderHandshakeCard token={handshakeQuery.data.token} />
         )}
 
         {/* Courier Live GPS Map */}
@@ -468,69 +306,28 @@ export default function OrderDetailScreen() {
           canChangePayment={canChangePayment}
           isTerminal={isTerminalStatus(order.status)}
           cards={cardsQuery.data ?? []}
-          onPayWithCard={(cardId) => payWithCard.mutate(cardId)}
-          payWithCardLoading={payWithCard.isPending}
-          onChangePaymentMethod={(method) => changePaymentMethod.mutate(method)}
-          changePaymentMethodLoading={changePaymentMethod.isPending}
+          onPayWithCard={(cardId) => mutations.payWithCard.mutate(cardId)}
+          payWithCardLoading={mutations.payWithCard.isPending}
+          onChangePaymentMethod={(method) => mutations.changePaymentMethod.mutate(method)}
+          changePaymentMethodLoading={mutations.changePaymentMethod.isPending}
           onRefreshOrder={() => void qc.invalidateQueries({ queryKey: ['order', id] })}
           onError={(msg) => toast.error(msg)}
         />
 
-        {/* Ignored paid order options */}
-        {showPaidStaleOptions && (
-          <View style={styles.noRespCard}>
-            <View style={styles.noRespHeader}>
-              <AlertCircle size={18} color={colors.feedback.warning} strokeWidth={2.4} />
-              <Text style={styles.noRespTitle}>{tr('orders.noResponseTitle')}</Text>
-            </View>
-            <Text style={styles.noRespHint}>{tr('orders.noResponseHint')}</Text>
-            <Pressable
-              style={styles.reRequestBtn}
-              onPress={() => reRequest.mutate()}
-              disabled={reRequest.isPending}>
-              <RefreshCw size={16} color={colors.brand.primary} strokeWidth={2.4} />
-              <Text style={styles.reRequestBtnText}>{tr('orders.reRequest')}</Text>
-            </Pressable>
-          </View>
-        )}
-
-        {/* Status action buttons */}
-        {order.status === 'delivering' && (
-          <Pressable
-            style={styles.primaryBtn}
-            onPress={() => setStatus.mutate('delivered')}
-            disabled={setStatus.isPending}>
-            <Text style={styles.primaryBtnText}>{tr('orders.confirmReceived')}</Text>
-          </Pressable>
-        )}
-
-        {(order.status === 'new' || order.status === 'accepted') && (
-          <Pressable
-            style={styles.ghostBtn}
-            onPress={() =>
-              Alert.alert(
-                tr('orders.cancel'),
-                order.paymentStatus === 'paid' ? tr('orders.cancelPaidConfirm') : tr('orders.cancelConfirm'),
-                [
-                  { text: tr('common.no'), style: 'cancel' },
-                  { text: tr('common.yes'), style: 'destructive', onPress: () => setStatus.mutate('cancelled') },
-                ],
-              )
-            }
-            disabled={setStatus.isPending}>
-            <X size={16} color={colors.feedback.danger} strokeWidth={2.6} />
-            <Text style={styles.ghostBtnText}>{tr('orders.cancel')}</Text>
-          </Pressable>
-        )}
-
-        {canReorder && (
-          <Pressable style={styles.reorderBtn} onPress={handleReorder}>
-            <RefreshCw size={16} color={colors.brand.primary} strokeWidth={2.4} />
-            <Text style={styles.reorderBtnText}>
-              {isSellerDeclined ? tr('orderDet.retrySameShop') : tr('orderDet.reorder')}
-            </Text>
-          </Pressable>
-        )}
+        {/* Status Actions */}
+        <OrderStatusActions
+          order={order}
+          showPaidStaleOptions={showPaidStaleOptions}
+          onReRequest={() => mutations.reRequest.mutate()}
+          reRequestPending={mutations.reRequest.isPending}
+          onConfirmReceived={() => mutations.setStatus.mutate('delivered')}
+          confirmReceivedPending={mutations.setStatus.isPending}
+          onCancelOrder={() => mutations.setStatus.mutate('cancelled')}
+          cancelPending={mutations.setStatus.isPending}
+          canReorder={canReorder}
+          isSellerDeclined={isSellerDeclined}
+          onReorder={handleReorder}
+        />
       </ScrollView>
 
       <FiscalReceiptModal
@@ -542,122 +339,3 @@ export default function OrderDetailScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg.canvas },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg.canvas },
-  scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['4xl'] },
-  headerCard: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    alignItems: 'center',
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  orderNum: { ...typography.h3 },
-  statusBadge: { paddingHorizontal: spacing.lg, paddingVertical: 6, borderRadius: radius.full },
-  statusText: { ...typography.caption, color: colors.text.onPrimary, fontWeight: '800' },
-  chatBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    height: layout.buttonHeight.md,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.brand.primary,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  chatBtnText: { ...typography.buttonSmall, color: colors.brand.primary },
-  refundBanner: {
-    backgroundColor: colors.feedback.successSurface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.feedback.success,
-  },
-  refundBannerText: { ...typography.bodySmall, fontWeight: '700', color: colors.feedback.success, flex: 1 },
-  refundBannerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  noRespCard: {
-    backgroundColor: colors.feedback.warningSurface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.feedback.warning,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  noRespHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  noRespTitle: { ...typography.bodySmall, fontWeight: '700', color: colors.feedback.warning, flex: 1 },
-  noRespHint: { ...typography.bodySmall, color: colors.text.secondary },
-  reRequestBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    height: layout.buttonHeight.md,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.brand.primary,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  reRequestBtnText: { ...typography.buttonSmall, color: colors.brand.primary },
-  declinedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.feedback.warningSurface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.feedback.warning,
-  },
-  declinedBannerText: { ...typography.bodySmall, fontWeight: '700', color: colors.feedback.warning, flex: 1 },
-  handshakeCard: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  handshakeTitle: { ...typography.h3, fontSize: 16 },
-  handshakeBody: { ...typography.bodySmall, color: colors.text.secondary, textAlign: 'center' },
-  handshakeQrWrap: { padding: spacing.md, backgroundColor: '#FFFFFF', borderRadius: radius.md, marginTop: spacing.xs },
-  primaryBtn: {
-    backgroundColor: colors.brand.primary,
-    height: layout.buttonHeight.lg,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryBtnText: { ...typography.button, color: colors.text.onPrimary },
-  ghostBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    height: layout.buttonHeight.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.feedback.danger,
-    backgroundColor: colors.feedback.dangerSurface,
-  },
-  ghostBtnText: { ...typography.buttonSmall, color: colors.feedback.danger },
-  reorderBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    height: layout.buttonHeight.md,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.brand.primary,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  reorderBtnText: { ...typography.buttonSmall, color: colors.brand.primary },
-});

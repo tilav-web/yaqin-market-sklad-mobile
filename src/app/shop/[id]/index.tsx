@@ -1,29 +1,28 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ChevronRight, Heart, MapPin, MessageCircle, Navigation, Phone, Store, Truck } from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
 import { useMemo } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
   FlatList,
-  Image,
   Linking,
   Platform,
   Pressable,
   RefreshControl,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProductCard } from '@/components/ProductCard';
+import { ShopDetailHeader } from '@/components/shop/ShopDetailHeader';
 import { useTranslation } from '@/i18n';
-import { api, resolveMedia } from '@/lib/api';
+import { api } from '@/lib/api';
 import { FeedProduct, PublicProductVariant, PublicShop } from '@/lib/types';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { colors, layout, spacing } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 const SCREEN_W = Dimensions.get('window').width;
@@ -78,9 +77,6 @@ export default function ShopDetailScreen() {
 
   const shop = shopQuery.data;
 
-  // Adapt each variant to the FeedProduct shape ProductCard expects, attaching a
-  // shop summary so add-to-cart works. The per-card shop chip is hidden — we're
-  // already inside the shop.
   const products = useMemo<FeedProduct[]>(() => {
     const list = productsQuery.data ?? [];
     if (!shop) return [];
@@ -101,7 +97,7 @@ export default function ShopDetailScreen() {
 
   if (shopQuery.isLoading) {
     return (
-      <View style={styles.center}>
+      <View className="flex-1 items-center justify-center bg-canvas">
         <ActivityIndicator color={colors.brand.primary} />
       </View>
     );
@@ -109,14 +105,11 @@ export default function ShopDetailScreen() {
 
   if (!shop) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.dim}>{tr('shopPage.notFound')}</Text>
+      <View className="flex-1 items-center justify-center bg-canvas">
+        <Text className="text-sm text-text-secondary">{tr('shopPage.notFound')}</Text>
       </View>
     );
   }
-
-  const isShowcase = shop.isDeliveryEnabled === false;
-  const isDeliveryClosed = !isShowcase && shop.isDeliveryOpenNow === false;
 
   const handleCall = () => {
     if (shop.phone) void Linking.openURL(`tel:${shop.phone}`);
@@ -156,13 +149,13 @@ export default function ShopDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
       <FlatList
         data={products}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
         numColumns={2}
-        columnWrapperStyle={styles.column}
+        columnWrapperStyle={{ gap: GUTTER }}
         ItemSeparatorComponent={() => <View style={{ height: GUTTER }} />}
         refreshControl={
           <RefreshControl
@@ -179,95 +172,17 @@ export default function ShopDetailScreen() {
           />
         }
         ListHeaderComponent={
-          <View style={styles.headerWrap}>
-            <View style={styles.heroImageWrap}>
-              {shop.photos[0] ? (
-                <Image source={{ uri: resolveMedia(shop.photos[0]) }} style={styles.heroImage} />
-              ) : (
-                <View style={[styles.heroImage, styles.placeholder]}>
-                  <Store size={56} color={colors.brand.primary} strokeWidth={1.4} />
-                </View>
-              )}
-              <Pressable
-                style={styles.favBtn}
-                hitSlop={12}
-                onPress={() => { haptics.medium(); favMut.mutate(!isFav); }}
-              >
-                <Heart
-                  size={22}
-                  color={isFav ? colors.brand.primary : colors.text.onPrimary}
-                  fill={isFav ? colors.brand.primary : 'transparent'}
-                  strokeWidth={2.2}
-                />
-              </Pressable>
-            </View>
-            <View style={styles.shopInfo}>
-              <Text style={styles.shopName}>{shop.name}</Text>
-              <Text style={styles.shopAddress}>{shop.address}</Text>
-              <View style={styles.metaRow}>
-                {shop.distanceKm !== undefined && (
-                  <View style={styles.metaItem}>
-                    <MapPin size={13} color={colors.text.secondary} strokeWidth={2.4} />
-                    <Text style={styles.metaText}>{shop.distanceKm.toFixed(2)} km</Text>
-                  </View>
-                )}
-                {isShowcase ? (
-                  <View style={[styles.metaItem, styles.showcasePill]}>
-                    <Store size={13} color="#1D4ED8" strokeWidth={2.4} />
-                    <Text style={[styles.metaText, { color: '#1D4ED8', fontWeight: '700' }]}>
-                      {tr('shop.inStoreOnly')}
-                    </Text>
-                  </View>
-                ) : isDeliveryClosed ? (
-                  <View style={[styles.metaItem, styles.closedPill]}>
-                    <Truck size={13} color={colors.feedback.warning} strokeWidth={2.4} />
-                    <Text style={[styles.metaText, { color: colors.feedback.warning, fontWeight: '700' }]}>
-                      {tr('shop.deliveryClosed')}
-                    </Text>
-                  </View>
-                ) : (
-                  <View style={styles.metaItem}>
-                    <Truck size={13} color={colors.text.secondary} strokeWidth={2.4} />
-                    <Text style={styles.metaText}>
-                      {shop.deliveryFeeAtUser === 0
-                        ? tr('home.deliveryFree')
-                        : `${shop.deliveryFeeAtUser?.toLocaleString()} ${tr('common.som')}`}
-                    </Text>
-                  </View>
-                )}
-                {shop.minOrderPrice > 0 && !isShowcase && (
-                  <Text style={styles.metaText}>
-                    {tr('home.minOrder', { price: shop.minOrderPrice.toLocaleString() })}
-                  </Text>
-                )}
-              </View>
-
-              {/* Action buttons (Chat + phone + maps) */}
-              <View style={styles.actionRow}>
-                <Pressable style={[styles.actionBtn, styles.actionBtnChat]} onPress={handleChat}>
-                  <MessageCircle size={15} color="#FFFFFF" strokeWidth={2.4} />
-                  <Text style={[styles.actionBtnText, styles.actionBtnChatText]}>{tr('nav.chat') || 'Chat'}</Text>
-                </Pressable>
-                {shop.phone ? (
-                  <Pressable style={styles.actionBtn} onPress={handleCall}>
-                    <Phone size={14} color={colors.brand.primary} />
-                    <Text style={styles.actionBtnText}>{shop.phone}</Text>
-                  </Pressable>
-                ) : null}
-                <Pressable style={styles.actionBtn} onPress={handleRoute}>
-                  <Navigation size={14} color={colors.brand.primary} />
-                  <Text style={styles.actionBtnText}>{tr('shop.openRoute')}</Text>
-                </Pressable>
-              </View>
-
-              {!shop.isOpenManual && (
-                <View style={styles.closedAlert}>
-                  <Text style={styles.closedAlertText}>{tr('shop.closedAlert')}</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.sectionTitle}>{tr('shop.products')}</Text>
-          </View>
+          <ShopDetailHeader
+            shop={shop}
+            isFav={isFav}
+            onToggleFav={() => {
+              haptics.medium();
+              favMut.mutate(!isFav);
+            }}
+            onCall={handleCall}
+            onChat={handleChat}
+            onRoute={handleRoute}
+          />
         }
         renderItem={({ item }) => (
           <ProductCard
@@ -277,153 +192,23 @@ export default function ShopDetailScreen() {
             onPress={() => router.push(`/product/${item.id}`)}
           />
         )}
-        ListEmptyComponent={
-          productsQuery.isLoading ? (
-            <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />
-          ) : (
-            <Text style={[styles.dim, { textAlign: 'center', marginTop: 40 }]}>
-              {tr('shop.noProducts')}
-            </Text>
-          )
-        }
       />
 
-      {cartCount > 0 && !isShowcase && (
-        <Pressable
-          style={styles.cartCta}
-          onPress={() => router.push(`/shop/${shop.id}/checkout`)}>
-          <View style={styles.cartBadge}>
-            <Text style={styles.cartBadgeText}>{cartCount}</Text>
-          </View>
-          <Text style={styles.cartCtaText}>{tr('shop.order')}</Text>
-          <View style={styles.cartCtaRight}>
-            <Text style={styles.cartCtaTotal}>{cartTotal.toLocaleString()} {tr('common.som')}</Text>
-            <ChevronRight size={18} color={colors.text.onPrimary} strokeWidth={2.6} />
-          </View>
-        </Pressable>
+      {/* Floating cart bar */}
+      {cartCount > 0 && (
+        <View className="absolute left-4 right-4 bottom-4">
+          <Pressable
+            className="flex-row items-center gap-2 bg-brand-primary h-12 rounded-2xl px-4 shadow-lg active:opacity-90"
+            onPress={() => router.push(`/shop/${id}/checkout`)}>
+            <View className="min-w-[24px] h-6 rounded-full px-1.5 bg-surface items-center justify-center">
+              <Text className="text-xs font-extrabold text-brand-primary">{cartCount}</Text>
+            </View>
+            <Text className="flex-1 text-base font-bold text-white">{tr('cart.total')}</Text>
+            <Text className="text-base font-bold text-white">{cartTotal.toLocaleString()} {tr('common.som')}</Text>
+            <ChevronRight size={18} color="#FFFFFF" strokeWidth={2.4} />
+          </Pressable>
+        </View>
       )}
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { paddingBottom: 100 },
-  column: { gap: GUTTER, paddingHorizontal: SIDE },
-  headerWrap: { marginBottom: spacing.md },
-  heroImageWrap: { height: 200 },
-  heroImage: { width: '100%', height: 200, backgroundColor: colors.bg.surfaceMuted },
-  favBtn: {
-    position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  placeholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.brand.primarySurface,
-  },
-  shopInfo: { padding: layout.screenPadding, gap: spacing.xs },
-  shopName: { ...typography.h3, color: colors.text.primary },
-  shopAddress: { ...typography.bodySmall, color: colors.text.secondary },
-  metaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginTop: spacing.xs,
-  },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { ...typography.caption, color: colors.text.secondary, fontWeight: '600' },
-  showcasePill: {
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: radius.sm,
-  },
-  closedPill: {
-    backgroundColor: colors.feedback.warningSurface,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: radius.sm,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 7,
-    borderRadius: radius.md,
-    backgroundColor: colors.bg.surfaceMuted,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  actionBtnChat: {
-    backgroundColor: colors.brand.primary,
-    borderColor: colors.brand.primary,
-  },
-  actionBtnText: { ...typography.caption, fontWeight: '700', color: colors.text.primary },
-  actionBtnChatText: { color: '#FFFFFF' },
-  closedAlert: {
-    backgroundColor: colors.feedback.dangerSurface,
-    padding: spacing.sm,
-    borderRadius: radius.md,
-    marginTop: spacing.sm,
-  },
-  closedAlertText: { ...typography.caption, color: colors.brand.primary, fontWeight: '700' },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.text.primary,
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  dim: { ...typography.bodySmall, color: colors.text.secondary },
-  cartCta: {
-    position: 'absolute',
-    left: layout.screenPadding,
-    right: layout.screenPadding,
-    bottom: layout.screenPadding,
-    backgroundColor: colors.brand.primary,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    ...shadow.lg,
-  },
-  // Compact count badge replaces the verbose "N ta mahsulot" text so the bar
-  // reads as: [2]  Buyurtma berish  ........  34 000 so'm  ›
-  cartBadge: {
-    minWidth: 26,
-    height: 26,
-    borderRadius: radius.full,
-    paddingHorizontal: 6,
-    backgroundColor: colors.bg.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cartBadgeText: {
-    ...typography.caption,
-    color: colors.brand.primary,
-    fontWeight: '800',
-    fontSize: 13,
-  },
-  cartCtaText: { flex: 1, ...typography.body, color: colors.text.onPrimary, fontWeight: '800' },
-  cartCtaRight: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  cartCtaTotal: { ...typography.body, color: colors.text.onPrimary, fontWeight: '800' },
-});

@@ -1,15 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { ShoppingBag } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
-  Text,
-  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -28,7 +24,6 @@ import { startOrderActivity } from '@/lib/useOrderLiveActivity';
 import { useAuthStore } from '@/stores/auth';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
-import { colors, layout, radius, spacing, typography } from '@/theme';
 
 export default function CheckoutScreen() {
   const { id: shopId } = useLocalSearchParams<{ id: string }>();
@@ -41,8 +36,6 @@ export default function CheckoutScreen() {
   const updateQty = useCartStore((s) => s.updateQty);
   const lastUsedAddress = useLocationStore((s) => s.selectedAddress);
   const setLastUsedAddress = useLocationStore((s) => s.setSelectedAddress);
-  // Raw device fix (not `useEffectiveCoords`, which substitutes the picked
-  // address) — the delivery card reports whether GPS itself resolved.
   const deviceCoords = useLocationStore((s) => s.coords);
   const gpsLoading = useLocationStore((s) => s.loading);
   const refreshGps = useLocationStore((s) => s.refresh);
@@ -65,7 +58,6 @@ export default function CheckoutScreen() {
   });
   const activeCards = (cardsQuery.data ?? []).filter((c) => c.status === 'active');
 
-  // Pre-select the default saved card the first time the list loads
   const cardsPrefilled = useRef(false);
   useEffect(() => {
     if (!cardsPrefilled.current && activeCards.length > 0) {
@@ -91,7 +83,6 @@ export default function CheckoutScreen() {
     ? { latitude: selectedAddress.latitude, longitude: selectedAddress.longitude }
     : coords;
 
-  // Prefill the apartment-detail fields from whichever address is selected
   const [detailsAddressId, setDetailsAddressId] = useState<string | null>(null);
   if (selectedAddress && selectedAddress.id !== detailsAddressId) {
     setDetailsAddressId(selectedAddress.id);
@@ -101,7 +92,6 @@ export default function CheckoutScreen() {
     setIntercom(selectedAddress.intercom ?? '');
   }
 
-  // One-time prefill from the account's own phone
   const phonePrefilled = useRef(false);
   useEffect(() => {
     if (!phonePrefilled.current && authPhone) {
@@ -145,7 +135,7 @@ export default function CheckoutScreen() {
           });
           qc.invalidateQueries({ queryKey: ['my-addresses'] });
         } catch {
-          // Non-fatal — the order still gets these values below.
+          // Non-fatal
         }
       }
       const res = await api.post<Order>('/orders', {
@@ -213,40 +203,13 @@ export default function CheckoutScreen() {
             }
           : null;
 
-  if (!cartLines.length) {
-    return (
-      <SafeAreaView style={styles.center}>
-        <View style={styles.emptyCartIcon}>
-          <ShoppingBag size={30} color={colors.text.hint} strokeWidth={2} />
-        </View>
-        <Text style={styles.dim}>{tr('cart.empty.title')}</Text>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <View style={styles.root}>
-      <KeyboardAvoidingView
-        style={styles.root}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
-      >
+    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-        >
-          {/* Order items and totals */}
-          <CheckoutCartItemsCard
-            shop={shop}
-            cartLines={cartLines}
-            subTotal={subTotal}
-            deliveryFee={deliveryFee}
-            onUpdateQty={(variantId, quantity) => updateQty(shopId!, variantId, quantity)}
-          />
-
-          {/* Delivery & address card */}
+          contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 110 }}
+          keyboardShouldPersistTaps="handled">
+          {/* Delivery destination card */}
           <CheckoutDeliveryCard
             address={selectedAddress}
             loading={addressesQuery.isLoading}
@@ -270,7 +233,16 @@ export default function CheckoutScreen() {
             onComment={setCourierComment}
           />
 
-          {/* Payment method selection */}
+          {/* Cart items */}
+          <CheckoutCartItemsCard
+            shop={shop}
+            cartLines={cartLines}
+            subTotal={subTotal}
+            deliveryFee={deliveryFee}
+            onUpdateQty={(variantId, quantity) => updateQty(shopId!, variantId, quantity)}
+          />
+
+          {/* Payment selection */}
           <CheckoutPaymentSection
             paymentMethod={paymentMethod}
             onSelectPaymentMethod={setPaymentMethod}
@@ -281,7 +253,7 @@ export default function CheckoutScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Floating footer */}
+      {/* Sticky footer */}
       <CheckoutFooter
         blocker={blocker}
         total={total}
@@ -290,7 +262,6 @@ export default function CheckoutScreen() {
         onSubmit={() => createOrder.mutate()}
       />
 
-      {/* Address selection sheet */}
       <CheckoutAddressSheet
         visible={addressSheetVisible}
         addresses={addressesQuery.data ?? []}
@@ -298,27 +269,6 @@ export default function CheckoutScreen() {
         onSelect={selectAddress}
         onClose={() => setAddressSheetVisible(false)}
       />
-    </View>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg.canvas },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.bg.canvas,
-  },
-  emptyCartIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dim: { ...typography.body, color: colors.text.secondary },
-  scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['5xl'] },
-});

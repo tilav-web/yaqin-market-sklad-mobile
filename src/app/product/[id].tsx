@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import {
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -27,7 +26,6 @@ import { ProductOffer, ProductReview, VariantDetail } from '@/lib/types';
 import { EMPTY_CART, useCartStore } from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
 import { useTheme } from '@/stores/theme';
-import { colors, layout, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 import { getLocalizedText } from '@/utils/text';
 
@@ -97,13 +95,13 @@ export default function ProductDetailScreen() {
   useEffect(() => {
     if (!product) return;
     trackProductView(product.shopId, product.id);
-  }, [product?.id, product?.shopId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [product]);
 
   if (detailQuery.isLoading || !product) {
     return (
-      <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
         <Skeleton width="100%" height={320} radius={0} />
-        <View style={{ padding: layout.screenPadding, gap: spacing.md }}>
+        <View className="p-4 gap-3">
           <Skeleton width="70%" height={24} />
           <Skeleton width="40%" height={16} />
           <Skeleton width="50%" height={28} />
@@ -132,8 +130,8 @@ export default function ProductDetailScreen() {
   };
 
   return (
-    <View style={[styles.root, { backgroundColor: activeColors.bg.surface }]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+    <View className="flex-1" style={{ backgroundColor: activeColors.bg.surface }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
         <ProductImageHero
           product={product}
           isFav={isFav}
@@ -145,31 +143,33 @@ export default function ProductDetailScreen() {
           activeColors={activeColors}
         />
 
-        <View style={[styles.body, { backgroundColor: activeColors.bg.surface }]}>
-          <Text style={[styles.name, { color: activeColors.text.primary }]}>{productName}</Text>
+        <View className="p-4 gap-3" style={{ backgroundColor: activeColors.bg.surface }}>
+          <Text className="text-xl font-bold" style={{ color: activeColors.text.primary }}>
+            {productName}
+          </Text>
 
-          <View style={styles.priceRow}>
+          <View className="flex-row items-baseline gap-2">
             {hasDiscount && (
-              <Text style={styles.oldPrice}>{product.price.toLocaleString()}</Text>
+              <Text className="text-sm text-text-tertiary line-through">{product.price.toLocaleString()}</Text>
             )}
-            <Text style={styles.price} numberOfLines={1}>
+            <Text className="text-2xl font-extrabold text-brand-primary" numberOfLines={1}>
               {finalPrice.toLocaleString()}
             </Text>
-            <Text style={styles.currency}>{tr('common.som')}</Text>
+            <Text className="text-sm font-semibold text-text-secondary">{tr('common.som')}</Text>
           </View>
 
           {!outOfStock && product.stock <= product.lowStockThreshold && (
-            <View style={styles.stockRow}>
-              <Text style={[styles.stockBadge, styles.stockLow]}>
+            <View className="self-start">
+              <Text className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
                 {tr('product.lowStock')} · {product.stock} {UNIT_SHORT(product.unitType)}
               </Text>
             </View>
           )}
 
           {product.siblings.length > 1 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{tr('product.variants')}</Text>
-              <View style={styles.variantRow}>
+            <View className="gap-2 pt-2">
+              <Text className="text-xs font-bold text-text-secondary uppercase tracking-wider">{tr('product.variants')}</Text>
+              <View className="flex-row flex-wrap gap-2">
                 {product.siblings.map((v) => {
                   const active = v.id === id;
                   return (
@@ -180,19 +180,14 @@ export default function ProductDetailScreen() {
                         haptics.selection();
                         setActiveId(v.id);
                       }}
-                      style={[styles.variantChip, active && styles.variantChipActive]}
+                      className={`px-3 py-2 rounded-xl border items-center ${
+                        active ? 'bg-brand-primary border-brand-primary' : 'bg-surface border-border-subtle'
+                      }`}
                     >
-                      <Text
-                        style={[styles.variantChipText, active && styles.variantChipTextActive]}
-                      >
+                      <Text className={`text-xs font-bold ${active ? 'text-white' : 'text-text-primary'}`}>
                         {unitLabel(v)}
                       </Text>
-                      <Text
-                        style={[
-                          styles.variantChipPrice,
-                          active && styles.variantChipTextActive,
-                        ]}
-                      >
+                      <Text className={`text-[11px] mt-0.5 ${active ? 'text-white/80' : 'text-text-secondary'}`}>
                         {(v.discountPrice ?? v.price).toLocaleString()}
                       </Text>
                     </Pressable>
@@ -202,12 +197,14 @@ export default function ProductDetailScreen() {
             </View>
           )}
 
-          {product.description ? (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{tr('product.description')}</Text>
-              <Text style={styles.description}>{product.description}</Text>
+          {product.description && (
+            <View className="gap-1 pt-2">
+              <Text className="text-xs font-bold text-text-secondary uppercase tracking-wider">{tr('product.description')}</Text>
+              <Text className="text-sm text-text-secondary leading-5">
+                {getLocalizedText(product.description)}
+              </Text>
             </View>
-          ) : null}
+          )}
 
           {product.shop && (
             <ProductShopCard
@@ -232,6 +229,7 @@ export default function ProductDetailScreen() {
         </View>
       </ScrollView>
 
+      {/* Floating Bottom Action Bar */}
       <ProductBottomBar
         outOfStock={outOfStock}
         quantityInCart={inCart?.quantity}
@@ -246,101 +244,3 @@ export default function ProductDetailScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg.canvas },
-  safe: { flex: 1, backgroundColor: colors.bg.canvas },
-  scroll: { paddingBottom: spacing['4xl'] },
-  body: {
-    padding: layout.screenPadding,
-    gap: spacing.md,
-  },
-  name: {
-    ...typography.h3,
-    lineHeight: 28,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: spacing.xs,
-  },
-  oldPrice: {
-    ...typography.body,
-    color: colors.text.hint,
-    textDecorationLine: 'line-through',
-    marginRight: spacing.xs,
-  },
-  price: {
-    ...typography.h2,
-    color: colors.brand.primary,
-  },
-  currency: {
-    ...typography.body,
-    fontWeight: '700',
-    color: colors.brand.primary,
-  },
-  stockRow: {
-    flexDirection: 'row',
-  },
-  stockBadge: {
-    ...typography.caption,
-    fontWeight: '700',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: radius.full,
-  },
-  stockLow: {
-    backgroundColor: colors.feedback.warningSurface,
-    color: colors.feedback.warning,
-  },
-  section: {
-    marginTop: spacing.md,
-    gap: spacing.xs,
-  },
-  sectionTitle: {
-    ...typography.caption,
-    fontWeight: '800',
-    color: colors.text.secondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  description: {
-    ...typography.body,
-    color: colors.text.secondary,
-    lineHeight: 22,
-  },
-  variantRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginTop: spacing.xs,
-  },
-  variantChip: {
-    borderWidth: 1.5,
-    borderColor: colors.border.default,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  variantChipActive: {
-    borderColor: colors.brand.primary,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  variantChipText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.text.primary,
-  },
-  variantChipPrice: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    fontWeight: '600',
-  },
-  variantChipTextActive: {
-    color: colors.brand.primary,
-    fontWeight: '800',
-  },
-});
