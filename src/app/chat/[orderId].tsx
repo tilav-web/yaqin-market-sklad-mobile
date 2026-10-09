@@ -4,12 +4,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   ChatAttachedProduct,
@@ -46,10 +47,12 @@ export default function ChatScreen() {
   const productId = params.productId;
 
   const { tr } = useTranslation();
+  const insets = useSafeAreaInsets();
   const { isDark, colors: activeColors } = useTheme();
   const myId = useAuthStore((s) => s.user?.id);
   const [text, setText] = useState('');
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const listRef = useRef<FlatList<any>>(null);
 
   const productQuery = useQuery({
@@ -80,6 +83,24 @@ export default function ChatScreen() {
   });
 
   useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        setIsKeyboardVisible(true);
+        requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     if (messages.length > 0) {
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
     }
@@ -95,7 +116,7 @@ export default function ChatScreen() {
   const telegramBg = isDark ? '#0E1621' : '#E2EAF1';
 
   return (
-    <SafeAreaView className="flex-1" edges={['top', 'bottom']} style={{ backgroundColor: activeColors.bg.surface }}>
+    <SafeAreaView className="flex-1" edges={['top']} style={{ backgroundColor: activeColors.bg.surface }}>
       {/* Telegram-style Top Header */}
       <ChatHeader chatTitle={chatTitle} shopId={shopId} avatarUrl={avatarUrl} />
 
@@ -105,70 +126,82 @@ export default function ChatScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: telegramBg }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        {isLoadingMessages ? (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator color={colors.brand.primary} />
-          </View>
-        ) : (
-          <FlatList
-            ref={listRef}
-            data={messages}
-            keyExtractor={(m) => m.id}
-            contentContainerStyle={{ paddingHorizontal: 10, paddingVertical: 12, flexGrow: 1 }}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <View className="flex-1 items-center justify-center py-12">
-                <View className="px-4 py-2 rounded-full bg-black/20 dark:bg-white/20">
-                  <Text className="text-xs font-semibold text-white">{tr('chat.empty')}</Text>
+        <View className="flex-1">
+          {isLoadingMessages ? (
+            <View className="flex-1 items-center justify-center">
+              <ActivityIndicator color={colors.brand.primary} />
+            </View>
+          ) : (
+            <FlatList
+              ref={listRef}
+              data={messages}
+              keyExtractor={(m) => m.id}
+              style={{ flex: 1 }}
+              className="flex-1"
+              contentContainerStyle={{
+                paddingHorizontal: 10,
+                paddingVertical: 12,
+                flexGrow: 1,
+                justifyContent: messages.length === 0 ? 'center' : undefined,
+              }}
+              keyboardDismissMode="interactive"
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View className="items-center justify-center py-12">
+                  <View className="px-4 py-2 rounded-full bg-black/20 dark:bg-white/20">
+                    <Text className="text-xs font-semibold text-white">{tr('chat.empty')}</Text>
+                  </View>
                 </View>
-              </View>
-            }
-            renderItem={({ item, index }) => {
-              const isNewDay =
-                index === 0 ||
-                new Date(item.createdAt).toDateString() !==
-                  new Date(messages[index - 1].createdAt).toDateString();
+              }
+              renderItem={({ item, index }) => {
+                const isNewDay =
+                  index === 0 ||
+                  new Date(item.createdAt).toDateString() !==
+                    new Date(messages[index - 1].createdAt).toDateString();
 
-              return (
-                <View key={item.id}>
-                  {isNewDay && (
-                    <ChatDateBadge dateText={formatChatGroupDate(item.createdAt, tr)} />
-                  )}
-                  <ChatMessageBubble
-                    text={item.text}
-                    createdAt={item.createdAt}
-                    isMine={item.senderUserId === myId}
-                  />
-                </View>
-              );
-            }}
+                return (
+                  <View key={item.id}>
+                    {isNewDay && (
+                      <ChatDateBadge dateText={formatChatGroupDate(item.createdAt, tr)} />
+                    )}
+                    <ChatMessageBubble
+                      text={item.text}
+                      createdAt={item.createdAt}
+                      isMine={item.senderUserId === myId}
+                    />
+                  </View>
+                );
+              }}
+            />
+          )}
+
+          {/* Quick reply templates drawer */}
+          {templatesOpen && shopId && (
+            <ChatTemplatesDrawer
+              isLoading={isLoadingTemplates}
+              templates={templates}
+              onSelectTemplate={(templateText) => {
+                setText(templateText);
+                setTemplatesOpen(false);
+              }}
+            />
+          )}
+
+          {/* Telegram-style Bottom Input Bar pinned to keyboard/bottom */}
+          <ChatInputBar
+            text={text}
+            onChangeText={setText}
+            onSend={handleSend}
+            isSending={isSending}
+            hasShop={Boolean(shopId)}
+            templatesOpen={templatesOpen}
+            onToggleTemplates={() => setTemplatesOpen((v) => !v)}
+            bottomInset={isKeyboardVisible ? 6 : Math.max(insets.bottom, 8)}
           />
-        )}
-
-        {/* Quick reply templates drawer */}
-        {templatesOpen && shopId && (
-          <ChatTemplatesDrawer
-            isLoading={isLoadingTemplates}
-            templates={templates}
-            onSelectTemplate={(templateText) => {
-              setText(templateText);
-              setTemplatesOpen(false);
-            }}
-          />
-        )}
-
-        {/* Telegram-style Bottom Input Bar */}
-        <ChatInputBar
-          text={text}
-          onChangeText={setText}
-          onSend={handleSend}
-          isSending={isSending}
-          hasShop={Boolean(shopId)}
-          templatesOpen={templatesOpen}
-          onToggleTemplates={() => setTemplatesOpen((v) => !v)}
-        />
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

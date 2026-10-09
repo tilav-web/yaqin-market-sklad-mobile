@@ -14,6 +14,7 @@ interface ChatInputBarProps {
   readonly hasShop: boolean;
   readonly templatesOpen: boolean;
   readonly onToggleTemplates: () => void;
+  readonly bottomInset?: number;
 }
 
 export function ChatInputBar({
@@ -24,6 +25,7 @@ export function ChatInputBar({
   hasShop,
   templatesOpen,
   onToggleTemplates,
+  bottomInset,
 }: ChatInputBarProps) {
   const { tr } = useTranslation();
   const { colors: activeColors } = useTheme();
@@ -38,8 +40,11 @@ export function ChatInputBar({
 
   return (
     <View
-      className="flex-row items-end gap-2 px-3 py-2 border-t bg-bg-surface"
-      style={{ borderTopColor: activeColors.border.subtle }}
+      className="flex-row items-end gap-2 px-3 pt-2 border-t bg-bg-surface"
+      style={{
+        borderTopColor: activeColors.border.subtle,
+        paddingBottom: bottomInset !== undefined ? bottomInset : 8,
+      }}
     >
       {/* Left Action: Quick Templates or Attachment */}
       {hasShop ? (
