@@ -1,59 +1,40 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useGlobalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Pencil, RotateCcw, Save, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   PanResponder,
-  Pressable,
   StyleSheet,
-  Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import MapView, { LatLng, Marker, Polygon, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Line, Svg } from 'react-native-svg';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { tr } from '@/i18n';
+import {
+  DeliveryZonesBottomBar,
+  DeliveryZonesTopNav,
+  fromGeoJson,
+  SNAP_PX,
+  toGeoJson,
+  ZoneKey,
+} from '@/components/delivery-zones';
 import { PILOT_CITY_CENTER } from '@/constants/geo';
+import { tr } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { GeoJsonPolygon, PublicShop } from '@/lib/types';
-import { colors, radius, shadow, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
-/* ── constants ── */
-// Single-city (Qarshi) pilot fallback — see constants/geo.ts.
 const QARSHI = PILOT_CITY_CENTER;
-const SNAP_PX = 44; // pixels — auto-close snap radius
 
-type ZoneKey = 'delivery' | 'free';
-
-/* ── geo helpers ── */
-function toGeoJson(verts: LatLng[]): GeoJsonPolygon {
-  const ring = verts.map<[number, number]>((v) => [v.longitude, v.latitude]);
-  ring.push(ring[0]);
-  return { type: 'Polygon', coordinates: [ring] };
-}
-function fromGeoJson(p: GeoJsonPolygon): LatLng[] {
-  return p.coordinates[0].slice(0, -1).map(([lng, lat]) => ({ latitude: lat, longitude: lng }));
-}
-
-/* ── component ── */
 export default function DeliveryZonesScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
   const router = useRouter();
   const qc = useQueryClient();
   const mapRef = useRef<MapView>(null);
   const mapWrapRef = useRef<View>(null);
-  // Map view page-absolute offset (for coordinateForPoint conversion)
-  // Kept as a ref because the PanResponder below is created once and its
-  // handlers must read the current offset, not the one captured at creation.
-  // `mapOrigin` mirrors it as state for the SVG preview line: that is drawn
-  // during render, and a ref read there never repaints when the offset
-  // changes (e.g. after a rotation or a re-layout).
+
   const mapOffset = useRef({ x: 0, y: 0 });
   const [mapOrigin, setMapOrigin] = useState({ x: 0, y: 0 });
-  // Screen position of the first vertex of the active zone (for snap-close)
   const firstPx = useRef<{ x: number; y: number } | null>(null);
 
   /* zone vertices */
@@ -65,9 +46,7 @@ export default function DeliveryZonesScreen() {
 
   /* drawing */
   const [pencilOn, setPencilOn] = useState(false);
-  // Live SVG preview line: screen-space from last vertex → finger
   const [svgLine, setSvgLine] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
-  // Last vertex screen position (needed to draw the SVG preview)
   const lastPx = useRef<{ x: number; y: number } | null>(null);
 
   const [initialized, setInitialized] = useState(false);
@@ -83,16 +62,13 @@ export default function DeliveryZonesScreen() {
   useEffect(() => { closedRef.current = { delivery: dclosed, free: fclosed }; }, [dclosed, fclosed]);
   useEffect(() => { vertsRef.current = { delivery: dverts, free: fverts }; }, [dverts, fverts]);
 
-  /* ── shop data ── */
+  /* shop data */
   const shopQuery = useQuery({
     queryKey: ['shop', shopId],
     queryFn: async () => (await api.get<PublicShop>(`/seller/shops/${shopId}`)).data,
     staleTime: 60_000,
   });
 
-  // Seed the editable polygons from the saved shop the first time it arrives.
-  // During render, not in an effect, so the map never draws one frame with
-  // empty zones before filling them in.
   if (shopQuery.data && !initialized) {
     const s = shopQuery.data as PublicShop & {
       deliveryPolygon?: GeoJsonPolygon | null;
@@ -107,7 +83,6 @@ export default function DeliveryZonesScreen() {
     ? { latitude: shopQuery.data.latitude, longitude: shopQuery.data.longitude }
     : QARSHI;
 
-  /* Screen position of a LatLng on the map (for snap indicator) */
   const toScreen = async (coord: LatLng): Promise<{ x: number; y: number } | null> => {
     try {
       const pt = await mapRef.current?.pointForCoordinate(coord);
@@ -118,12 +93,7 @@ export default function DeliveryZonesScreen() {
     }
   };
 
-  /* ── PanResponder (created once — reads mutable refs, uses stable setters) ── */
-  // The rule sees `pencilRef.current` & co. inside this initializer and reads
-  // them as render-time ref access. They are not: every one of them sits in a
-  // gesture handler that only runs on touch, long after mount — which is
-  // exactly what refs are for. The responder is deliberately built once so the
-  // gesture is not torn down and rebuilt on every vertex the seller draws.
+  /* PanResponder */
   // eslint-disable-next-line react-hooks/refs
   const [panRef] = useState(() =>
     PanResponder.create({
@@ -134,7 +104,6 @@ export default function DeliveryZonesScreen() {
       onMoveShouldSetPanResponder: () =>
         pencilRef.current && !closedRef.current[zoneRef.current],
 
-      /* ── finger DOWN: place first vertex only if zone is empty ── */
       onPanResponderGrant: async (evt) => {
         if (!pencilRef.current || closedRef.current[zoneRef.current]) return;
         const { pageX, pageY } = evt.nativeEvent;
@@ -151,15 +120,10 @@ export default function DeliveryZonesScreen() {
           lastPx.current = { x: pageX, y: pageY };
           if (zoneRef.current === 'delivery') setDverts([coord]);
           else setFverts([coord]);
-        } else {
-          // Subsequent gesture: the line starts from the last confirmed vertex screen position
-          // (map is frozen, so screen positions don't drift)
-          // lastPx is already set from previous release
         }
         setSvgLine(null);
       },
 
-      /* ── finger MOVING: update SVG preview line in screen space (fast, no async) ── */
       onPanResponderMove: (evt) => {
         if (!pencilRef.current || closedRef.current[zoneRef.current]) return;
         const { pageX, pageY } = evt.nativeEvent;
@@ -168,13 +132,11 @@ export default function DeliveryZonesScreen() {
         setSvgLine({ x1: lp.x, y1: lp.y, x2: pageX, y2: pageY });
       },
 
-      /* ── finger UP: add new vertex (or snap-close) ── */
       onPanResponderRelease: async (evt) => {
         if (!pencilRef.current || closedRef.current[zoneRef.current]) return;
         setSvgLine(null);
         const { pageX, pageY } = evt.nativeEvent;
 
-        /* snap-close check */
         const fp = firstPx.current;
         if (fp && vertsRef.current[zoneRef.current].length >= 3) {
           const dist = Math.hypot(pageX - fp.x, pageY - fp.y);
@@ -200,14 +162,12 @@ export default function DeliveryZonesScreen() {
     }),
   );
 
-  /* ── derived values ── */
   const verts = zone === 'delivery' ? dverts : fverts;
   const isClosed = zone === 'delivery' ? dclosed : fclosed;
   const dColor = '#22c55e';
   const fColor = '#3b82f6';
   const activeColor = zone === 'delivery' ? dColor : fColor;
 
-  /* ── handlers ── */
   const handleUndo = () => {
     if (isClosed) {
       if (zone === 'delivery') setDclosed(false);
@@ -222,10 +182,11 @@ export default function DeliveryZonesScreen() {
   };
 
   const handleReset = () => {
-    Alert.alert("Tozalash", "Bu zonani o'chirasizmi?", [
-      { text: "Bekor", style: "cancel" },
+    Alert.alert('Tozalash', "Bu zonani o'chirasizmi?", [
+      { text: 'Bekor', style: 'cancel' },
       {
-        text: "O'chirish", style: "destructive",
+        text: "O'chirish",
+        style: 'destructive',
         onPress: () => {
           if (zone === 'delivery') { setDverts([]); setDclosed(false); }
           else { setFverts([]); setFclosed(false); }
@@ -247,7 +208,6 @@ export default function DeliveryZonesScreen() {
 
   const handlePencilToggle = async () => {
     if (pencilOn) { setPencilOn(false); setSvgLine(null); return; }
-    // When turning pencil on: if zone has vertices, update lastPx from last vertex
     if (verts.length > 0) {
       const sp = await toScreen(verts[verts.length - 1]);
       if (sp) lastPx.current = sp;
@@ -276,7 +236,6 @@ export default function DeliveryZonesScreen() {
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
-  /* ── hint text ── */
   const hint = (() => {
     if (!pencilOn) return isClosed ? 'Tayyor — qayta chizish uchun qalamni bosing' : 'Qalamni bosib chizishni boshlang';
     if (verts.length === 0) return 'Bosing va torting → chiziq chiziladi';
@@ -286,7 +245,7 @@ export default function DeliveryZonesScreen() {
 
   return (
     <View style={styles.root}>
-      {/* ── MAP ── */}
+      {/* Map View */}
       <View
         ref={mapWrapRef}
         style={styles.mapWrap}
@@ -358,114 +317,44 @@ export default function DeliveryZonesScreen() {
         )}
       </View>
 
-      {/* ── FLOATING: back (top-left) + save (top-right) ── */}
-      <SafeAreaView style={styles.topControls} edges={['top']} pointerEvents="box-none">
-        <Pressable style={styles.floatBtn} onPress={() => router.back()} hitSlop={8}>
-          <ArrowLeft size={18} color={colors.text.primary} />
-        </Pressable>
-        <Pressable
-          style={[styles.floatBtn, saveMutation.isPending && { opacity: 0.5 }]}
-          onPress={() => saveMutation.mutate()}
-          disabled={saveMutation.isPending}
-        >
-          <Save size={18} color={colors.brand.primary} />
-        </Pressable>
-      </SafeAreaView>
+      {/* Floating Top Controls */}
+      <DeliveryZonesTopNav
+        onBack={() => router.back()}
+        onSave={() => saveMutation.mutate()}
+        isSaving={saveMutation.isPending}
+      />
 
-      {/* ── BOTTOM BAR ── */}
-      <SafeAreaView style={styles.bottom} edges={['bottom']}>
-        {/* Zone toggle + hint in one row */}
-        <View style={styles.topRow}>
-          {(['delivery', 'free'] as ZoneKey[]).map((z) => {
-            const col = z === 'delivery' ? dColor : fColor;
-            const active = zone === z;
-            return (
-              <TouchableOpacity
-                key={z}
-                style={[styles.chip, active && { borderColor: col, backgroundColor: col + '20' }]}
-                onPress={() => {
-                  if (pencilOn) return;
-                  setZone(z);
-                  lastPx.current = null;
-                  firstPx.current = null;
-                }}
-              >
-                <View style={[styles.chipDot, { backgroundColor: col }]} />
-                <Text style={[styles.chipText, active && { color: colors.text.primary, fontWeight: '700' }]}>
-                  {z === 'delivery' ? 'Yetkazib berish' : 'Tekin'}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-          <Text style={styles.hint} numberOfLines={1}>{hint}</Text>
-        </View>
-
-        {/* Tool row */}
-        <View style={styles.toolRow}>
-          <TouchableOpacity
-            style={[styles.toolBtn, verts.length === 0 && styles.disabled]}
-            disabled={verts.length === 0}
-            onPress={handleUndo}
-            hitSlop={4}
-          >
-            <RotateCcw size={16} color={verts.length === 0 ? colors.text.hint : colors.text.secondary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.toolBtn, verts.length === 0 && styles.disabled]}
-            disabled={verts.length === 0}
-            onPress={handleReset}
-            hitSlop={4}
-          >
-            <X size={16} color={verts.length === 0 ? colors.text.hint : colors.feedback.danger} />
-          </TouchableOpacity>
-
-          {pencilOn && verts.length >= 3 && !isClosed && (
-            <TouchableOpacity
-              style={[styles.chipBtn, { borderColor: activeColor }]}
-              onPress={handleClosePolygon}
-            >
-              <Text style={[styles.chipBtnText, { color: activeColor }]}>Yop</Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={[
-              styles.pencilBtn,
-              pencilOn && { backgroundColor: activeColor, borderColor: activeColor },
-              isClosed && styles.disabled,
-            ]}
-            disabled={isClosed}
-            onPress={handlePencilToggle}
-          >
-            <Pencil size={15} color={pencilOn ? '#fff' : activeColor} />
-            <Text style={[styles.pencilText, pencilOn && { color: '#fff' }]}>
-              {pencilOn ? 'Chizmoqda' : 'Qalam'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.saveBtn, saveMutation.isPending && { opacity: 0.6 }]}
-            disabled={saveMutation.isPending}
-            onPress={() => saveMutation.mutate()}
-          >
-            <Save size={15} color="#fff" />
-            <Text style={styles.saveBtnText}>
-              {saveMutation.isPending ? 'Saqlanmoqda…' : 'Saqlash'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      {/* Bottom Control Bar */}
+      <DeliveryZonesBottomBar
+        zone={zone}
+        onSelectZone={(z) => {
+          if (pencilOn) return;
+          setZone(z);
+          lastPx.current = null;
+          firstPx.current = null;
+        }}
+        hint={hint}
+        pencilOn={pencilOn}
+        onTogglePencil={handlePencilToggle}
+        isClosed={isClosed}
+        vertsCount={verts.length}
+        onUndo={handleUndo}
+        onReset={handleReset}
+        onClosePolygon={handleClosePolygon}
+        onSave={() => saveMutation.mutate()}
+        isSaving={saveMutation.isPending}
+        dColor={dColor}
+        fColor={fColor}
+        activeColor={activeColor}
+      />
     </View>
   );
 }
 
-/* ── styles ── */
 const styles = StyleSheet.create({
   root: { flex: 1 },
   mapWrap: { flex: 1 },
   map: { flex: 1 },
-
   snapTarget: {
     width: 26,
     height: 26,
@@ -473,117 +362,4 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     backgroundColor: 'rgba(255,255,255,0.75)',
   },
-
-  /* Floating top controls */
-  topControls: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.sm,
-    paddingBottom: spacing.sm,
-  },
-  floatBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    ...shadow.sm,
-  },
-
-  /* Bottom */
-  bottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(255,255,255,0.97)',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
-    gap: spacing.xs,
-    ...shadow.lg,
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: colors.border.subtle,
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  chipDot: { width: 7, height: 7, borderRadius: 4 },
-  chipText: { ...typography.caption, color: colors.text.tertiary, fontSize: 11 },
-  hint: {
-    flex: 1,
-    ...typography.caption,
-    color: colors.text.hint,
-    fontSize: 11,
-    textAlign: 'right',
-  },
-
-  toolRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  toolBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.bg.surfaceMuted,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  disabled: { opacity: 0.3 },
-
-  chipBtn: {
-    paddingHorizontal: 12,
-    height: 36,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    backgroundColor: colors.bg.surface,
-  },
-  chipBtnText: { fontSize: 13, fontWeight: '700' },
-
-  pencilBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    height: 36,
-    paddingHorizontal: 12,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.border.default,
-    backgroundColor: colors.bg.surface,
-  },
-  pencilText: { fontSize: 13, fontWeight: '600', color: colors.text.secondary },
-
-  saveBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    height: 36,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-  },
-  saveBtnText: { fontSize: 13, color: '#fff', fontWeight: '700' },
 });
