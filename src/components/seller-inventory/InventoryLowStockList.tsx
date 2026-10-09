@@ -4,14 +4,13 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
 
 import { tr } from '@/i18n';
 import { LowStockVariant } from '@/lib/types';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 import { unitLabel } from './types';
 
@@ -44,12 +43,12 @@ export function InventoryLowStockList({
 
   if (!data.length) {
     return (
-      <View style={styles.empty}>
-        <View style={styles.emptyIcon}>
+      <View className="p-8 items-center gap-2">
+        <View className="w-16 h-16 rounded-full bg-brand-primary/10 items-center justify-center">
           <TrendingDown size={28} color={colors.feedback.warning} strokeWidth={1.8} />
         </View>
-        <Text style={styles.emptyTitle}>{tr('inv.lowEmptyTitle')}</Text>
-        <Text style={styles.dim}>{tr('inv.lowEmptyHint')}</Text>
+        <Text className="text-lg font-bold text-text-primary">{tr('inv.lowEmptyTitle')}</Text>
+        <Text className="text-xs text-text-secondary text-center">{tr('inv.lowEmptyHint')}</Text>
       </View>
     );
   }
@@ -57,26 +56,37 @@ export function InventoryLowStockList({
   const tiers: LowStockVariant['tier'][] = ['critical', 'warning'];
 
   return (
-    <ScrollView contentContainerStyle={styles.list}>
+    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 16 }}>
       {tiers.map((tier) => {
         const items = data.filter((v) => v.tier === tier);
         if (!items.length) return null;
         const meta = LOW_STOCK_TIER_META[tier];
         return (
-          <View key={tier} style={styles.tierGroup}>
-            <Text style={[styles.tierGroupTitle, { color: meta.color }]}>
+          <View key={tier} className="gap-2">
+            <Text className="text-sm font-extrabold ml-1" style={{ color: meta.color }}>
               {meta.emoji} {lowStockTierLabel(tier)} ({items.length})
             </Text>
             {items.map((item) => (
-              <View key={item.id} style={[styles.card, { borderColor: meta.color }]}>
-                <View style={styles.cardMain}>
-                  <View style={[styles.expiryDaysBox, { backgroundColor: meta.surface }]}>
-                    <Text style={[styles.expiryDaysNum, { color: meta.color }]}>{item.stock}</Text>
-                    <Text style={[styles.expiryDaysLabel, { color: meta.color }]}>{tr('inv.pcs')}</Text>
+              <View
+                key={item.id}
+                className="bg-bg-surface rounded-2xl border shadow-sm"
+                style={{ borderColor: meta.color }}
+              >
+                <View className="flex-row items-center gap-3 p-3.5">
+                  <View
+                    className="w-13 h-13 rounded-xl items-center justify-center"
+                    style={{ backgroundColor: meta.surface }}
+                  >
+                    <Text className="text-xl font-extrabold leading-6" style={{ color: meta.color }}>
+                      {item.stock}
+                    </Text>
+                    <Text className="text-[11px] font-semibold" style={{ color: meta.color }}>
+                      {tr('inv.pcs')}
+                    </Text>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-                    <Text style={styles.unit}>
+                  <View className="flex-1">
+                    <Text className="text-sm font-bold text-text-primary" numberOfLines={1}>{item.name}</Text>
+                    <Text className="text-xs text-text-tertiary mt-0.5">
                       {tr('inv.thresholdLine', {
                         value: item.lowStockThreshold,
                         unit: unitLabel(item.unitType),
@@ -84,10 +94,13 @@ export function InventoryLowStockList({
                     </Text>
                   </View>
                 </View>
-                <View style={styles.tierActions}>
-                  <Pressable style={styles.tierActionBtn} onPress={() => onKirim(item)}>
+                <View className="flex-row gap-2 px-3.5 pb-3.5">
+                  <Pressable
+                    className="flex-1 flex-row items-center justify-center gap-1.5 py-2 rounded-xl bg-brand-primary/10 border border-brand-primary/20 active:opacity-75"
+                    onPress={() => onKirim(item)}
+                  >
                     <PackagePlus size={14} color={colors.brand.primary} strokeWidth={2.2} />
-                    <Text style={styles.tierActionBtnText}>{tr('inv.doKirim')}</Text>
+                    <Text className="text-xs font-bold text-brand-primary">{tr('inv.doKirim')}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -98,102 +111,3 @@ export function InventoryLowStockList({
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  list: {
-    padding: layout.screenPadding,
-    paddingBottom: 100,
-    gap: spacing.md,
-  },
-  tierGroup: {
-    gap: spacing.sm,
-  },
-  tierGroupTitle: {
-    ...typography.bodyStrong,
-    fontWeight: '800',
-    marginLeft: spacing.xs,
-  },
-  card: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    ...shadow.xs,
-  },
-  cardMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.md,
-  },
-  name: {
-    ...typography.bodyStrong,
-    color: colors.text.primary,
-  },
-  unit: {
-    ...typography.caption,
-    color: colors.text.tertiary,
-    marginTop: 1,
-  },
-  expiryDaysBox: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  expiryDaysNum: {
-    fontSize: 22,
-    fontWeight: '800',
-    lineHeight: 26,
-  },
-  expiryDaysLabel: {
-    ...typography.caption,
-    fontWeight: '600',
-  },
-  tierActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
-  },
-  tierActionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.brand.primarySurface,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-  },
-  tierActionBtnText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.brand.primary,
-  },
-  empty: {
-    padding: spacing['4xl'],
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  emptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyTitle: {
-    ...typography.h4,
-    color: colors.text.primary,
-  },
-  dim: {
-    ...typography.bodySmall,
-    color: colors.text.secondary,
-    textAlign: 'center',
-  },
-});

@@ -6,10 +6,10 @@ import {
   Tag,
 } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { tr } from '@/i18n';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 interface InventoryToolbarProps {
   searchInput: string;
@@ -33,11 +33,11 @@ export function InventoryToolbar({
   onOpenCount,
 }: InventoryToolbarProps) {
   return (
-    <View style={styles.toolbar}>
-      <View style={styles.searchBox}>
+    <View className="px-4 pt-2 pb-2 gap-2 border-b border-border-subtle">
+      <View className="flex-row items-center gap-2 bg-bg-surface rounded-xl px-3 border border-border-default">
         <Search size={17} color={colors.text.tertiary} strokeWidth={2.2} />
         <TextInput
-          style={styles.searchInput}
+          className="flex-1 py-2 text-base text-text-primary"
           value={searchInput}
           onChangeText={onSearchChange}
           placeholder={tr('inv.searchPlaceholder')}
@@ -46,101 +46,52 @@ export function InventoryToolbar({
         />
         {searchInput.length > 0 ? (
           <Pressable onPress={() => onSearchChange('')} hitSlop={8}>
-            <Text style={styles.clearSearch}>✕</Text>
+            <Text className="text-base text-text-tertiary px-1">✕</Text>
           </Pressable>
         ) : null}
       </View>
-      <View style={styles.toolbarActions}>
+      <View className="flex-row items-center gap-2">
         <Pressable
           onPress={onToggleLowOnly}
-          style={[styles.lowChip, lowOnly && styles.lowChipActive]}
+          className={`flex-1 items-center px-3 py-2 rounded-full border ${
+            lowOnly
+              ? 'bg-feedback-warning border-feedback-warning'
+              : 'border-border-default bg-bg-surface'
+          }`}
         >
-          <Text style={[styles.lowChipText, lowOnly && styles.lowChipTextActive]}>
+          <Text
+            className={`text-xs font-bold ${
+              lowOnly ? 'text-text-on-primary' : 'text-text-secondary'
+            }`}
+          >
             {tr('inv.lowOnlyChip')}
           </Text>
         </Pressable>
-        <Pressable onPress={onOpenBulkPrice} style={styles.iconBtn}>
+        <Pressable
+          onPress={onOpenBulkPrice}
+          className="w-9 h-9 rounded-full border border-brand-primary/20 bg-brand-primary/10 items-center justify-center active:opacity-75"
+        >
           <Tag size={18} color={colors.brand.primary} strokeWidth={2.2} />
         </Pressable>
-        <Pressable onPress={onOpenExcel} style={styles.iconBtn}>
+        <Pressable
+          onPress={onOpenExcel}
+          className="w-9 h-9 rounded-full border border-brand-primary/20 bg-brand-primary/10 items-center justify-center active:opacity-75"
+        >
           <FileSpreadsheet size={18} color={colors.brand.primary} strokeWidth={2.2} />
         </Pressable>
-        <Pressable onPress={onOpenScanner} style={styles.iconBtn}>
+        <Pressable
+          onPress={onOpenScanner}
+          className="w-9 h-9 rounded-full border border-brand-primary/20 bg-brand-primary/10 items-center justify-center active:opacity-75"
+        >
           <ScanLine size={18} color={colors.brand.primary} strokeWidth={2.2} />
         </Pressable>
-        <Pressable onPress={onOpenCount} style={styles.iconBtn}>
+        <Pressable
+          onPress={onOpenCount}
+          className="w-9 h-9 rounded-full border border-brand-primary/20 bg-brand-primary/10 items-center justify-center active:opacity-75"
+        >
           <ClipboardCheck size={18} color={colors.brand.primary} strokeWidth={2.2} />
         </Pressable>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  toolbar: {
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.sm,
-    gap: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-    paddingBottom: spacing.sm,
-  },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 10,
-    ...typography.body,
-    color: colors.text.primary,
-  },
-  clearSearch: {
-    ...typography.body,
-    color: colors.text.tertiary,
-    paddingHorizontal: spacing.xs,
-  },
-  toolbarActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lowChip: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    backgroundColor: colors.bg.surface,
-  },
-  lowChipActive: {
-    backgroundColor: colors.feedback.warning,
-    borderColor: colors.feedback.warning,
-  },
-  lowChipText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.text.secondary,
-  },
-  lowChipTextActive: {
-    color: colors.text.onPrimary,
-  },
-});

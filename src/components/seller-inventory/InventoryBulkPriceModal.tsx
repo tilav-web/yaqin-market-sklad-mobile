@@ -6,7 +6,6 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -15,7 +14,7 @@ import {
 import { tr } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { Category } from '@/lib/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 interface InventoryBulkPriceModalProps {
   visible: boolean;
@@ -61,29 +60,45 @@ export function InventoryBulkPriceModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <Text style={styles.sheetTitle}>{tr('inv.bulkTitle')}</Text>
-          <Text style={styles.sheetSub}>{tr('inv.bulkSub')}</Text>
+      <View className="flex-1 bg-black/45 justify-end">
+        <View className="bg-bg-surface rounded-t-3xl p-6 gap-2">
+          <Text className="text-xl font-bold text-text-primary">{tr('inv.bulkTitle')}</Text>
+          <Text className="text-xs text-text-secondary">{tr('inv.bulkSub')}</Text>
 
-          <Text style={styles.fieldLabel}>{tr('inv.bulkCategory')}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
-            <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+          <Text className="text-xs font-bold text-text-secondary mt-2">{tr('inv.bulkCategory')}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2">
+            <View className="flex-row gap-1.5">
               <Pressable
-                style={[styles.catChip, !categoryId && styles.catChipActive]}
+                className={`px-4 py-2 rounded-full border ${
+                  !categoryId
+                    ? 'bg-brand-primary border-brand-primary'
+                    : 'border-border-default bg-bg-surface'
+                }`}
                 onPress={() => setCategoryId('')}
               >
-                <Text style={[styles.catChipText, !categoryId && styles.catChipTextActive]}>
+                <Text
+                  className={`text-xs font-bold ${
+                    !categoryId ? 'text-text-on-primary' : 'text-text-secondary'
+                  }`}
+                >
                   {tr('inv.tabAll')}
                 </Text>
               </Pressable>
               {categories.map((c) => (
                 <Pressable
                   key={c.id}
-                  style={[styles.catChip, categoryId === c.id && styles.catChipActive]}
+                  className={`px-4 py-2 rounded-full border ${
+                    categoryId === c.id
+                      ? 'bg-brand-primary border-brand-primary'
+                      : 'border-border-default bg-bg-surface'
+                  }`}
                   onPress={() => setCategoryId(c.id)}
                 >
-                  <Text style={[styles.catChipText, categoryId === c.id && styles.catChipTextActive]}>
+                  <Text
+                    className={`text-xs font-bold ${
+                      categoryId === c.id ? 'text-text-on-primary' : 'text-text-secondary'
+                    }`}
+                  >
                     {c.nameUzLatn}
                   </Text>
                 </Pressable>
@@ -91,19 +106,23 @@ export function InventoryBulkPriceModal({
             </View>
           </ScrollView>
 
-          <Text style={styles.fieldLabel}>{tr('inv.bulkAdjustType')}</Text>
-          <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}>
+          <Text className="text-xs font-bold text-text-secondary">{tr('inv.bulkAdjustType')}</Text>
+          <View className="flex-row gap-3 mb-2">
             {(['percent', 'fixed'] as const).map((t) => (
               <Pressable
                 key={t}
-                style={[
-                  styles.catChip,
-                  adjustType === t && styles.catChipActive,
-                  { flex: 1, alignItems: 'center' },
-                ]}
+                className={`flex-1 items-center px-4 py-2 rounded-full border ${
+                  adjustType === t
+                    ? 'bg-brand-primary border-brand-primary'
+                    : 'border-border-default bg-bg-surface'
+                }`}
                 onPress={() => setAdjustType(t)}
               >
-                <Text style={[styles.catChipText, adjustType === t && styles.catChipTextActive]}>
+                <Text
+                  className={`text-xs font-bold ${
+                    adjustType === t ? 'text-text-on-primary' : 'text-text-secondary'
+                  }`}
+                >
                   {t === 'percent' ? tr('inv.bulkPercent') : tr('inv.bulkFixed')}
                 </Text>
               </Pressable>
@@ -111,7 +130,7 @@ export function InventoryBulkPriceModal({
           </View>
 
           <TextInput
-            style={styles.priceInput}
+            className="text-base text-text-primary border border-border-default rounded-xl px-4 py-2.5 bg-bg-surface-muted"
             value={value}
             onChangeText={setValue}
             keyboardType="numeric"
@@ -120,100 +139,23 @@ export function InventoryBulkPriceModal({
           />
 
           <Pressable
-            style={[styles.confirmBtn, bulk.isPending && { opacity: 0.6 }]}
+            className={`h-12 rounded-2xl bg-brand-primary items-center justify-center mt-2 ${
+              bulk.isPending ? 'opacity-60' : 'active:opacity-85'
+            }`}
             onPress={() => bulk.mutate()}
             disabled={bulk.isPending || !value}
           >
             {bulk.isPending ? (
               <ActivityIndicator color={colors.text.onPrimary} />
             ) : (
-              <Text style={styles.confirmBtnText}>{tr('inv.bulkSubmit')}</Text>
+              <Text className="text-base font-bold text-text-on-primary">{tr('inv.bulkSubmit')}</Text>
             )}
           </Pressable>
-          <Pressable style={styles.cancelBtn} onPress={handleClose}>
-            <Text style={styles.cancelBtnText}>{tr('common.cancel')}</Text>
+          <Pressable className="items-center py-2 active:opacity-75" onPress={handleClose}>
+            <Text className="text-sm text-text-secondary">{tr('common.cancel')}</Text>
           </Pressable>
         </View>
       </View>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: colors.bg.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    padding: spacing.xl,
-    gap: spacing.sm,
-  },
-  sheetTitle: {
-    ...typography.h3,
-    color: colors.text.primary,
-  },
-  sheetSub: {
-    ...typography.bodySmall,
-    color: colors.text.secondary,
-  },
-  fieldLabel: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.text.secondary,
-    marginTop: spacing.sm,
-  },
-  catChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    backgroundColor: colors.bg.surface,
-  },
-  catChipActive: {
-    backgroundColor: colors.brand.primary,
-    borderColor: colors.brand.primary,
-  },
-  catChipText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.text.secondary,
-  },
-  catChipTextActive: {
-    color: colors.text.onPrimary,
-  },
-  priceInput: {
-    ...typography.body,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  confirmBtn: {
-    height: 52,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.sm,
-  },
-  confirmBtnText: {
-    ...typography.button,
-    color: colors.text.onPrimary,
-  },
-  cancelBtn: {
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-  },
-  cancelBtnText: {
-    ...typography.body,
-    color: colors.text.secondary,
-  },
-});
