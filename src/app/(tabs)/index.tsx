@@ -15,6 +15,7 @@ import {
   FolderTabItem,
   TelegramFolderTabs,
 } from '@/components/telegram/TelegramFolderTabs';
+import { useCategoryPrefetch } from '@/hooks/useCategoryPrefetch';
 import { api } from '@/lib/api';
 import { Category, FeedProduct, FeedResponse, PublicShop } from '@/lib/types';
 import { useCartStore } from '@/stores/cart';
@@ -146,6 +147,13 @@ export default function TelegramHomeScreen() {
     return list;
   }, [categoriesQuery.data]);
 
+  // Prefetch adjacent categories into React Query cache before user swipes
+  useCategoryPrefetch({
+    activeTabIndex,
+    leafCategories,
+    coords,
+  });
+
   const allFeedProducts = useMemo<FeedProduct[]>(
     () => feedQuery.data?.pages.flatMap((p) => p.items) ?? [],
     [feedQuery.data],
@@ -214,6 +222,7 @@ export default function TelegramHomeScreen() {
         ref={pagerRef}
         style={{ flex: 1 }}
         initialPage={0}
+        offscreenPageLimit={1}
         onPageSelected={(e) => {
           const pos = e.nativeEvent.position;
           setActiveTabIndex(pos);
@@ -255,7 +264,8 @@ export default function TelegramHomeScreen() {
         {/* Dynamic Category Folders */}
         {leafCategories.map((category, idx) => {
           const tabIndex = idx + 1;
-          const isMounted = visitedTabs.has(tabIndex);
+          const isMounted =
+            Math.abs(tabIndex - activeTabIndex) <= 1 || visitedTabs.has(tabIndex);
 
           return (
             <View key={category.id} style={{ flex: 1, backgroundColor: activeColors.bg.canvas }}>
