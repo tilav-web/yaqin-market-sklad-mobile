@@ -7,8 +7,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AddressPickerSheet } from '@/components/AddressPickerSheet';
 import {
   CategoryTabFeed,
+  HomeFloatingCartBar,
   HomeProductGrid,
-  HomeShopFilterBanner,
   HomeTopBar,
 } from '@/components/home';
 import {
@@ -58,20 +58,28 @@ export default function TelegramHomeScreen() {
     }
   }, [targetShopId, activeShopId]);
 
-  const activeShopNameInCart = useCartStore((s) => {
-    for (const id in s.carts) {
-      const lines = s.carts[id];
-      if (lines?.[0]?.shopName) return lines[0].shopName;
-    }
-    return null;
-  });
-
-  const totalCartCount = useCartStore((s) => {
+  const totalUnits = useCartStore((s) => {
     let count = 0;
     for (const id in s.carts) {
       for (const line of s.carts[id] ?? []) count += line.quantity;
     }
     return count;
+  });
+
+  const totalTypes = useCartStore((s) => {
+    let count = 0;
+    for (const id in s.carts) {
+      count += (s.carts[id] ?? []).length;
+    }
+    return count;
+  });
+
+  const totalPrice = useCartStore((s) => {
+    let sum = 0;
+    for (const id in s.carts) {
+      for (const line of s.carts[id] ?? []) sum += line.unitPrice * line.quantity;
+    }
+    return sum;
   });
 
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -143,15 +151,6 @@ export default function TelegramHomeScreen() {
     [feedQuery.data],
   );
 
-  const shops = useMemo(() => shopsQuery.data ?? [], [shopsQuery.data]);
-
-  const activeShopName = useMemo(() => {
-    if (!activeShopId) return null;
-    if (activeShopNameInCart) return activeShopNameInCart;
-    const found = shops.find((s) => s.id === activeShopId);
-    return found?.name ?? "Tanlangan do'kon";
-  }, [activeShopId, activeShopNameInCart, shops]);
-
   // Mixed marketplace products feed (Uzum Market style interleaved across shops)
   const mixedAllProducts = useMemo(() => {
     return interleaveProductsByShop(allFeedProducts);
@@ -193,20 +192,13 @@ export default function TelegramHomeScreen() {
     return 'Manzilni tanlang';
   }, [selectedAddress, coords]);
 
-  const shopFilterHeader = (
-    <HomeShopFilterBanner
-      activeShopId={activeShopId}
-      activeShopName={activeShopName}
-    />
-  );
-
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: activeColors.bg.canvas }}>
       {/* Top Header */}
       <HomeTopBar
         locationLabel={locationLabel}
         onOpenLocationPicker={() => setPickerOpen(true)}
-        totalCartCount={totalCartCount}
+        totalCartCount={totalTypes}
       />
 
       {/* Swipeable Category Folder Tabs */}
@@ -256,8 +248,7 @@ export default function TelegramHomeScreen() {
               }
             }}
             isFetchingNextPage={feedQuery.isFetchingNextPage}
-            bottomInset={insets.bottom}
-            headerComponent={shopFilterHeader}
+            bottomInset={insets.bottom + (totalTypes > 0 ? 68 : 0)}
           />
         </View>
 
@@ -275,14 +266,21 @@ export default function TelegramHomeScreen() {
                   coords={coords}
                   cardWidth={cardWidth}
                   activeShopId={activeShopId}
-                  shopFilterHeader={shopFilterHeader}
-                  bottomInset={insets.bottom}
+                  bottomInset={insets.bottom + (totalTypes > 0 ? 68 : 0)}
                 />
               ) : null}
             </View>
           );
         })}
       </PagerView>
+
+      {/* Floating Bottom Cart Bar */}
+      <HomeFloatingCartBar
+        totalTypes={totalTypes}
+        totalUnits={totalUnits}
+        totalPrice={totalPrice}
+        bottomOffset={insets.bottom + 68}
+      />
 
       <AddressPickerSheet visible={pickerOpen} onClose={() => setPickerOpen(false)} />
     </SafeAreaView>
