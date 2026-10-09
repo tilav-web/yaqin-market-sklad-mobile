@@ -207,7 +207,7 @@ export default function ChatScreen() {
             hasShop={Boolean(shopId)}
             templatesOpen={templatesOpen}
             onToggleTemplates={() => setTemplatesOpen((v) => !v)}
-            bottomInset={isKeyboardVisible ? 6 : Math.max(insets.bottom, 8)}
+            bottomInset={isKeyboardVisible ? 4 : Math.max(insets.bottom, 6)}
           />
       </KeyboardAvoidingView>
     </SafeAreaView>
