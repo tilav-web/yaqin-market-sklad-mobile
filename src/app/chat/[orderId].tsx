@@ -12,13 +12,14 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import EmojiPicker from 'rn-emoji-keyboard';
+
 import {
   ChatAttachedProduct,
   ChatDateBadge,
   ChatHeader,
   ChatInputBar,
   ChatMessageBubble,
-  ChatTemplatesDrawer,
   formatChatGroupDate,
   useChatSession,
 } from '@/components/chat';
@@ -51,7 +52,7 @@ export default function ChatScreen() {
   const { isDark, colors: activeColors } = useTheme();
   const myId = useAuthStore((s) => s.user?.id);
   const [text, setText] = useState('');
-  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const listRef = useRef<FlatList<any>>(null);
@@ -70,8 +71,6 @@ export default function ChatScreen() {
   const {
     messages,
     isLoadingMessages,
-    templates,
-    isLoadingTemplates,
     sendMessage,
     isSending,
   } = useChatSession({
@@ -79,7 +78,6 @@ export default function ChatScreen() {
     isDirectConv,
     productId,
     shopId,
-    templatesOpen,
     onSentSuccess: () => setText(''),
   });
 
@@ -186,30 +184,42 @@ export default function ChatScreen() {
             />
           )}
 
-          {/* Quick reply templates drawer */}
-          {templatesOpen && shopId && (
-            <ChatTemplatesDrawer
-              isLoading={isLoadingTemplates}
-              templates={templates}
-              onSelectTemplate={(templateText) => {
-                setText(templateText);
-                setTemplatesOpen(false);
-              }}
-            />
-          )}
-
           {/* Telegram-style Bottom Input Bar pinned to keyboard/bottom */}
           <ChatInputBar
             text={text}
             onChangeText={setText}
             onSend={handleSend}
             isSending={isSending}
-            hasShop={Boolean(shopId)}
-            templatesOpen={templatesOpen}
-            onToggleTemplates={() => setTemplatesOpen((v) => !v)}
+            onOpenEmoji={() => {
+              Keyboard.dismiss();
+              setIsEmojiPickerOpen(true);
+            }}
             bottomInset={isKeyboardVisible ? 4 : Math.max(insets.bottom, 6)}
           />
       </KeyboardAvoidingView>
+
+      {/* Telegram-style Emoji Picker Sheet */}
+      <EmojiPicker
+        open={isEmojiPickerOpen}
+        onClose={() => setIsEmojiPickerOpen(false)}
+        onEmojiSelected={(emojiObject) => {
+          haptics.selection();
+          setText((prev) => prev + emojiObject.emoji);
+        }}
+        theme={{
+          backdrop: 'rgba(0,0,0,0.4)',
+          knob: activeColors.border.subtle,
+          container: activeColors.bg.surface,
+          header: activeColors.text.primary,
+          skinTonesContainer: activeColors.bg.canvas,
+          category: {
+            icon: activeColors.text.secondary,
+            iconActive: activeColors.brand.primary,
+            container: activeColors.bg.surface,
+            containerActive: activeColors.bg.canvas,
+          },
+        }}
+      />
     </SafeAreaView>
   );
 }

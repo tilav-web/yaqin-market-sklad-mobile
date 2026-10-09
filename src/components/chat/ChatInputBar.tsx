@@ -1,4 +1,4 @@
-import { Mic, Paperclip, Send, Smile, Zap } from 'lucide-react-native';
+import { Paperclip, Send, Smile } from 'lucide-react-native';
 import React from 'react';
 import { Platform, Pressable, TextInput, View } from 'react-native';
 
@@ -11,9 +11,8 @@ interface ChatInputBarProps {
   readonly onChangeText: (text: string) => void;
   readonly onSend: () => void;
   readonly isSending: boolean;
-  readonly hasShop: boolean;
-  readonly templatesOpen: boolean;
-  readonly onToggleTemplates: () => void;
+  readonly onOpenEmoji?: () => void;
+  readonly onAttach?: () => void;
   readonly bottomInset?: number;
 }
 
@@ -22,9 +21,8 @@ export function ChatInputBar({
   onChangeText,
   onSend,
   isSending,
-  hasShop,
-  templatesOpen,
-  onToggleTemplates,
+  onOpenEmoji,
+  onAttach,
   bottomInset,
 }: ChatInputBarProps) {
   const { tr } = useTranslation();
@@ -46,43 +44,28 @@ export function ChatInputBar({
         paddingBottom: bottomInset !== undefined ? bottomInset : 6,
       }}
     >
-      {/* Left Action: Quick Templates or Attachment */}
-      {hasShop ? (
-        <Pressable
-          onPress={() => {
-            haptics.selection();
-            onToggleTemplates();
-          }}
-          className={`w-9 h-9 rounded-full items-center justify-center active:scale-95 ${
-            templatesOpen ? 'bg-brand-primary' : 'bg-surface-muted'
-          }`}
-          hitSlop={6}
-        >
-          <Zap
-            size={17}
-            color={templatesOpen ? '#FFFFFF' : activeColors.brand.primary}
-            strokeWidth={2.4}
-          />
-        </Pressable>
-      ) : (
-        <Pressable
-          className="w-9 h-9 rounded-full items-center justify-center bg-surface-muted active:opacity-70"
-          hitSlop={6}
-        >
-          <Paperclip size={17} color={activeColors.text.secondary} />
-        </Pressable>
-      )}
+      {/* 1. Left Emoji Button (Authentic Telegram layout) */}
+      <Pressable
+        onPress={() => {
+          haptics.selection();
+          onOpenEmoji?.();
+        }}
+        className="w-9 h-9 rounded-full items-center justify-center bg-surface-muted active:opacity-70"
+        hitSlop={6}
+      >
+        <Smile size={20} color={activeColors.text.secondary} />
+      </Pressable>
 
-      {/* Telegram-style Compact Pill TextInput Container */}
+      {/* 2. Telegram-style Compact Input Pill with Attachment */}
       <View
-        className="flex-1 flex-row items-center rounded-full px-3.5 bg-surface-muted border border-border-subtle"
+        className="flex-1 flex-row items-center rounded-full pl-3.5 pr-2 bg-surface-muted border border-border-subtle"
         style={{
           minHeight: 36,
           maxHeight: 110,
         }}
       >
         <TextInput
-          className="flex-1 text-[15px] text-text-primary pr-1.5"
+          className="flex-1 text-[15px] text-text-primary pr-1"
           style={{
             paddingVertical: Platform.OS === 'android' ? 3 : 5,
             paddingHorizontal: 0,
@@ -95,34 +78,34 @@ export function ChatInputBar({
           multiline
         />
 
+        {/* Paperclip Attachment inside pill */}
         <Pressable
           hitSlop={6}
-          className="p-0.5 opacity-70 active:opacity-100"
-          onPress={() => haptics.selection()}
+          className="p-1 opacity-70 active:opacity-100"
+          onPress={() => {
+            haptics.selection();
+            onAttach?.();
+          }}
         >
-          <Smile size={18} color={activeColors.text.secondary} />
+          <Paperclip size={18} color={activeColors.text.secondary} />
         </Pressable>
       </View>
 
-      {/* Right Send / Mic Button */}
-      {hasContent ? (
-        <Pressable
-          onPress={handlePressSend}
-          disabled={isSending}
-          className="w-9 h-9 rounded-full items-center justify-center bg-brand-primary active:scale-95 shadow-sm"
-          hitSlop={6}
-        >
-          <Send size={16} color="#FFFFFF" strokeWidth={2.6} />
-        </Pressable>
-      ) : (
-        <Pressable
-          onPress={() => haptics.light()}
-          className="w-9 h-9 rounded-full items-center justify-center bg-surface-muted active:opacity-70"
-          hitSlop={6}
-        >
-          <Mic size={18} color={activeColors.text.secondary} />
-        </Pressable>
-      )}
+      {/* 3. Right Send Button */}
+      <Pressable
+        onPress={handlePressSend}
+        disabled={!hasContent || isSending}
+        className={`w-9 h-9 rounded-full items-center justify-center active:scale-95 shadow-sm ${
+          hasContent ? 'bg-brand-primary' : 'bg-surface-muted opacity-40'
+        }`}
+        hitSlop={6}
+      >
+        <Send
+          size={16}
+          color={hasContent ? '#FFFFFF' : activeColors.text.secondary}
+          strokeWidth={2.4}
+        />
+      </Pressable>
     </View>
   );
 }

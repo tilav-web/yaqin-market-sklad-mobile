@@ -11,7 +11,7 @@ interface UseChatSessionOptions {
   readonly isDirectConv: boolean;
   readonly productId?: string;
   readonly shopId?: string;
-  readonly templatesOpen: boolean;
+  readonly templatesOpen?: boolean;
   readonly onSentSuccess?: () => void;
 }
 
