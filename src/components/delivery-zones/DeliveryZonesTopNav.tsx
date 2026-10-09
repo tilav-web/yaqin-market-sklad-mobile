@@ -1,9 +1,9 @@
 import { ArrowLeft, Save } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, radius, shadow, spacing } from '@/theme';
+import { colors, shadow } from '@/theme';
 
 interface DeliveryZonesTopNavProps {
   onBack: () => void;
@@ -13,12 +13,22 @@ interface DeliveryZonesTopNavProps {
 
 export function DeliveryZonesTopNav({ onBack, onSave, isSaving }: DeliveryZonesTopNavProps) {
   return (
-    <SafeAreaView style={styles.topControls} edges={['top']} pointerEvents="box-none">
-      <Pressable style={styles.floatBtn} onPress={onBack} hitSlop={8}>
+    <SafeAreaView
+      className="absolute top-0 inset-x-0 flex-row justify-between px-2 pb-2"
+      edges={['top']}
+      pointerEvents="box-none"
+    >
+      <Pressable
+        className="w-9 h-9 rounded-full items-center justify-center bg-white/95"
+        style={shadow.sm}
+        onPress={onBack}
+        hitSlop={8}
+      >
         <ArrowLeft size={18} color={colors.text.primary} />
       </Pressable>
       <Pressable
-        style={[styles.floatBtn, isSaving && { opacity: 0.5 }]}
+        className="w-9 h-9 rounded-full items-center justify-center bg-white/95"
+        style={[shadow.sm, isSaving && { opacity: 0.5 }]}
         onPress={onSave}
         disabled={isSaving}
       >
@@ -27,25 +37,3 @@ export function DeliveryZonesTopNav({ onBack, onSave, isSaving }: DeliveryZonesT
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  topControls: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.sm,
-    paddingBottom: spacing.sm,
-  },
-  floatBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    ...shadow.sm,
-  },
-});

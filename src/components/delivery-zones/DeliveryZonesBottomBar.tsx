@@ -1,9 +1,9 @@
 import { Pencil, RotateCcw, Save, X } from 'lucide-react-native';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, radius, shadow, spacing, typography } from '@/theme';
+import { colors, shadow, typography } from '@/theme';
 import { ZoneKey } from './types';
 
 interface DeliveryZonesBottomBarProps {
@@ -42,32 +42,57 @@ export function DeliveryZonesBottomBar({
   activeColor,
 }: DeliveryZonesBottomBarProps) {
   return (
-    <SafeAreaView style={styles.bottom} edges={['bottom']}>
+    <SafeAreaView
+      className="absolute bottom-0 inset-x-0 bg-white/95 px-4 pt-2 pb-1 gap-1"
+      style={shadow.lg}
+      edges={['bottom']}
+    >
       {/* Zone toggle + hint in one row */}
-      <View style={styles.topRow}>
+      <View className="flex-row items-center gap-1">
         {(['delivery', 'free'] as ZoneKey[]).map((z) => {
           const col = z === 'delivery' ? dColor : fColor;
           const active = zone === z;
           return (
             <TouchableOpacity
               key={z}
-              style={[styles.chip, active && { borderColor: col, backgroundColor: col + '20' }]}
+              className="flex-row items-center gap-1 px-2 py-1 rounded-full border-[1.5px]"
+              style={[
+                {
+                  borderColor: active ? col : colors.border.subtle,
+                  backgroundColor: active ? col + '20' : colors.bg.surfaceMuted,
+                },
+              ]}
               onPress={() => onSelectZone(z)}
             >
-              <View style={[styles.chipDot, { backgroundColor: col }]} />
-              <Text style={[styles.chipText, active && { color: colors.text.primary, fontWeight: '700' }]}>
+              <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: col }} />
+              <Text
+                className="text-[11px]"
+                style={[
+                  typography.caption,
+                  { color: active ? colors.text.primary : colors.text.tertiary, fontWeight: active ? '700' : '400' },
+                ]}
+              >
                 {z === 'delivery' ? 'Yetkazib berish' : 'Tekin'}
               </Text>
             </TouchableOpacity>
           );
         })}
-        <Text style={styles.hint} numberOfLines={1}>{hint}</Text>
+        <Text className="flex-1 text-[11px] text-right" style={[typography.caption, { color: colors.text.hint }]} numberOfLines={1}>
+          {hint}
+        </Text>
       </View>
 
       {/* Tool row */}
-      <View style={styles.toolRow}>
+      <View className="flex-row items-center gap-1">
         <TouchableOpacity
-          style={[styles.toolBtn, vertsCount === 0 && styles.disabled]}
+          className="w-9 h-9 rounded-xl items-center justify-center border"
+          style={[
+            {
+              backgroundColor: colors.bg.surfaceMuted,
+              borderColor: colors.border.subtle,
+              opacity: vertsCount === 0 ? 0.3 : 1,
+            },
+          ]}
           disabled={vertsCount === 0}
           onPress={onUndo}
           hitSlop={4}
@@ -76,7 +101,14 @@ export function DeliveryZonesBottomBar({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.toolBtn, vertsCount === 0 && styles.disabled]}
+          className="w-9 h-9 rounded-xl items-center justify-center border"
+          style={[
+            {
+              backgroundColor: colors.bg.surfaceMuted,
+              borderColor: colors.border.subtle,
+              opacity: vertsCount === 0 ? 0.3 : 1,
+            },
+          ]}
           disabled={vertsCount === 0}
           onPress={onReset}
           hitSlop={4}
@@ -86,35 +118,40 @@ export function DeliveryZonesBottomBar({
 
         {pencilOn && vertsCount >= 3 && !isClosed && (
           <TouchableOpacity
-            style={[styles.chipBtn, { borderColor: activeColor }]}
+            className="px-3 h-9 rounded-xl items-center justify-center border-2"
+            style={[{ borderColor: activeColor, backgroundColor: colors.bg.surface }]}
             onPress={onClosePolygon}
           >
-            <Text style={[styles.chipBtnText, { color: activeColor }]}>Yop</Text>
+            <Text className="text-xs font-bold" style={{ color: activeColor }}>Yop</Text>
           </TouchableOpacity>
         )}
 
         <TouchableOpacity
+          className="flex-row items-center gap-1 h-9 px-3 rounded-xl border-[1.5px]"
           style={[
-            styles.pencilBtn,
-            pencilOn && { backgroundColor: activeColor, borderColor: activeColor },
-            isClosed && styles.disabled,
+            {
+              backgroundColor: pencilOn ? activeColor : colors.bg.surface,
+              borderColor: pencilOn ? activeColor : colors.border.default,
+              opacity: isClosed ? 0.3 : 1,
+            },
           ]}
           disabled={isClosed}
           onPress={onTogglePencil}
         >
           <Pencil size={15} color={pencilOn ? '#fff' : activeColor} />
-          <Text style={[styles.pencilText, pencilOn && { color: '#fff' }]}>
+          <Text className="text-xs font-semibold" style={{ color: pencilOn ? '#fff' : colors.text.secondary }}>
             {pencilOn ? 'Chizmoqda' : 'Qalam'}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.saveBtn, isSaving && { opacity: 0.6 }]}
+          className="flex-1 flex-row items-center justify-center gap-1.5 h-9 rounded-2xl"
+          style={[{ backgroundColor: colors.brand.primary, opacity: isSaving ? 0.6 : 1 }]}
           disabled={isSaving}
           onPress={onSave}
         >
           <Save size={15} color="#fff" />
-          <Text style={styles.saveBtnText}>
+          <Text className="text-xs font-bold text-white">
             {isSaving ? 'Saqlanmoqda…' : 'Saqlash'}
           </Text>
         </TouchableOpacity>
@@ -122,92 +159,3 @@ export function DeliveryZonesBottomBar({
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  bottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(255,255,255,0.97)',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
-    gap: spacing.xs,
-    ...shadow.lg,
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: colors.border.subtle,
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  chipDot: { width: 7, height: 7, borderRadius: 4 },
-  chipText: { ...typography.caption, color: colors.text.tertiary, fontSize: 11 },
-  hint: {
-    flex: 1,
-    ...typography.caption,
-    color: colors.text.hint,
-    fontSize: 11,
-    textAlign: 'right',
-  },
-  toolRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  toolBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.bg.surfaceMuted,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  disabled: { opacity: 0.3 },
-  chipBtn: {
-    paddingHorizontal: 12,
-    height: 36,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    backgroundColor: colors.bg.surface,
-  },
-  chipBtnText: { fontSize: 13, fontWeight: '700' },
-  pencilBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    height: 36,
-    paddingHorizontal: 12,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.border.default,
-    backgroundColor: colors.bg.surface,
-  },
-  pencilText: { fontSize: 13, fontWeight: '600', color: colors.text.secondary },
-  saveBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    height: 36,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-  },
-  saveBtnText: { fontSize: 13, color: '#fff', fontWeight: '700' },
-});

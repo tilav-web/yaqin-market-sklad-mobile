@@ -1,11 +1,11 @@
 import * as ImagePicker from 'expo-image-picker';
 import { ImagePlus, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { tr } from '@/i18n';
-import { Brand, Radius, Spacing } from '@/constants/theme';
 import { extractErrorMessage, resolveMedia, uploadImage } from '@/lib/api';
+import { colors, typography } from '@/theme';
 
 interface Props {
   /** Current photo URLs. */
@@ -21,7 +21,7 @@ interface Props {
 
 /**
  * Pick images from the gallery, upload them to the server, and manage the
- * resulting list of public URLs. Used for both shop photos and product photos.
+ * resulting list of public URLs.
  */
 export function ImageUploader({ value, onChange, max = 5, size = 88, label, hint }: Props) {
   const [busy, setBusy] = useState(false);
@@ -34,8 +34,6 @@ export function ImageUploader({ value, onChange, max = 5, size = 88, label, hint
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       if (!perm.canAskAgain) {
-        // The in-app prompt was already dismissed/denied for good — asking
-        // again does nothing, only Settings can re-enable it.
         Alert.alert(
           tr('imgUp.permTitle'),
           tr('imgUp.permBlocked'),
@@ -76,95 +74,64 @@ export function ImageUploader({ value, onChange, max = 5, size = 88, label, hint
 
   return (
     <View>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {label ? (
+        <Text className="text-sm font-bold mb-1" style={{ color: colors.text.primary }}>
+          {label}
+        </Text>
+      ) : null}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.row}
+        contentContainerStyle={{ gap: 12, paddingVertical: 4 }}
       >
         {value.map((url) => (
-          <View key={url} style={[styles.thumbWrap, { width: size, height: size }]}>
-            <Image source={{ uri: resolveMedia(url) }} style={styles.thumb} />
-            <Pressable style={styles.removeBtn} onPress={() => remove(url)} hitSlop={8}>
-              <X size={14} color={Brand.white} strokeWidth={3} />
+          <View key={url} className="rounded-xl overflow-visible relative" style={{ width: size, height: size }}>
+            <Image
+              source={{ uri: resolveMedia(url) }}
+              className="w-full h-full rounded-xl"
+              style={{ backgroundColor: colors.bg.surfaceMuted }}
+            />
+            <Pressable
+              className="absolute -top-1.5 -right-1.5 w-5.5 h-5.5 rounded-full items-center justify-center border-2 border-white"
+              style={{ backgroundColor: colors.feedback.danger }}
+              onPress={() => remove(url)}
+              hitSlop={8}
+            >
+              <X size={14} color="#FFFFFF" strokeWidth={3} />
             </Pressable>
           </View>
         ))}
 
         {value.length < max ? (
           <Pressable
-            style={[styles.addTile, { width: size, height: size }]}
+            className="rounded-xl border-[1.5px] border-dashed items-center justify-center gap-0.5"
+            style={{
+              width: size,
+              height: size,
+              borderColor: colors.border.default,
+              backgroundColor: colors.bg.surfaceMuted,
+            }}
             onPress={pick}
             disabled={busy}
           >
             {busy ? (
-              <ActivityIndicator color={Brand.red} />
+              <ActivityIndicator color={colors.brand.primary} />
             ) : (
               <>
-                <ImagePlus size={26} color={Brand.gray600} strokeWidth={2} />
-                <Text style={styles.addText}>{tr('imgUp.photo')}</Text>
+                <ImagePlus size={26} color={colors.text.tertiary} strokeWidth={2} />
+                <Text className="text-xs font-semibold" style={{ color: colors.text.secondary }}>
+                  {tr('imgUp.photo')}
+                </Text>
               </>
             )}
           </Pressable>
         ) : null}
       </ScrollView>
-      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
+      {hint ? (
+        <Text className="text-xs mt-1" style={[typography.caption, { color: colors.text.tertiary }]}>
+          {hint}
+        </Text>
+      ) : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  label: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Brand.gray800,
-    marginBottom: Spacing.two,
-  },
-  row: {
-    gap: Spacing.three,
-    paddingVertical: Spacing.one,
-  },
-  thumbWrap: {
-    borderRadius: Radius.md,
-    overflow: 'visible',
-  },
-  thumb: {
-    width: '100%',
-    height: '100%',
-    borderRadius: Radius.md,
-    backgroundColor: Brand.gray100,
-  },
-  removeBtn: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 22,
-    height: 22,
-    borderRadius: Radius.full,
-    backgroundColor: Brand.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: Brand.white,
-  },
-  addTile: {
-    borderRadius: Radius.md,
-    borderWidth: 1.5,
-    borderColor: Brand.gray200,
-    borderStyle: 'dashed',
-    backgroundColor: Brand.gray50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  addText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Brand.gray600,
-  },
-  hint: {
-    fontSize: 12,
-    color: Brand.gray400,
-    marginTop: Spacing.one,
-  },
-});

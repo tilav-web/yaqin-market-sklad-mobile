@@ -1,7 +1,7 @@
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs/types';
 import { ClipboardList, LucideIcon, NotebookText, Package, Settings, Users, Wallet } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -11,7 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, radius, shadow, spacing, typography } from '@/theme';
+import { colors, shadow, spacing, typography } from '@/theme';
 
 const ICONS: Record<string, LucideIcon> = {
   orders: ClipboardList,
@@ -33,13 +33,9 @@ const LABELS: Record<string, string> = {
 
 const SLIDE_SPRING = { damping: 18, stiffness: 220, mass: 0.7 };
 const PRESS_SPRING = { damping: 15, stiffness: 350 };
-// The floating bar's own horizontal padding — subtracted from the measured
-// layout width so the sliding indicator lines up with the tab items (which
-// live inside that padding), not the bar's full border-box width.
 const BAR_HPADDING = spacing.sm;
 
 interface Props extends BottomTabBarProps {
-  /** Route names to omit from the bar — e.g. owner-only tabs for staff. */
   readonly hiddenRoutes?: readonly string[];
 }
 
@@ -74,15 +70,28 @@ export function SellerTabBar({ state, navigation, hiddenRoutes }: Props) {
   }));
 
   return (
-    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
+    <View
+      className="absolute inset-x-0 bottom-0 px-3 pt-1"
+      style={{ paddingBottom: Math.max(insets.bottom, spacing.sm) }}>
       <View
-        style={styles.bar}
+        className="flex-row items-center justify-between rounded-3xl border mb-1 px-2"
+        style={[
+          {
+            backgroundColor: colors.bg.surface,
+            borderColor: colors.brand.primaryBorder,
+          },
+          shadow.lg,
+        ]}
         onLayout={(e) => setBarWidth(Math.max(0, e.nativeEvent.layout.width - BAR_HPADDING * 2))}>
         {itemWidth > 0 && (
           <Animated.View
             pointerEvents="none"
-            style={[styles.indicator, { width: itemWidth }, indicatorStyle]}>
-            <View style={styles.pill} />
+            className="absolute top-1 left-2 h-8.5 items-center justify-center"
+            style={[{ width: itemWidth }, indicatorStyle]}>
+            <View
+              className="w-13 h-8.5 rounded-full"
+              style={{ backgroundColor: colors.brand.primarySurface }}
+            />
           </Animated.View>
         )}
 
@@ -145,58 +154,19 @@ function TabItem({
       onPressOut={() => {
         press.value = withSpring(1, PRESS_SPRING);
       }}
-      style={styles.item}>
-      <Animated.View style={[styles.iconWrap, iconWrapStyle]}>
+      className="flex-1 items-center justify-center py-1.5 gap-0.5">
+      <Animated.View className="w-11 h-7.5 items-center justify-center relative" style={iconWrapStyle}>
         <Icon size={22} color={colors.text.tertiary} strokeWidth={1.9} />
-        <Animated.View style={[styles.iconOverlay, activeIconStyle]}>
+        <Animated.View className="absolute inset-0 items-center justify-center" style={activeIconStyle}>
           <Icon size={22} color={colors.brand.primary} strokeWidth={2.5} />
         </Animated.View>
       </Animated.View>
-      <Animated.Text style={[styles.label, labelStyle]} numberOfLines={1}>
+      <Animated.Text
+        className="text-[11px] font-bold"
+        style={[typography.caption, labelStyle]}
+        numberOfLines={1}>
         {label}
       </Animated.Text>
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  // Fully transparent — just reserves the safe-area inset and side margins.
-  // The visible bar below floats on top of whatever's actually behind it
-  // rather than a second flat-colored strip.
-  container: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.xs,
-  },
-  bar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius['2xl'],
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-    paddingHorizontal: BAR_HPADDING,
-    marginBottom: spacing.xs,
-    ...shadow.lg,
-  },
-  indicator: {
-    position: 'absolute',
-    top: 4,
-    // Absolutely positioned children measure from the padding edge, not the
-    // content edge — offset by the bar's own horizontal padding so the pill
-    // lines up with the (padding-affected) flex tab items above it.
-    left: BAR_HPADDING,
-    height: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pill: { width: 52, height: 34, borderRadius: radius.full, backgroundColor: colors.brand.primarySurface },
-  item: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6, gap: 2 },
-  iconWrap: { width: 44, height: 30, alignItems: 'center', justifyContent: 'center' },
-  iconOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
-  label: { ...typography.caption, fontSize: 11, fontWeight: '700' },
-});
