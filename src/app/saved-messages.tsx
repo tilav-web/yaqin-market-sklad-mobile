@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { ArrowLeft, ListChecks, Plus, Trash2 } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import {
@@ -15,11 +15,13 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { QuickProductSearchModal } from '@/components/saved-messages/QuickProductSearchModal';
 import { SavedItemRow } from '@/components/saved-messages/SavedItemRow';
 import { useToast } from '@/components/ui';
+import { useTranslation } from '@/i18n';
 import { useShoppingListStore } from '@/stores/shoppingList';
 import { useTheme } from '@/stores/theme';
 import { haptics } from '@/utils/haptics';
 
 export default function SavedMessagesScreen() {
+  const { tr } = useTranslation();
   const { colors: activeColors } = useTheme();
   const insets = useSafeAreaInsets();
   const toast = useToast();
@@ -49,6 +51,8 @@ export default function SavedMessagesScreen() {
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-bg-canvas">
+      <Stack.Screen options={{ headerShown: false }} />
+
       {/* Top Header */}
       <View className="flex-row items-center justify-between px-3 py-2.5 border-b border-border-subtle bg-bg-surface">
         <View className="flex-row items-center gap-2">
@@ -56,15 +60,17 @@ export default function SavedMessagesScreen() {
             onPress={() => router.back()}
             className="w-9 h-9 rounded-full items-center justify-center bg-surface-muted active:opacity-70"
             hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={tr('common.back')}
           >
             <ArrowLeft size={20} color={activeColors.text.primary} />
           </Pressable>
           <View>
             <Text className="text-base font-extrabold text-text-primary">
-              Xarid ro'yxati
+              {tr('chat.savedMessages')}
             </Text>
             <Text className="text-xs text-text-secondary">
-              {activeCount > 0 ? `${activeCount} ta xarid rejalashtirilgan` : 'Barcha xaridlar bajarildi'}
+              {activeCount > 0 ? `${activeCount} ${tr('checklist.active')}` : tr('checklist.subtitle')}
             </Text>
           </View>
         </View>
@@ -74,12 +80,11 @@ export default function SavedMessagesScreen() {
             onPress={() => {
               haptics.warning();
               clearCompleted();
-              toast.info('Bajarilgan xaridlar tozalandi');
             }}
             className="flex-row items-center gap-1 px-2.5 py-1.5 rounded-full bg-surface-muted active:opacity-70"
           >
             <Trash2 size={13} color={activeColors.text.secondary} />
-            <Text className="text-xs font-semibold text-text-secondary">Tozalash</Text>
+            <Text className="text-xs font-semibold text-text-secondary">{tr('common.delete')}</Text>
           </Pressable>
         )}
       </View>
@@ -90,9 +95,9 @@ export default function SavedMessagesScreen() {
           <View className="w-16 h-16 rounded-full items-center justify-center mb-3 bg-brand-surface">
             <ListChecks size={32} color={activeColors.brand.primary} />
           </View>
-          <Text className="text-lg font-bold text-text-primary text-center">Xarid ro'yxati bo'sh</Text>
+          <Text className="text-lg font-bold text-text-primary text-center">{tr('checklist.emptyTitle')}</Text>
           <Text className="text-sm text-text-secondary text-center mt-1 max-w-[260px]">
-            Kerakli mahsulotlarni yozib qo'ying va bitta bosishda do'konlardan savatga qo'shing.
+            {tr('checklist.emptyDesc')}
           </Text>
         </View>
       ) : (
@@ -124,7 +129,7 @@ export default function SavedMessagesScreen() {
             <TextInput
               value={inputText}
               onChangeText={setInputText}
-              placeholder="Masalan: 2 ta non, sut, 1 kg olma..."
+              placeholder={tr('checklist.inputPlaceholder')}
               placeholderTextColor={activeColors.text.hint}
               className="flex-1 text-sm py-1.5 text-text-primary"
               onSubmitEditing={handleAdd}
@@ -150,7 +155,7 @@ export default function SavedMessagesScreen() {
           initialQuery={searchTargetQuery}
           onClose={() => setSearchTargetQuery(null)}
           onAddedToCart={() => {
-            toast.success("Mahsulot savatga qo'shildi!");
+            toast.success(tr('checklist.addedToCart'));
           }}
         />
       )}

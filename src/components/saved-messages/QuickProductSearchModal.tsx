@@ -19,7 +19,6 @@ import { api, resolveMedia } from '@/lib/api';
 import { FeedProduct, FeedResponse } from '@/lib/types';
 import {
   selectActiveShopId,
-  selectActiveShopName,
   useCartStore,
 } from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
@@ -49,7 +48,6 @@ export function QuickProductSearchModal({
   const addItem = useCartStore((s) => s.addItem);
   const replaceCartWithItem = useCartStore((s) => s.replaceCartWithItem);
   const currentCartShopId = useCartStore(selectActiveShopId);
-  const currentCartShopName = useCartStore(selectActiveShopName);
 
   // Search catalog products for this item
   const { data, isLoading } = useQuery<FeedProduct[]>({
@@ -88,12 +86,12 @@ export function QuickProductSearchModal({
 
     if (currentCartShopId && currentCartShopId !== product.shopId) {
       Alert.alert(
-        "Boshqa do'kon mahsuloti",
-        `Savatingizda «${currentCartShopName ?? "boshqa do'kon"}» mahsulotlari bor. Buyurtma faqat bitta do'kondan amalga oshiriladi.\n\nAvvalgi savatni tozalab, «${product.shop?.name ?? "ushbu do'kon"}» mahsulotini qo'shasizmi?`,
+        tr('checklist.differentShop'),
+        tr('checklist.singleShopNotice'),
         [
-          { text: 'Bekor qilish', style: 'cancel' },
+          { text: tr('common.cancel'), style: 'cancel' },
           {
-            text: 'Tozalash va qo‘shish',
+            text: tr('checklist.clearAndAdd'),
             style: 'destructive',
             onPress: () => {
               replaceCartWithItem(lineData);
@@ -116,7 +114,7 @@ export function QuickProductSearchModal({
       <View className="flex-1 bg-bg-canvas">
         {/* Header */}
         <View className="flex-row items-center justify-between px-4 pt-4 pb-3 border-b border-border-subtle bg-bg-surface">
-          <Text className="text-lg font-bold text-text-primary">Katalogdan qidirish</Text>
+          <Text className="text-lg font-bold text-text-primary">{tr('checklist.searchModalTitle')}</Text>
           <Pressable onPress={onClose} className="w-8 h-8 rounded-full items-center justify-center bg-surface-muted" hitSlop={8}>
             <X size={18} color={activeColors.text.primary} />
           </Pressable>
@@ -129,7 +127,7 @@ export function QuickProductSearchModal({
             <TextInput
               value={query}
               onChangeText={setQuery}
-              placeholder="Mahsulot nomini kiriting..."
+              placeholder={tr('checklist.searchModalPlaceholder')}
               placeholderTextColor={activeColors.text.secondary}
               className="flex-1 text-sm py-0 text-text-primary"
               returnKeyType="search"
@@ -153,9 +151,9 @@ export function QuickProductSearchModal({
             <View className="w-16 h-16 rounded-full items-center justify-center mb-3 bg-brand-surface">
               <ShoppingBag size={28} color={activeColors.brand.primary} />
             </View>
-            <Text className="text-base font-bold text-text-primary text-center">Mahsulot topilmadi</Text>
+            <Text className="text-base font-bold text-text-primary text-center">{tr('checklist.noResults')}</Text>
             <Text className="text-sm text-text-secondary text-center mt-1">
-              «{query}» bo'yicha do'konlarda mahsulot topilmadi. Boshqacha nom bilan qidirib ko'ring.
+              {tr('checklist.noResultsDesc')}
             </Text>
           </View>
         ) : (
@@ -182,7 +180,7 @@ export function QuickProductSearchModal({
                       {getLocalizedText(item.name)}
                     </Text>
                     <Text className="text-xs text-text-secondary mt-0.5" numberOfLines={1}>
-                      {item.shop?.name || "Do'kon"}
+                      {item.shop?.name || tr('nav.shop')}
                     </Text>
                     <Text className="text-sm font-extrabold text-brand-primary mt-1">
                       {formatMoney(finalPrice)} {tr('common.som')}
@@ -193,7 +191,7 @@ export function QuickProductSearchModal({
                     className="flex-row items-center gap-1 px-3 h-9 rounded-xl bg-brand-primary active:scale-95 shadow-sm"
                   >
                     <Plus size={15} color="#FFFFFF" strokeWidth={2.8} />
-                    <Text className="text-xs font-bold text-white">Savatga</Text>
+                    <Text className="text-xs font-bold text-white">{tr('checklist.addToCart')}</Text>
                   </Pressable>
                 </View>
               );

@@ -2,6 +2,7 @@ import { Check, Search, Trash2 } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { useTranslation } from '@/i18n';
 import { ShoppingItem } from '@/stores/shoppingList';
 import { useTheme } from '@/stores/theme';
 import { haptics } from '@/utils/haptics';
@@ -19,6 +20,7 @@ export function SavedItemRow({
   onDelete,
   onSearch,
 }: SavedItemRowProps) {
+  const { tr } = useTranslation();
   const { colors: activeColors } = useTheme();
 
   return (
@@ -64,6 +66,8 @@ export function SavedItemRow({
           }}
           className="w-8 h-8 rounded-full items-center justify-center bg-brand-surface active:opacity-70"
           hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel={tr('checklist.searchInCatalog')}
         >
           <Search size={15} color={activeColors.brand.primary} strokeWidth={2.4} />
         </Pressable>
@@ -75,6 +79,8 @@ export function SavedItemRow({
           }}
           className="w-8 h-8 rounded-full items-center justify-center bg-surface-muted active:opacity-70"
           hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel={tr('common.delete')}
         >
           <Trash2 size={15} color={activeColors.text.hint} strokeWidth={2} />
         </Pressable>

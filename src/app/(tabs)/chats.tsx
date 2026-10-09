@@ -141,9 +141,9 @@ export default function ChatsTabScreen() {
         map.set(key, {
           id: order.id,
           shopId: order.shopId,
-          title: order.shop?.name || `Do'kon #${order.shopId.slice(0, 6)}`,
+          title: order.shop?.name || `${tr('nav.shop')} #${order.shopId.slice(0, 6)}`,
           avatarUrl: order.shop?.photos && order.shop.photos.length > 0 ? order.shop.photos[0] : null,
-          subtitle: `📦 Buyurtma #${orderNum} · ${order.status}`,
+          subtitle: `📦 ${tr('nav.orderDetail')} #${orderNum} · ${order.status}`,
           time: formatTelegramTime(order.createdAt),
           rawDate: order.createdAt,
           unreadCount: 0,
@@ -167,7 +167,7 @@ export default function ChatsTabScreen() {
 
   const folderTabs = useMemo<FolderTabItem[]>(() => [
     { id: 'chats', title: tr('chat.title') || 'Chatlar', badge: unreadTotal > 0 ? unreadTotal : undefined },
-    { id: 'shops', title: "Do'konlar", badge: shops.length > 0 ? shops.length : undefined },
+    { id: 'shops', title: tr('chat.filterShops') || "Do'konlar", badge: shops.length > 0 ? shops.length : undefined },
   ], [unreadTotal, shops.length, tr]);
 
   const handleSelectTab = useCallback((index: number) => {
