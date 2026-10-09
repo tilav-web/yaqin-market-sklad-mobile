@@ -5,7 +5,7 @@ import { ActivityIndicator, Linking, Modal, Pressable, StyleSheet, Text, View } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTranslation } from '@/i18n';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 import type { BarcodeType } from 'expo-camera';
 
@@ -14,16 +14,12 @@ interface Props {
   readonly onClose: () => void;
   readonly onScanned: (barcode: string) => void;
   readonly title?: string;
-  /** Optional "barkodsiz" escape hatch (e.g. add a product with no barcode). */
   readonly onSkip?: () => void;
   readonly skipLabel?: string;
-  /** Default: mahsulot barkod turlari. Markirovka uchun ['datamatrix'] beriladi. */
   readonly barcodeTypes?: BarcodeType[];
-  /** false — skan qilingandan keyin modal ochiq qoladi (ketma-ket skanerlash, masalan markirovka donalari). */
   readonly closeOnScan?: boolean;
 }
 
-/** Reusable product-barcode scanner (reuses expo-camera, already in the build). */
 export function BarcodeScannerModal({
   visible,
   onClose,
@@ -42,8 +38,6 @@ export function BarcodeScannerModal({
     if (handled.current) return;
     handled.current = true;
     onScanned(data.trim());
-    // Allow the next open to scan again (and, in continuous mode, the next
-    // unit after a short cooldown so one physical code isn't read twice).
     setTimeout(() => {
       handled.current = false;
     }, 1200);
@@ -52,33 +46,33 @@ export function BarcodeScannerModal({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.fill}>
+      <View className="flex-1 bg-black">
         {!permission ? (
-          <View style={styles.center}>
+          <View className="flex-1 items-center justify-center bg-bg-canvas p-6 gap-2">
             <ActivityIndicator color={colors.brand.primary} />
           </View>
         ) : !permission.granted ? (
-          <SafeAreaView style={styles.center}>
-            <Text style={styles.permTitle}>{tr('scanner.permTitle')}</Text>
+          <SafeAreaView className="flex-1 items-center justify-center bg-bg-canvas p-6 gap-2">
+            <Text className="text-xl font-bold text-text-primary">{tr('scanner.permTitle')}</Text>
             {permission.canAskAgain ? (
               <>
-                <Text style={styles.permDesc}>{tr('scanner.permBody')}</Text>
-                <Pressable style={styles.permBtn} onPress={requestPermission}>
-                  <Text style={styles.permBtnText}>{tr('scanner.grant')}</Text>
+                <Text className="text-xs text-text-secondary text-center">{tr('scanner.permBody')}</Text>
+                <Pressable className="bg-brand-primary px-6 py-3 rounded-2xl active:opacity-85" onPress={requestPermission}>
+                  <Text className="text-base font-bold text-text-on-primary">{tr('scanner.grant')}</Text>
                 </Pressable>
               </>
             ) : (
               <>
-                <Text style={styles.permDesc}>
+                <Text className="text-xs text-text-secondary text-center">
                   {tr('scanner.permBlocked')}
                 </Text>
-                <Pressable style={styles.permBtn} onPress={() => void Linking.openSettings()}>
-                  <Text style={styles.permBtnText}>{tr('scanner.openSettings')}</Text>
+                <Pressable className="bg-brand-primary px-6 py-3 rounded-2xl active:opacity-85" onPress={() => void Linking.openSettings()}>
+                  <Text className="text-base font-bold text-text-on-primary">{tr('scanner.openSettings')}</Text>
                 </Pressable>
               </>
             )}
-            <Pressable onPress={onClose} style={{ padding: spacing.md }}>
-              <Text style={styles.cancel}>{tr('common.cancel')}</Text>
+            <Pressable onPress={onClose} className="p-3">
+              <Text className="text-xs text-text-secondary">{tr('common.cancel')}</Text>
             </Pressable>
           </SafeAreaView>
         ) : (
@@ -91,23 +85,26 @@ export function BarcodeScannerModal({
               }}
               onBarcodeScanned={({ data }) => handle(data)}
             />
-            <SafeAreaView style={styles.overlay} edges={['top', 'bottom']} pointerEvents="box-none">
-              <Text style={styles.title}>{title ?? 'Mahsulot barkodini skanlang'}</Text>
-              <View style={styles.frame} />
-              <View style={styles.actions}>
+            <SafeAreaView className="flex-1 items-center justify-between py-12" edges={['top', 'bottom']} pointerEvents="box-none">
+              <Text className="text-sm font-bold text-text-on-primary bg-black/45 px-5 py-2 rounded-full overflow-hidden">
+                {title ?? 'Mahsulot barkodini skanlang'}
+              </Text>
+              <View className="w-[260px] h-[160px] border-4 border-white rounded-2xl bg-transparent" />
+              <View className="items-center gap-2">
                 {onSkip ? (
                   <Pressable
-                    style={styles.skipBtn}
+                    className="bg-bg-surface px-6 py-3 rounded-full active:opacity-85"
                     onPress={() => {
                       onClose();
                       onSkip();
-                    }}>
-                    <Text style={styles.skipText}>{skipLabel ?? 'Barkodsiz qo‘shish'}</Text>
+                    }}
+                  >
+                    <Text className="text-base font-bold text-brand-primary">{skipLabel ?? 'Barkodsiz qo‘shish'}</Text>
                   </Pressable>
                 ) : null}
-                <Pressable style={styles.closeBtn} onPress={onClose}>
+                <Pressable className="flex-row items-center gap-1.5 bg-black/55 px-6 py-3 rounded-full active:opacity-85" onPress={onClose}>
                   <X size={18} color={colors.text.onPrimary} strokeWidth={2.4} />
-                  <Text style={styles.closeText}>{tr('common.close')}</Text>
+                  <Text className="text-base font-bold text-text-on-primary">{tr('common.close')}</Text>
                 </Pressable>
               </View>
             </SafeAreaView>
@@ -117,41 +114,3 @@ export function BarcodeScannerModal({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: '#000' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg.canvas, padding: spacing.xl, gap: spacing.sm },
-  overlay: { flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing['3xl'] },
-  title: { ...typography.bodyStrong, color: colors.text.onPrimary, backgroundColor: 'rgba(0,0,0,0.45)', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.full, overflow: 'hidden' },
-  frame: {
-    width: 260,
-    height: 160,
-    borderWidth: 3,
-    borderColor: colors.text.onPrimary,
-    borderRadius: radius.lg,
-    backgroundColor: 'transparent',
-  },
-  actions: { alignItems: 'center', gap: spacing.sm },
-  skipBtn: {
-    backgroundColor: colors.bg.surface,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: radius.full,
-  },
-  skipText: { ...typography.body, fontWeight: '700', color: colors.brand.primary },
-  closeBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: radius.full,
-  },
-  closeText: { ...typography.body, fontWeight: '700', color: colors.text.onPrimary },
-  permTitle: { ...typography.h4, color: colors.text.primary },
-  permDesc: { ...typography.bodySmall, color: colors.text.secondary, textAlign: 'center' },
-  permBtn: { backgroundColor: colors.brand.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: radius.lg },
-  permBtnText: { ...typography.body, fontWeight: '700', color: colors.text.onPrimary },
-  cancel: { ...typography.bodySmall, color: colors.text.secondary },
-});

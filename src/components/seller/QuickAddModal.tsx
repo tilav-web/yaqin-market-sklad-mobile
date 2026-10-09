@@ -7,7 +7,6 @@ import {
   Image,
   Modal,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -16,7 +15,7 @@ import {
 import { tr } from '@/i18n';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { GlobalProduct } from '@/lib/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 import { getLocalizedText } from '@/utils/text';
 
 const UNIT_KEYS = {
@@ -83,35 +82,37 @@ export function QuickAddModal({ visible, shopId, globalProduct, onClose }: Props
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
+      <View className="flex-1 bg-black/45 justify-end">
+        <View className="bg-bg-surface rounded-t-3xl p-6 gap-2">
           {/* Product header (read-only) */}
-          <View style={styles.productRow}>
+          <View className="flex-row items-center gap-3 mb-2">
             {globalProduct.photos[0] ? (
               <Image
                 source={{ uri: resolveMedia(globalProduct.photos[0]) }}
-                style={styles.photo}
+                className="w-14 h-14 rounded-xl bg-brand-primary/10"
               />
             ) : (
-              <View style={[styles.photo, styles.photoPlaceholder]} />
+              <View className="w-14 h-14 rounded-xl bg-bg-surface-muted" />
             )}
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-                <Text style={styles.productName} numberOfLines={1}>{getLocalizedText(globalProduct.name)}</Text>
+            <View className="flex-1">
+              <View className="flex-row items-center gap-1">
+                <Text className="text-base font-bold text-text-primary flex-1" numberOfLines={1}>
+                  {getLocalizedText(globalProduct.name)}
+                </Text>
                 {globalProduct.isVerified ? (
                   <BadgeCheck size={15} color={colors.feedback.success} strokeWidth={2} />
                 ) : null}
               </View>
               {globalProduct.brand ? (
-                <Text style={styles.productBrand}>{globalProduct.brand}</Text>
+                <Text className="text-xs text-text-secondary mt-0.5">{globalProduct.brand}</Text>
               ) : null}
-              <Text style={styles.productUnit}>{unitStr}</Text>
+              <Text className="text-xs text-text-tertiary mt-0.5">{unitStr}</Text>
             </View>
           </View>
 
-          <Text style={styles.label}>{tr('quickAdd.priceLabel')}</Text>
+          <Text className="text-xs font-bold text-text-secondary">{tr('quickAdd.priceLabel')}</Text>
           <TextInput
-            style={styles.input}
+            className="text-base text-text-primary border border-border-default rounded-xl px-4 py-2.5 bg-bg-surface-muted"
             value={price}
             onChangeText={setPrice}
             keyboardType="numeric"
@@ -120,9 +121,9 @@ export function QuickAddModal({ visible, shopId, globalProduct, onClose }: Props
             autoFocus
           />
 
-          <Text style={styles.label}>{tr('quickAdd.stockLabel')}</Text>
+          <Text className="text-xs font-bold text-text-secondary">{tr('quickAdd.stockLabel')}</Text>
           <TextInput
-            style={styles.input}
+            className="text-base text-text-primary border border-border-default rounded-xl px-4 py-2.5 bg-bg-surface-muted"
             value={stock}
             onChangeText={setStock}
             keyboardType="number-pad"
@@ -130,9 +131,9 @@ export function QuickAddModal({ visible, shopId, globalProduct, onClose }: Props
             placeholderTextColor={colors.text.hint}
           />
 
-          <Text style={styles.label}>{tr('quickAdd.costLabel')}</Text>
+          <Text className="text-xs font-bold text-text-secondary">{tr('quickAdd.costLabel')}</Text>
           <TextInput
-            style={styles.input}
+            className="text-base text-text-primary border border-border-default rounded-xl px-4 py-2.5 bg-bg-surface-muted"
             value={costPrice}
             onChangeText={setCostPrice}
             keyboardType="numeric"
@@ -141,70 +142,24 @@ export function QuickAddModal({ visible, shopId, globalProduct, onClose }: Props
           />
 
           <Pressable
-            style={[styles.confirmBtn, add.isPending && { opacity: 0.6 }]}
+            className={`h-12 rounded-2xl bg-brand-primary items-center justify-center mt-1 ${
+              add.isPending ? 'opacity-60' : 'active:opacity-85'
+            }`}
             onPress={() => add.mutate()}
-            disabled={add.isPending || !price}>
+            disabled={add.isPending || !price}
+          >
             {add.isPending ? (
               <ActivityIndicator color={colors.text.onPrimary} />
             ) : (
-              <Text style={styles.confirmBtnText}>{tr('quickAdd.submit')}</Text>
+              <Text className="text-base font-bold text-text-on-primary">{tr('quickAdd.submit')}</Text>
             )}
           </Pressable>
 
-          <Pressable style={styles.cancelBtn} onPress={handleClose}>
-            <Text style={styles.cancelBtnText}>{tr('common.cancel')}</Text>
+          <Pressable className="items-center py-2 active:opacity-75" onPress={handleClose}>
+            <Text className="text-sm text-text-secondary">{tr('common.cancel')}</Text>
           </Pressable>
         </View>
       </View>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.bg.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    padding: spacing.xl,
-    gap: spacing.sm,
-  },
-  productRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  photo: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.md,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  photoPlaceholder: { backgroundColor: colors.bg.surfaceMuted },
-  productName: { ...typography.bodyStrong, color: colors.text.primary, flex: 1 },
-  productBrand: { ...typography.caption, color: colors.text.secondary, marginTop: 1 },
-  productUnit: { ...typography.caption, color: colors.text.tertiary, marginTop: 1 },
-  label: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
-  input: {
-    ...typography.body,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  confirmBtn: {
-    height: 52,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.xs,
-  },
-  confirmBtnText: { ...typography.button, color: colors.text.onPrimary },
-  cancelBtn: { alignItems: 'center', paddingVertical: spacing.sm },
-  cancelBtnText: { ...typography.body, color: colors.text.secondary },
-});

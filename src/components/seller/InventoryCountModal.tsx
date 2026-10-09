@@ -9,7 +9,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -19,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { tr } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { SellerVariant } from '@/lib/types';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 interface Props {
   readonly visible: boolean;
@@ -27,19 +26,12 @@ interface Props {
   readonly onClose: () => void;
 }
 
-/**
- * Inventarizatsiya: search a product, type its physically counted quantity, and
- * the server reconciles each difference through FIFO. Searching server-side
- * keeps it fast even with hundreds of products; entered counts are remembered
- * across searches and saved together.
- */
 export function InventoryCountModal({ visible, shopId, onClose }: Props) {
   const qc = useQueryClient();
   const [counts, setCounts] = useState<Record<string, string>>({});
   const [stockById, setStockById] = useState<Record<string, number>>({});
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  /** The result array already folded into `stockById` — identity, not content. */
   const [seededData, setSeededData] = useState<SellerVariant[] | null>(null);
 
   useEffect(() => {
@@ -47,7 +39,6 @@ export function InventoryCountModal({ visible, shopId, onClose }: Props) {
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  // Reset when reopened, during render so the sheet opens already cleared.
   const [syncedVisible, setSyncedVisible] = useState<boolean | null>(null);
   if (syncedVisible !== visible) {
     setSyncedVisible(visible);
@@ -56,10 +47,6 @@ export function InventoryCountModal({ visible, shopId, onClose }: Props) {
       setStockById({});
       setSearchInput('');
       setSearch('');
-      // Forget which result page was folded into `stockById` too, so the
-      // cached list gets re-seeded below. Without this a reopen inside the
-      // query's staleTime left `stockById` empty — and with no system stock
-      // to compare against, nothing the user typed counted as a change.
       setSeededData(null);
     }
   }
@@ -76,9 +63,6 @@ export function InventoryCountModal({ visible, shopId, onClose }: Props) {
   });
 
   const results = listQuery.data ?? [];
-  // Remember each loaded product's system stock so saved diffs stay correct
-  // even after the search changes. Folded in during render, keyed on the
-  // query result's identity so each loaded page is merged exactly once.
   if (listQuery.data && listQuery.data !== seededData) {
     setSeededData(listQuery.data);
     setStockById((prev) => {
@@ -114,22 +98,22 @@ export function InventoryCountModal({ visible, shopId, onClose }: Props) {
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <View style={styles.header}>
-          <View style={styles.titleRow}>
+      <SafeAreaView className="flex-1 bg-bg-canvas" edges={['top', 'bottom']}>
+        <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
+          <View className="flex-row items-center gap-2">
             <ClipboardCheck size={20} color={colors.brand.primary} strokeWidth={2.2} />
-            <Text style={styles.title}>{tr('invCount.title')}</Text>
+            <Text className="text-xl font-bold text-text-primary">{tr('invCount.title')}</Text>
           </View>
-          <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
+          <Pressable onPress={onClose} hitSlop={8} className="w-8 h-8 rounded-full bg-bg-surface-muted items-center justify-center">
             <X size={20} color={colors.text.secondary} />
           </Pressable>
         </View>
-        <Text style={styles.sub}>{tr('invCount.sub')}</Text>
+        <Text className="text-xs text-text-secondary px-4 py-1.5">{tr('invCount.sub')}</Text>
 
-        <View style={styles.searchBox}>
+        <View className="flex-row items-center gap-2 mx-4 mb-2 bg-bg-surface rounded-xl px-3 py-1 border border-border-default">
           <Search size={16} color={colors.text.tertiary} />
           <TextInput
-            style={styles.searchInput}
+            className="flex-1 py-1.5 text-base text-text-primary"
             value={searchInput}
             onChangeText={setSearchInput}
             placeholder={tr('invCount.searchPlaceholder')}
@@ -138,25 +122,25 @@ export function InventoryCountModal({ visible, shopId, onClose }: Props) {
         </View>
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
             {listQuery.isLoading ? (
-              <ActivityIndicator color={colors.brand.primary} style={{ marginTop: spacing.lg }} />
+              <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 16 }} />
             ) : results.length === 0 ? (
-              <Text style={styles.empty}>{tr(search ? 'invCount.notFound' : 'invCount.noProducts')}</Text>
+              <Text className="text-sm text-text-tertiary text-center mt-4">{tr(search ? 'invCount.notFound' : 'invCount.noProducts')}</Text>
             ) : (
               results.map((v) => {
                 const raw = counts[v.id] ?? '';
                 const diff = raw !== '' ? Number(raw) - v.stock : 0;
                 return (
-                  <View key={v.id} style={styles.row}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.name} numberOfLines={1}>
+                  <View key={v.id} className="flex-row items-center gap-3 bg-bg-surface rounded-xl p-3 border border-border-subtle">
+                    <View className="flex-1">
+                      <Text className="text-sm font-bold text-text-primary" numberOfLines={1}>
                         {v.name}
                       </Text>
-                      <Text style={styles.sysStock}>
+                      <Text className="text-xs text-text-secondary mt-0.5">
                         {tr('invCount.inSystem', { n: v.stock })}
                         {raw !== '' && diff !== 0 ? (
-                          <Text style={diff > 0 ? styles.diffPlus : styles.diffMinus}>
+                          <Text className={`font-extrabold ${diff > 0 ? 'text-feedback-success' : 'text-feedback-danger'}`}>
                             {'  '}
                             {diff > 0 ? tr('invCount.surplus', { n: diff }) : tr('invCount.shortage', { n: diff })}
                           </Text>
@@ -164,7 +148,11 @@ export function InventoryCountModal({ visible, shopId, onClose }: Props) {
                       </Text>
                     </View>
                     <TextInput
-                      style={[styles.input, raw !== '' && diff !== 0 && styles.inputChanged]}
+                      className={`w-20 text-center rounded-xl py-2 text-base font-bold text-text-primary border-2 ${
+                        raw !== '' && diff !== 0
+                          ? 'border-brand-primary bg-brand-primary/10'
+                          : 'border-border-default bg-bg-surface-muted'
+                      }`}
                       value={raw}
                       onChangeText={(t) => setCounts((c) => ({ ...c, [v.id]: t.replace(/[^0-9]/g, '') }))}
                       keyboardType="number-pad"
@@ -178,12 +166,14 @@ export function InventoryCountModal({ visible, shopId, onClose }: Props) {
           </ScrollView>
         </KeyboardAvoidingView>
 
-        <View style={styles.footer}>
+        <View className="px-4 pt-3 pb-2 border-t border-border-subtle bg-bg-surface">
           <Pressable
-            style={[styles.saveBtn, changedIds.length === 0 && styles.saveBtnDisabled]}
+            className={`h-12 rounded-2xl items-center justify-center ${
+              changedIds.length === 0 ? 'bg-border-strong' : save.isPending ? 'bg-brand-primary opacity-60' : 'bg-brand-primary active:opacity-85'
+            }`}
             disabled={changedIds.length === 0 || save.isPending}
             onPress={() => save.mutate()}>
-            <Text style={styles.saveText}>
+            <Text className="text-base font-bold text-text-on-primary">
               {save.isPending ? tr('invCount.saving') : `${tr('common.save')}${changedIds.length ? ` (${changedIds.length})` : ''}`}
             </Text>
           </Pressable>
@@ -192,83 +182,3 @@ export function InventoryCountModal({ visible, shopId, onClose }: Props) {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.md,
-  },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  title: { ...typography.h4, color: colors.text.primary },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sub: { ...typography.bodySmall, color: colors.text.secondary, paddingHorizontal: layout.screenPadding, marginBottom: spacing.sm },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginHorizontal: layout.screenPadding,
-    marginBottom: spacing.sm,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  searchInput: { flex: 1, paddingVertical: 10, ...typography.body, color: colors.text.primary },
-  empty: { ...typography.bodySmall, color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.lg },
-  scroll: { padding: layout.screenPadding, gap: spacing.sm, paddingBottom: spacing['3xl'] },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  name: { ...typography.bodyStrong, color: colors.text.primary },
-  sysStock: { ...typography.caption, color: colors.text.secondary, marginTop: 1 },
-  diffPlus: { ...typography.caption, fontWeight: '800', color: colors.feedback.success },
-  diffMinus: { ...typography.caption, fontWeight: '800', color: colors.text.danger },
-  input: {
-    width: 76,
-    textAlign: 'center',
-    backgroundColor: colors.bg.surfaceMuted,
-    borderRadius: radius.md,
-    paddingVertical: 10,
-    ...typography.bodyStrong,
-    color: colors.text.primary,
-    borderWidth: 1.5,
-    borderColor: colors.border.default,
-  },
-  inputChanged: { borderColor: colors.brand.primary, backgroundColor: colors.brand.primarySurface },
-  footer: {
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    backgroundColor: colors.bg.surface,
-  },
-  saveBtn: {
-    height: layout.buttonHeight.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveBtnDisabled: { backgroundColor: colors.border.strong },
-  saveText: { ...typography.body, fontWeight: '700', color: colors.text.onPrimary },
-});

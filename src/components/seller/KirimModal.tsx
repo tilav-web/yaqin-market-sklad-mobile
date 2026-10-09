@@ -8,7 +8,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -20,15 +19,11 @@ import { DatePickerModal } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
 import { PublicProductVariant } from '@/lib/types';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 interface Props {
   readonly visible: boolean;
   readonly shopId: string;
-  // Only .id/.name/.stock/.price/.discountPrice are read below — accepting the
-  // broader PublicProductVariant (rather than the seller-only SellerVariant,
-  // which additionally requires a FIFO `cost` summary) lets the tiered
-  // expiring/low-stock lists (SPEC.md §26.2, §30) reuse this same modal.
   readonly variant: PublicProductVariant | null;
   readonly onClose: () => void;
 }
@@ -37,7 +32,6 @@ function fmt(n: number): string {
   return n.toLocaleString('ru-RU').replace(/,/g, ' ');
 }
 
-/** "Kirim" — receive a new lot of stock with its purchase cost (FIFO batch). */
 export function KirimModal({ visible, shopId, variant, onClose }: Props) {
   const qc = useQueryClient();
   const [quantity, setQuantity] = useState('');
@@ -79,28 +73,28 @@ export function KirimModal({ visible, shopId, variant, onClose }: Props) {
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <View style={styles.header}>
-          <View style={styles.titleRow}>
+      <SafeAreaView className="flex-1 bg-bg-canvas" edges={['top', 'bottom']}>
+        <View className="flex-row items-center justify-between px-4 py-3">
+          <View className="flex-row items-center gap-2">
             <PackagePlus size={20} color={colors.brand.primary} strokeWidth={2.2} />
-            <Text style={styles.title}>{tr('kirim.title')}</Text>
+            <Text className="text-xl font-bold text-text-primary">{tr('kirim.title')}</Text>
           </View>
-          <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
+          <Pressable onPress={onClose} hitSlop={8} className="w-8 h-8 rounded-full bg-bg-surface-muted items-center justify-center">
             <X size={20} color={colors.text.secondary} />
           </Pressable>
         </View>
 
         {variant ? (
-          <Text style={styles.sub} numberOfLines={1}>
+          <Text className="text-sm text-text-secondary px-4 mb-2" numberOfLines={1}>
             {variant.name} · {tr('kirim.currentStock', { n: variant.stock })}
           </Text>
         ) : null}
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
             <Field label={tr('kirim.qtyLabel')}>
               <TextInput
-                style={styles.input}
+                className="bg-bg-surface rounded-xl px-3 py-2.5 text-base text-text-primary border border-border-default"
                 value={quantity}
                 onChangeText={setQuantity}
                 keyboardType="number-pad"
@@ -112,7 +106,7 @@ export function KirimModal({ visible, shopId, variant, onClose }: Props) {
 
             <Field label={tr('kirim.costLabel')}>
               <TextInput
-                style={styles.input}
+                className="bg-bg-surface rounded-xl px-3 py-2.5 text-base text-text-primary border border-border-default"
                 value={costPrice}
                 onChangeText={setCostPrice}
                 keyboardType="number-pad"
@@ -122,9 +116,12 @@ export function KirimModal({ visible, shopId, variant, onClose }: Props) {
             </Field>
 
             <Field label={tr('kirim.expiryLabel')}>
-              <Pressable style={styles.dateInput} onPress={() => setDatePickerOpen(true)}>
+              <Pressable
+                className="flex-row items-center gap-2 bg-bg-surface rounded-xl px-3 py-2.5 border border-border-default"
+                onPress={() => setDatePickerOpen(true)}
+              >
                 <CalendarDays size={16} color={colors.brand.primary} strokeWidth={2.2} />
-                <Text style={[styles.dateInputText, !expiryDate && styles.dateInputPlaceholder]}>
+                <Text className={`text-base ${expiryDate ? 'text-text-primary' : 'text-text-hint'}`}>
                   {expiryDate || tr('kirim.pickDate')}
                 </Text>
               </Pressable>
@@ -132,7 +129,7 @@ export function KirimModal({ visible, shopId, variant, onClose }: Props) {
 
             <Field label={tr('kirim.supplierLabel')}>
               <TextInput
-                style={styles.input}
+                className="bg-bg-surface rounded-xl px-3 py-2.5 text-base text-text-primary border border-border-default"
                 value={supplierName}
                 onChangeText={setSupplierName}
                 placeholder={tr('kirim.supplierPh')}
@@ -141,7 +138,7 @@ export function KirimModal({ visible, shopId, variant, onClose }: Props) {
             </Field>
 
             {qty > 0 ? (
-              <View style={styles.preview}>
+              <View className="bg-brand-primary/10 rounded-xl p-3.5 gap-1.5 border border-brand-primary/20">
                 <Row k={tr('kirim.totalSum')} v={`${fmt(qty * cost)} ${tr('common.som')}`} />
                 <Row k={tr('kirim.newStock')} v={tr('kirim.pcs', { n: (variant?.stock ?? 0) + qty })} />
                 {cost > 0 ? (
@@ -156,12 +153,16 @@ export function KirimModal({ visible, shopId, variant, onClose }: Props) {
           </ScrollView>
         </KeyboardAvoidingView>
 
-        <View style={styles.footer}>
+        <View className="px-4 pt-3 pb-2 border-t border-border-subtle bg-bg-surface">
           <Pressable
-            style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
+            className={`h-12 rounded-2xl items-center justify-center ${
+              !canSave ? 'bg-border-strong' : receive.isPending ? 'bg-brand-primary opacity-60' : 'bg-brand-primary active:opacity-85'
+            }`}
             disabled={!canSave || receive.isPending}
             onPress={() => receive.mutate()}>
-            <Text style={styles.saveText}>{receive.isPending ? tr('kirim.saving') : tr('kirim.submit')}</Text>
+            <Text className="text-base font-bold text-text-on-primary">
+              {receive.isPending ? tr('kirim.saving') : tr('kirim.submit')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -182,8 +183,8 @@ export function KirimModal({ visible, shopId, variant, onClose }: Props) {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
+    <View className="gap-1">
+      <Text className="text-sm font-bold text-text-primary">{label}</Text>
       {children}
     </View>
   );
@@ -191,90 +192,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Row({ k, v, highlight }: { k: string; v: string; highlight?: boolean }) {
   return (
-    <View style={styles.previewRow}>
-      <Text style={styles.previewK}>{k}</Text>
-      <Text style={[styles.previewV, highlight && { color: colors.feedback.success }]}>{v}</Text>
+    <View className="flex-row items-center justify-between">
+      <Text className="text-sm text-text-secondary">{k}</Text>
+      <Text className={`text-sm font-extrabold ${highlight ? 'text-feedback-success' : 'text-text-primary'}`}>{v}</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.md,
-  },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  title: { ...typography.h4, color: colors.text.primary },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sub: {
-    ...typography.bodySmall,
-    color: colors.text.secondary,
-    paddingHorizontal: layout.screenPadding,
-    marginBottom: spacing.sm,
-  },
-  scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['3xl'] },
-  field: { gap: spacing.xs },
-  label: { ...typography.bodySmall, fontWeight: '700', color: colors.text.primary },
-  input: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    ...typography.body,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  dateInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  dateInputText: { ...typography.body, color: colors.text.primary },
-  dateInputPlaceholder: { color: colors.text.hint },
-  preview: {
-    backgroundColor: colors.brand.primarySurface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    gap: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-  },
-  previewRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  previewK: { ...typography.bodySmall, color: colors.text.secondary },
-  previewV: { ...typography.bodySmall, fontWeight: '800', color: colors.text.primary },
-  footer: {
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    backgroundColor: colors.bg.surface,
-  },
-  saveBtn: {
-    height: layout.buttonHeight.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveBtnDisabled: { backgroundColor: colors.border.strong },
-  saveText: { ...typography.body, fontWeight: '700', color: colors.text.onPrimary },
-});

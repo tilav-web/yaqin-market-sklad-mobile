@@ -8,7 +8,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -17,7 +16,7 @@ import {
 import { tr, type TranslationKey } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { BrakReasonCode } from '@/lib/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 const REASONS: { key: BrakReasonCode; labelKey: TranslationKey }[] = [
   { key: 'expired', labelKey: 'brak.expired' },
@@ -33,19 +32,11 @@ interface Props {
   readonly onClose: () => void;
 }
 
-/**
- * "Brak qil" — writes off a variant's ENTIRE remaining stock with a mandatory
- * reason code (SPEC.md §26.3). Destructive and irreversible (server zeroes
- * stock via FIFO consumption), so this is a confirm-first bottom sheet rather
- * than a silent one-tap action.
- */
 export function BrakStockModal({ visible, shopId, variant, onClose }: Props) {
   const qc = useQueryClient();
   const [reasonCode, setReasonCode] = useState<BrakReasonCode>('expired');
   const [note, setNote] = useState('');
 
-  // Reset during render rather than in an effect, so the form is already blank
-  // on the frame the modal appears instead of briefly showing the last entry.
   const [syncedVisible, setSyncedVisible] = useState<boolean | null>(null);
   if (syncedVisible !== visible) {
     setSyncedVisible(visible);
@@ -78,30 +69,33 @@ export function BrakStockModal({ visible, shopId, variant, onClose }: Props) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
-        style={styles.overlay}
+        className="flex-1 bg-black/45 justify-end"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.sheet}>
-          <View style={styles.titleRow}>
+        <View className="bg-bg-surface rounded-t-3xl p-6 gap-2">
+          <View className="flex-row items-center gap-1.5">
             <AlertTriangle size={18} color={colors.feedback.danger} strokeWidth={2.2} />
-            <Text style={styles.sheetTitle}>{tr('brak.title')}</Text>
+            <Text className="text-xl font-bold text-text-primary">{tr('brak.title')}</Text>
           </View>
-          <Text style={styles.sheetSub}>
+          <Text className="text-xs text-text-secondary">
             "{variant?.name}" ning butun qoldig'i ({variant?.stock ?? 0} ta) nolga tushiriladi. Bu
             amalni qaytarib bo'lmaydi.
           </Text>
 
-          <Text style={styles.fieldLabel}>{tr('brak.reason')}</Text>
-          <View style={styles.reasonWrap}>
+          <Text className="text-xs font-bold text-text-secondary mt-2">{tr('brak.reason')}</Text>
+          <View className="flex-row flex-wrap gap-2">
             {REASONS.map((r) => (
               <Pressable
                 key={r.key}
                 onPress={() => setReasonCode(r.key)}
-                style={[styles.reasonChip, reasonCode === r.key && styles.reasonChipActive]}>
+                className={`px-4 py-2 rounded-full border ${
+                  reasonCode === r.key
+                    ? 'bg-feedback-danger border-feedback-danger'
+                    : 'border-border-default bg-bg-surface'
+                }`}>
                 <Text
-                  style={[
-                    styles.reasonChipText,
-                    reasonCode === r.key && styles.reasonChipTextActive,
-                  ]}>
+                  className={`text-xs font-bold ${
+                    reasonCode === r.key ? 'text-text-on-primary' : 'text-text-secondary'
+                  }`}>
                   {tr(r.labelKey)}
                 </Text>
               </Pressable>
@@ -110,9 +104,10 @@ export function BrakStockModal({ visible, shopId, variant, onClose }: Props) {
 
           {reasonCode === 'other' && (
             <>
-              <Text style={styles.fieldLabel}>{tr('brak.noteRequired')}</Text>
+              <Text className="text-xs font-bold text-text-secondary mt-2">{tr('brak.noteRequired')}</Text>
               <TextInput
-                style={styles.noteInput}
+                className="text-base text-text-primary border border-border-default rounded-xl px-4 py-2.5 bg-bg-surface-muted min-h-[60px]"
+                textAlignVertical="top"
                 value={note}
                 onChangeText={setNote}
                 placeholder={tr('brak.reasonPlaceholder')}
@@ -123,71 +118,22 @@ export function BrakStockModal({ visible, shopId, variant, onClose }: Props) {
           )}
 
           <Pressable
-            style={[styles.confirmBtn, (!canSave || brak.isPending) && styles.confirmBtnDisabled]}
+            className={`h-12 rounded-2xl bg-feedback-danger items-center justify-center mt-2 ${
+              !canSave || brak.isPending ? 'bg-border-strong' : 'active:opacity-85'
+            }`}
             onPress={() => brak.mutate()}
             disabled={!canSave || brak.isPending}>
             {brak.isPending ? (
               <ActivityIndicator color={colors.text.onPrimary} />
             ) : (
-              <Text style={styles.confirmBtnText}>{tr('brak.title')}</Text>
+              <Text className="text-base font-bold text-text-on-primary">{tr('brak.title')}</Text>
             )}
           </Pressable>
-          <Pressable style={styles.cancelBtn} onPress={onClose}>
-            <Text style={styles.cancelBtnText}>{tr('common.cancel')}</Text>
+          <Pressable className="items-center py-2 active:opacity-75" onPress={onClose}>
+            <Text className="text-sm text-text-secondary">{tr('common.cancel')}</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.bg.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    padding: spacing.xl,
-    gap: spacing.sm,
-  },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  sheetTitle: { ...typography.h3, color: colors.text.primary },
-  sheetSub: { ...typography.bodySmall, color: colors.text.secondary },
-  fieldLabel: { ...typography.caption, fontWeight: '700', color: colors.text.secondary, marginTop: spacing.sm },
-  reasonWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  reasonChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    backgroundColor: colors.bg.surface,
-  },
-  reasonChipActive: { backgroundColor: colors.feedback.danger, borderColor: colors.feedback.danger },
-  reasonChipText: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
-  reasonChipTextActive: { color: colors.text.onPrimary },
-  noteInput: {
-    ...typography.body,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.bg.surfaceMuted,
-    minHeight: 60,
-    textAlignVertical: 'top',
-  },
-  confirmBtn: {
-    height: 52,
-    borderRadius: radius.lg,
-    backgroundColor: colors.feedback.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.sm,
-  },
-  confirmBtnDisabled: { backgroundColor: colors.border.strong },
-  confirmBtnText: { ...typography.button, color: colors.text.onPrimary },
-  cancelBtn: { alignItems: 'center', paddingVertical: spacing.sm },
-  cancelBtnText: { ...typography.body, color: colors.text.secondary },
-});

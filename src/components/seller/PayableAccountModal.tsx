@@ -7,7 +7,6 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -20,7 +19,7 @@ import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
 import { PAYABLE_CATEGORY_LABEL_KEYS } from '@/lib/payableCategories';
 import { PayableAccountDetail } from '@/lib/types';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 interface Props {
   readonly visible: boolean;
@@ -72,15 +71,16 @@ export function PayableAccountModal({ visible, shopId, accountId, onClose, onAdd
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.title} numberOfLines={1}>
+      <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
+        {/* Header */}
+        <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
+          <View className="flex-1">
+            <Text className="text-xl font-bold text-text-primary" numberOfLines={1}>
               {d?.account.name ?? tr('payableAcc.creditor')}
             </Text>
-            <Text style={styles.category}>{d ? tr(PAYABLE_CATEGORY_LABEL_KEYS[d.account.category]) : ''}</Text>
+            <Text className="text-xs text-text-secondary">{d ? tr(PAYABLE_CATEGORY_LABEL_KEYS[d.account.category]) : ''}</Text>
           </View>
-          <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
+          <Pressable onPress={onClose} hitSlop={8} className="w-8 h-8 rounded-full bg-surface-muted items-center justify-center">
             <X size={20} color={colors.text.secondary} />
           </Pressable>
         </View>
@@ -96,40 +96,44 @@ export function PayableAccountModal({ visible, shopId, accountId, onClose, onAdd
             onAction={() => void accountQuery.refetch()}
           />
         ) : (
-          <ScrollView contentContainerStyle={styles.scroll}>
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 40 }}>
             {/* Balance */}
-            <View style={[styles.balanceCard, d.balance > 0 ? styles.balanceDue : styles.balanceClear]}>
-              <Text style={styles.balanceLabel}>{tr('payableAcc.remaining')}</Text>
+            <View
+              className={`rounded-2xl p-5 border items-center gap-0.5 ${
+                d.balance > 0
+                  ? 'bg-red-500/10 border-red-500/20'
+                  : 'bg-emerald-500/10 border-emerald-500/20'
+              }`}>
+              <Text className="text-xs text-text-secondary">{tr('payableAcc.remaining')}</Text>
               <Text
-                style={[
-                  styles.balanceValue,
-                  { color: d.balance > 0 ? colors.text.danger : colors.feedback.success },
-                ]}>
+                className={`text-3xl font-extrabold ${d.balance > 0 ? 'text-text-danger' : 'text-feedback-success'}`}>
                 {fmt(d.balance)} {tr('common.som')}
               </Text>
-              <Text style={styles.balanceMeta}>
+              <Text className="text-xs text-text-secondary">
                 {tr('payableAcc.totalsMeta', { taken: fmt(d.totalCharged), paid: fmt(d.totalPaid) })}
               </Text>
             </View>
 
             {/* Actions */}
-            <View style={styles.actions}>
-              <Pressable style={styles.payBtn} onPress={() => setPayOpen((v) => !v)}>
+            <View className="flex-row gap-2">
+              <Pressable
+                className="flex-1 flex-row items-center justify-center gap-1.5 py-3 rounded-xl border border-feedback-success bg-feedback-success/5"
+                onPress={() => setPayOpen((v) => !v)}>
                 <ArrowUpCircle size={18} color={colors.feedback.success} strokeWidth={2.3} />
-                <Text style={styles.payText}>{tr('payableAcc.makePayment')}</Text>
+                <Text className="text-xs font-bold text-feedback-success">{tr('payableAcc.makePayment')}</Text>
               </Pressable>
               <Pressable
-                style={styles.addChargeBtn}
+                className="flex-1 flex-row items-center justify-center gap-1.5 py-3 rounded-xl bg-brand-primary"
                 onPress={() => onAddCharge(d.account.id, d.account.name)}>
                 <Plus size={18} color={colors.text.onPrimary} strokeWidth={2.6} />
-                <Text style={styles.addChargeText}>{tr('payableAcc.addCharge')}</Text>
+                <Text className="text-xs font-bold text-white">{tr('payableAcc.addCharge')}</Text>
               </Pressable>
             </View>
 
             {payOpen ? (
-              <View style={styles.payForm}>
+              <View className="flex-row gap-2">
                 <TextInput
-                  style={styles.payInput}
+                  className="flex-1 bg-surface rounded-xl px-4 py-3 text-base text-text-primary border border-border"
                   value={payAmount}
                   onChangeText={setPayAmount}
                   keyboardType="number-pad"
@@ -138,46 +142,49 @@ export function PayableAccountModal({ visible, shopId, accountId, onClose, onAdd
                   autoFocus
                 />
                 <Pressable
-                  style={[styles.payConfirm, !parseAmount(payAmount) && styles.payConfirmDisabled]}
+                  className={`px-5 rounded-xl items-center justify-center ${
+                    parseAmount(payAmount) && !pay.isPending ? 'bg-feedback-success' : 'bg-surface-disabled'
+                  }`}
                   disabled={!parseAmount(payAmount) || pay.isPending}
                   onPress={() => pay.mutate()}>
-                  <Text style={styles.payConfirmText}>{pay.isPending ? '…' : tr('payableAcc.pay')}</Text>
+                  <Text className="text-sm font-bold text-white">{pay.isPending ? '…' : tr('payableAcc.pay')}</Text>
                 </Pressable>
               </View>
             ) : null}
 
-            {/* Timeline */}
-            <Text style={styles.sectionTitle}>{tr('payableAcc.charges')}</Text>
+            {/* Timeline: Charges */}
+            <Text className="text-xs font-bold text-text-secondary uppercase tracking-wider mt-1">{tr('payableAcc.charges')}</Text>
             {d.charges.length === 0 ? (
-              <Text style={styles.dim}>{tr('payableAcc.noCharges')}</Text>
+              <Text className="text-sm text-text-tertiary">{tr('payableAcc.noCharges')}</Text>
             ) : (
               d.charges.map((c) => (
-                <View key={c.id} style={styles.entry}>
-                  <View style={styles.entryHead}>
-                    <Text style={styles.entryTotal}>
+                <View key={c.id} className="bg-surface rounded-xl p-3 border border-border-subtle gap-0.5">
+                  <View className="flex-row items-center justify-between mb-0.5">
+                    <Text className="text-sm font-bold text-text-danger">
                       −{fmt(c.amount)} {tr('common.som')}
                     </Text>
-                    <Text style={styles.entryDate}>{fmtDate(c.createdAt)}</Text>
+                    <Text className="text-xs text-text-tertiary">{fmtDate(c.createdAt)}</Text>
                   </View>
-                  {c.description ? <Text style={styles.entryLine}>{c.description}</Text> : null}
+                  {c.description ? <Text className="text-xs text-text-primary">{c.description}</Text> : null}
                   {c.dueDate ? (
-                    <Text style={styles.entryDue}>{tr('payableAcc.dueDate', { date: c.dueDate })}</Text>
+                    <Text className="text-xs font-bold text-feedback-warning mt-0.5">{tr('payableAcc.dueDate', { date: c.dueDate })}</Text>
                   ) : null}
-                  {c.note ? <Text style={styles.entryNote}>{c.note}</Text> : null}
+                  {c.note ? <Text className="text-xs text-text-secondary italic mt-0.5">{c.note}</Text> : null}
                 </View>
               ))
             )}
 
-            <Text style={styles.sectionTitle}>{tr('payableAcc.payments')}</Text>
+            {/* Timeline: Payments */}
+            <Text className="text-xs font-bold text-text-secondary uppercase tracking-wider mt-1">{tr('payableAcc.payments')}</Text>
             {d.payments.length === 0 ? (
-              <Text style={styles.dim}>{tr('payableAcc.noPayments')}</Text>
+              <Text className="text-sm text-text-tertiary">{tr('payableAcc.noPayments')}</Text>
             ) : (
               d.payments.map((p) => (
-                <View key={p.id} style={styles.payRow}>
-                  <Text style={styles.payRowAmount}>
+                <View key={p.id} className="flex-row items-center justify-between bg-emerald-500/10 rounded-xl p-3 border border-emerald-500/20">
+                  <Text className="text-sm font-bold text-feedback-success">
                     +{fmt(p.amount)} {tr('common.som')}
                   </Text>
-                  <Text style={styles.entryDate}>{fmtDate(p.createdAt)}</Text>
+                  <Text className="text-xs text-text-tertiary">{fmtDate(p.createdAt)}</Text>
                 </View>
               ))
             )}
@@ -187,102 +194,3 @@ export function PayableAccountModal({ visible, shopId, accountId, onClose, onAdd
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  title: { ...typography.h4, color: colors.text.primary },
-  category: { ...typography.caption, color: colors.text.secondary },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['3xl'] },
-  balanceCard: { borderRadius: radius.lg, padding: spacing.lg, borderWidth: 1, alignItems: 'center', gap: 2 },
-  balanceDue: { backgroundColor: colors.feedback.dangerSurface, borderColor: colors.feedback.dangerSurface },
-  balanceClear: { backgroundColor: colors.feedback.successSurface, borderColor: colors.feedback.successSurface },
-  balanceLabel: { ...typography.caption, color: colors.text.secondary },
-  balanceValue: { ...typography.h2 },
-  balanceMeta: { ...typography.caption, color: colors.text.secondary },
-  actions: { flexDirection: 'row', gap: spacing.sm },
-  payBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.feedback.success,
-  },
-  payText: { ...typography.bodySmall, fontWeight: '700', color: colors.feedback.success },
-  addChargeBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.brand.primary,
-  },
-  addChargeText: { ...typography.bodySmall, fontWeight: '700', color: colors.text.onPrimary },
-  payForm: { flexDirection: 'row', gap: spacing.sm },
-  payInput: {
-    flex: 1,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    ...typography.body,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  payConfirm: {
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.md,
-    backgroundColor: colors.feedback.success,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  payConfirmDisabled: { backgroundColor: colors.border.strong },
-  payConfirmText: { ...typography.body, fontWeight: '800', color: colors.text.onPrimary },
-  sectionTitle: { ...typography.overline, color: colors.text.secondary, marginTop: spacing.sm },
-  dim: { ...typography.bodySmall, color: colors.text.tertiary },
-  entry: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    gap: 2,
-  },
-  entryHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
-  entryTotal: { ...typography.bodyStrong, color: colors.text.danger },
-  entryDate: { ...typography.caption, color: colors.text.tertiary },
-  entryLine: { ...typography.caption, color: colors.text.primary },
-  entryDue: { ...typography.caption, color: colors.feedback.warning, fontWeight: '700', marginTop: 2 },
-  entryNote: { ...typography.caption, color: colors.text.secondary, fontStyle: 'italic', marginTop: 2 },
-  payRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.feedback.successSurface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-  },
-  payRowAmount: { ...typography.bodyStrong, color: colors.feedback.success },
-});

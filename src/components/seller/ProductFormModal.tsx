@@ -8,7 +8,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -20,7 +19,7 @@ import { TranslationKey, useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
 import { Category, PublicProductVariant } from '@/lib/types';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 const UNITS: { key: 'piece' | 'kg' | 'liter' | 'gram' | 'pack'; labelKey: TranslationKey }[] = [
   { key: 'piece', labelKey: 'prodForm.unitPiece' },
@@ -47,9 +46,7 @@ interface Props {
   readonly editing: PublicProductVariant | null;
   readonly categories: Category[];
   readonly onClose: () => void;
-  /** Pre-fill the barcode field (e.g. from a scanned, not-yet-existing product). */
   readonly initialBarcode?: string;
-  /** Pre-fill the whole form from the shared catalogue (scanned known barcode). */
   readonly prefill?: ProductPrefill | null;
 }
 
@@ -76,11 +73,6 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
   const [barcode, setBarcode] = useState(editing?.barcode ?? initialBarcode ?? '');
   const [photos, setPhotos] = useState<string[]>(editing?.photos ?? []);
 
-  // The modal stays mounted, so refresh every field each time it opens —
-  // otherwise edit prefill and scanned-barcode prefill would be stale.
-  // Applied during render rather than in an effect, so the form is already
-  // filled on the frame the modal appears instead of flashing the last
-  // product's values. Keyed on the same inputs the effect watched.
   const [syncedFor, setSyncedFor] = useState<{
     visible: boolean;
     editing: typeof editing;
@@ -96,7 +88,6 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
   ) {
     setSyncedFor({ visible, editing, initialBarcode, prefill });
     if (visible) {
-      // Catalogue prefill applies only to NEW products (scanned known barcode).
       const pf = editing ? null : prefill;
       setName(editing?.name ?? pf?.name ?? '');
       setBrand(pf?.brand ?? '');
@@ -117,11 +108,6 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
   const save = useMutation({
     mutationFn: async () => {
       if (isEdit && editing) {
-        // Name/photo/description stay editable in the form in edit mode too —
-        // previously only price/discountPrice/lowStockThreshold were sent, so
-        // those edits were silently discarded on save. The server itself
-        // rejects name/photo/description edits when this shop doesn't own the
-        // shared catalogue product (surfaced via the existing error toast).
         await api.patch(`/seller/shops/${shopId}/products/variants/${editing.id}`, {
           name: name.trim(),
           photos,
@@ -138,8 +124,6 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
         categoryId: categoryId ?? undefined,
         description: description.trim() || undefined,
         unitType,
-        // unitSize is a genuine decimal (e.g. 0.5 kg) — parseAmount would
-        // strip the "." as if it were a thousands separator, so keep Number().
         unitSize: Number(unitSize) || 1,
         photos,
         price: parseAmount(price),
@@ -161,10 +145,10 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{isEdit ? tr('prodForm.editTitle') : tr('prodForm.newTitle')}</Text>
-          <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
+      <SafeAreaView className="flex-1 bg-bg-canvas" edges={['top', 'bottom']}>
+        <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
+          <Text className="text-xl font-bold text-text-primary">{isEdit ? tr('prodForm.editTitle') : tr('prodForm.newTitle')}</Text>
+          <Pressable onPress={onClose} hitSlop={8} className="w-8 h-8 rounded-full bg-bg-surface-muted items-center justify-center">
             <X size={20} color={colors.text.secondary} />
           </Pressable>
         </View>
@@ -172,16 +156,16 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
             {!isEdit && prefill ? (
-              <View style={styles.prefillBanner}>
-                <Text style={styles.prefillText}>{tr('prodForm.prefillBanner')}</Text>
+              <View className="bg-feedback-success/15 rounded-xl px-3 py-2">
+                <Text className="text-sm font-semibold text-feedback-success">{tr('prodForm.prefillBanner')}</Text>
               </View>
             ) : null}
 
             <Field label={tr('prodForm.name')}>
               <TextInput
-                style={styles.input}
+                className="bg-bg-surface rounded-xl px-3 py-2.5 text-base text-text-primary border border-border-default"
                 value={name}
                 onChangeText={setName}
                 placeholder={tr('prodForm.namePlaceholder')}
@@ -200,7 +184,7 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
             {!isEdit ? (
               <>
                 <Field label={tr('prodForm.category')}>
-                  <View style={styles.wrap}>
+                  <View className="flex-row flex-wrap gap-2">
                     {categories.map((c) => (
                       <Chip
                         key={c.id}
@@ -213,7 +197,7 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
                 </Field>
 
                 <Field label={tr('prodForm.unit')}>
-                  <View style={styles.wrap}>
+                  <View className="flex-row flex-wrap gap-2">
                     {UNITS.map((u) => (
                       <Chip key={u.key} label={tr(u.labelKey)} active={unitType === u.key} onPress={() => setUnitType(u.key)} />
                     ))}
@@ -223,7 +207,7 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
                 <Row>
                   <Field label={tr('prodForm.unitSize')} flex>
                     <TextInput
-                      style={styles.input}
+                      className="bg-bg-surface rounded-xl px-3 py-2.5 text-base text-text-primary border border-border-default"
                       value={unitSize}
                       onChangeText={setUnitSize}
                       keyboardType="decimal-pad"
@@ -233,7 +217,7 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
                   </Field>
                   <Field label={tr('prodForm.brand')} flex>
                     <TextInput
-                      style={styles.input}
+                      className="bg-bg-surface rounded-xl px-3 py-2.5 text-base text-text-primary border border-border-default"
                       value={brand}
                       onChangeText={setBrand}
                       placeholder={tr('prodForm.optional')}
@@ -247,7 +231,7 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
             <Row>
               <Field label={tr('prodForm.price')} flex>
                 <TextInput
-                  style={styles.input}
+                  className="bg-bg-surface rounded-xl px-3 py-2.5 text-base text-text-primary border border-border-default"
                   value={price}
                   onChangeText={setPrice}
                   keyboardType="number-pad"
@@ -257,7 +241,7 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
               </Field>
               <Field label={tr('prodForm.discountPrice')} flex>
                 <TextInput
-                  style={styles.input}
+                  className="bg-bg-surface rounded-xl px-3 py-2.5 text-base text-text-primary border border-border-default"
                   value={discountPrice}
                   onChangeText={setDiscountPrice}
                   keyboardType="number-pad"
@@ -271,7 +255,7 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
               <Row>
                 <Field label={tr('prodForm.initialStock')} flex>
                   <TextInput
-                    style={styles.input}
+                    className="bg-bg-surface rounded-xl px-3 py-2.5 text-base text-text-primary border border-border-default"
                     value={stock}
                     onChangeText={setStock}
                     keyboardType="number-pad"
@@ -281,7 +265,7 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
                 </Field>
                 <Field label={tr('prodForm.costPrice')} flex>
                   <TextInput
-                    style={styles.input}
+                    className="bg-bg-surface rounded-xl px-3 py-2.5 text-base text-text-primary border border-border-default"
                     value={costPrice}
                     onChangeText={setCostPrice}
                     keyboardType="number-pad"
@@ -295,7 +279,7 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
             <Row>
               <Field label={tr('prodForm.lowStock')} flex>
                 <TextInput
-                  style={styles.input}
+                  className="bg-bg-surface rounded-xl px-3 py-2.5 text-base text-text-primary border border-border-default"
                   value={lowStock}
                   onChangeText={setLowStock}
                   keyboardType="number-pad"
@@ -308,7 +292,7 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
             {!isEdit ? (
               <Field label={tr('prodForm.barcode')}>
                 <TextInput
-                  style={styles.input}
+                  className="bg-bg-surface rounded-xl px-3 py-2.5 text-base text-text-primary border border-border-default"
                   value={barcode}
                   onChangeText={setBarcode}
                   placeholder={tr('prodForm.optional')}
@@ -319,7 +303,8 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
 
             <Field label={tr('prodForm.description')}>
               <TextInput
-                style={[styles.input, styles.multiline]}
+                className="bg-bg-surface rounded-xl px-3 py-2.5 text-base text-text-primary border border-border-default min-h-[64px]"
+                textAlignVertical="top"
                 value={description}
                 onChangeText={setDescription}
                 placeholder={tr('prodForm.descPlaceholder')}
@@ -330,12 +315,14 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
           </ScrollView>
         </KeyboardAvoidingView>
 
-        <View style={styles.footer}>
+        <View className="px-4 pt-3 pb-2 border-t border-border-subtle bg-bg-surface">
           <Pressable
-            style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
+            className={`h-12 rounded-2xl items-center justify-center ${
+              !canSave ? 'bg-border-strong' : save.isPending ? 'bg-brand-primary opacity-60' : 'bg-brand-primary active:opacity-85'
+            }`}
             disabled={!canSave || save.isPending}
             onPress={() => save.mutate()}>
-            <Text style={styles.saveText}>
+            <Text className="text-base font-bold text-text-on-primary">
               {save.isPending ? tr('prodForm.saving') : isEdit ? tr('common.save') : tr('prodForm.add')}
             </Text>
           </Pressable>
@@ -347,94 +334,30 @@ export function ProductFormModal({ visible, shopId, editing, categories, onClose
 
 function Field({ label, children, flex }: { label: string; children: React.ReactNode; flex?: boolean }) {
   return (
-    <View style={[styles.field, flex && { flex: 1 }]}>
-      <Text style={styles.label}>{label}</Text>
+    <View className={`gap-1 ${flex ? 'flex-1' : ''}`}>
+      <Text className="text-sm font-bold text-text-primary">{label}</Text>
       {children}
     </View>
   );
 }
 
 function Row({ children }: { children: React.ReactNode }) {
-  return <View style={styles.row}>{children}</View>;
+  return <View className="flex-row gap-3">{children}</View>;
 }
 
 function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+    <Pressable
+      onPress={onPress}
+      className={`px-3 py-2 rounded-full border ${
+        active
+          ? 'bg-brand-primary border-brand-primary'
+          : 'border-border-default bg-bg-surface'
+      }`}
+    >
+      <Text className={`text-xs font-bold ${active ? 'text-text-on-primary' : 'text-text-secondary'}`}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  title: { ...typography.h4, color: colors.text.primary },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['3xl'] },
-  field: { gap: spacing.xs },
-  label: { ...typography.bodySmall, fontWeight: '700', color: colors.text.primary },
-  row: { flexDirection: 'row', gap: spacing.md },
-  input: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    ...typography.body,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  multiline: { minHeight: 64, textAlignVertical: 'top' },
-  prefillBanner: {
-    backgroundColor: colors.feedback.successSurface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  prefillText: { ...typography.bodySmall, fontWeight: '600', color: colors.feedback.success },
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    backgroundColor: colors.bg.surface,
-  },
-  chipActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
-  chipText: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
-  chipTextActive: { color: colors.text.onPrimary },
-  footer: {
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    backgroundColor: colors.bg.surface,
-  },
-  saveBtn: {
-    height: layout.buttonHeight.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveBtnDisabled: { backgroundColor: colors.border.strong },
-  saveText: { ...typography.body, fontWeight: '700', color: colors.text.onPrimary },
-});

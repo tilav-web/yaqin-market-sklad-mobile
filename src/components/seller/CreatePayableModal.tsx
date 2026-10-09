@@ -8,7 +8,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -21,7 +20,7 @@ import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
 import { PAYABLE_CATEGORY_LABEL_KEYS, PAYABLE_CATEGORY_LIST } from '@/lib/payableCategories';
 import { PayableAccount, PayableCategory } from '@/lib/types';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 interface Props {
   readonly visible: boolean;
@@ -55,9 +54,6 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
 
   const isPreset = !!presetAccountId;
 
-  // Re-sync when the modal opens (preset account, or default picker mode).
-  // Done during render, not in an effect, so the picker is already in the
-  // right mode on the frame it appears.
   const syncKey = `${visible}|${presetAccountId ?? ''}|${hasAccounts}`;
   const [syncedKey, setSyncedKey] = useState<string | null>(null);
   if (syncedKey !== syncKey) {
@@ -117,37 +113,42 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{tr('payable.title')}</Text>
-          <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
+      <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
+        {/* Header */}
+        <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
+          <Text className="text-xl font-bold text-text-primary">{tr('payable.title')}</Text>
+          <Pressable onPress={onClose} hitSlop={8} className="w-8 h-8 rounded-full bg-surface-muted items-center justify-center">
             <X size={20} color={colors.text.secondary} />
           </Pressable>
         </View>
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
             {isPreset ? (
               <Field label={tr('payable.creditor')}>
-                <View style={styles.presetBox}>
-                  <Text style={styles.presetName}>{presetAccountName}</Text>
+                <View className="bg-brand-primary/10 rounded-xl px-4 py-3">
+                  <Text className="text-base font-bold text-brand-primary">{presetAccountName}</Text>
                 </View>
               </Field>
             ) : (
               <>
                 {hasAccounts ? (
-                  <View style={styles.modeRow}>
+                  <View className="flex-row gap-2">
                     <Pressable
-                      style={[styles.modeChip, mode === 'existing' && styles.modeChipActive]}
+                      className={`flex-1 items-center py-2.5 rounded-xl border ${
+                        mode === 'existing' ? 'bg-brand-primary border-brand-primary' : 'border-border'
+                      }`}
                       onPress={() => setMode('existing')}>
-                      <Text style={[styles.modeChipText, mode === 'existing' && styles.modeChipTextActive]}>
+                      <Text className={`text-xs font-bold ${mode === 'existing' ? 'text-white' : 'text-text-secondary'}`}>
                         {tr('payable.existing')}
                       </Text>
                     </Pressable>
                     <Pressable
-                      style={[styles.modeChip, mode === 'new' && styles.modeChipActive]}
+                      className={`flex-1 items-center py-2.5 rounded-xl border ${
+                        mode === 'new' ? 'bg-brand-primary border-brand-primary' : 'border-border'
+                      }`}
                       onPress={() => setMode('new')}>
-                      <Text style={[styles.modeChipText, mode === 'new' && styles.modeChipTextActive]}>
+                      <Text className={`text-xs font-bold ${mode === 'new' ? 'text-white' : 'text-text-secondary'}`}>
                         {tr('payable.new')}
                       </Text>
                     </Pressable>
@@ -156,17 +157,17 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
 
                 {mode === 'existing' ? (
                   <Field label={tr('payable.selectCreditor')}>
-                    <View style={styles.accountList}>
+                    <View className="bg-surface rounded-xl border border-border-subtle overflow-hidden">
                       {accounts.map((a) => (
                         <Pressable
                           key={a.id}
-                          style={styles.accountRow}
+                          className="flex-row items-center gap-3 p-3 border-b border-border-subtle"
                           onPress={() => setSelectedId(a.id)}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.accountName} numberOfLines={1}>
+                          <View className="flex-1">
+                            <Text className="text-sm font-semibold text-text-primary" numberOfLines={1}>
                               {a.name}
                             </Text>
-                            <Text style={styles.accountMeta}>{tr(PAYABLE_CATEGORY_LABEL_KEYS[a.category])}</Text>
+                            <Text className="text-xs text-text-secondary mt-0.5">{tr(PAYABLE_CATEGORY_LABEL_KEYS[a.category])}</Text>
                           </View>
                           {selectedId === a.id ? (
                             <Check size={18} color={colors.brand.primary} strokeWidth={2.6} />
@@ -179,7 +180,7 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
                   <>
                     <Field label={tr('payable.creditorName')}>
                       <TextInput
-                        style={styles.input}
+                        className="bg-surface rounded-xl px-4 py-3 text-base text-text-primary border border-border"
                         value={newName}
                         onChangeText={setNewName}
                         placeholder={tr('payable.creditorNamePlaceholder')}
@@ -187,17 +188,18 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
                       />
                     </Field>
                     <Field label={tr('payable.category')}>
-                      <View style={styles.categoryRow}>
+                      <View className="flex-row flex-wrap gap-2">
                         {PAYABLE_CATEGORY_LIST.map((c) => (
                           <Pressable
                             key={c}
-                            style={[styles.categoryChip, newCategory === c && styles.categoryChipActive]}
+                            className={`px-3 py-1.5 rounded-full border ${
+                              newCategory === c ? 'bg-brand-primary border-brand-primary' : 'border-border'
+                            }`}
                             onPress={() => setNewCategory(c)}>
                             <Text
-                              style={[
-                                styles.categoryChipText,
-                                newCategory === c && styles.categoryChipTextActive,
-                              ]}>
+                              className={`text-xs font-bold ${
+                                newCategory === c ? 'text-white' : 'text-text-secondary'
+                              }`}>
                               {tr(PAYABLE_CATEGORY_LABEL_KEYS[c])}
                             </Text>
                           </Pressable>
@@ -206,7 +208,7 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
                     </Field>
                     <Field label={tr('payable.phone')}>
                       <TextInput
-                        style={styles.input}
+                        className="bg-surface rounded-xl px-4 py-3 text-base text-text-primary border border-border"
                         value={newPhone}
                         onChangeText={setNewPhone}
                         keyboardType="phone-pad"
@@ -221,7 +223,7 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
 
             <Field label={tr('payable.amount')}>
               <TextInput
-                style={styles.input}
+                className="bg-surface rounded-xl px-4 py-3 text-base text-text-primary border border-border"
                 value={amount}
                 onChangeText={setAmount}
                 keyboardType="number-pad"
@@ -231,7 +233,7 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
             </Field>
             <Field label={tr('payable.description')}>
               <TextInput
-                style={styles.input}
+                className="bg-surface rounded-xl px-4 py-3 text-base text-text-primary border border-border"
                 value={description}
                 onChangeText={setDescription}
                 placeholder={tr('payable.descPlaceholder')}
@@ -239,38 +241,44 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
               />
             </Field>
             <Field label={tr('payable.dueDateOptional')}>
-              <Pressable style={styles.dateInput} onPress={() => setDatePickerOpen(true)}>
+              <Pressable
+                className="flex-row items-center gap-2 bg-surface rounded-xl px-4 py-3 border border-border"
+                onPress={() => setDatePickerOpen(true)}>
                 <CalendarDays size={16} color={colors.brand.primary} strokeWidth={2.2} />
-                <Text style={[styles.dateInputText, !dueDate && styles.dateInputPlaceholder]}>
+                <Text className={`text-base ${dueDate ? 'text-text-primary' : 'text-text-hint'}`}>
                   {dueDate || tr('payable.pickDate')}
                 </Text>
               </Pressable>
             </Field>
             <Field label={tr('payable.note')}>
               <TextInput
-                style={[styles.input, styles.multiline]}
+                className="bg-surface rounded-xl px-4 py-3 text-base text-text-primary border border-border min-h-[56px]"
                 value={note}
                 onChangeText={setNote}
                 placeholder={tr('payable.notePlaceholder')}
                 placeholderTextColor={colors.text.hint}
                 multiline
+                textAlignVertical="top"
               />
             </Field>
           </ScrollView>
         </KeyboardAvoidingView>
 
-        <View style={styles.footer}>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>{tr('payable.totalDebt')}</Text>
-            <Text style={styles.totalValue}>
+        {/* Footer */}
+        <View className="px-4 py-3 border-t border-border-subtle bg-surface gap-2">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-sm text-text-secondary">{tr('payable.totalDebt')}</Text>
+            <Text className="text-xl font-bold text-brand-primary">
               {fmt(parseAmount(amount))} {tr('common.som')}
             </Text>
           </View>
           <Pressable
-            style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
+            className={`h-12 rounded-xl items-center justify-center ${canSave && !save.isPending ? 'bg-brand-primary' : 'bg-surface-disabled'}`}
             disabled={!canSave || save.isPending}
             onPress={() => save.mutate()}>
-            <Text style={styles.saveText}>{save.isPending ? tr('payable.saving') : tr('payable.submit')}</Text>
+            <Text className="text-base font-bold text-white">
+              {save.isPending ? tr('payable.saving') : tr('payable.submit')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -291,125 +299,9 @@ export function CreatePayableModal({ visible, shopId, accounts, presetAccountId,
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
+    <View className="gap-1.5">
+      <Text className="text-xs font-bold text-text-primary uppercase tracking-wider">{label}</Text>
       {children}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  title: { ...typography.h4, color: colors.text.primary },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['3xl'] },
-  field: { gap: spacing.xs },
-  label: { ...typography.bodySmall, fontWeight: '700', color: colors.text.primary },
-  input: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    ...typography.body,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  multiline: { minHeight: 56, textAlignVertical: 'top' },
-  presetBox: {
-    backgroundColor: colors.brand.primarySurface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-  },
-  presetName: { ...typography.bodyStrong, color: colors.brand.primary },
-  modeRow: { flexDirection: 'row', gap: spacing.sm },
-  modeChip: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  modeChipActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
-  modeChipText: { ...typography.bodySmall, fontWeight: '700', color: colors.text.secondary },
-  modeChipTextActive: { color: colors.text.onPrimary },
-  accountList: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  accountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  accountName: { ...typography.bodySmall, fontWeight: '600', color: colors.text.primary },
-  accountMeta: { ...typography.caption, color: colors.text.secondary, marginTop: 1 },
-  categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  categoryChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  categoryChipActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
-  categoryChipText: { ...typography.bodySmall, fontWeight: '700', color: colors.text.secondary },
-  categoryChipTextActive: { color: colors.text.onPrimary },
-  dateInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  dateInputText: { ...typography.body, color: colors.text.primary },
-  dateInputPlaceholder: { color: colors.text.hint },
-  footer: {
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    backgroundColor: colors.bg.surface,
-    gap: spacing.sm,
-  },
-  totalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  totalLabel: { ...typography.body, color: colors.text.secondary },
-  totalValue: { ...typography.h4, color: colors.brand.primary },
-  saveBtn: {
-    height: layout.buttonHeight.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveBtnDisabled: { backgroundColor: colors.border.strong },
-  saveText: { ...typography.body, fontWeight: '700', color: colors.text.onPrimary },
-});

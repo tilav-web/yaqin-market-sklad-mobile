@@ -5,7 +5,6 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -14,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation, type TranslationKey } from '@/i18n';
 import { api } from '@/lib/api';
 import { InventoryMovement, MovementType, SellerVariant, StockBatch } from '@/lib/types';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 interface Props {
   readonly visible: boolean;
@@ -28,7 +27,6 @@ function fmt(n: number): string {
 }
 
 function fmtDate(iso: string): string {
-  // YYYY-MM-DD HH:MM
   return iso.slice(0, 16).replace('T', ' ');
 }
 
@@ -36,12 +34,11 @@ const MOVE_META: Record<MovementType, { labelKey: TranslationKey; color: string;
   in: { labelKey: 'move.in', color: colors.feedback.success, icon: ArrowDownLeft, sign: '+' },
   sold: { labelKey: 'move.sold', color: colors.brand.primary, icon: ArrowUpRight, sign: '−' },
   returned: { labelKey: 'move.returned', color: colors.feedback.warning, icon: RotateCcw, sign: '+' },
-  expired: { labelKey: 'move.expired', color: colors.text.danger, icon: ArrowUpRight, sign: '−' },
+  expired: { labelKey: 'move.expired', color: colors.feedback.danger, icon: ArrowUpRight, sign: '−' },
   adjusted: { labelKey: 'move.adjusted', color: colors.text.secondary, icon: Settings2, sign: '±' },
-  damaged: { labelKey: 'move.damaged', color: colors.text.danger, icon: ArrowUpRight, sign: '−' },
+  damaged: { labelKey: 'move.damaged', color: colors.feedback.danger, icon: ArrowUpRight, sign: '−' },
 };
 
-/** Read-only view of a variant's FIFO lots + recent stock movements. */
 export function StockHistoryModal({ visible, shopId, variant, onClose }: Props) {
   const { tr } = useTranslation();
   const variantId = variant?.id;
@@ -68,20 +65,20 @@ export function StockHistoryModal({ visible, shopId, variant, onClose }: Props) 
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <View style={styles.header}>
-          <Text style={styles.title} numberOfLines={1}>
+      <SafeAreaView className="flex-1 bg-bg-canvas" edges={['top', 'bottom']}>
+        <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
+          <Text className="text-xl font-bold text-text-primary flex-1 mr-4" numberOfLines={1}>
             {variant?.name ?? tr('stockHist.title')}
           </Text>
-          <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
+          <Pressable onPress={onClose} hitSlop={8} className="w-8 h-8 rounded-full bg-bg-surface-muted items-center justify-center">
             <X size={20} color={colors.text.secondary} />
           </Pressable>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scroll}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
           {/* Cost summary */}
           {variant ? (
-            <View style={styles.summary}>
+            <View className="flex-row bg-bg-surface rounded-2xl border border-border-subtle py-3 mb-4">
               <Cell k={tr('stockHist.remaining')} v={tr('stockHist.pcs', { n: variant.stock })} />
               <Cell k={tr('stockHist.avgCost')} v={`${fmt(variant.cost.avgCost)}`} />
               <Cell k={tr('stockHist.stockValue')} v={`${fmt(variant.cost.stockValue)}`} />
@@ -89,60 +86,58 @@ export function StockHistoryModal({ visible, shopId, variant, onClose }: Props) 
           ) : null}
 
           {/* FIFO lots */}
-          <View style={styles.sectionHead}>
+          <View className="flex-row items-center gap-1.5 mb-2">
             <Layers size={15} color={colors.brand.primary} strokeWidth={2.2} />
-            <Text style={styles.sectionTitle}>{tr('stockHist.batches')}</Text>
+            <Text className="text-xs uppercase tracking-wider font-bold text-brand-primary">{tr('stockHist.batches')}</Text>
           </View>
           {batchesQuery.isLoading ? (
             <ActivityIndicator color={colors.brand.primary} style={{ marginVertical: 16 }} />
           ) : activeBatches.length === 0 ? (
-            <Text style={styles.dim}>{tr('stockHist.noBatches')}</Text>
+            <Text className="text-sm text-text-tertiary mb-2">{tr('stockHist.noBatches')}</Text>
           ) : (
             activeBatches.map((b) => (
-              <View key={b.id} style={styles.batchRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.batchQty}>
-                    {b.quantityRemaining} / {b.quantityReceived} ta
-                    {b.isReturn ? '  · qaytgan' : ''}
-                  </Text>
-                  <Text style={styles.batchMeta}>
-                    Tannarx {fmt(b.costPrice)} so&apos;m · {fmtDate(b.receivedAt)}
-                    {b.expiryDate ? ` · muddat ${b.expiryDate.slice(0, 10)}` : ''}
-                    {b.supplierName ? ` · ${b.supplierName}` : ''}
-                  </Text>
-                </View>
+              <View key={b.id} className="bg-bg-surface rounded-xl p-3 mb-2 border border-border-subtle">
+                <Text className="text-sm font-bold text-text-primary">
+                  {b.quantityRemaining} / {b.quantityReceived} ta
+                  {b.isReturn ? '  · qaytgan' : ''}
+                </Text>
+                <Text className="text-xs text-text-secondary mt-0.5">
+                  Tannarx {fmt(b.costPrice)} so'm · {fmtDate(b.receivedAt)}
+                  {b.expiryDate ? ` · muddat ${b.expiryDate.slice(0, 10)}` : ''}
+                  {b.supplierName ? ` · ${b.supplierName}` : ''}
+                </Text>
               </View>
             ))
           )}
 
           {/* Movement ledger */}
-          <View style={[styles.sectionHead, { marginTop: spacing.lg }]}>
+          <View className="flex-row items-center gap-1.5 mb-2 mt-4">
             <ArrowUpRight size={15} color={colors.brand.primary} strokeWidth={2.2} />
-            <Text style={styles.sectionTitle}>{tr('stockHist.movements')}</Text>
+            <Text className="text-xs uppercase tracking-wider font-bold text-brand-primary">{tr('stockHist.movements')}</Text>
           </View>
           {movementsQuery.isLoading ? (
             <ActivityIndicator color={colors.brand.primary} style={{ marginVertical: 16 }} />
           ) : (movementsQuery.data ?? []).length === 0 ? (
-            <Text style={styles.dim}>{tr('stockHist.noMovements')}</Text>
+            <Text className="text-sm text-text-tertiary">{tr('stockHist.noMovements')}</Text>
           ) : (
             (movementsQuery.data ?? []).map((m) => {
               const meta = MOVE_META[m.type];
               const Icon = meta.icon;
               return (
-                <View key={m.id} style={styles.moveRow}>
-                  <View style={[styles.moveIcon, { backgroundColor: meta.color + '22' }]}>
+                <View key={m.id} className="flex-row items-center gap-3 py-2 border-b border-border-subtle">
+                  <View className="w-7 h-7 rounded-full items-center justify-center" style={{ backgroundColor: meta.color + '22' }}>
                     <Icon size={15} color={meta.color} strokeWidth={2.2} />
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.moveLabel}>
+                  <View className="flex-1">
+                    <Text className="text-sm font-bold text-text-primary">
                       {tr(meta.labelKey)}
-                      {m.reason ? <Text style={styles.moveReason}> · {m.reason}</Text> : null}
+                      {m.reason ? <Text className="font-normal text-text-secondary"> · {m.reason}</Text> : null}
                     </Text>
-                    <Text style={styles.moveMeta}>
+                    <Text className="text-xs text-text-tertiary mt-0.5">
                       {fmtDate(m.createdAt)} · {m.beforeStock} → {m.afterStock} ta
                     </Text>
                   </View>
-                  <Text style={[styles.moveQty, { color: meta.color }]}>
+                  <Text className="text-sm font-extrabold" style={{ color: meta.color }}>
                     {meta.sign}
                     {m.quantity}
                   </Text>
@@ -158,76 +153,9 @@ export function StockHistoryModal({ visible, shopId, variant, onClose }: Props) 
 
 function Cell({ k, v }: { k: string; v: string }) {
   return (
-    <View style={styles.cell}>
-      <Text style={styles.cellV}>{v}</Text>
-      <Text style={styles.cellK}>{k}</Text>
+    <View className="flex-1 items-center gap-0.5">
+      <Text className="text-sm font-bold text-text-primary">{v}</Text>
+      <Text className="text-xs text-text-secondary">{k}</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  title: { ...typography.h4, color: colors.text.primary, flex: 1, marginRight: spacing.md },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scroll: { padding: layout.screenPadding, paddingBottom: spacing['3xl'] },
-  summary: {
-    flexDirection: 'row',
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    paddingVertical: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  cell: { flex: 1, alignItems: 'center', gap: 2 },
-  cellV: { ...typography.bodyStrong, color: colors.text.primary },
-  cellK: { ...typography.caption, color: colors.text.secondary },
-  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm },
-  sectionTitle: { ...typography.overline, color: colors.brand.primary },
-  dim: { ...typography.bodySmall, color: colors.text.tertiary, marginBottom: spacing.sm },
-  batchRow: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  batchQty: { ...typography.bodyStrong, color: colors.text.primary },
-  batchMeta: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
-  moveRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  moveIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  moveLabel: { ...typography.bodySmall, fontWeight: '700', color: colors.text.primary },
-  moveReason: { ...typography.caption, fontWeight: '400', color: colors.text.secondary },
-  moveMeta: { ...typography.caption, color: colors.text.tertiary, marginTop: 1 },
-  moveQty: { ...typography.bodyStrong, fontWeight: '800' },
-});

@@ -7,7 +7,6 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -19,7 +18,7 @@ import { EmptyState } from '@/components/ui';
 import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
 import { DebtAccountDetail } from '@/lib/types';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 interface Props {
   readonly visible: boolean;
@@ -73,15 +72,16 @@ export function DebtAccountModal({ visible, shopId, phone, onClose, onAddDebt }:
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.title} numberOfLines={1}>
+      <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
+        {/* Header */}
+        <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
+          <View className="flex-1">
+            <Text className="text-xl font-bold text-text-primary" numberOfLines={1}>
               {a?.customerName ?? tr('debtAcc.customer')}
             </Text>
-            <Text style={styles.phone}>{phone}</Text>
+            <Text className="text-xs text-text-secondary">{phone}</Text>
           </View>
-          <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
+          <Pressable onPress={onClose} hitSlop={8} className="w-8 h-8 rounded-full bg-surface-muted items-center justify-center">
             <X size={20} color={colors.text.secondary} />
           </Pressable>
         </View>
@@ -97,36 +97,43 @@ export function DebtAccountModal({ visible, shopId, phone, onClose, onAddDebt }:
             onAction={() => void accountQuery.refetch()}
           />
         ) : (
-          <ScrollView contentContainerStyle={styles.scroll}>
-            {/* Balance */}
-            <View style={[styles.balanceCard, a.balance > 0 ? styles.balanceDue : styles.balanceClear]}>
-              <Text style={styles.balanceLabel}>{tr('debtAcc.remaining')}</Text>
-              <Text style={[styles.balanceValue, { color: a.balance > 0 ? colors.text.danger : colors.feedback.success }]}>
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 40 }}>
+            {/* Balance Card */}
+            <View
+              className={`rounded-2xl p-5 border items-center gap-0.5 ${
+                a.balance > 0
+                  ? 'bg-red-500/10 border-red-500/20'
+                  : 'bg-emerald-500/10 border-emerald-500/20'
+              }`}>
+              <Text className="text-xs text-text-secondary">{tr('debtAcc.remaining')}</Text>
+              <Text className={`text-3xl font-extrabold ${a.balance > 0 ? 'text-text-danger' : 'text-feedback-success'}`}>
                 {fmt(a.balance)} {tr('common.som')}
               </Text>
-              <Text style={styles.balanceMeta}>
+              <Text className="text-xs text-text-secondary">
                 {tr('debtAcc.totalsMeta', { taken: fmt(a.totalDebt), paid: fmt(a.totalPaid) })}
               </Text>
             </View>
 
             {/* Actions */}
-            <View style={styles.actions}>
-              <Pressable style={styles.payBtn} onPress={() => setPayOpen((v) => !v)}>
+            <View className="flex-row gap-2">
+              <Pressable
+                className="flex-1 flex-row items-center justify-center gap-1.5 py-3 rounded-xl border border-feedback-success bg-feedback-success/5"
+                onPress={() => setPayOpen((v) => !v)}>
                 <ArrowDownCircle size={18} color={colors.feedback.success} strokeWidth={2.3} />
-                <Text style={styles.payText}>{tr('debtAcc.acceptPayment')}</Text>
+                <Text className="text-xs font-bold text-feedback-success">{tr('debtAcc.acceptPayment')}</Text>
               </Pressable>
               <Pressable
-                style={styles.addDebtBtn}
+                className="flex-1 flex-row items-center justify-center gap-1.5 py-3 rounded-xl bg-brand-primary"
                 onPress={() => onAddDebt(a.customerName, a.customerPhone)}>
                 <Plus size={18} color={colors.text.onPrimary} strokeWidth={2.6} />
-                <Text style={styles.addDebtText}>{tr('debtAcc.addDebt')}</Text>
+                <Text className="text-xs font-bold text-white">{tr('debtAcc.addDebt')}</Text>
               </Pressable>
             </View>
 
             {payOpen ? (
-              <View style={styles.payForm}>
+              <View className="flex-row gap-2">
                 <TextInput
-                  style={styles.payInput}
+                  className="flex-1 bg-surface rounded-xl px-4 py-3 text-base text-text-primary border border-border"
                   value={payAmount}
                   onChangeText={setPayAmount}
                   keyboardType="number-pad"
@@ -135,53 +142,56 @@ export function DebtAccountModal({ visible, shopId, phone, onClose, onAddDebt }:
                   autoFocus
                 />
                 <Pressable
-                  style={[styles.payConfirm, !parseAmount(payAmount) && styles.payConfirmDisabled]}
+                  className={`px-5 rounded-xl items-center justify-center ${
+                    parseAmount(payAmount) && !pay.isPending ? 'bg-feedback-success' : 'bg-surface-disabled'
+                  }`}
                   disabled={!parseAmount(payAmount) || pay.isPending}
                   onPress={() => pay.mutate()}>
-                  <Text style={styles.payConfirmText}>{pay.isPending ? '…' : tr('debtAcc.accept')}</Text>
+                  <Text className="text-sm font-bold text-white">{pay.isPending ? '…' : tr('debtAcc.accept')}</Text>
                 </Pressable>
               </View>
             ) : null}
 
-            {/* Timeline */}
-            <Text style={styles.sectionTitle}>{tr('debtAcc.debts')}</Text>
+            {/* Timeline: Debts */}
+            <Text className="text-xs font-bold text-text-secondary uppercase tracking-wider mt-1">{tr('debtAcc.debts')}</Text>
             {a.debts.length === 0 ? (
-              <Text style={styles.dim}>{tr('debtAcc.noDebts')}</Text>
+              <Text className="text-sm text-text-tertiary">{tr('debtAcc.noDebts')}</Text>
             ) : (
               a.debts.map((d) => (
-                <View key={d.id} style={styles.entry}>
-                  <View style={styles.entryHead}>
-                    <Text style={styles.entryTotal}>
+                <View key={d.id} className="bg-surface rounded-xl p-3 border border-border-subtle gap-0.5">
+                  <View className="flex-row items-center justify-between mb-0.5">
+                    <Text className="text-sm font-bold text-text-danger">
                       −{fmt(d.total)} {tr('common.som')}
                     </Text>
-                    <Text style={styles.entryDate}>{fmtDate(d.createdAt)}</Text>
+                    <Text className="text-xs text-text-tertiary">{fmtDate(d.createdAt)}</Text>
                   </View>
                   {d.lines.map((l, i) => (
-                    <Text key={`${d.id}-${i}`} style={styles.entryLine}>
+                    <Text key={`${d.id}-${i}`} className="text-xs text-text-primary">
                       • {l.quantity} × {l.name} ({fmt(l.lineTotal)})
                     </Text>
                   ))}
                   {d.extraCharge > 0 ? (
-                    <Text style={styles.entryLine}>• {tr('debtAcc.extraCharge', { amount: fmt(d.extraCharge) })}</Text>
+                    <Text className="text-xs text-text-primary">• {tr('debtAcc.extraCharge', { amount: fmt(d.extraCharge) })}</Text>
                   ) : null}
-                  {d.note ? <Text style={styles.entryNote}>{d.note}</Text> : null}
+                  {d.note ? <Text className="text-xs text-text-secondary italic mt-0.5">{d.note}</Text> : null}
                   {!d.stockDecremented ? (
-                    <Text style={styles.entryFlag}>{tr('debtAcc.notDecremented')}</Text>
+                    <Text className="text-xs font-bold text-feedback-warning mt-0.5">{tr('debtAcc.notDecremented')}</Text>
                   ) : null}
                 </View>
               ))
             )}
 
-            <Text style={styles.sectionTitle}>{tr('debtAcc.payments')}</Text>
+            {/* Timeline: Payments */}
+            <Text className="text-xs font-bold text-text-secondary uppercase tracking-wider mt-1">{tr('debtAcc.payments')}</Text>
             {a.payments.length === 0 ? (
-              <Text style={styles.dim}>{tr('debtAcc.noPayments')}</Text>
+              <Text className="text-sm text-text-tertiary">{tr('debtAcc.noPayments')}</Text>
             ) : (
               a.payments.map((p) => (
-                <View key={p.id} style={styles.payRow}>
-                  <Text style={styles.payRowAmount}>
+                <View key={p.id} className="flex-row items-center justify-between bg-emerald-500/10 rounded-xl p-3 border border-emerald-500/20">
+                  <Text className="text-sm font-bold text-feedback-success">
                     +{fmt(p.amount)} {tr('common.som')}
                   </Text>
-                  <Text style={styles.entryDate}>{fmtDate(p.createdAt)}</Text>
+                  <Text className="text-xs text-text-tertiary">{fmtDate(p.createdAt)}</Text>
                 </View>
               ))
             )}
@@ -191,75 +201,3 @@ export function DebtAccountModal({ visible, shopId, phone, onClose, onAddDebt }:
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  title: { ...typography.h4, color: colors.text.primary },
-  phone: { ...typography.caption, color: colors.text.secondary },
-  closeBtn: { width: 32, height: 32, borderRadius: radius.full, backgroundColor: colors.bg.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
-  scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['3xl'] },
-  balanceCard: { borderRadius: radius.lg, padding: spacing.lg, borderWidth: 1, alignItems: 'center', gap: 2 },
-  balanceDue: { backgroundColor: colors.feedback.dangerSurface, borderColor: colors.feedback.dangerSurface },
-  balanceClear: { backgroundColor: colors.feedback.successSurface, borderColor: colors.feedback.successSurface },
-  balanceLabel: { ...typography.caption, color: colors.text.secondary },
-  balanceValue: { ...typography.h2 },
-  balanceMeta: { ...typography.caption, color: colors.text.secondary },
-  actions: { flexDirection: 'row', gap: spacing.sm },
-  payBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.feedback.success,
-  },
-  payText: { ...typography.bodySmall, fontWeight: '700', color: colors.feedback.success },
-  addDebtBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.brand.primary,
-  },
-  addDebtText: { ...typography.bodySmall, fontWeight: '700', color: colors.text.onPrimary },
-  payForm: { flexDirection: 'row', gap: spacing.sm },
-  payInput: {
-    flex: 1,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    ...typography.body,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  payConfirm: { paddingHorizontal: spacing.lg, borderRadius: radius.md, backgroundColor: colors.feedback.success, alignItems: 'center', justifyContent: 'center' },
-  payConfirmDisabled: { backgroundColor: colors.border.strong },
-  payConfirmText: { ...typography.body, fontWeight: '800', color: colors.text.onPrimary },
-  sectionTitle: { ...typography.overline, color: colors.text.secondary, marginTop: spacing.sm },
-  dim: { ...typography.bodySmall, color: colors.text.tertiary },
-  entry: { backgroundColor: colors.bg.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border.subtle, gap: 2 },
-  entryHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
-  entryTotal: { ...typography.bodyStrong, color: colors.text.danger },
-  entryDate: { ...typography.caption, color: colors.text.tertiary },
-  entryLine: { ...typography.caption, color: colors.text.primary },
-  entryNote: { ...typography.caption, color: colors.text.secondary, fontStyle: 'italic', marginTop: 2 },
-  entryFlag: { ...typography.caption, color: colors.feedback.warning, fontWeight: '700', marginTop: 2 },
-  payRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.feedback.successSurface, borderRadius: radius.md, padding: spacing.md },
-  payRowAmount: { ...typography.bodyStrong, color: colors.feedback.success },
-});

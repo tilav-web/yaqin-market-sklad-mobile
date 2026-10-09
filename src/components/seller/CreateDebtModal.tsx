@@ -8,7 +8,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -19,7 +18,7 @@ import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
 import { SellerVariant } from '@/lib/types';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 interface Props {
   readonly visible: boolean;
@@ -88,7 +87,7 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
       }, 0),
     [qty, picked],
   );
-  const total = itemsTotal + (parseAmount(extraCharge));
+  const total = itemsTotal + parseAmount(extraCharge);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -131,20 +130,21 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{tr('debt.title')}</Text>
-          <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
+      <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
+        {/* Header */}
+        <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
+          <Text className="text-xl font-bold text-text-primary">{tr('debt.title')}</Text>
+          <Pressable onPress={onClose} hitSlop={8} className="w-8 h-8 rounded-full bg-surface-muted items-center justify-center">
             <X size={20} color={colors.text.secondary} />
           </Pressable>
         </View>
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
             {/* Customer */}
             <Field label={tr('debt.customerName')}>
               <TextInput
-                style={styles.input}
+                className="bg-surface rounded-xl px-4 py-3 text-base text-text-primary border border-border"
                 value={name}
                 onChangeText={setName}
                 placeholder={tr('debt.customerNamePlaceholder')}
@@ -153,7 +153,7 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
             </Field>
             <Field label={tr('debt.phone')}>
               <TextInput
-                style={styles.input}
+                className="bg-surface rounded-xl px-4 py-3 text-base text-text-primary border border-border"
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
@@ -163,55 +163,57 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
             </Field>
 
             {/* Product picker */}
-            <Text style={styles.label}>{tr('debt.products')}</Text>
-            <View style={styles.searchBox}>
-              <Search size={16} color={colors.text.tertiary} />
-              <TextInput
-                style={styles.searchInput}
-                value={searchInput}
-                onChangeText={setSearchInput}
-                placeholder={tr('debt.searchPlaceholder')}
-                placeholderTextColor={colors.text.hint}
-              />
-            </View>
-            <View style={styles.productList}>
-              {filtered.map((v) => {
-                const q = qty[v.id] ?? 0;
-                const price = v.discountPrice ?? v.price;
-                return (
-                  <View key={v.id} style={styles.pRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.pName} numberOfLines={1}>
-                        {v.name}
-                      </Text>
-                      <Text style={styles.pMeta}>
-                        {fmt(price)} {tr('common.som')} · {tr('debt.stockLeft', { n: v.stock })}
-                      </Text>
-                    </View>
-                    {q > 0 ? (
-                      <View style={styles.stepper}>
-                        <Pressable style={styles.stepBtn} onPress={() => setQ(v, -1)}>
-                          <Minus size={14} color={colors.brand.primary} strokeWidth={2.8} />
-                        </Pressable>
-                        <Text style={styles.qVal}>{q}</Text>
-                        <Pressable style={styles.stepBtn} onPress={() => setQ(v, 1)}>
-                          <Plus size={14} color={colors.brand.primary} strokeWidth={2.8} />
-                        </Pressable>
+            <View className="gap-2">
+              <Text className="text-xs font-bold text-text-primary uppercase tracking-wider">{tr('debt.products')}</Text>
+              <View className="flex-row items-center gap-2 bg-surface rounded-xl px-3 border border-border">
+                <Search size={16} color={colors.text.tertiary} />
+                <TextInput
+                  className="flex-1 py-2.5 text-base text-text-primary"
+                  value={searchInput}
+                  onChangeText={setSearchInput}
+                  placeholder={tr('debt.searchPlaceholder')}
+                  placeholderTextColor={colors.text.hint}
+                />
+              </View>
+              <View className="bg-surface rounded-xl border border-border-subtle overflow-hidden">
+                {filtered.map((v) => {
+                  const q = qty[v.id] ?? 0;
+                  const price = v.discountPrice ?? v.price;
+                  return (
+                    <View key={v.id} className="flex-row items-center gap-3 p-3 border-b border-border-subtle">
+                      <View className="flex-1">
+                        <Text className="text-sm font-semibold text-text-primary" numberOfLines={1}>
+                          {v.name}
+                        </Text>
+                        <Text className="text-xs text-text-secondary mt-0.5">
+                          {fmt(price)} {tr('common.som')} · {tr('debt.stockLeft', { n: v.stock })}
+                        </Text>
                       </View>
-                    ) : (
-                      <Pressable style={styles.addBtn} onPress={() => setQ(v, 1)}>
-                        <Plus size={16} color={colors.text.onPrimary} strokeWidth={2.8} />
-                      </Pressable>
-                    )}
-                  </View>
-                );
-              })}
+                      {q > 0 ? (
+                        <View className="flex-row items-center gap-2">
+                          <Pressable className="w-7 h-7 rounded-full bg-brand-primary/10 items-center justify-center" onPress={() => setQ(v, -1)}>
+                            <Minus size={14} color={colors.brand.primary} strokeWidth={2.8} />
+                          </Pressable>
+                          <Text className="text-sm font-bold text-text-primary min-w-[20px] text-center">{q}</Text>
+                          <Pressable className="w-7 h-7 rounded-full bg-brand-primary/10 items-center justify-center" onPress={() => setQ(v, 1)}>
+                            <Plus size={14} color={colors.brand.primary} strokeWidth={2.8} />
+                          </Pressable>
+                        </View>
+                      ) : (
+                        <Pressable className="w-8 h-8 rounded-full bg-brand-primary items-center justify-center" onPress={() => setQ(v, 1)}>
+                          <Plus size={16} color={colors.text.onPrimary} strokeWidth={2.8} />
+                        </Pressable>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
             </View>
 
             {/* Extra charge for off-system items */}
             <Field label={tr('debt.extraCharge')}>
               <TextInput
-                style={styles.input}
+                className="bg-surface rounded-xl px-4 py-3 text-base text-text-primary border border-border"
                 value={extraCharge}
                 onChangeText={setExtraCharge}
                 keyboardType="number-pad"
@@ -221,33 +223,38 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
             </Field>
             <Field label={tr('debt.note')}>
               <TextInput
-                style={[styles.input, styles.multiline]}
+                className="bg-surface rounded-xl px-4 py-3 text-base text-text-primary border border-border min-h-[56px]"
                 value={note}
                 onChangeText={setNote}
                 placeholder={tr('debt.notePlaceholder')}
                 placeholderTextColor={colors.text.hint}
                 multiline
+                textAlignVertical="top"
               />
             </Field>
 
             {/* REQUIRED: decrement stock? */}
-            <View style={[styles.askBox, decrementStock === null && styles.askBoxRequired]}>
-              <Text style={styles.askTitle}>{tr('debt.decrementTitle')}</Text>
-              <Text style={styles.askSub}>{tr('debt.decrementSub')}</Text>
-              <View style={styles.askRow}>
+            <View className={`bg-surface rounded-xl p-4 border ${decrementStock === null ? 'border-amber-500' : 'border-border'} gap-1.5`}>
+              <Text className="text-sm font-bold text-text-primary">{tr('debt.decrementTitle')}</Text>
+              <Text className="text-xs text-text-secondary">{tr('debt.decrementSub')}</Text>
+              <View className="flex-row gap-2 mt-2">
                 <Pressable
-                  style={[styles.askChip, decrementStock === true && styles.askChipYes]}
+                  className={`flex-1 flex-row items-center justify-center gap-1.5 py-2.5 rounded-xl border ${
+                    decrementStock === true ? 'bg-emerald-600 border-emerald-600' : 'border-border'
+                  }`}
                   onPress={() => setDecrementStock(true)}>
                   {decrementStock === true ? <Check size={15} color={colors.text.onPrimary} strokeWidth={3} /> : null}
-                  <Text style={[styles.askChipText, decrementStock === true && styles.askChipTextActive]}>
+                  <Text className={`text-xs font-bold ${decrementStock === true ? 'text-white' : 'text-text-secondary'}`}>
                     {tr('debt.decrementYes')}
                   </Text>
                 </Pressable>
                 <Pressable
-                  style={[styles.askChip, decrementStock === false && styles.askChipNo]}
+                  className={`flex-1 flex-row items-center justify-center gap-1.5 py-2.5 rounded-xl border ${
+                    decrementStock === false ? 'bg-slate-600 border-slate-600' : 'border-border'
+                  }`}
                   onPress={() => setDecrementStock(false)}>
                   {decrementStock === false ? <Check size={15} color={colors.text.onPrimary} strokeWidth={3} /> : null}
-                  <Text style={[styles.askChipText, decrementStock === false && styles.askChipTextActive]}>
+                  <Text className={`text-xs font-bold ${decrementStock === false ? 'text-white' : 'text-text-secondary'}`}>
                     {tr('common.no')}
                   </Text>
                 </Pressable>
@@ -256,18 +263,21 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
           </ScrollView>
         </KeyboardAvoidingView>
 
-        <View style={styles.footer}>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>{tr('debt.totalDebt')}</Text>
-            <Text style={styles.totalValue}>
+        {/* Footer */}
+        <View className="px-4 py-3 border-t border-border-subtle bg-surface gap-2">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-sm text-text-secondary">{tr('debt.totalDebt')}</Text>
+            <Text className="text-xl font-bold text-brand-primary">
               {fmt(total)} {tr('common.som')}
             </Text>
           </View>
           <Pressable
-            style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
+            className={`h-12 rounded-xl items-center justify-center ${canSave && !save.isPending ? 'bg-brand-primary' : 'bg-surface-disabled'}`}
             disabled={!canSave || save.isPending}
             onPress={() => save.mutate()}>
-            <Text style={styles.saveText}>{save.isPending ? tr('debt.saving') : tr('debt.submit')}</Text>
+            <Text className="text-base font-bold text-white">
+              {save.isPending ? tr('debt.saving') : tr('debt.submit')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -277,92 +287,9 @@ export function CreateDebtModal({ visible, shopId, onClose, presetName, presetPh
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
+    <View className="gap-1.5">
+      <Text className="text-xs font-bold text-text-primary uppercase tracking-wider">{label}</Text>
       {children}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  title: { ...typography.h4, color: colors.text.primary },
-  closeBtn: { width: 32, height: 32, borderRadius: radius.full, backgroundColor: colors.bg.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
-  scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['3xl'] },
-  field: { gap: spacing.xs },
-  label: { ...typography.bodySmall, fontWeight: '700', color: colors.text.primary },
-  input: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    ...typography.body,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  multiline: { minHeight: 56, textAlignVertical: 'top' },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  searchInput: { flex: 1, paddingVertical: 10, ...typography.body, color: colors.text.primary },
-  productList: { backgroundColor: colors.bg.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border.subtle },
-  pRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border.subtle },
-  pName: { ...typography.bodySmall, fontWeight: '600', color: colors.text.primary },
-  pMeta: { ...typography.caption, color: colors.text.secondary, marginTop: 1 },
-  addBtn: { width: 32, height: 32, borderRadius: radius.full, backgroundColor: colors.brand.primary, alignItems: 'center', justifyContent: 'center' },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  stepBtn: { width: 30, height: 30, borderRadius: radius.full, backgroundColor: colors.brand.primarySurface, alignItems: 'center', justifyContent: 'center' },
-  qVal: { ...typography.bodyStrong, color: colors.text.primary, minWidth: 20, textAlign: 'center' },
-  askBox: { backgroundColor: colors.bg.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1.5, borderColor: colors.border.default, gap: spacing.xs },
-  askBoxRequired: { borderColor: colors.feedback.warning },
-  askTitle: { ...typography.bodySmall, fontWeight: '800', color: colors.text.primary },
-  askSub: { ...typography.caption, color: colors.text.secondary },
-  askRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
-  askChip: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  askChipYes: { backgroundColor: colors.feedback.success, borderColor: colors.feedback.success },
-  askChipNo: { backgroundColor: colors.text.secondary, borderColor: colors.text.secondary },
-  askChipText: { ...typography.bodySmall, fontWeight: '700', color: colors.text.secondary },
-  askChipTextActive: { color: colors.text.onPrimary },
-  footer: {
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    backgroundColor: colors.bg.surface,
-    gap: spacing.sm,
-  },
-  totalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  totalLabel: { ...typography.body, color: colors.text.secondary },
-  totalValue: { ...typography.h4, color: colors.brand.primary },
-  saveBtn: { height: layout.buttonHeight.md, borderRadius: radius.lg, backgroundColor: colors.brand.primary, alignItems: 'center', justifyContent: 'center' },
-  saveBtnDisabled: { backgroundColor: colors.border.strong },
-  saveText: { ...typography.body, fontWeight: '700', color: colors.text.onPrimary },
-});
