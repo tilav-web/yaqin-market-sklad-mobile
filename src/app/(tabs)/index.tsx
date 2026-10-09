@@ -128,7 +128,7 @@ export default function TelegramHomeScreen() {
     [feedQuery.data],
   );
 
-  const shops = shopsQuery.data ?? [];
+  const shops = useMemo(() => shopsQuery.data ?? [], [shopsQuery.data]);
 
   // Active shop restriction: when items are added to cart from a shop,
   // we filter displayed products solely to that shop.
