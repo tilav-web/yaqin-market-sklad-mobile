@@ -83,7 +83,8 @@ export function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
       <View className="flex-row items-center gap-2.5">
         {/* Telegram Pill Capsule */}
         <View
-          className={`flex-1 h-[58px] flex-row items-center justify-around rounded-[29px] px-1 ${
+          style={{ borderRadius: 29, overflow: 'hidden' }}
+          className={`flex-1 h-[58px] flex-row items-center justify-around px-1 ${
             isDark
               ? 'bg-[#1C1C1E] border border-white/10 shadow-lg'
               : 'bg-white border border-black/10 shadow-md'
@@ -121,7 +122,8 @@ export function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
             haptics.selection();
             useSearchModalStore.getState().open();
           }}
-          className={`w-[58px] h-[58px] rounded-[29px] items-center justify-center active:scale-95 ${
+          style={{ borderRadius: 29, overflow: 'hidden' }}
+          className={`w-[58px] h-[58px] items-center justify-center active:scale-95 ${
             isDark
               ? 'bg-[#1C1C1E] border border-white/10 shadow-lg'
               : 'bg-white border border-black/10 shadow-md'
@@ -162,9 +164,14 @@ function TelegramTabItem({
       <View className="items-center justify-center gap-0.5">
         {/* Soft borderless pill wrap for active tab */}
         <View
-          className={`w-11 h-[26px] rounded-[13px] items-center justify-center relative ${
-            focused ? (isDark ? 'bg-[#E8392E]/20' : 'bg-[#E8392E]/10') : ''
-          }`}>
+          style={{
+            borderRadius: 13,
+            overflow: 'hidden',
+            backgroundColor: focused
+              ? (isDark ? 'rgba(232, 57, 46, 0.20)' : 'rgba(232, 57, 46, 0.10)')
+              : 'transparent',
+          }}
+          className="w-11 h-[26px] items-center justify-center relative">
           <Icon
             size={20}
             color={focused ? primaryColor : inactiveColor}

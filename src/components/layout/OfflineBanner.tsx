@@ -1,6 +1,6 @@
 import { WifiOff, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
@@ -24,28 +24,66 @@ export function OfflineBanner() {
   };
 
   return (
-    <View className="flex-row items-center gap-2.5 bg-slate-800 rounded-2xl px-3.5 py-2.5 border border-brand-primary/40 w-full shadow-xl">
-      <View className="w-8 h-8 rounded-full bg-brand-primary/15 items-center justify-center">
-        <WifiOff size={15} color={colors.brand.primary} strokeWidth={2.4} />
-      </View>
-      <View className="flex-1">
-        <Text className="text-white text-xs font-bold leading-4">Internet aloqasi yo'q</Text>
-        <Text className="text-slate-400 text-[11px] leading-3.5">{tr('common.error.desc')}</Text>
-      </View>
+    <View style={styles.banner}>
+      <WifiOff size={14} color="#EF4444" strokeWidth={2.4} />
+      <Text style={styles.text} numberOfLines={1}>
+        Internet aloqasi yo&apos;q
+      </Text>
       <Pressable
         onPress={handleRetry}
-        className="bg-brand-primary px-3 py-1.5 rounded-full items-center justify-center active:opacity-80"
+        style={styles.retryBtn}
         hitSlop={6}
         disabled={retrying}>
         {retrying ? (
           <ActivityIndicator size="small" color="#FFFFFF" />
         ) : (
-          <Text className="text-white text-xs font-bold">{tr('common.retry')}</Text>
+          <Text style={styles.retryText}>{tr('common.retry')}</Text>
         )}
       </Pressable>
-      <Pressable onPress={() => setDismissed(true)} hitSlop={8} className="p-1">
-        <X size={15} color="#9CA3AF" strokeWidth={2.2} />
+      <Pressable onPress={() => setDismissed(true)} hitSlop={8} style={styles.closeBtn}>
+        <X size={14} color="#9CA3AF" strokeWidth={2.2} />
       </Pressable>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(15, 23, 42, 0.94)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.35)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  text: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  retryBtn: {
+    backgroundColor: colors.brand.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  closeBtn: {
+    padding: 2,
+    marginLeft: 2,
+  },
+});
