@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import {
   Alert,
   Pressable,
-  StyleSheet,
   Switch,
   Text,
   View,
@@ -16,9 +15,9 @@ import {
   StaffMember,
   StaffRole,
 } from '@/constants/staffPermissions';
-import { Brand, Radius, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
+import { colors } from '@/theme';
 
 import { GrantBody, StaffPresetDto } from './types';
 
@@ -68,19 +67,19 @@ export function StaffCard({ shopId, member }: StaffCardProps) {
   };
 
   return (
-    <View style={styles.card}>
-      <View style={styles.cardHead}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
+    <View className="bg-bg-surface rounded-2xl p-4 gap-3 border border-border-default">
+      <View className="flex-row items-center gap-3">
+        <View className="w-11 h-11 rounded-full bg-brand-primary items-center justify-center">
+          <Text className="text-text-on-primary font-extrabold text-base">
             {(member.name?.[0] ?? member.phone.slice(-2)).toUpperCase()}
           </Text>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{member.name ?? tr('staff.staffFallback')}</Text>
-          <Text style={styles.phone}>{member.phone}</Text>
+        <View className="flex-1">
+          <Text className="text-base font-bold text-text-primary">{member.name ?? tr('staff.staffFallback')}</Text>
+          <Text className="text-xs text-text-secondary mt-0.5">{member.phone}</Text>
         </View>
-        <View style={styles.roleTag}>
-          <Text style={styles.roleText}>
+        <View className="bg-bg-surface-muted rounded-md px-2.5 py-1">
+          <Text className="text-xs font-bold text-text-primary">
             {member.customRoleName ||
               memberRoles
                 .map((r) => {
@@ -96,21 +95,24 @@ export function StaffCard({ shopId, member }: StaffCardProps) {
       </View>
 
       {/* Role Badges */}
-      <View style={styles.roleBadgesRow}>
+      <View className="flex-row flex-wrap gap-1.5 mt-0.5">
         {ROLE_OPTIONS.map((opt) => {
           const isActive = memberRoles.includes(opt.key);
           return (
             <Pressable
               key={opt.key}
-              style={[styles.memberRoleBadge, isActive && styles.memberRoleBadgeActive]}
+              className={`flex-row items-center gap-1.5 px-2.5 py-1 rounded-full border ${
+                isActive
+                  ? 'bg-brand-primary/10 border-brand-primary'
+                  : 'border-border-default bg-bg-surface-muted'
+              }`}
               onPress={() => handleToggleCardRole(opt.key)}
             >
-              <Text style={styles.memberRoleBadgeEmoji}>{opt.badge}</Text>
+              <Text className="text-xs">{opt.badge}</Text>
               <Text
-                style={[
-                  styles.memberRoleBadgeText,
-                  isActive && styles.memberRoleBadgeTextActive,
-                ]}
+                className={`text-xs ${
+                  isActive ? 'text-brand-primary font-bold' : 'font-semibold text-text-secondary'
+                }`}
               >
                 {opt.titleUz}
               </Text>
@@ -119,8 +121,8 @@ export function StaffCard({ shopId, member }: StaffCardProps) {
         })}
       </View>
 
-      <Pressable style={styles.expandRow} onPress={() => setExpanded((v) => !v)}>
-        <Text style={styles.expandText}>
+      <Pressable className="flex-row justify-between items-center border-t border-border-subtle pt-3" onPress={() => setExpanded((v) => !v)}>
+        <Text className="text-xs font-bold text-brand-primary">
           Huquqlar ({member.permissions.length} ta) {expanded ? '▲' : '▼'}
         </Text>
         <Pressable
@@ -139,22 +141,22 @@ export function StaffCard({ shopId, member }: StaffCardProps) {
             )
           }
         >
-          <Text style={styles.removeText}>{tr('staff.remove')}</Text>
+          <Text className="text-xs font-bold text-text-secondary">{tr('staff.remove')}</Text>
         </Pressable>
       </Pressable>
 
       {expanded && (
-        <View style={styles.permArea}>
+        <View className="gap-3 mt-2">
           {PERMISSION_GROUPS.map((group) => (
-            <View key={group.titleKey} style={styles.permGroup}>
-              <Text style={styles.permGroupTitle}>{tr(group.titleKey)}</Text>
+            <View key={group.titleKey} className="gap-0.5">
+              <Text className="text-xs font-extrabold text-brand-primary uppercase mt-2">{tr(group.titleKey)}</Text>
               {group.items.map((item) => (
-                <View key={item.key} style={styles.permRow}>
-                  <Text style={styles.permLabel}>{tr(item.labelKey)}</Text>
+                <View key={item.key} className="flex-row justify-between items-center py-1.5">
+                  <Text className="text-xs text-text-primary flex-1 pr-3">{tr(item.labelKey)}</Text>
                   <Switch
                     value={member.permissions.includes(item.key)}
                     onValueChange={() => togglePerm(item.key)}
-                    trackColor={{ true: Brand.success }}
+                    trackColor={{ true: colors.feedback.success }}
                   />
                 </View>
               ))}
@@ -165,130 +167,3 @@ export function StaffCard({ shopId, member }: StaffCardProps) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: Brand.white,
-    borderRadius: Radius.lg,
-    padding: Spacing.four,
-    gap: Spacing.three,
-    borderWidth: 1,
-    borderColor: Brand.gray200,
-  },
-  cardHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Brand.red,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    color: Brand.white,
-    fontWeight: '800',
-    fontSize: 16,
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Brand.black,
-  },
-  phone: {
-    fontSize: 13,
-    color: Brand.gray600,
-    marginTop: 1,
-  },
-  roleTag: {
-    backgroundColor: Brand.gray100,
-    borderRadius: Radius.sm,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  roleText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Brand.gray800,
-  },
-  roleBadgesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 2,
-  },
-  memberRoleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: Radius.full,
-    backgroundColor: Brand.gray100,
-    borderWidth: 1,
-    borderColor: Brand.gray200,
-  },
-  memberRoleBadgeActive: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#3B82F6',
-  },
-  memberRoleBadgeEmoji: {
-    fontSize: 13,
-  },
-  memberRoleBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Brand.gray600,
-  },
-  memberRoleBadgeTextActive: {
-    color: '#1D4ED8',
-    fontWeight: '700',
-  },
-  expandRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: Brand.gray100,
-    paddingTop: Spacing.three,
-  },
-  expandText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Brand.red,
-  },
-  removeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Brand.gray600,
-  },
-  permArea: {
-    gap: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  permGroup: {
-    gap: 2,
-  },
-  permGroupTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: Brand.red,
-    textTransform: 'uppercase',
-    marginTop: Spacing.two,
-  },
-  permRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-  },
-  permLabel: {
-    fontSize: 13,
-    color: Brand.gray800,
-    flex: 1,
-    paddingRight: Spacing.three,
-  },
-});

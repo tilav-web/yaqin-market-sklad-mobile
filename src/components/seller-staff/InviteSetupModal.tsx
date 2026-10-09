@@ -1,21 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  Check,
-  ChevronDown,
-  ChevronUp,
-  QrCode,
-  Shield,
-  Sparkles,
-  X,
-} from 'lucide-react-native';
+import { QrCode, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   Alert,
   Modal,
   Pressable,
   ScrollView,
-  StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -23,15 +13,14 @@ import {
 
 import {
   computePermissionsForRoles,
-  PERMISSION_GROUPS,
-  ROLE_OPTIONS,
-  SMALL_SHOP_SHORTCUTS,
   StaffRole,
 } from '@/constants/staffPermissions';
-import { Brand, Radius, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
+import { colors } from '@/theme';
 
+import { InviteAdvancedPerms } from './InviteAdvancedPerms';
+import { InviteRolesSection } from './InviteRolesSection';
 import { GrantBody, StaffPresetDto } from './types';
 
 interface InviteSetupModalProps {
@@ -157,129 +146,60 @@ export function InviteSetupModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
-      <Pressable style={styles.backdrop} onPress={onCancel} />
-      <View style={styles.setupWrap} pointerEvents="box-none">
-        <View style={styles.setupCard}>
-          <View style={styles.setupHeader}>
+      <Pressable className="absolute inset-0 bg-black/55" onPress={onCancel} />
+      <View className="flex-1 items-center justify-center p-4" pointerEvents="box-none">
+        <View className="bg-bg-surface rounded-3xl p-5 gap-4 w-full max-w-[440px] max-h-[90%]">
+          <View className="flex-row justify-between items-start border-b border-border-subtle pb-3">
             <View>
-              <Text style={styles.setupTitle}>Yangi xodim biriktirish</Text>
-              <Text style={styles.setupSubtitle}>Vazifalar va huquqlarni belgilang</Text>
+              <Text className="text-lg font-extrabold text-text-primary">Yangi xodim biriktirish</Text>
+              <Text className="text-xs text-text-secondary mt-0.5">Vazifalar va huquqlarni belgilang</Text>
             </View>
-            <Pressable onPress={onCancel} hitSlop={10} style={styles.closeIconBtn}>
-              <X size={20} color={Brand.gray600} />
+            <Pressable onPress={onCancel} hitSlop={10} className="p-1">
+              <X size={20} color={colors.text.secondary} />
             </Pressable>
           </View>
 
           <ScrollView
-            contentContainerStyle={{ gap: Spacing.four, paddingBottom: 20 }}
+            contentContainerStyle={{ gap: 14, paddingBottom: 20 }}
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.block}>
-              <View style={styles.blockTitleRow}>
-                <Sparkles size={16} color={Brand.red} />
-                <Text style={styles.blockTitle}>Tezkor shablonlar</Text>
-              </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.shortcutScroll}
-              >
-                {SMALL_SHOP_SHORTCUTS.map((s) => {
-                  const isMatch =
-                    s.roles.length === selectedRoles.length &&
-                    s.roles.every((r) => selectedRoles.includes(r));
-                  return (
-                    <Pressable
-                      key={s.id}
-                      style={[styles.shortcutCard, isMatch && styles.shortcutCardActive]}
-                      onPress={() => handleApplyShortcut(s.roles)}
-                    >
-                      <Text
-                        style={[styles.shortcutTitle, isMatch && styles.shortcutTitleActive]}
-                      >
-                        {s.labelUz}
-                      </Text>
-                      <Text style={[styles.shortcutSub, isMatch && styles.shortcutSubActive]}>
-                        {s.subUz}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
+            <InviteRolesSection
+              selectedRoles={selectedRoles}
+              onApplyShortcut={handleApplyShortcut}
+              onToggleRole={handleToggleRole}
+            />
 
-            <View style={styles.block}>
-              <View style={styles.blockTitleRow}>
-                <Shield size={16} color={Brand.black} />
-                <Text style={styles.blockTitle}>Xodim vazifalari (Bir nechtasini tanlang)</Text>
-              </View>
-              <View style={styles.roleGrid}>
-                {ROLE_OPTIONS.map((opt) => {
-                  const isSelected = selectedRoles.includes(opt.key);
-                  return (
-                    <Pressable
-                      key={opt.key}
-                      style={[styles.roleOptionCard, isSelected && styles.roleOptionCardActive]}
-                      onPress={() => handleToggleRole(opt.key)}
-                    >
-                      <View style={styles.roleOptionTop}>
-                        <View style={styles.roleBadgeWrap}>
-                          <Text style={styles.roleBadge}>{opt.badge}</Text>
-                          <Text
-                            style={[
-                              styles.roleOptionTitle,
-                              isSelected && styles.roleOptionTitleActive,
-                            ]}
-                          >
-                            {opt.titleUz}
-                          </Text>
-                        </View>
-                        <View style={[styles.checkbox, isSelected && styles.checkboxActive]}>
-                          {isSelected && <Check size={14} color={Brand.white} strokeWidth={3} />}
-                        </View>
-                      </View>
-                      <Text
-                        style={[
-                          styles.roleOptionDesc,
-                          isSelected && styles.roleOptionDescActive,
-                        ]}
-                      >
-                        {opt.descUz}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-
-            <View style={styles.block}>
-              <Text style={styles.inputLabel}>Xodim lavozimi yoki ismi (ixtiyoriy)</Text>
+            <View className="gap-2">
+              <Text className="text-xs font-semibold text-text-primary">Xodim lavozimi yoki ismi (ixtiyoriy)</Text>
               <TextInput
-                style={styles.input}
+                className="bg-bg-canvas rounded-xl border border-border-default px-3 py-2.5 text-sm text-text-primary"
                 value={roleName}
                 onChangeText={setRoleName}
                 placeholder="Masalan: Kechki kassir, Sardor"
-                placeholderTextColor={Brand.gray400}
+                placeholderTextColor={colors.text.hint}
               />
             </View>
 
             {customPresets.length > 0 && (
-              <View style={styles.block}>
-                <Text style={styles.inputLabel}>Do'koningizning saqlangan shablonlari</Text>
-                <View style={styles.presetRow}>
+              <View className="gap-2">
+                <Text className="text-xs font-semibold text-text-primary">Do'koningizning saqlangan shablonlari</Text>
+                <View className="flex-row flex-wrap gap-2">
                   {customPresets.map((p) => {
                     const isSelected = customPresetId === p.id;
                     return (
-                      <View key={p.id} style={styles.customPresetChipWrap}>
+                      <View key={p.id} className="flex-row items-center">
                         <Pressable
                           onPress={() => handlePickCustomPreset(p)}
-                          style={[styles.presetChip, isSelected && styles.presetChipActive]}
+                          className={`px-3 py-1.5 rounded-l-full border ${
+                            isSelected
+                              ? 'bg-brand-primary/10 border-brand-primary'
+                              : 'bg-bg-surface-muted border-border-default'
+                          }`}
                         >
                           <Text
-                            style={[
-                              styles.presetChipText,
-                              isSelected && styles.presetChipTextActive,
-                            ]}
+                            className={`text-xs ${
+                              isSelected ? 'text-brand-primary font-bold' : 'text-text-secondary font-medium'
+                            }`}
                           >
                             {p.name}
                           </Text>
@@ -300,9 +220,13 @@ export function InviteSetupModal({
                               ],
                             );
                           }}
-                          style={styles.presetDeleteBtn}
+                          className={`px-2 py-1.5 rounded-r-full border-y border-r ${
+                            isSelected
+                              ? 'bg-brand-primary/10 border-brand-primary'
+                              : 'bg-bg-surface-muted border-border-default'
+                          }`}
                         >
-                          <X size={14} color={Brand.gray600} />
+                          <X size={14} color={colors.text.secondary} />
                         </Pressable>
                       </View>
                     );
@@ -311,77 +235,35 @@ export function InviteSetupModal({
               </View>
             )}
 
-            <Pressable
-              style={styles.expandRow}
-              onPress={() => setShowAdvancedPerms((v) => !v)}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.expandText}>
-                  Batafsil huquqlar ({permissions.length} ta yoqilgan)
-                </Text>
-              </View>
-              {showAdvancedPerms ? (
-                <ChevronUp size={18} color={Brand.red} />
-              ) : (
-                <ChevronDown size={18} color={Brand.red} />
-              )}
-            </Pressable>
-
-            {showAdvancedPerms && (
-              <View style={styles.permListWrap}>
-                {PERMISSION_GROUPS.map((group) => (
-                  <View key={group.titleKey} style={styles.permGroup}>
-                    <Text style={styles.permGroupTitle}>{tr(group.titleKey)}</Text>
-                    {group.items.map((item) => (
-                      <View key={item.key} style={styles.permRow}>
-                        <Text style={styles.permLabel}>{tr(item.labelKey)}</Text>
-                        <Switch
-                          value={permissions.includes(item.key)}
-                          onValueChange={() => toggleSinglePerm(item.key)}
-                          trackColor={{ true: Brand.success }}
-                        />
-                      </View>
-                    ))}
-                  </View>
-                ))}
-              </View>
-            )}
-
-            <Pressable style={styles.saveAsRow} onPress={() => setSaveAsPreset((v) => !v)}>
-              <Switch
-                value={saveAsPreset}
-                onValueChange={setSaveAsPreset}
-                trackColor={{ true: Brand.success }}
-              />
-              <Text style={styles.saveAsLabel}>Ushbu rolni yangi shablon sifatida saqlash</Text>
-            </Pressable>
-            {saveAsPreset && (
-              <TextInput
-                style={styles.input}
-                value={presetName}
-                onChangeText={setPresetName}
-                placeholder="Shablon nomi (masalan: 1-kassir)"
-                placeholderTextColor={Brand.gray400}
-              />
-            )}
+            <InviteAdvancedPerms
+              show={showAdvancedPerms}
+              onToggleShow={() => setShowAdvancedPerms((v) => !v)}
+              permissions={permissions}
+              onTogglePerm={toggleSinglePerm}
+              saveAsPreset={saveAsPreset}
+              onToggleSaveAsPreset={setSaveAsPreset}
+              presetName={presetName}
+              onChangePresetName={setPresetName}
+            />
           </ScrollView>
 
-          <View style={styles.setupBtnRow}>
-            <Pressable style={styles.setupCancelBtn} onPress={onCancel}>
-              <Text style={styles.setupCancelText}>Bekor qilish</Text>
+          <View className="flex-row gap-3 pt-2">
+            <Pressable className="flex-1 py-3 rounded-2xl bg-bg-surface-muted items-center" onPress={onCancel}>
+              <Text className="text-sm font-bold text-text-secondary">Bekor qilish</Text>
             </Pressable>
             <Pressable
-              style={[
-                styles.setupSubmitBtn,
-                (pending || savePresetMutation.isPending) && { opacity: 0.6 },
-              ]}
+              className={`flex-1 py-3 rounded-2xl bg-brand-primary flex-row items-center justify-center gap-2 ${
+                pending || savePresetMutation.isPending || (saveAsPreset && !presetName.trim())
+                  ? 'opacity-60'
+                  : 'active:opacity-85'
+              }`}
               disabled={
                 pending || savePresetMutation.isPending || (saveAsPreset && !presetName.trim())
               }
               onPress={handleSubmit}
             >
-              <QrCode size={18} color={Brand.white} />
-              <Text style={styles.setupSubmitText}>
+              <QrCode size={18} color={colors.text.onPrimary} />
+              <Text className="text-sm font-bold text-text-on-primary">
                 {pending || savePresetMutation.isPending ? 'Yaratilmoqda...' : 'QR Kod Yaratish'}
               </Text>
             </Pressable>
@@ -391,284 +273,3 @@ export function InviteSetupModal({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-  },
-  setupWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.four,
-  },
-  setupCard: {
-    backgroundColor: Brand.white,
-    borderRadius: Radius.xl,
-    padding: Spacing.five,
-    gap: Spacing.four,
-    width: '100%',
-    maxWidth: 440,
-    maxHeight: '90%',
-  },
-  setupHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    borderBottomWidth: 1,
-    borderBottomColor: Brand.gray100,
-    paddingBottom: Spacing.three,
-  },
-  setupTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: Brand.black,
-  },
-  setupSubtitle: {
-    fontSize: 13,
-    color: Brand.gray600,
-    marginTop: 2,
-  },
-  closeIconBtn: {
-    padding: 4,
-  },
-  block: {
-    gap: 8,
-  },
-  blockTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  blockTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Brand.black,
-  },
-  shortcutScroll: {
-    gap: 8,
-    paddingVertical: 2,
-  },
-  shortcutCard: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: Radius.md,
-    backgroundColor: Brand.gray50,
-    borderWidth: 1,
-    borderColor: Brand.gray200,
-    minWidth: 140,
-  },
-  shortcutCardActive: {
-    backgroundColor: '#FEF2F2',
-    borderColor: Brand.red,
-  },
-  shortcutTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Brand.gray800,
-  },
-  shortcutTitleActive: {
-    color: Brand.red,
-  },
-  shortcutSub: {
-    fontSize: 11,
-    color: Brand.gray600,
-    marginTop: 2,
-  },
-  shortcutSubActive: {
-    color: Brand.red,
-  },
-  roleGrid: {
-    gap: 8,
-  },
-  roleOptionCard: {
-    backgroundColor: Brand.gray50,
-    borderRadius: Radius.md,
-    padding: Spacing.three,
-    borderWidth: 1.5,
-    borderColor: Brand.gray200,
-    gap: 4,
-  },
-  roleOptionCardActive: {
-    backgroundColor: '#FEF2F2',
-    borderColor: Brand.red,
-  },
-  roleOptionTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  roleBadgeWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  roleBadge: {
-    fontSize: 16,
-  },
-  roleOptionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Brand.gray800,
-  },
-  roleOptionTitleActive: {
-    color: Brand.red,
-  },
-  roleOptionDesc: {
-    fontSize: 12,
-    color: Brand.gray600,
-    lineHeight: 16,
-  },
-  roleOptionDescActive: {
-    color: Brand.gray800,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: Brand.gray400,
-    backgroundColor: Brand.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxActive: {
-    backgroundColor: Brand.red,
-    borderColor: Brand.red,
-  },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Brand.gray800,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: Brand.gray200,
-    borderRadius: Radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: Brand.black,
-    backgroundColor: Brand.white,
-  },
-  presetRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  presetChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: Radius.md,
-    backgroundColor: Brand.gray50,
-    borderWidth: 1,
-    borderColor: Brand.gray200,
-  },
-  presetChipActive: {
-    backgroundColor: Brand.red,
-    borderColor: Brand.red,
-  },
-  presetChipText: {
-    fontSize: 12,
-    color: Brand.gray800,
-    fontWeight: '600',
-  },
-  presetChipTextActive: {
-    color: Brand.white,
-    fontWeight: '700',
-  },
-  customPresetChipWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  presetDeleteBtn: {
-    padding: 6,
-  },
-  expandRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: Brand.gray100,
-    paddingTop: Spacing.three,
-  },
-  expandText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Brand.red,
-  },
-  permListWrap: {
-    gap: Spacing.two,
-    paddingLeft: 4,
-  },
-  permGroup: {
-    gap: 2,
-  },
-  permGroupTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: Brand.red,
-    textTransform: 'uppercase',
-    marginTop: Spacing.two,
-  },
-  permRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-  },
-  permLabel: {
-    fontSize: 13,
-    color: Brand.gray800,
-    flex: 1,
-    paddingRight: Spacing.three,
-  },
-  saveAsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  saveAsLabel: {
-    fontSize: 13,
-    color: Brand.gray800,
-    flex: 1,
-  },
-  setupBtnRow: {
-    flexDirection: 'row',
-    gap: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  setupCancelBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: Radius.lg,
-    alignItems: 'center',
-    backgroundColor: Brand.gray100,
-  },
-  setupCancelText: {
-    color: Brand.gray800,
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  setupSubmitBtn: {
-    flex: 2,
-    paddingVertical: 12,
-    borderRadius: Radius.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Brand.red,
-  },
-  setupSubmitText: {
-    color: Brand.white,
-    fontWeight: '800',
-    fontSize: 14,
-  },
-});

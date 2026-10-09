@@ -9,10 +9,10 @@ import {
   Sparkles,
 } from 'lucide-react-native';
 import React from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
-import { colors, radius, shadow, spacing } from '@/theme';
+import { colors } from '@/theme';
 
 import { SoliqVerifyResult } from './types';
 
@@ -34,105 +34,113 @@ export function SellerAppStep2Soliq({
   const { tr } = useTranslation();
 
   return (
-    <View style={styles.stepWrapper}>
+    <View className="gap-4">
       {/* Clean Concise Header */}
-      <View style={styles.cleanStepHeader}>
-        <View style={styles.cleanStepIconBox}>
+      <View className="items-center py-3 gap-2">
+        <View className="w-14 h-14 rounded-full bg-brand-primary/10 items-center justify-center mb-1">
           <ShieldCheck size={28} color={colors.brand.primary} />
         </View>
-        <Text style={styles.cleanStepTitle}>{tr('sellerApp.soliqStepTitle')}</Text>
-        <Text style={styles.cleanStepSubtitle}>
+        <Text className="text-xl font-extrabold text-text-primary text-center">
+          {tr('sellerApp.soliqStepTitle')}
+        </Text>
+        <Text className="text-sm text-text-secondary text-center leading-5 px-4">
           {tr('sellerApp.soliqStepSubtitle')}
         </Text>
       </View>
 
       {/* High-Impact Operator STIR Card */}
-      <View style={styles.platformStirCard}>
-        <View style={styles.platformStirHeader}>
-          <Sparkles size={16} color="#FDECEA" />
-          <Text style={styles.platformStirTag}>{tr('sellerApp.operatorStirTag')}</Text>
+      <View className="bg-zinc-900 rounded-3xl p-6 items-center gap-1 shadow-md">
+        <View className="flex-row items-center gap-1.5 mb-0.5">
+          <Sparkles size={16} color={colors.brand.primary} />
+          <Text className="text-[11px] font-extrabold text-brand-primary tracking-widest">
+            {tr('sellerApp.operatorStirTag')}
+          </Text>
         </View>
 
-        <Text style={styles.platformStirNumber}>{platformStir}</Text>
-        <Text style={styles.platformStirOrg}>{platformName}</Text>
+        <Text className="text-4xl font-black text-white tracking-widest my-1">
+          {platformStir}
+        </Text>
+        <Text className="text-sm font-bold text-zinc-300">{platformName}</Text>
 
         <Pressable
           onPress={onCopyStir}
-          style={[styles.copyStirButton, copiedStir && styles.copyStirButtonSuccess]}
+          className={`flex-row items-center justify-center gap-2 px-6 py-3 rounded-2xl mt-4 active:opacity-85 ${
+            copiedStir ? 'bg-feedback-success' : 'bg-brand-primary'
+          }`}
         >
           {copiedStir ? (
             <>
-              <CheckCircle2 size={18} color={colors.palette.white} />
-              <Text style={styles.copyStirBtnText}>{tr('sellerApp.stirCopied')}</Text>
+              <CheckCircle2 size={18} color={colors.text.onPrimary} />
+              <Text className="text-sm font-extrabold text-white">{tr('sellerApp.stirCopied')}</Text>
             </>
           ) : (
             <>
-              <Copy size={18} color={colors.palette.white} />
-              <Text style={styles.copyStirBtnText}>{tr('sellerApp.copyStir')}</Text>
+              <Copy size={18} color={colors.text.onPrimary} />
+              <Text className="text-sm font-extrabold text-white">{tr('sellerApp.copyStir')}</Text>
             </>
           )}
         </Pressable>
       </View>
 
       {/* Soliq Ilovasida / Portalida To'ldirish Bo'yicha Aniq Qo'llanma */}
-      <View style={styles.soliqGuideCard}>
-        <View style={styles.soliqGuideHeader}>
+      <View className="bg-bg-surface rounded-3xl p-5 border border-border-subtle gap-3.5 shadow-sm">
+        <View className="flex-row items-center gap-2">
           <Info size={18} color={colors.brand.primary} />
-          <Text style={styles.soliqGuideTitle}>{tr('sellerApp.guideTitle')}</Text>
+          <Text className="text-sm font-extrabold text-text-primary">{tr('sellerApp.guideTitle')}</Text>
         </View>
 
-        <View style={styles.soliqGuideStep}>
-          <View style={styles.guideStepNumber}>
-            <Text style={styles.guideStepNumberText}>1</Text>
+        <View className="flex-row items-start gap-3">
+          <View className="w-6 h-6 rounded-full bg-brand-primary/10 items-center justify-center mt-0.5">
+            <Text className="text-xs font-black text-brand-primary">1</Text>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.guideStepLabel}>{tr('sellerApp.guideStep1')}</Text>
-            <Text style={styles.guideStepHighlight}>{platformStir}</Text>
+          <View className="flex-1">
+            <Text className="text-xs text-text-secondary leading-4">{tr('sellerApp.guideStep1')}</Text>
+            <Text className="text-sm font-extrabold text-brand-primary mt-0.5">{platformStir}</Text>
           </View>
         </View>
 
-        <View style={styles.soliqGuideStep}>
-          <View style={styles.guideStepNumber}>
-            <Text style={styles.guideStepNumberText}>2</Text>
+        <View className="flex-row items-start gap-3">
+          <View className="w-6 h-6 rounded-full bg-brand-primary/10 items-center justify-center mt-0.5">
+            <Text className="text-xs font-black text-brand-primary">2</Text>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.guideStepLabel}>{tr('sellerApp.guideStep2')}</Text>
-            <View style={styles.guideChipsRow}>
-              <View style={styles.guideChipInactive}>
-                <Text style={styles.guideChipInactiveText}>ONKM</Text>
+          <View className="flex-1">
+            <Text className="text-xs text-text-secondary leading-4">{tr('sellerApp.guideStep2')}</Text>
+            <View className="flex-row flex-wrap gap-1.5 mt-1.5">
+              <View className="px-2 py-0.5 rounded-md bg-bg-surface-muted border border-border-default">
+                <Text className="text-[11px] text-text-tertiary font-semibold">ONKM</Text>
               </View>
-              <View style={styles.guideChipActive}>
+              <View className="flex-row items-center gap-1 px-2.5 py-1 rounded-md bg-feedback-success">
                 <Check size={12} color="#FFFFFF" strokeWidth={3} />
-                <Text style={styles.guideChipActiveText}>Marketpleys</Text>
+                <Text className="text-[11px] text-white font-extrabold">Marketpleys</Text>
               </View>
-              <View style={styles.guideChipInactive}>
-                <Text style={styles.guideChipInactiveText}>Taxi</Text>
+              <View className="px-2 py-0.5 rounded-md bg-bg-surface-muted border border-border-default">
+                <Text className="text-[11px] text-text-tertiary font-semibold">Taxi</Text>
               </View>
-              <View style={styles.guideChipInactive}>
-                <Text style={styles.guideChipInactiveText}>EHF</Text>
+              <View className="px-2 py-0.5 rounded-md bg-bg-surface-muted border border-border-default">
+                <Text className="text-[11px] text-text-tertiary font-semibold">EHF</Text>
               </View>
             </View>
           </View>
         </View>
 
-        <View style={styles.soliqGuideStep}>
-          <View style={styles.guideStepNumber}>
-            <Text style={styles.guideStepNumberText}>3</Text>
+        <View className="flex-row items-start gap-3">
+          <View className="w-6 h-6 rounded-full bg-brand-primary/10 items-center justify-center mt-0.5">
+            <Text className="text-xs font-black text-brand-primary">3</Text>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.guideStepLabel}>{tr('sellerApp.guideStep3')}</Text>
+          <View className="flex-1">
+            <Text className="text-xs text-text-secondary leading-4">{tr('sellerApp.guideStep3')}</Text>
           </View>
         </View>
       </View>
 
-      {/* Direct Link to Soliq */}
+      {/* Direct Link to Soliq Site */}
       <Pressable
         onPress={() => Linking.openURL('https://my3.soliq.uz')}
-        style={styles.directSoliqLinkCard}
+        className="flex-row items-center justify-between bg-bg-surface rounded-2xl p-4 border border-brand-primary/20 shadow-sm active:opacity-75"
       >
-        <View style={styles.directSoliqLinkLeft}>
-          <Text style={styles.directSoliqLinkTitle}>{tr('sellerApp.openSoliqSite')}</Text>
-          <Text style={styles.directSoliqLinkDesc}>
+        <View className="flex-1 pr-3">
+          <Text className="text-sm font-extrabold text-text-primary">{tr('sellerApp.openSoliqSite')}</Text>
+          <Text className="text-xs text-text-secondary mt-0.5 leading-4">
             {tr('sellerApp.openSoliqDesc')}
           </Text>
         </View>
@@ -141,11 +149,11 @@ export function SellerAppStep2Soliq({
 
       {/* Dynamic Status Notification */}
       {soliqVerifyResult && !soliqVerifyResult.isAttached && (
-        <View style={styles.soliqFailedCard}>
-          <AlertTriangle size={22} color="#DC2626" />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.soliqFailedTitle}>{tr('sellerApp.attachmentNotFound')}</Text>
-            <Text style={styles.soliqFailedDesc}>
+        <View className="flex-row items-start gap-3 bg-feedback-danger/5 rounded-2xl p-4 border border-feedback-danger/20">
+          <AlertTriangle size={22} color={colors.feedback.danger} />
+          <View className="flex-1">
+            <Text className="text-sm font-bold text-feedback-danger">{tr('sellerApp.attachmentNotFound')}</Text>
+            <Text className="text-xs text-feedback-danger/90 leading-4 mt-0.5">
               {soliqVerifyResult.message || tr('sellerApp.soliqNotFoundFallback', { stir: platformStir })}
             </Text>
           </View>
@@ -153,253 +161,14 @@ export function SellerAppStep2Soliq({
       )}
 
       {soliqVerifyResult?.isAttached && (
-        <View style={styles.soliqSuccessCard}>
-          <CheckCircle2 size={22} color="#16A34A" />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.soliqSuccessTitle}>{tr('sellerApp.attachmentConfirmed')}</Text>
-            <Text style={styles.soliqSuccessDesc}>{soliqVerifyResult.message}</Text>
+        <View className="flex-row items-start gap-3 bg-feedback-success/5 rounded-2xl p-4 border border-feedback-success/20">
+          <CheckCircle2 size={22} color={colors.feedback.success} />
+          <View className="flex-1">
+            <Text className="text-sm font-bold text-feedback-success">{tr('sellerApp.attachmentConfirmed')}</Text>
+            <Text className="text-xs text-feedback-success/90 leading-4 mt-0.5">{soliqVerifyResult.message}</Text>
           </View>
         </View>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  stepWrapper: {
-    gap: spacing.lg,
-  },
-  cleanStepHeader: {
-    alignItems: 'center',
-    textAlign: 'center',
-    paddingVertical: spacing.md,
-    gap: 8,
-  },
-  cleanStepIconBox: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#EEF2FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  cleanStepTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.text.primary,
-    textAlign: 'center',
-  },
-  cleanStepSubtitle: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: spacing.md,
-  },
-  platformStirCard: {
-    backgroundColor: '#1E1B18',
-    borderRadius: radius['2xl'],
-    padding: spacing.xl,
-    alignItems: 'center',
-    gap: spacing.xs,
-    ...shadow.md,
-  },
-  platformStirHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
-  },
-  platformStirTag: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#FBD9D5',
-    letterSpacing: 1.2,
-  },
-  platformStirNumber: {
-    fontSize: 36,
-    fontWeight: '900',
-    color: colors.palette.white,
-    letterSpacing: 3,
-    marginVertical: 4,
-  },
-  platformStirOrg: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#DEDAD6',
-    marginBottom: spacing.md,
-  },
-  copyStirButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.brand.primary,
-    paddingHorizontal: spacing['2xl'],
-    paddingVertical: 12,
-    borderRadius: radius.full,
-  },
-  copyStirButtonSuccess: {
-    backgroundColor: '#16A34A',
-  },
-  copyStirBtnText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.palette.white,
-  },
-  soliqGuideCard: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    gap: spacing.md,
-    ...shadow.xs,
-  },
-  soliqGuideHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingBottom: 2,
-  },
-  soliqGuideTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.text.primary,
-  },
-  soliqGuideStep: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  guideStepNumber: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#E2E8F0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 1,
-  },
-  guideStepNumberText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: colors.text.primary,
-  },
-  guideStepLabel: {
-    fontSize: 13,
-    color: colors.text.secondary,
-    lineHeight: 18,
-  },
-  guideStepHighlight: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.brand.primary,
-    letterSpacing: 1,
-    marginTop: 2,
-  },
-  guideChipsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 6,
-  },
-  guideChipInactive: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.sm,
-    backgroundColor: '#EDF2F7',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-  },
-  guideChipInactiveText: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  guideChipActive: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-    backgroundColor: '#16A34A',
-  },
-  guideChipActiveText: {
-    fontSize: 11,
-    color: '#FFFFFF',
-    fontWeight: '800',
-  },
-  directSoliqLinkCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.palette.white,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    ...shadow.xs,
-  },
-  directSoliqLinkLeft: {
-    flex: 1,
-    paddingRight: spacing.md,
-    gap: 4,
-  },
-  directSoliqLinkTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.brand.primary,
-  },
-  directSoliqLinkDesc: {
-    fontSize: 12,
-    color: colors.text.secondary,
-    lineHeight: 16,
-  },
-  soliqFailedCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1.5,
-    borderColor: '#FCA5A5',
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    ...shadow.xs,
-  },
-  soliqFailedTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#DC2626',
-    marginBottom: 4,
-  },
-  soliqFailedDesc: {
-    fontSize: 13,
-    color: '#991B1B',
-    lineHeight: 18,
-  },
-  soliqSuccessCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1.5,
-    borderColor: '#86EFAC',
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    ...shadow.xs,
-  },
-  soliqSuccessTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#16A34A',
-    marginBottom: 4,
-  },
-  soliqSuccessDesc: {
-    fontSize: 13,
-    color: '#166534',
-    lineHeight: 18,
-  },
-});

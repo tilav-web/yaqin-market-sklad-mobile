@@ -1,9 +1,9 @@
 import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
-import { colors, radius, spacing } from '@/theme';
+import { colors } from '@/theme';
 
 interface SellerApplicationHeaderProps {
   step: 1 | 2 | 3;
@@ -15,39 +15,43 @@ export function SellerApplicationHeader({ step, onBack }: SellerApplicationHeade
 
   return (
     <>
-      <View style={styles.header}>
-        <Pressable onPress={onBack} style={styles.backBtn} hitSlop={8}>
+      <View className="flex-row items-center justify-between px-5 py-3.5 bg-bg-surface border-b border-border-subtle">
+        <Pressable
+          onPress={onBack}
+          className="w-9 h-9 rounded-full bg-bg-surface-muted items-center justify-center border border-border-subtle active:opacity-75"
+          hitSlop={8}
+        >
           <ArrowLeft size={20} color={colors.text.primary} strokeWidth={2.4} />
         </Pressable>
 
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{tr('sellerApp.headerTitle')}</Text>
-          <Text style={styles.headerSubtitle}>
+        <View className="items-center">
+          <Text className="text-base font-extrabold text-text-primary">{tr('sellerApp.headerTitle')}</Text>
+          <Text className="text-xs font-semibold text-brand-primary mt-0.5">
             {step === 1 && tr('sellerApp.step1Badge')}
             {step === 2 && tr('sellerApp.step2Badge')}
             {step === 3 && tr('sellerApp.step3Badge')}
           </Text>
         </View>
 
-        <View style={styles.stepBadge}>
-          <Text style={styles.stepBadgeText}>{step}/3</Text>
+        <View className="px-2.5 py-1 rounded-full bg-brand-primary/10">
+          <Text className="text-xs font-extrabold text-brand-primary">{step}/3</Text>
         </View>
       </View>
 
-      <View style={styles.progressContainer}>
-        <View style={styles.progressSegments}>
-          <View style={[styles.segment, styles.segmentActive]} />
-          <View style={[styles.segment, step >= 2 && styles.segmentActive]} />
-          <View style={[styles.segment, step >= 3 && styles.segmentActive]} />
+      <View className="bg-bg-surface px-5 pt-1 pb-3 border-b border-border-subtle">
+        <View className="flex-row gap-1.5 mb-1.5">
+          <View className="flex-1 h-1 rounded-full bg-brand-primary" />
+          <View className={`flex-1 h-1 rounded-full ${step >= 2 ? 'bg-brand-primary' : 'bg-border-default'}`} />
+          <View className={`flex-1 h-1 rounded-full ${step >= 3 ? 'bg-brand-primary' : 'bg-border-default'}`} />
         </View>
-        <View style={styles.progressLabels}>
-          <Text style={[styles.progressLabel, step === 1 && styles.progressLabelActive]}>
+        <View className="flex-row justify-between">
+          <Text className={`text-[11px] ${step === 1 ? 'font-bold text-text-primary' : 'font-semibold text-text-hint'}`}>
             {tr('sellerApp.tab1')}
           </Text>
-          <Text style={[styles.progressLabel, step === 2 && styles.progressLabelActive]}>
+          <Text className={`text-[11px] ${step === 2 ? 'font-bold text-text-primary' : 'font-semibold text-text-hint'}`}>
             {tr('sellerApp.tab2')}
           </Text>
-          <Text style={[styles.progressLabel, step === 3 && styles.progressLabelActive]}>
+          <Text className={`text-[11px] ${step === 3 ? 'font-bold text-text-primary' : 'font-semibold text-text-hint'}`}>
             {tr('sellerApp.tab3')}
           </Text>
         </View>
@@ -55,86 +59,3 @@ export function SellerApplicationHeader({ step, onBack }: SellerApplicationHeade
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.palette.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.full,
-    backgroundColor: colors.palette.gray50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  headerCenter: {
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.text.primary,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.brand.primary,
-    marginTop: 1,
-  },
-  stepBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  stepBadgeText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.brand.primary,
-  },
-  progressContainer: {
-    backgroundColor: colors.palette.white,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  progressSegments: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 6,
-  },
-  segment: {
-    flex: 1,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.palette.gray200,
-  },
-  segmentActive: {
-    backgroundColor: colors.brand.primary,
-  },
-  progressLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  progressLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.text.hint,
-  },
-  progressLabelActive: {
-    color: colors.text.primary,
-    fontWeight: '700',
-  },
-});

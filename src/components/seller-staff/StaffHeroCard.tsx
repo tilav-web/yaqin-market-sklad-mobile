@@ -1,8 +1,8 @@
 import { Plus, Users } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { colors } from '@/theme';
 
 interface StaffHeroCardProps {
   onAdd: () => void;
@@ -10,72 +10,25 @@ interface StaffHeroCardProps {
 
 export function StaffHeroCard({ onAdd }: StaffHeroCardProps) {
   return (
-    <View style={styles.heroCard}>
-      <View style={styles.heroHeader}>
-        <View style={styles.heroIconWrap}>
-          <Users size={22} color={Brand.white} />
+    <View className="bg-bg-surface rounded-2xl p-4 gap-3 border border-border-default">
+      <View className="flex-row items-center gap-3">
+        <View className="w-11 h-11 rounded-full bg-brand-primary items-center justify-center">
+          <Users size={22} color={colors.text.onPrimary} />
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.heroTitle}>Do'kon xodimlari</Text>
-          <Text style={styles.heroSubtitle}>
+        <View className="flex-1">
+          <Text className="text-base font-extrabold text-text-primary">Do'kon xodimlari</Text>
+          <Text className="text-xs text-text-secondary mt-0.5 leading-4">
             Kassir, Omborchi, Kuryer yoki bir vaqtning o'zida bir nechta vazifani bajara oladigan xodimlarni biriktiring
           </Text>
         </View>
       </View>
-      <Pressable style={styles.addBtn} onPress={onAdd}>
-        <Plus size={18} color={Brand.white} strokeWidth={2.5} />
-        <Text style={styles.addBtnText}>Yangi xodim qo'shish (QR Kod)</Text>
+      <Pressable
+        className="bg-brand-primary rounded-xl py-3 px-4 flex-row items-center justify-center gap-2 active:opacity-85"
+        onPress={onAdd}
+      >
+        <Plus size={18} color={colors.text.onPrimary} strokeWidth={2.5} />
+        <Text className="text-text-on-primary font-bold text-sm">Yangi xodim qo'shish (QR Kod)</Text>
       </Pressable>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  heroCard: {
-    backgroundColor: Brand.white,
-    borderRadius: Radius.lg,
-    padding: Spacing.four,
-    gap: Spacing.three,
-    borderWidth: 1,
-    borderColor: Brand.gray200,
-  },
-  heroHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  heroIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Brand.red,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: Brand.black,
-  },
-  heroSubtitle: {
-    fontSize: 12,
-    color: Brand.gray600,
-    marginTop: 2,
-    lineHeight: 17,
-  },
-  addBtn: {
-    backgroundColor: Brand.red,
-    borderRadius: Radius.lg,
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  addBtnText: {
-    color: Brand.white,
-    fontWeight: '800',
-    fontSize: 14,
-  },
-});

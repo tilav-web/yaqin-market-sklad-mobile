@@ -1,10 +1,10 @@
 import { Image as ExpoImage } from 'expo-image';
 import { Check, ExternalLink, FileText, X } from 'lucide-react-native';
 import React from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
-import { colors, radius, spacing } from '@/theme';
+import { colors } from '@/theme';
 
 interface SellerAppOfertaModalProps {
   visible: boolean;
@@ -25,180 +25,69 @@ export function SellerAppOfertaModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalSheet}>
-          <View style={styles.modalHeader}>
-            <View style={styles.modalHeaderTitleRow}>
+      <View className="flex-1 bg-black/55 justify-end">
+        <View className="bg-bg-surface rounded-t-3xl p-5 h-[92%] gap-2">
+          <View className="flex-row justify-between items-center pb-1">
+            <View className="flex-row items-center gap-2">
               <FileText size={20} color={colors.brand.primary} />
-              <Text style={styles.modalTitle}>{tr('sellerApp.ofertaModalTitle')}</Text>
+              <Text className="text-base font-extrabold text-text-primary">{tr('sellerApp.ofertaModalTitle')}</Text>
             </View>
-            <Pressable onPress={onClose} style={styles.modalCloseBtn}>
+            <Pressable onPress={onClose} className="w-8 h-8 rounded-full bg-bg-surface-muted items-center justify-center">
               <X size={20} color={colors.text.secondary} />
             </Pressable>
           </View>
 
-          <View style={styles.pdfHeaderRow}>
-            <Text style={styles.pdfHeaderNotice}>{tr('sellerApp.ofertaModalNotice')}</Text>
-            <Pressable onPress={onOpenExternalPdf} style={styles.externalLinkBtn}>
+          <View className="flex-row items-center justify-between py-1.5 px-2.5 bg-bg-surface-muted rounded-xl border border-border-default mb-1 gap-2">
+            <Text className="flex-1 text-[11px] text-text-secondary leading-4">{tr('sellerApp.ofertaModalNotice')}</Text>
+            <Pressable onPress={onOpenExternalPdf} className="flex-row items-center gap-1 bg-brand-primary/10 px-2 py-1 rounded-md">
               <ExternalLink size={13} color={colors.brand.primary} />
-              <Text style={styles.externalLinkText}>{tr('sellerApp.ofertaPdfBtn')}</Text>
+              <Text className="text-[11px] font-bold text-brand-primary">{tr('sellerApp.ofertaPdfBtn')}</Text>
             </Pressable>
           </View>
 
           <ScrollView
-            style={styles.modalBody}
+            className="flex-1"
             showsVerticalScrollIndicator={true}
             contentContainerStyle={{ paddingBottom: 24 }}
           >
-            <View style={styles.pdfPagesContainer}>
+            <View className="items-center py-1">
               <ExpoImage
                 source={{
                   uri: resolvePdfUrl('/api/uploads/legal/oferta_page-1.png?v=20260904_2'),
                 }}
-                style={styles.pdfPageImage}
+                className="w-full rounded-xl border border-border-default bg-bg-surface"
+                style={{ aspectRatio: 1654 / 2339 }}
                 contentFit="contain"
                 priority="high"
               />
-              <View style={styles.pdfPageBadge}>
-                <Text style={styles.pdfPageBadgeText}>{tr('sellerApp.ofertaPage1')}</Text>
+              <View className="bg-bg-surface-muted px-3 py-1 rounded-full self-center mt-1.5">
+                <Text className="text-[11px] font-bold text-text-secondary">{tr('sellerApp.ofertaPage1')}</Text>
               </View>
 
               <ExpoImage
                 source={{
                   uri: resolvePdfUrl('/api/uploads/legal/oferta_page-2.png?v=20260904_2'),
                 }}
-                style={[styles.pdfPageImage, { marginTop: 14 }]}
+                className="w-full rounded-xl border border-border-default bg-bg-surface mt-3.5"
+                style={{ aspectRatio: 1654 / 2339 }}
                 contentFit="contain"
                 priority="high"
               />
-              <View style={styles.pdfPageBadge}>
-                <Text style={styles.pdfPageBadgeText}>{tr('sellerApp.ofertaPage2')}</Text>
+              <View className="bg-bg-surface-muted px-3 py-1 rounded-full self-center mt-1.5">
+                <Text className="text-[11px] font-bold text-text-secondary">{tr('sellerApp.ofertaPage2')}</Text>
               </View>
             </View>
           </ScrollView>
 
-          <Pressable onPress={onAccept} style={styles.modalAcceptBtn}>
-            <Check size={18} color={colors.palette.white} />
-            <Text style={styles.modalAcceptText}>{tr('sellerApp.ofertaAcceptBtn')}</Text>
+          <Pressable
+            onPress={onAccept}
+            className="flex-row items-center justify-center gap-2 bg-brand-primary py-3.5 rounded-2xl mt-1 active:opacity-85"
+          >
+            <Check size={18} color={colors.text.onPrimary} />
+            <Text className="text-sm font-extrabold text-text-on-primary">{tr('sellerApp.ofertaAcceptBtn')}</Text>
           </Pressable>
         </View>
       </View>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    backgroundColor: colors.palette.white,
-    borderTopLeftRadius: radius['3xl'],
-    borderTopRightRadius: radius['3xl'],
-    padding: spacing.lg,
-    height: '92%',
-    gap: spacing.sm,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: spacing.xs,
-  },
-  modalHeaderTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  modalTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: colors.text.primary,
-  },
-  modalCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.palette.gray100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pdfHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    backgroundColor: colors.palette.gray50,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    marginBottom: spacing.xs,
-    gap: 8,
-  },
-  pdfHeaderNotice: {
-    flex: 1,
-    fontSize: 11,
-    color: colors.text.secondary,
-    lineHeight: 15,
-  },
-  externalLinkBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FEF2F2',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-  },
-  externalLinkText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.brand.primary,
-  },
-  modalBody: {
-    flex: 1,
-  },
-  pdfPagesContainer: {
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-  },
-  pdfPageImage: {
-    width: '100%',
-    aspectRatio: 1654 / 2339,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
-  },
-  pdfPageBadge: {
-    backgroundColor: colors.palette.gray100,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: radius.full,
-    alignSelf: 'center',
-    marginTop: 6,
-  },
-  pdfPageBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.text.secondary,
-  },
-  modalAcceptBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.brand.primary,
-    paddingVertical: 14,
-    borderRadius: radius.xl,
-    marginTop: spacing.xs,
-  },
-  modalAcceptText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.palette.white,
-  },
-});

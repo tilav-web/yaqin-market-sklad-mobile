@@ -1,9 +1,9 @@
 import { ArrowLeft, ArrowRight } from 'lucide-react-native';
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
-import { colors, radius, shadow, spacing } from '@/theme';
+import { colors } from '@/theme';
 
 interface SellerAppBottomBarProps {
   step: 1 | 2 | 3;
@@ -36,96 +36,46 @@ export function SellerAppBottomBar({
   const isLoading = isSubmitting || (step === 2 && isVerifyingSoliq);
 
   return (
-    <View style={[styles.bottomBar, { paddingBottom: Math.max(bottomInset, spacing.md) }]}>
+    <View
+      className="absolute bottom-0 left-0 right-0 bg-bg-surface border-t border-border-subtle px-5 pt-3.5 flex-row gap-3 shadow-lg"
+      style={{ paddingBottom: Math.max(bottomInset, 16) }}
+    >
       {step > 1 && (
-        <Pressable onPress={onPrev} style={styles.prevButton} hitSlop={8}>
+        <Pressable
+          onPress={onPrev}
+          className="flex-row items-center gap-1.5 px-5 py-3.5 rounded-2xl bg-bg-surface-muted border border-border-default active:opacity-75"
+          hitSlop={8}
+        >
           <ArrowLeft size={18} color={colors.text.primary} strokeWidth={2.2} />
-          <Text style={styles.prevBtnText}>{tr('sellerApp.btnBack')}</Text>
+          <Text className="text-sm font-bold text-text-primary">{tr('sellerApp.btnBack')}</Text>
         </Pressable>
       )}
 
       <Pressable
         onPress={onNext}
         disabled={isDisabled}
-        style={[styles.nextButton, isDisabled && styles.nextButtonDisabled]}
+        className={`flex-1 flex-row items-center justify-center gap-2 bg-brand-primary py-3.5 px-4 rounded-2xl shadow-sm ${
+          isDisabled ? 'opacity-45' : 'active:opacity-85'
+        }`}
       >
         {isLoading ? (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator size="small" color={colors.palette.white} />
-            <Text style={styles.nextBtnText} numberOfLines={1}>
+          <View className="flex-row items-center gap-1.5">
+            <ActivityIndicator size="small" color={colors.text.onPrimary} />
+            <Text className="text-sm font-extrabold text-text-on-primary" numberOfLines={1}>
               {step === 2 ? tr('sellerApp.btnVerifying') : tr('sellerApp.btnSubmitting')}
             </Text>
           </View>
         ) : (
           <>
-            <Text style={styles.nextBtnText} numberOfLines={1}>
+            <Text className="text-sm font-extrabold text-text-on-primary" numberOfLines={1}>
               {step === 1 && tr('sellerApp.btnNext')}
               {step === 2 && tr('sellerApp.btnVerify')}
               {step === 3 && tr('sellerApp.btnSubmit')}
             </Text>
-            <ArrowRight size={18} color={colors.palette.white} strokeWidth={2.4} />
+            <ArrowRight size={18} color={colors.text.onPrimary} strokeWidth={2.4} />
           </>
         )}
       </Pressable>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.palette.white,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    flexDirection: 'row',
-    gap: spacing.md,
-    ...shadow.lg,
-  },
-  prevButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 14,
-    borderRadius: radius.xl,
-    backgroundColor: colors.palette.gray50,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  prevBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text.primary,
-  },
-  nextButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.brand.primary,
-    paddingVertical: 14,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.xl,
-    ...shadow.sm,
-  },
-  nextButtonDisabled: {
-    opacity: 0.45,
-  },
-  nextBtnText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.palette.white,
-    flexShrink: 1,
-  },
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-});

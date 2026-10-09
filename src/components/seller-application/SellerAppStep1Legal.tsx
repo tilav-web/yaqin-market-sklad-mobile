@@ -15,14 +15,13 @@ import React from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 
 import { useTranslation } from '@/i18n';
-import { colors, radius, shadow, spacing } from '@/theme';
+import { colors } from '@/theme';
 
 import { StirData } from './types';
 
@@ -58,39 +57,43 @@ export function SellerAppStep1Legal({
   const { tr } = useTranslation();
 
   return (
-    <View style={styles.stepWrapper}>
+    <View className="gap-4">
       {/* Hero Program Card */}
-      <View style={styles.heroCard}>
-        <View style={styles.heroHeader}>
-          <View style={styles.heroIconBox}>
+      <View className="bg-bg-surface rounded-2xl p-4 border border-brand-primary/20 shadow-sm">
+        <View className="flex-row items-start gap-3">
+          <View className="w-11 h-11 rounded-xl bg-brand-primary/10 items-center justify-center">
             <Building2 size={24} color={colors.brand.primary} />
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.heroTitle}>
+          <View className="flex-1">
+            <Text className="text-sm font-extrabold text-text-primary mb-1">
               {tr('sellerApp.introTitle', { name: platformName })}
             </Text>
-            <Text style={styles.heroDesc}>{tr('sellerApp.introDesc')}</Text>
+            <Text className="text-xs text-text-secondary leading-5">{tr('sellerApp.introDesc')}</Text>
           </View>
         </View>
       </View>
 
       {/* STIR Input Card */}
-      <View style={styles.formCard}>
-        <View style={styles.cardHeaderRow}>
-          <Text style={styles.inputLabel}>{tr('sellerApp.stirLabel')}</Text>
+      <View className="bg-bg-surface rounded-2xl p-4 border border-border-subtle gap-3 shadow-sm">
+        <View className="flex-row justify-between items-center">
+          <Text className="text-xs font-bold text-text-secondary uppercase tracking-wider">{tr('sellerApp.stirLabel')}</Text>
           <View
-            style={[
-              styles.charCounterBadge,
-              !!stirError && styles.charCounterBadgeError,
-              !!stirData && styles.charCounterBadgeSuccess,
-            ]}
+            className={`px-2 py-0.5 rounded-full border ${
+              stirError
+                ? 'bg-feedback-danger/10 border-feedback-danger'
+                : stirData
+                  ? 'bg-feedback-success/10 border-feedback-success'
+                  : 'bg-bg-surface-muted border-border-default'
+            }`}
           >
             <Text
-              style={[
-                styles.charCounterText,
-                !!stirError && styles.charCounterTextError,
-                !!stirData && styles.charCounterTextSuccess,
-              ]}
+              className={`text-[11px] font-bold ${
+                stirError
+                  ? 'text-feedback-danger'
+                  : stirData
+                    ? 'text-feedback-success'
+                    : 'text-text-hint'
+              }`}
             >
               {cleanStir.length} / 9
             </Text>
@@ -99,28 +102,26 @@ export function SellerAppStep1Legal({
 
         {/* Real-time Dynamic Input Box */}
         <View
-          style={[
-            styles.fullStirInputBox,
-            !!stirError && styles.fullStirInputBoxError,
-            !!stirData && styles.fullStirInputBoxSuccess,
-          ]}
+          className={`flex-row items-center gap-2 bg-bg-canvas rounded-2xl px-3.5 py-2.5 border ${
+            stirError
+              ? 'border-feedback-danger bg-feedback-danger/5'
+              : stirData
+                ? 'border-feedback-success bg-feedback-success/5'
+                : 'border-border-default'
+          }`}
         >
           {isCheckingStir ? (
             <ActivityIndicator size="small" color={colors.brand.primary} />
           ) : stirData ? (
-            <CheckCircle2 size={20} color="#16A34A" strokeWidth={2.4} />
+            <CheckCircle2 size={20} color={colors.feedback.success} strokeWidth={2.4} />
           ) : stirError ? (
-            <AlertTriangle size={20} color="#EF4444" strokeWidth={2.4} />
+            <AlertTriangle size={20} color={colors.feedback.danger} strokeWidth={2.4} />
           ) : (
             <Search size={18} color={colors.text.hint} strokeWidth={2.2} />
           )}
 
           <TextInput
-            style={[
-              styles.fullStirInput,
-              !!stirError && styles.fullStirInputError,
-              !!stirData && styles.fullStirInputSuccess,
-            ]}
+            className="flex-1 text-lg font-bold tracking-widest text-text-primary"
             value={stir}
             onChangeText={onStirChange}
             placeholder="305 123 456"
@@ -133,29 +134,28 @@ export function SellerAppStep1Legal({
             <Pressable
               onPress={onCheckStir}
               hitSlop={8}
-              style={[
-                styles.miniReloadBtn,
-                !!stirError && { backgroundColor: '#EF4444' },
-              ]}
+              className={`w-8 h-8 rounded-full items-center justify-center ${
+                stirError ? 'bg-feedback-danger' : 'bg-brand-primary'
+              }`}
             >
-              <RefreshCw size={17} color={colors.palette.white} strokeWidth={2.4} />
+              <RefreshCw size={17} color={colors.text.onPrimary} strokeWidth={2.4} />
             </Pressable>
           )}
         </View>
 
         {/* Real-time Error Row */}
         {!!stirError && (
-          <View style={styles.realtimeErrorRow}>
-            <AlertCircle size={15} color="#DC2626" style={{ marginTop: 1 }} />
-            <Text style={styles.realtimeErrorText}>{stirError}</Text>
+          <View className="flex-row items-center gap-1.5">
+            <AlertCircle size={15} color={colors.feedback.danger} />
+            <Text className="text-xs text-feedback-danger font-medium flex-1">{stirError}</Text>
           </View>
         )}
 
         {/* Real-time Typing Hint */}
         {cleanStir.length > 0 && cleanStir.length < 9 && !stirError && (
-          <View style={styles.realtimeHintRow}>
-            <Info size={14} color={colors.text.hint} style={{ marginTop: 1 }} />
-            <Text style={styles.realtimeHintText}>
+          <View className="flex-row items-center gap-1.5">
+            <Info size={14} color={colors.text.hint} />
+            <Text className="text-xs text-text-hint flex-1">
               {cleanStir.startsWith('2') || cleanStir.startsWith('3')
                 ? tr('sellerApp.stirHintLegal')
                 : tr('sellerApp.stirHintIndividual')}
@@ -165,62 +165,48 @@ export function SellerAppStep1Legal({
 
         {/* STIR Verified Result & Confirmed Official Details */}
         {stirData && (
-          <View style={styles.verifiedBox}>
-            <View style={styles.verifiedHeader}>
-              <ShieldCheck size={20} color="#16A34A" />
-              <View style={{ flex: 1, marginLeft: 8 }}>
-                <Text style={styles.verifiedTitle}>{tr('sellerApp.stirVerified')}</Text>
-                <Text style={styles.verifiedSubtitle}>
-                  {tr('sellerApp.stirVerifiedDesc')}
-                </Text>
+          <View className="bg-feedback-success/5 rounded-2xl p-3.5 border border-feedback-success/20 gap-3">
+            <View className="flex-row items-center gap-2">
+              <ShieldCheck size={20} color={colors.feedback.success} />
+              <View className="flex-1">
+                <Text className="text-sm font-bold text-feedback-success">{tr('sellerApp.stirVerified')}</Text>
+                <Text className="text-xs text-text-secondary">{tr('sellerApp.stirVerifiedDesc')}</Text>
               </View>
-              <View style={styles.statusPill}>
-                <Text style={styles.statusPillText}>
+              <View className="bg-feedback-success/15 px-2 py-0.5 rounded-full">
+                <Text className="text-[11px] font-bold text-feedback-success">
                   {stirData.entityType} • {tr('sellerApp.active')}
                 </Text>
               </View>
             </View>
 
-            <View style={styles.verifiedDetailsContainer}>
+            <View className="gap-2 pt-2 border-t border-feedback-success/15">
               {/* Tashkilot Nomi */}
-              <View style={styles.readOnlyRow}>
-                <Building2
-                  size={16}
-                  color={colors.brand.primary}
-                  style={styles.readOnlyIcon}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.readOnlyLabel}>{tr('sellerApp.companyNameLabel')}</Text>
-                  <Text style={styles.readOnlyValueBold}>{stirData.companyName}</Text>
+              <View className="flex-row items-start gap-2.5">
+                <Building2 size={16} color={colors.brand.primary} className="mt-0.5" />
+                <View className="flex-1">
+                  <Text className="text-[11px] text-text-tertiary font-semibold">{tr('sellerApp.companyNameLabel')}</Text>
+                  <Text className="text-sm font-bold text-text-primary mt-0.5">{stirData.companyName}</Text>
                 </View>
               </View>
 
               {/* Rahbar F.I.SH */}
               {!!stirData.legalName && (
-                <View style={styles.readOnlyRow}>
-                  <User
-                    size={16}
-                    color={colors.text.secondary}
-                    style={styles.readOnlyIcon}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.readOnlyLabel}>{tr('sellerApp.directorLabel')}</Text>
-                    <Text style={styles.readOnlyValue}>{stirData.legalName}</Text>
+                <View className="flex-row items-start gap-2.5">
+                  <User size={16} color={colors.text.secondary} className="mt-0.5" />
+                  <View className="flex-1">
+                    <Text className="text-[11px] text-text-tertiary font-semibold">{tr('sellerApp.directorLabel')}</Text>
+                    <Text className="text-xs text-text-primary mt-0.5">{stirData.legalName}</Text>
                   </View>
                 </View>
               )}
 
               {/* Yuridik Manzil */}
               {!!(stirData.legalAddress || stirData.region) && (
-                <View style={styles.readOnlyRow}>
-                  <MapPin
-                    size={16}
-                    color={colors.text.secondary}
-                    style={styles.readOnlyIcon}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.readOnlyLabel}>{tr('sellerApp.legalAddressLabel')}</Text>
-                    <Text style={styles.readOnlyValue}>
+                <View className="flex-row items-start gap-2.5">
+                  <MapPin size={16} color={colors.text.secondary} className="mt-0.5" />
+                  <View className="flex-1">
+                    <Text className="text-[11px] text-text-tertiary font-semibold">{tr('sellerApp.legalAddressLabel')}</Text>
+                    <Text className="text-xs text-text-primary mt-0.5">
                       {stirData.legalAddress || stirData.region}
                     </Text>
                   </View>
@@ -228,13 +214,13 @@ export function SellerAppStep1Legal({
               )}
 
               {/* Holat va QQS belgilari */}
-              <View style={styles.taxStatusBadges}>
-                <View style={styles.greenBadge}>
-                  <CheckCircle2 size={13} color="#15803D" />
-                  <Text style={styles.greenBadgeText}>{tr('sellerApp.activeStatus')}</Text>
+              <View className="flex-row gap-2 mt-1">
+                <View className="flex-row items-center gap-1 bg-feedback-success/10 px-2 py-1 rounded-md">
+                  <CheckCircle2 size={13} color={colors.feedback.success} />
+                  <Text className="text-[11px] font-bold text-feedback-success">{tr('sellerApp.activeStatus')}</Text>
                 </View>
-                <View style={styles.neutralBadge}>
-                  <Text style={styles.neutralBadgeText}>
+                <View className="bg-bg-surface-muted px-2 py-1 rounded-md">
+                  <Text className="text-[11px] font-semibold text-text-secondary">
                     {stirData.vatPayer ? tr('sellerApp.vatPayer') : tr('sellerApp.notVatPayer')}
                   </Text>
                 </View>
@@ -245,24 +231,25 @@ export function SellerAppStep1Legal({
       </View>
 
       {/* Oferta Acceptance Card */}
-      <View style={styles.formCard}>
-        <Pressable onPress={onToggleOferta} style={styles.ofertaRow}>
+      <View className="bg-bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm">
+        <Pressable onPress={onToggleOferta} className="flex-row items-start gap-3">
           <View
-            style={[
-              styles.customCheckbox,
-              ofertaAccepted && styles.customCheckboxActive,
-            ]}
+            className={`w-6 h-6 rounded-lg border-2 items-center justify-center mt-0.5 ${
+              ofertaAccepted
+                ? 'bg-brand-primary border-brand-primary'
+                : 'border-border-default bg-bg-canvas'
+            }`}
           >
             {ofertaAccepted && (
-              <Check size={15} color={colors.palette.white} strokeWidth={3} />
+              <Check size={15} color={colors.text.onPrimary} strokeWidth={3} />
             )}
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.ofertaMainText}>
+          <View className="flex-1">
+            <Text className="text-xs text-text-primary leading-5">
               {tr('sellerApp.ofertaAgreement', { platformName, rate: commissionRate })}
             </Text>
             <Pressable onPress={onOpenOfertaModal} hitSlop={6}>
-              <Text style={styles.ofertaLinkText}>{tr('sellerApp.readPdfContract')}</Text>
+              <Text className="text-xs font-bold text-brand-primary mt-1">{tr('sellerApp.readPdfContract')}</Text>
             </Pressable>
           </View>
         </Pressable>
@@ -270,290 +257,3 @@ export function SellerAppStep1Legal({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  stepWrapper: {
-    gap: spacing.lg,
-  },
-  heroCard: {
-    backgroundColor: colors.palette.white,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-    ...shadow.xs,
-  },
-  heroHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-  },
-  heroIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.text.primary,
-    marginBottom: 4,
-  },
-  heroDesc: {
-    fontSize: 13,
-    color: colors.text.secondary,
-    lineHeight: 18,
-  },
-  formCard: {
-    backgroundColor: colors.palette.white,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    gap: spacing.md,
-    ...shadow.xs,
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.text.primary,
-  },
-  charCounterBadge: {
-    backgroundColor: colors.palette.gray100,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: radius.full,
-  },
-  charCounterBadgeError: {
-    backgroundColor: '#FEE2E2',
-  },
-  charCounterBadgeSuccess: {
-    backgroundColor: '#DCFCE7',
-  },
-  charCounterText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.text.secondary,
-  },
-  charCounterTextError: {
-    color: '#DC2626',
-    fontWeight: '800',
-  },
-  charCounterTextSuccess: {
-    color: '#15803D',
-    fontWeight: '800',
-  },
-  fullStirInputBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.palette.gray50,
-    borderRadius: radius.xl,
-    borderWidth: 1.5,
-    borderColor: colors.border.default,
-    paddingHorizontal: spacing.md,
-  },
-  fullStirInputBoxError: {
-    borderColor: '#EF4444',
-    backgroundColor: '#FEF2F2',
-  },
-  fullStirInputBoxSuccess: {
-    borderColor: '#16A34A',
-    backgroundColor: '#F0FDF4',
-  },
-  fullStirInput: {
-    flex: 1,
-    paddingVertical: 14,
-    fontSize: 17,
-    fontWeight: '800',
-    color: colors.text.primary,
-    letterSpacing: 2,
-  },
-  fullStirInputError: {
-    color: '#B91C1C',
-  },
-  fullStirInputSuccess: {
-    color: '#15803D',
-  },
-  miniReloadBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  realtimeErrorRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-    borderRadius: radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8,
-    marginTop: 2,
-  },
-  realtimeErrorText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#B91C1C',
-    flex: 1,
-    lineHeight: 16,
-  },
-  realtimeHintRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 4,
-    marginTop: 2,
-  },
-  realtimeHintText: {
-    fontSize: 12,
-    color: colors.text.hint,
-    fontWeight: '500',
-  },
-  verifiedBox: {
-    backgroundColor: '#F0FDF4',
-    borderRadius: radius.xl,
-    borderWidth: 1.5,
-    borderColor: '#BBF7D0',
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  verifiedHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingBottom: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: '#DCFCE7',
-  },
-  verifiedTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#16A34A',
-  },
-  verifiedSubtitle: {
-    fontSize: 11,
-    color: colors.text.secondary,
-    fontWeight: '500',
-    marginTop: 1,
-  },
-  statusPill: {
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.full,
-  },
-  statusPillText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#15803D',
-  },
-  verifiedDetailsContainer: {
-    gap: 8,
-    marginTop: 2,
-  },
-  readOnlyRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: colors.palette.white,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    gap: 10,
-  },
-  readOnlyIcon: {
-    marginTop: 2,
-  },
-  readOnlyLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.text.hint,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  readOnlyValueBold: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.text.primary,
-  },
-  readOnlyValue: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.text.primary,
-  },
-  taxStatusBadges: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 2,
-  },
-  greenBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-  },
-  greenBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#15803D',
-  },
-  neutralBadge: {
-    backgroundColor: colors.palette.gray100,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-  },
-  neutralBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.text.secondary,
-  },
-  ofertaRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-  },
-  customCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 7,
-    borderWidth: 2,
-    borderColor: colors.palette.gray300,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  customCheckboxActive: {
-    backgroundColor: colors.brand.primary,
-    borderColor: colors.brand.primary,
-  },
-  ofertaMainText: {
-    fontSize: 13,
-    color: colors.text.primary,
-    lineHeight: 19,
-  },
-  ofertaLinkText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.brand.primary,
-    marginTop: 4,
-    textDecorationLine: 'underline',
-  },
-});
