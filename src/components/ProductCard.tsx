@@ -150,8 +150,15 @@ export function ProductCard({
           )}
 
           {hasDiscount && (
-            <View className="absolute top-2 left-2 px-1.5 py-0.5 rounded-full bg-brand-primary">
-              <Text className="text-white font-extrabold text-[10px]">−{discountPct}%</Text>
+            <View className="absolute top-2 left-2 flex-row items-center gap-1">
+              <View className="px-1.5 py-0.5 rounded-full bg-brand-primary">
+                <Text className="text-white font-extrabold text-[10px]">−{discountPct}%</Text>
+              </View>
+              <View className="px-1.5 py-0.5 rounded-md bg-black/60">
+                <Text className="text-white/90 line-through text-[9.5px] font-semibold">
+                  {formatMoney(product.price)}
+                </Text>
+              </View>
             </View>
           )}
 
@@ -165,59 +172,47 @@ export function ProductCard({
         </View>
 
         {/* Card Details Body */}
-        <View className="p-2.5 flex-1 justify-between">
-          <View>
-            {/* Product Name */}
-            <Text
-              className="text-[13px] leading-[18px] font-bold text-text-primary"
-              numberOfLines={2}
-            >
-              {productName}
-            </Text>
+        <View className="p-2.5">
+          {/* Product Name */}
+          <Text
+            className="text-[13px] leading-[17px] font-bold text-text-primary"
+            numberOfLines={2}
+          >
+            {productName}
+          </Text>
 
-            {/* Shop Name & Distance */}
-            {!hideShopChip && product.shop ? (
-              <View className="flex-row items-center gap-1 mt-1">
-                <Store size={11} color={activeColors.text.tertiary} strokeWidth={2.2} />
-                <Text
-                  className="text-[11px] font-semibold text-text-secondary flex-shrink"
-                  numberOfLines={1}
-                >
-                  {product.shop.name}
-                </Text>
-                {formattedDistance && (
-                  <>
-                    <Text className="text-[10px] text-text-tertiary">·</Text>
-                    <Text className="text-[10.5px] font-semibold text-text-tertiary">
-                      {formattedDistance}
-                    </Text>
-                  </>
-                )}
-              </View>
-            ) : null}
-          </View>
-
-          {/* Price & Action Row */}
-          <View className="flex-row items-end justify-between mt-2 pt-0.5">
-            <View className="flex-1 mr-1 justify-end">
-              {hasDiscount && (
-                <Text
-                  className="text-[10px] line-through leading-3 text-text-hint mb-0.5"
-                  numberOfLines={1}
-                >
-                  {formatMoney(product.price)}
-                </Text>
-              )}
+          {/* Shop Name & Distance */}
+          {!hideShopChip && product.shop ? (
+            <View className="flex-row items-center gap-1 mt-1">
+              <Store size={11} color={activeColors.text.tertiary} strokeWidth={2.2} />
               <Text
-                className="text-[13px] font-extrabold leading-[17px] text-text-primary"
+                className="text-[11px] font-semibold text-text-secondary flex-shrink"
                 numberOfLines={1}
               >
-                {formatMoney(finalPrice)}{' '}
-                <Text className="text-[10px] font-semibold text-text-secondary">
-                  {tr('common.som')}
-                </Text>
+                {product.shop.name}
               </Text>
+              {formattedDistance && (
+                <>
+                  <Text className="text-[10px] text-text-tertiary">·</Text>
+                  <Text className="text-[10.5px] font-semibold text-text-tertiary">
+                    {formattedDistance}
+                  </Text>
+                </>
+              )}
             </View>
+          ) : null}
+
+          {/* Single Compact Row: Real Price + Action Button */}
+          <View className="flex-row items-center justify-between mt-2">
+            <Text
+              className="text-[13px] font-extrabold leading-[17px] text-text-primary flex-1 mr-1"
+              numberOfLines={1}
+            >
+              {formatMoney(finalPrice)}{' '}
+              <Text className="text-[10px] font-semibold text-text-secondary">
+                {tr('common.som')}
+              </Text>
+            </Text>
 
             {/* Quick Counter or Add Button */}
             {inCart ? (

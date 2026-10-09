@@ -23,17 +23,17 @@ export function ProductCardSkeleton({ cardWidth }: ProductCardSkeletonProps) {
       />
 
       {/* Details Skeleton */}
-      <View className="p-2.5 flex-1 justify-between">
+      <View className="p-2.5">
         <View className="gap-1.5">
           <Skeleton width="92%" height={12} radius={4} />
           <Skeleton width="58%" height={12} radius={4} />
           <Skeleton width="45%" height={10} radius={4} style={{ marginTop: 2 }} />
         </View>
 
-        {/* Price & Action Button Row Skeleton */}
-        <View className="flex-row items-end justify-between mt-2 pt-0.5">
+        {/* Single Row: Price & Action Button Skeleton */}
+        <View className="flex-row items-center justify-between mt-2">
           <Skeleton width="55%" height={16} radius={5} />
-          <Skeleton width={32} height={32} radius={16} />
+          <Skeleton width={28} height={28} radius={14} />
         </View>
       </View>
     </View>
