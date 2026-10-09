@@ -28,7 +28,7 @@ import { api } from '@/lib/api';
 import { District, FeedResponse, PublicShop } from '@/lib/types';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
 import { useTheme } from '@/stores/theme';
-import { colors, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 import { haptics } from '@/utils/haptics';
 import { createShopClusterIndex, getClustersForRegion } from '@/utils/mapClustering';
 
@@ -223,15 +223,15 @@ export default function MapTab() {
 
   if (!coords) {
     return (
-      <SafeAreaView style={styles.center}>
+      <SafeAreaView className="flex-1 items-center justify-center gap-3 bg-canvas">
         <ActivityIndicator color={colors.brand.primary} />
-        <Text style={styles.dim}>{tr('map.waiting')}</Text>
+        <Text className="text-sm text-text-secondary">{tr('map.waiting')}</Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-surface-muted">
       <MapView
         ref={mapRef}
         provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
@@ -320,15 +320,3 @@ export default function MapTab() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.surfaceMuted },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.bg.canvas,
-  },
-  dim: { ...typography.bodySmall, color: colors.text.secondary },
-});

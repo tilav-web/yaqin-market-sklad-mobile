@@ -4,7 +4,6 @@ import {
   Dimensions,
   LayoutAnimation,
   Platform,
-  StyleSheet,
   UIManager,
   View,
 } from 'react-native';
@@ -188,7 +187,7 @@ export default function TelegramHomeScreen() {
   );
 
   return (
-    <SafeAreaView edges={['top']} style={[styles.safe, { backgroundColor: activeColors.bg.canvas }]}>
+    <SafeAreaView edges={['top']} className="flex-1" style={{ backgroundColor: activeColors.bg.canvas }}>
       {/* Top Header */}
       <HomeTopBar
         locationLabel={locationLabel}
@@ -206,12 +205,12 @@ export default function TelegramHomeScreen() {
       {/* Horizontal Pager for category folders */}
       <PagerView
         ref={pagerRef}
-        style={styles.pager}
+        className="flex-1"
         initialPage={0}
         onPageSelected={(e) => setActiveTabIndex(e.nativeEvent.position)}
       >
         {/* Tab 0: Barchasi */}
-        <View key="all" style={[styles.page, { backgroundColor: activeColors.bg.canvas }]}>
+        <View key="all" className="flex-1" style={{ backgroundColor: activeColors.bg.canvas }}>
           <HomeProductGrid
             products={displayedProducts}
             cardWidth={CARD_WIDTH}
@@ -245,7 +244,7 @@ export default function TelegramHomeScreen() {
             categoryProducts = categoryProducts.filter((p) => p.shop.id === activeShopId);
           }
           return (
-            <View key={category.id} style={[styles.page, { backgroundColor: activeColors.bg.canvas }]}>
+            <View key={category.id} className="flex-1" style={{ backgroundColor: activeColors.bg.canvas }}>
               <HomeProductGrid
                 products={categoryProducts}
                 cardWidth={CARD_WIDTH}
@@ -265,15 +264,3 @@ export default function TelegramHomeScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-  },
-  pager: {
-    flex: 1,
-  },
-  page: {
-    flex: 1,
-  },
-});

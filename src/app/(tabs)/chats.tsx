@@ -1,20 +1,11 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import {
-  MessageCircle,
-  Search as SearchIcon,
-  Store,
-  X,
-} from 'lucide-react-native';
+import { MessageCircle } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Pressable,
   RefreshControl,
-  StyleSheet,
-  Text,
-  TextInput,
   View,
 } from 'react-native';
 import PagerView from 'react-native-pager-view';
@@ -25,9 +16,11 @@ import {
   formatTelegramTime,
   TelegramChatRow,
   TelegramChatsEmpty,
+  TelegramChatsHeader,
   TelegramFolderTabs,
   TelegramSavedMessagesRow,
   TelegramShopRow,
+  TelegramShopsEmpty,
   UnifiedChat,
 } from '@/components/telegram';
 import { EmptyState } from '@/components/ui';
@@ -38,7 +31,6 @@ import { Conversation, Order, PublicShop } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
 import { useEffectiveCoords } from '@/stores/location';
 import { useTheme } from '@/stores/theme';
-import { colors, radius, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 export default function ChatsTabScreen() {
@@ -243,67 +235,38 @@ export default function ChatsTabScreen() {
   const isLoading = isLoadingConvs && isLoadingOrders;
 
   return (
-    <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: activeColors.bg.canvas }]}>
-      {/* Telegram Style Top Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: activeColors.bg.surface,
-            borderBottomColor: activeColors.border.subtle,
-          },
-        ]}
-      >
-        <View style={styles.headerTitleRow}>
-          <Text style={[styles.headerTitle, { color: activeColors.text.primary }]}>{tr('chat.title')}</Text>
-          {unreadTotal > 0 && (
-            <View style={styles.totalBadge}>
-              <Text style={styles.totalBadgeText}>{unreadTotal}</Text>
-            </View>
-          )}
-        </View>
+    <SafeAreaView edges={['top']} className="flex-1 bg-black">
+      {/* Top Header */}
+      <TelegramChatsHeader
+        unreadTotal={unreadTotal}
+        searchQuery={searchQuery}
+        onChangeSearch={setSearchQuery}
+        activeTabIndex={activeTabIndex}
+        activeColors={activeColors}
+      />
 
-        {/* Search Bar matching Telegram */}
-        <View style={[styles.searchBar, { backgroundColor: activeColors.bg.surfaceMuted }]}>
-          <SearchIcon size={17} color={activeColors.text.secondary} />
-          <TextInput
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder={activeTabIndex === 0 ? tr('chat.searchPlaceholder') : "Do'konlarni qidirish..."}
-            placeholderTextColor={activeColors.text.secondary}
-            style={[styles.searchInput, { color: activeColors.text.primary }]}
-            returnKeyType="search"
-          />
-          {searchQuery.length > 0 && (
-            <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
-              <X size={16} color={activeColors.text.secondary} />
-            </Pressable>
-          )}
-        </View>
-      </View>
-
-      {/* Telegram Swipeable Folder Tabs: Chatlar & Do'konlar */}
+      {/* Swipeable Folder Tabs */}
       <TelegramFolderTabs
         tabs={folderTabs}
         activeIndex={activeTabIndex}
         onSelectTab={handleSelectTab}
       />
 
-      {/* Swipeable PagerView between Chatlar and Do'konlar */}
+      {/* Swipeable PagerView */}
       <PagerView
         ref={pagerRef}
-        style={styles.pager}
+        className="flex-1"
         initialPage={0}
         onPageSelected={(e) => setActiveTabIndex(e.nativeEvent.position)}
       >
         {/* Page 0: Chatlar */}
-        <View key="chats" style={[styles.page, { backgroundColor: activeColors.bg.canvas }]}>
+        <View key="chats" className="flex-1" style={{ backgroundColor: activeColors.bg.canvas }}>
           {isLoading ? (
-            <View style={styles.centerContainer}>
+            <View className="flex-1 items-center justify-center px-8">
               <ActivityIndicator size="large" color={activeColors.brand.primary} />
             </View>
           ) : !isAuthenticated ? (
-            <View style={styles.centerContainer}>
+            <View className="flex-1 items-center justify-center px-8">
               <EmptyState
                 icon={MessageCircle}
                 title={tr('chat.loginTitle')}
@@ -324,12 +287,12 @@ export default function ChatsTabScreen() {
                 />
               )}
               ItemSeparatorComponent={() => (
-                <View style={[styles.separator, { backgroundColor: activeColors.border.subtle }]} />
+                <View
+                  className="h-[1px] ml-[82px]"
+                  style={{ backgroundColor: activeColors.border.subtle }}
+                />
               )}
-              contentContainerStyle={[
-                styles.listContent,
-                { paddingBottom: insets.bottom + 90 },
-              ]}
+              contentContainerStyle={{ paddingTop: 2, paddingBottom: insets.bottom + 90 }}
               refreshControl={
                 <RefreshControl
                   refreshing={isRefreshing}
@@ -354,42 +317,25 @@ export default function ChatsTabScreen() {
         </View>
 
         {/* Page 1: Do'konlar */}
-        <View key="shops" style={[styles.page, { backgroundColor: activeColors.bg.canvas }]}>
+        <View key="shops" className="flex-1" style={{ backgroundColor: activeColors.bg.canvas }}>
           <FlatList
             data={filteredShops}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => <TelegramShopRow shop={item} />}
             ItemSeparatorComponent={() => (
               <View
-                style={[
-                  styles.separator,
-                  { backgroundColor: activeColors.border.subtle },
-                ]}
+                className="h-[1px] ml-[82px]"
+                style={{ backgroundColor: activeColors.border.subtle }}
               />
             )}
-            contentContainerStyle={[
-              styles.listContent,
-              { paddingBottom: insets.bottom + 90 },
-            ]}
+            contentContainerStyle={{ paddingTop: 2, paddingBottom: insets.bottom + 90 }}
             ListEmptyComponent={
               isLoadingShops ? (
-                <View style={styles.centerContainer}>
+                <View className="flex-1 items-center justify-center px-8">
                   <ActivityIndicator size="large" color={activeColors.brand.primary} />
                 </View>
               ) : (
-                <View style={styles.emptyContainer}>
-                  <View style={[styles.emptyIconCircle, { backgroundColor: activeColors.brand.primarySurface }]}>
-                    <Store size={44} color={activeColors.brand.primary} />
-                  </View>
-                  <Text style={[styles.emptyTitle, { color: activeColors.text.primary }]}>
-                    Do'konlar topilmadi
-                  </Text>
-                  <Text style={[styles.emptyDesc, { color: activeColors.text.secondary }]}>
-                    {searchQuery.trim()
-                      ? `"${searchQuery}" bo'yicha do'konlar topilmadi`
-                      : "Yaqin-atrofda faol do'konlar mavjud emas"}
-                  </Text>
-                </View>
+                <TelegramShopsEmpty searchQuery={searchQuery} activeColors={activeColors} />
               )
             }
             refreshControl={
@@ -405,106 +351,3 @@ export default function ChatsTabScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  pager: {
-    flex: 1,
-  },
-  page: {
-    flex: 1,
-  },
-  header: {
-    backgroundColor: '#0E1621',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#1F2937',
-  },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 10,
-  },
-  headerTitle: {
-    ...typography.title,
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  totalBadge: {
-    backgroundColor: colors.brand.primary,
-    borderRadius: radius.full,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  totalBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E2C3A',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    height: 38,
-    gap: 8,
-    marginBottom: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#FFFFFF',
-    paddingVertical: 0,
-  },
-  listContent: {
-    paddingTop: 2,
-  },
-  separator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: '#1F2937',
-    marginLeft: 16 + 52 + 14, // Telegram inset
-  },
-  centerContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 24,
-  },
-  emptyIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  emptyDesc: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-});

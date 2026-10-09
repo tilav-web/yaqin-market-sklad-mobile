@@ -14,7 +14,7 @@ import {
   Sun,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LanguagePickerSheet, LANG_LABELS } from '@/components/LanguagePickerSheet';
@@ -34,7 +34,7 @@ import type { WorkingForMeEntry } from '@/lib/useIsShopOwner';
 import { MeUser, MyShop } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/stores/theme';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 export default function ProfileTab() {
@@ -100,10 +100,10 @@ export default function ProfileTab() {
   const myShops = myShopsQuery.data ?? [];
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: activeColors.bg.canvas }]} edges={['top']}>
+    <SafeAreaView className="flex-1" style={{ backgroundColor: activeColors.bg.canvas }} edges={['top']}>
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={styles.scroll}
+        className="flex-1"
+        contentContainerStyle={{ padding: 16, paddingBottom: 130, gap: 16 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           isGuest ? undefined : (
@@ -213,9 +213,9 @@ export default function ProfileTab() {
 
         {/* Sign out button */}
         {!isGuest && (
-          <View style={styles.authActionsWrap}>
+          <View className="mt-1 mb-6">
             <Pressable
-              style={styles.logoutBtn}
+              className="h-12 rounded-2xl bg-surface border border-feedback-danger items-center justify-center active:opacity-70"
               onPress={() => {
                 haptics.warning();
                 Alert.alert(tr('auth.signOut'), tr('auth.signOutConfirm'), [
@@ -231,7 +231,7 @@ export default function ProfileTab() {
                 ]);
               }}
             >
-              <Text style={styles.logoutText}>{tr('auth.signOut')}</Text>
+              <Text className="text-base font-bold text-feedback-danger">{tr('auth.signOut')}</Text>
             </Pressable>
           </View>
         )}
@@ -253,24 +253,3 @@ export default function ProfileTab() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg.canvas },
-  scroll: {
-    padding: layout.screenPadding,
-    paddingBottom: 130,
-    gap: spacing.lg,
-  },
-  authActionsWrap: {
-    marginTop: spacing.xs,
-    marginBottom: spacing.xl,
-  },
-  logoutBtn: {
-    height: layout.buttonHeight.lg,
-    borderRadius: radius.xl,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoutText: { ...typography.button, color: colors.text.onPrimary, fontWeight: '700' },
-});

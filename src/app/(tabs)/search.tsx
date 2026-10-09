@@ -7,7 +7,6 @@ import {
   Dimensions,
   FlatList,
   RefreshControl,
-  StyleSheet,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -144,7 +143,6 @@ export default function SearchTab() {
 
   const toggleCategory = useCallback((id: string) => dispatch({ type: 'TOGGLE_CATEGORY', id }), []);
   const clearSort = useCallback(() => dispatch({ type: 'CLEAR_SORT' }), []);
-  const resetFilters = useCallback(() => dispatch({ type: 'RESET_ALL' }), []);
 
   const runTerm = (term: string) => {
     haptics.selection();
@@ -168,7 +166,7 @@ export default function SearchTab() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
       {/* Header Search Input */}
       <SearchHeaderInput
         input={input}
@@ -200,8 +198,8 @@ export default function SearchTab() {
           data={items}
           keyExtractor={(item) => item.id}
           numColumns={COLUMNS}
-          columnWrapperStyle={styles.row}
-          contentContainerStyle={styles.list}
+          columnWrapperStyle={{ gap: GUTTER, paddingHorizontal: 14 }}
+          contentContainerStyle={{ paddingVertical: 12, gap: GUTTER, paddingBottom: 110 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           refreshControl={
@@ -220,12 +218,12 @@ export default function SearchTab() {
           }}
           ListEmptyComponent={
             feed.isLoading || feed.isFetching ? (
-              <View>
-                <View style={styles.row}>
+              <View className="gap-3">
+                <View className="flex-row gap-3">
                   <ProductCardSkeleton cardWidth={CARD_WIDTH} />
                   <ProductCardSkeleton cardWidth={CARD_WIDTH} />
                 </View>
-                <View style={styles.row}>
+                <View className="flex-row gap-3">
                   <ProductCardSkeleton cardWidth={CARD_WIDTH} />
                   <ProductCardSkeleton cardWidth={CARD_WIDTH} />
                 </View>
@@ -240,7 +238,7 @@ export default function SearchTab() {
           }
           ListFooterComponent={
             feed.isFetchingNextPage ? (
-              <ActivityIndicator color={colors.brand.primary} style={{ paddingVertical: spacing.lg }} />
+              <ActivityIndicator color={colors.brand.primary} style={{ paddingVertical: 16 }} />
             ) : null
           }
           renderItem={renderProduct}
@@ -269,18 +267,12 @@ export default function SearchTab() {
         byRating={byRating}
         setByRating={(v) => dispatch({ type: 'SET_BY_RATING', value: v })}
         priceRange={priceRange}
-        setPriceRange={(v) => dispatch({ type: 'SET_PRICE_RANGE', value: v })}
+        setPriceRange={(k) => dispatch({ type: 'SET_PRICE_RANGE', value: k })}
         onlyDiscounted={onlyDiscounted}
         setOnlyDiscounted={(v) => dispatch({ type: 'SET_ONLY_DISCOUNTED', value: v })}
-        onReset={resetFilters}
+        onReset={() => dispatch({ type: 'RESET_ALL' })}
         activeCount={activeCount}
       />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg.canvas },
-  list: { paddingHorizontal: layout.screenPadding, paddingTop: spacing.md, paddingBottom: spacing['3xl'] },
-  row: { flexDirection: 'row', gap: GUTTER, marginBottom: GUTTER },
-});
