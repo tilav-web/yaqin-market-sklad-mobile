@@ -6,3 +6,4 @@ export * from './SellerAppStep3Bank';
 export * from './SellerAppBottomBar';
 export * from './SellerAppOfertaModal';
 export * from './SellerAppSuccessModal';
+export * from './useSellerApplicationForm';

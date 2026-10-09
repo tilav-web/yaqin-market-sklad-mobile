@@ -1,25 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { Building2, Check, Hash, Landmark, MapPin, Plus, Store, User } from 'lucide-react-native';
-import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { MapPin, Store } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { tr } from '@/i18n';
 import { LocationPickerModal, PickedLocation } from '@/components/LocationPickerModal';
 import { ImageUploader } from '@/components/seller/ImageUploader';
+import { BankAccountItem, NewShopBankSection } from '@/components/seller/NewShopBankSection';
+import { tr } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { useEffectiveCoords } from '@/stores/location';
-import { colors, layout, radius, spacing, typography } from '@/theme';
-
-interface BankAccountItem {
-  id: string;
-  accountNumber: string;
-  mfo: string;
-  bankName: string;
-  accountHolderName: string;
-  isDefault: boolean;
-}
+import { colors } from '@/theme';
 
 export default function NewShopScreen() {
   const qc = useQueryClient();
@@ -59,7 +51,6 @@ export default function NewShopScreen() {
   };
 
   const point = picked ?? coords;
-
   const rawNewAccount = newAccountNumber.replace(/\s+/g, '');
   const rawNewMfo = newMfo.replace(/\s+/g, '');
   const isBankValid = !showNewAccountForm && effectiveBankAccountId
@@ -109,199 +100,89 @@ export default function NewShopScreen() {
   const canSave = !!name.trim() && !!address.trim() && !!point && isBankValid;
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <View style={styles.hero}>
-          <View style={styles.heroIcon}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
+      <ScrollView
+        contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 48 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View className="items-center gap-1.5 py-4">
+          <View className="w-16 h-16 rounded-full bg-brand-primary-surface items-center justify-center mb-1">
             <Store size={28} color={colors.brand.primary} strokeWidth={2} />
           </View>
-          <Text style={styles.heroTitle}>{tr('newShop.title')}</Text>
-          <Text style={styles.heroDesc}>{tr('newShop.desc')}</Text>
+          <Text className="text-xl font-bold text-text-primary">{tr('newShop.title')}</Text>
+          <Text className="text-sm text-text-secondary text-center">{tr('newShop.desc')}</Text>
         </View>
 
-        <Field label={tr('newShop.nameLabel')}>
+        <View className="gap-1.5">
+          <Text className="text-xs font-bold text-text-primary">{tr('newShop.nameLabel')}</Text>
           <TextInput
-            style={styles.input}
+            className="bg-surface rounded-xl px-4 py-3 text-base text-text-primary border border-border-default"
             value={name}
             onChangeText={setName}
             placeholder={tr('newShop.namePh')}
             placeholderTextColor={colors.text.hint}
             maxLength={128}
           />
-        </Field>
+        </View>
 
-        <Field label={tr('newShop.addressLabel')}>
+        <View className="gap-1.5">
+          <Text className="text-xs font-bold text-text-primary">{tr('newShop.addressLabel')}</Text>
           <TextInput
-            style={[styles.input, styles.multiline]}
+            className="bg-surface rounded-xl px-4 py-3 text-base text-text-primary border border-border-default min-h-[64px]"
             value={address}
             onChangeText={setAddress}
             placeholder={tr('newShop.addressPh')}
             placeholderTextColor={colors.text.hint}
             multiline
+            textAlignVertical="top"
           />
-        </Field>
+        </View>
 
-        <Pressable style={styles.mapBtn} onPress={() => setPickerVisible(true)}>
+        <Pressable
+          className="flex-row items-center justify-center gap-2 py-3 rounded-xl border border-brand-primary/30 bg-brand-primary-surface"
+          onPress={() => setPickerVisible(true)}
+        >
           <MapPin size={18} color={colors.brand.primary} strokeWidth={2.4} />
-          <Text style={styles.mapBtnText}>
+          <Text className="text-sm font-bold text-brand-primary">
             {point ? tr('newShop.changeLocation') : tr('newShop.setLocation')}
           </Text>
         </Pressable>
         {point ? (
-          <Text style={styles.coordHint}>
+          <Text className="text-xs text-text-tertiary text-center -mt-1">
             📍 {point.latitude.toFixed(5)}, {point.longitude.toFixed(5)}
           </Text>
         ) : null}
 
-        <Field label={tr('newShop.descLabel')}>
+        <View className="gap-1.5">
+          <Text className="text-xs font-bold text-text-primary">{tr('newShop.descLabel')}</Text>
           <TextInput
-            style={[styles.input, styles.multiline]}
+            className="bg-surface rounded-xl px-4 py-3 text-base text-text-primary border border-border-default min-h-[64px]"
             value={description}
             onChangeText={setDescription}
             placeholder={tr('newShop.descPh')}
             placeholderTextColor={colors.text.hint}
             multiline
+            textAlignVertical="top"
           />
-        </Field>
+        </View>
 
         {/* Bank Account Selection Section */}
-        <View style={styles.bankSection}>
-          <Text style={styles.bankSectionTitle}>Bank Hisob Raqami (Moliya)</Text>
-          <Text style={styles.bankSectionDesc}>
-            Ushbu do'kondan tushgan savdo mablag'lari qaysi hisob raqamiga o'tkazilsin?
-          </Text>
-
-          {/* List of saved accounts */}
-          {hasSavedAccounts && !showNewAccountForm && (
-            <View style={styles.accountsList}>
-              {bankAccounts?.map((acc) => {
-                const isSelected = effectiveBankAccountId === acc.id;
-                return (
-                  <Pressable
-                    key={acc.id}
-                    onPress={() => {
-                      setSelectedBankAccountId(acc.id);
-                      setIsAddingNewAccount(false);
-                    }}
-                    style={[styles.accountCard, isSelected && styles.accountCardSelected]}
-                  >
-                    <View style={[styles.accountRadio, isSelected && styles.accountRadioSelected]}>
-                      {isSelected && <Check size={14} color="#ffffff" strokeWidth={3} />}
-                    </View>
-
-                    <View style={styles.accountInfo}>
-                      <View style={styles.accountHeaderRow}>
-                        <Landmark size={16} color={isSelected ? colors.brand.primary : colors.text.secondary} />
-                        <Text style={[styles.accountBankName, isSelected && styles.accountBankNameSelected]}>
-                          {acc.bankName || 'Bank'} (MFO: {acc.mfo})
-                        </Text>
-                      </View>
-                      <Text style={styles.accountNumberText}>
-                        {formatBankAccount(acc.accountNumber)}
-                      </Text>
-                      <Text style={styles.accountHolderText} numberOfLines={1}>
-                        {acc.accountHolderName}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-
-              <Pressable
-                style={styles.addNewAccountBtn}
-                onPress={() => {
-                  setSelectedBankAccountId(null);
-                  setIsAddingNewAccount(true);
-                }}
-              >
-                <Plus size={16} color={colors.brand.primary} strokeWidth={2.4} />
-                <Text style={styles.addNewAccountText}>Boshqa yangi hisob raqam qo'shish</Text>
-              </Pressable>
-            </View>
-          )}
-
-          {/* New Account Input Form */}
-          {showNewAccountForm && (
-            <View style={styles.newAccountForm}>
-              {hasSavedAccounts && (
-                <Pressable
-                  style={styles.cancelNewBtn}
-                  onPress={() => {
-                    setIsAddingNewAccount(false);
-                    setSelectedBankAccountId(null);
-                  }}
-                >
-                  <Text style={styles.cancelNewText}>← Saqlangan hisob raqamlardan tanlash</Text>
-                </Pressable>
-              )}
-
-              <View style={styles.field}>
-                <Text style={styles.label}>
-                  20 xonali Bank Hisob Raqami <Text style={styles.star}>*</Text>
-                </Text>
-                <View style={styles.inputWithIcon}>
-                  <Hash size={18} color={colors.text.hint} />
-                  <TextInput
-                    style={styles.iconInput}
-                    value={newAccountNumber}
-                    onChangeText={(t) => setNewAccountNumber(formatBankAccount(t))}
-                    placeholder="2020 8000 0000 0000 0001"
-                    placeholderTextColor={colors.text.hint}
-                    keyboardType="number-pad"
-                    maxLength={24}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.rowFields}>
-                <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>
-                    MFO <Text style={styles.star}>*</Text>
-                  </Text>
-                  <View style={styles.inputWithIcon}>
-                    <Building2 size={18} color={colors.text.hint} />
-                    <TextInput
-                      style={styles.iconInput}
-                      value={newMfo}
-                      onChangeText={(t) => setNewMfo(t.replace(/\D/g, '').slice(0, 5))}
-                      placeholder="00444"
-                      placeholderTextColor={colors.text.hint}
-                      keyboardType="number-pad"
-                      maxLength={5}
-                    />
-                  </View>
-                </View>
-
-                <View style={[styles.field, { flex: 1.5 }]}>
-                  <Text style={styles.label}>Bank filiali nomi</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={newBankName}
-                    onChangeText={setNewBankName}
-                    placeholder="Masalan: AT Xalq Banki"
-                    placeholderTextColor={colors.text.hint}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>
-                  Hisob egasi / Korxona nomi <Text style={styles.star}>*</Text>
-                </Text>
-                <View style={styles.inputWithIcon}>
-                  <User size={18} color={colors.text.hint} />
-                  <TextInput
-                    style={styles.iconInput}
-                    value={newAccountHolderName}
-                    onChangeText={setNewAccountHolderName}
-                    placeholder="Masalan: ООО BIZNES yoki YaTT"
-                    placeholderTextColor={colors.text.hint}
-                  />
-                </View>
-              </View>
-            </View>
-          )}
-        </View>
+        <NewShopBankSection
+          bankAccounts={bankAccounts}
+          effectiveBankAccountId={effectiveBankAccountId}
+          onSelectBankAccountId={setSelectedBankAccountId}
+          isAddingNewAccount={isAddingNewAccount}
+          onSetIsAddingNewAccount={setIsAddingNewAccount}
+          newAccountNumber={newAccountNumber}
+          onChangeNewAccountNumber={setNewAccountNumber}
+          newMfo={newMfo}
+          onChangeNewMfo={setNewMfo}
+          newBankName={newBankName}
+          onChangeNewBankName={setNewBankName}
+          newAccountHolderName={newAccountHolderName}
+          onChangeNewAccountHolderName={setNewAccountHolderName}
+          formatBankAccount={formatBankAccount}
+        />
 
         <ImageUploader
           label={tr('newShop.photosLabel')}
@@ -312,12 +193,15 @@ export default function NewShopScreen() {
         />
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View className="px-4 pt-3 pb-2 border-t border-border-subtle bg-surface">
         <Pressable
-          style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
+          className={`h-12 rounded-2xl items-center justify-center ${
+            canSave && !create.isPending ? 'bg-brand-primary' : 'bg-border-strong'
+          }`}
           disabled={!canSave || create.isPending}
-          onPress={() => create.mutate()}>
-          <Text style={styles.saveText}>
+          onPress={() => create.mutate()}
+        >
+          <Text className="text-base font-bold text-white">
             {create.isPending ? tr('newShop.creating') : tr('newShop.submit')}
           </Text>
         </Pressable>
@@ -332,153 +216,3 @@ export default function NewShopScreen() {
     </SafeAreaView>
   );
 }
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      {children}
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
-  scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['3xl'] },
-  hero: { alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.lg },
-  heroIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xs,
-  },
-  heroTitle: { ...typography.h3, color: colors.text.primary },
-  heroDesc: { ...typography.bodySmall, color: colors.text.secondary, textAlign: 'center' },
-  field: { gap: spacing.xs },
-  label: { ...typography.bodySmall, fontWeight: '700', color: colors.text.primary },
-  star: { color: '#EF4444' },
-  input: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    ...typography.body,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  multiline: { minHeight: 64, textAlignVertical: 'top' },
-  mapBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: 12,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.brand.primaryBorder,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  mapBtnText: { ...typography.body, fontWeight: '700', color: colors.brand.primary },
-  coordHint: { ...typography.caption, color: colors.text.tertiary },
-
-  // Bank Section Styles
-  bankSection: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    gap: spacing.sm,
-  },
-  bankSectionTitle: { ...typography.body, fontWeight: '700', color: colors.text.primary },
-  bankSectionDesc: { ...typography.caption, color: colors.text.secondary },
-  accountsList: { gap: spacing.sm, marginTop: spacing.xs },
-  accountCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.bg.canvas,
-    borderWidth: 1.5,
-    borderColor: colors.border.default,
-    gap: spacing.md,
-  },
-  accountCardSelected: {
-    borderColor: colors.brand.primary,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  accountRadio: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: colors.border.strong,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  accountRadioSelected: {
-    borderColor: colors.brand.primary,
-    backgroundColor: colors.brand.primary,
-  },
-  accountInfo: { flex: 1, gap: 2 },
-  accountHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  accountBankName: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
-  accountBankNameSelected: { color: colors.brand.primary },
-  accountNumberText: { ...typography.body, fontWeight: '700', color: colors.text.primary, letterSpacing: 0.5 },
-  accountHolderText: { ...typography.caption, color: colors.text.tertiary },
-  addNewAccountBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-    borderStyle: 'dashed',
-    backgroundColor: colors.bg.canvas,
-  },
-  addNewAccountText: { ...typography.caption, fontWeight: '700', color: colors.brand.primary },
-  newAccountForm: { gap: spacing.sm, marginTop: spacing.xs },
-  cancelNewBtn: { paddingVertical: spacing.xs },
-  cancelNewText: { ...typography.caption, fontWeight: '600', color: colors.brand.primary },
-  inputWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.bg.canvas,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    paddingHorizontal: spacing.md,
-    gap: spacing.sm,
-  },
-  iconInput: {
-    flex: 1,
-    paddingVertical: 12,
-    ...typography.body,
-    color: colors.text.primary,
-  },
-  rowFields: { flexDirection: 'row', gap: spacing.sm },
-
-  footer: {
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
-    backgroundColor: colors.bg.surface,
-  },
-  saveBtn: {
-    height: layout.buttonHeight.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveBtnDisabled: { backgroundColor: colors.border.strong },
-  saveText: { ...typography.body, fontWeight: '700', color: colors.text.onPrimary },
-});

@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { Navigation } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AutoCancelCountdown } from '@/components/AutoCancelCountdown';
@@ -22,7 +22,7 @@ import { api, extractErrorMessage } from '@/lib/api';
 import { ORDER_STATUS_KEY, Order, OrderItem, OrderStatus } from '@/lib/types';
 import { useIsShopOwner } from '@/lib/useIsShopOwner';
 import { useAlarmState } from '@/stores/alarmState';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 export default function SellerOrderDetailScreen() {
@@ -49,8 +49,6 @@ export default function SellerOrderDetailScreen() {
   const isOwner = useIsShopOwner(order?.shopId);
 
   // ── Markirovka (Asl belgisi) skanerlash ──
-  // Har bir dona uchun bitta Data Matrix kod; kodlar chekka kiradi (qonun
-  // talabi). Skaner ochiq qoladi — sotilgan donalar soni yig'ilguncha.
   const [markingItem, setMarkingItem] = useState<OrderItem | null>(null);
   const markingCodesRef = useRef<string[]>([]);
   const [markingCount, setMarkingCount] = useState(0);
@@ -105,9 +103,7 @@ export default function SellerOrderDetailScreen() {
     onError: (e) => Alert.alert(tr('common.error'), extractErrorMessage(e)),
   });
 
-  // QR handshake — only ever shown when order.requiresHandshake is true
-  // (an admin-confirmed risk flag on the assigned courier). Verification is
-  // best-effort and never blocks the delivery; see RiskHandshakeService.
+  // QR handshake
   const [handshakeScanOpen, setHandshakeScanOpen] = useState(false);
   const verifyHandshake = useMutation({
     mutationFn: async (token: string) => {
@@ -148,7 +144,7 @@ export default function SellerOrderDetailScreen() {
 
   if (orderQuery.isLoading || !order) {
     return (
-      <View style={styles.center}>
+      <View className="flex-1 items-center justify-center bg-canvas">
         <ActivityIndicator color={colors.brand.primary} />
       </View>
     );
@@ -159,29 +155,37 @@ export default function SellerOrderDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 48 }}>
         {/* Status header */}
-        <View style={styles.headRow}>
-          <Text style={styles.orderNum}>#{order.orderNumber}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: colors.status[order.status] }]}>
-            <Text style={styles.statusText}>{tr(ORDER_STATUS_KEY[order.status])}</Text>
+        <View className="flex-row items-center justify-between">
+          <Text className="text-xl font-extrabold text-text-primary">#{order.orderNumber}</Text>
+          <View
+            className="px-3 py-1 rounded-full"
+            style={{ backgroundColor: colors.status[order.status] }}
+          >
+            <Text className="text-xs text-white font-extrabold">{tr(ORDER_STATUS_KEY[order.status])}</Text>
           </View>
         </View>
-        <Text style={styles.dateText}>{order.createdAt.slice(0, 16).replace('T', ' ')}</Text>
+        <Text className="text-xs text-text-tertiary -mt-2">
+          {order.createdAt.slice(0, 16).replace('T', ' ')}
+        </Text>
         <AutoCancelCountdown createdAt={order.createdAt} status={order.status} />
 
         {isTracking && (
-          <View style={styles.locationBadge}>
+          <View className="flex-row items-center gap-1.5 py-1 px-3 rounded-full bg-emerald-500/10 border border-emerald-500 self-start">
             <Navigation size={13} color={colors.feedback.success} strokeWidth={2.4} />
-            <Text style={styles.locationBadgeText}>{tr('sellerOrder.locationSharing')}</Text>
+            <Text className="text-xs font-bold text-emerald-600">{tr('sellerOrder.locationSharing')}</Text>
           </View>
         )}
         {needsEnable && (
-          <Pressable style={styles.trackingOffBanner} onPress={enableTracking}>
+          <Pressable
+            className="flex-row items-center gap-1.5 py-1 px-3 rounded-full bg-amber-50 border border-amber-500 self-start"
+            onPress={enableTracking}
+          >
             <Navigation size={13} color={colors.feedback.warning} strokeWidth={2.4} />
-            <Text style={styles.trackingOffText}>{tr('risk.trackingOffBanner')}</Text>
-            <Text style={styles.trackingOffAction}>{tr('risk.trackingEnable')}</Text>
+            <Text className="text-xs font-bold text-amber-700">{tr('risk.trackingOffBanner')}</Text>
+            <Text className="text-xs font-extrabold text-amber-700 underline ml-0.5">{tr('risk.trackingEnable')}</Text>
           </Pressable>
         )}
 
@@ -217,7 +221,7 @@ export default function SellerOrderDetailScreen() {
         />
       </ScrollView>
 
-      {/* Markirovka (Data Matrix) skaneri — dona-dona ketma-ket skanerlanadi. */}
+      {/* Markirovka (Data Matrix) skaneri */}
       <BarcodeScannerModal
         visible={!!markingItem}
         onClose={() => setMarkingItem(null)}
@@ -235,7 +239,7 @@ export default function SellerOrderDetailScreen() {
         }
       />
 
-      {/* QR handshake — only rendered when order.requiresHandshake is true. */}
+      {/* QR handshake */}
       <BarcodeScannerModal
         visible={handshakeScanOpen}
         onClose={() => setHandshakeScanOpen(false)}
@@ -248,47 +252,3 @@ export default function SellerOrderDetailScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg.canvas },
-  scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['3xl'] },
-  headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  orderNum: { ...typography.h3, color: colors.text.primary },
-  statusBadge: { paddingHorizontal: spacing.md, paddingVertical: 5, borderRadius: radius.full },
-  statusText: { ...typography.caption, fontSize: 12, color: colors.text.onPrimary, fontWeight: '800' },
-  dateText: { ...typography.caption, color: colors.text.tertiary, marginTop: -spacing.xs },
-  locationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: 5,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.full,
-    backgroundColor: `${colors.feedback.success}18`,
-    borderWidth: 1,
-    borderColor: colors.feedback.success,
-    alignSelf: 'flex-start',
-  },
-  locationBadgeText: { ...typography.caption, color: colors.feedback.success, fontWeight: '700' },
-  trackingOffBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: 5,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.full,
-    backgroundColor: colors.feedback.warningSurface,
-    borderWidth: 1,
-    borderColor: colors.feedback.warning,
-    alignSelf: 'flex-start',
-  },
-  trackingOffText: { ...typography.caption, color: colors.feedback.warning, fontWeight: '700' },
-  trackingOffAction: {
-    ...typography.caption,
-    color: colors.feedback.warning,
-    fontWeight: '800',
-    textDecorationLine: 'underline',
-    marginLeft: 2,
-  },
-});
