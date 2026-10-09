@@ -1,13 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 
 import { CardVisual } from '@/components/CardVisual';
 import { Button, Input } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { SavedCard } from '@/lib/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, typography } from '@/theme';
 import { CARD_BRAND_LABEL, detectCardBrand } from '@/utils/cardBrand';
 
 /** Groups digits into "1234 5678 ..." as the user types; submit strips spaces back out. */
@@ -78,7 +78,7 @@ export function AddCardForm({ onDone, onCancel }: Props) {
   const canVerify = smsCode.trim().length >= 4;
 
   return (
-    <View style={styles.form}>
+    <View className="gap-3">
       <CardVisual
         brand={brand}
         numberText={cardNumber || '•••• •••• •••• ••••'}
@@ -89,8 +89,10 @@ export function AddCardForm({ onDone, onCancel }: Props) {
 
       {pendingCardId ? (
         <>
-          <Text style={styles.formTitle}>{tr('cards.smsCode')}</Text>
-          <Text style={styles.smsHint}>{tr('cards.smsHint', { phone: pendingPhone ?? '' })}</Text>
+          <Text style={[typography.h4, { color: colors.text.primary }]}>{tr('cards.smsCode')}</Text>
+          <Text style={[typography.bodySmall, { color: colors.text.secondary }]}>
+            {tr('cards.smsHint', { phone: pendingPhone ?? '' })}
+          </Text>
           <Input
             value={smsCode}
             onChangeText={(t) => setSmsCode(t.replace(/\D/g, '').slice(0, 6))}
@@ -116,7 +118,10 @@ export function AddCardForm({ onDone, onCancel }: Props) {
             keyboardType="number-pad"
             rightSlot={
               brand ? (
-                <Text style={[styles.brandBadge, { backgroundColor: colors.cardBrand[brand].base }]}>
+                <Text
+                  className="text-[11px] font-extrabold text-white px-2 py-0.5 rounded tracking-wide"
+                  style={{ backgroundColor: colors.cardBrand[brand].base }}
+                >
                   {CARD_BRAND_LABEL[brand]}
                 </Text>
               ) : undefined
@@ -139,26 +144,9 @@ export function AddCardForm({ onDone, onCancel }: Props) {
           />
         </>
       )}
-      <Pressable onPress={onCancel} style={styles.cancelBtn}>
-        <Text style={styles.cancelText}>{tr('common.cancel')}</Text>
+      <Pressable onPress={onCancel} className="items-center py-2">
+        <Text style={[typography.body, { color: colors.text.secondary }]}>{tr('common.cancel')}</Text>
       </Pressable>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  form: { gap: spacing.md },
-  formTitle: { ...typography.h4, color: colors.text.primary },
-  smsHint: { ...typography.bodySmall, color: colors.text.secondary },
-  brandBadge: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#fff',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.sm,
-    letterSpacing: 0.5,
-  },
-  cancelBtn: { alignItems: 'center', paddingVertical: spacing.sm },
-  cancelText: { ...typography.body, color: colors.text.secondary },
-});

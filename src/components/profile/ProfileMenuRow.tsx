@@ -1,10 +1,10 @@
 import { ChevronRight, LucideIcon } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { Card } from '@/components/ui/Card';
 import { useTheme } from '@/stores/theme';
-import { colors, hitSlop, radius, spacing, typography } from '@/theme';
+import { colors, hitSlop, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 interface ProfileMenuSectionProps {
@@ -49,8 +49,8 @@ export function ProfileMenuRow({
         onPress();
       }}
       hitSlop={hitSlop}
+      className="flex-row items-center gap-3 px-4 py-3"
       style={({ pressed }) => [
-        styles.row,
         {
           borderBottomWidth: borderBottom ? 1 : 0,
           borderBottomColor: activeColors.border.subtle,
@@ -58,50 +58,31 @@ export function ProfileMenuRow({
         pressed && { backgroundColor: activeColors.bg.surfaceMuted },
       ]}
     >
-      <View style={styles.rowIconWrap}>
+      <View className="w-6.5 items-center">
         <Icon size={21} color={activeColors.text.secondary} strokeWidth={1.8} />
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.rowTitle, { color: activeColors.text.primary }, titleColor && { color: titleColor }]}>
+      <View className="flex-1">
+        <Text style={[typography.bodyStrong, { color: titleColor ?? activeColors.text.primary }]}>
           {title}
         </Text>
         {subtitle && (
-          <Text style={[styles.rowSub, { color: activeColors.text.secondary }]} numberOfLines={1}>
+          <Text className="mt-0.5" style={[typography.caption, { color: activeColors.text.secondary }]} numberOfLines={1}>
             {subtitle}
           </Text>
         )}
       </View>
-      {value && <Text style={[styles.rowValue, { color: activeColors.text.secondary }]}>{value}</Text>}
+      {value && <Text style={[typography.body, { color: activeColors.text.secondary }]}>{value}</Text>}
       {badge && badge > 0 ? (
-        <View style={styles.rowBadge}>
-          <Text style={styles.rowBadgeText}>{badge}</Text>
+        <View
+          className="min-w-[24px] h-6 px-1.5 rounded-full items-center justify-center"
+          style={{ backgroundColor: colors.brand.accent }}
+        >
+          <Text className="text-[13px] font-extrabold" style={{ color: colors.text.onPrimary }}>
+            {badge}
+          </Text>
         </View>
       ) : null}
       <ChevronRight size={18} color={activeColors.text.tertiary} strokeWidth={2.2} />
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  rowIconWrap: { width: 26, alignItems: 'center' },
-  rowTitle: { ...typography.bodyStrong },
-  rowSub: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
-  rowValue: { ...typography.body, color: colors.text.tertiary },
-  rowBadge: {
-    minWidth: 24,
-    height: 24,
-    paddingHorizontal: 7,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowBadgeText: { color: colors.text.onPrimary, fontSize: 13, fontWeight: '800' },
-});

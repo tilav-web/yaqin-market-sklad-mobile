@@ -2,11 +2,11 @@ import BottomSheet, { BottomSheetBackdrop, BottomSheetFlatList } from '@gorhom/b
 import { router } from 'expo-router';
 import { Check, MapPin, Plus, Star } from 'lucide-react-native';
 import { useEffect, useMemo, useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { UserAddress } from '@/lib/types';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 type BottomSheetRef = React.ElementRef<typeof BottomSheet>;
@@ -20,12 +20,7 @@ interface Props {
 }
 
 /**
- * Saved-address switcher scoped to checkout — unlike the home tab's
- * `AddressPickerSheet` (a plain Modal that also offers "current GPS" and
- * writes to the app-wide `useLocationStore`), this only ever picks one of the
- * customer's SAVED addresses (an order needs a concrete `deliveryAddressId`,
- * GPS alone isn't a valid delivery target) and reports the pick back via
- * `onSelect` rather than mutating global state itself.
+ * Saved-address switcher scoped to checkout
  */
 export function CheckoutAddressSheet({ visible, addresses, selectedId, onSelect, onClose }: Props) {
   const { tr } = useTranslation();
@@ -47,37 +42,44 @@ export function CheckoutAddressSheet({ visible, addresses, selectedId, onSelect,
       backdropComponent={(props) => (
         <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} pressBehavior="close" />
       )}
-      handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.background}>
+      handleIndicatorStyle={{ backgroundColor: colors.border.strong, width: 40 }}
+      backgroundStyle={{ backgroundColor: colors.bg.surface }}>
       <BottomSheetFlatList
         data={addresses}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        ListHeaderComponent={<Text style={styles.title}>{tr('checkout.chooseAddress')}</Text>}
+        contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 8 }}
+        ListHeaderComponent={<Text className="mb-2" style={[typography.h4, { color: colors.text.primary }]}>{tr('checkout.chooseAddress')}</Text>}
         renderItem={({ item }) => {
           const active = item.id === selectedId;
           return (
             <Pressable
-              style={[styles.row, active && styles.rowActive]}
+              className="flex-row items-center gap-3 p-3 rounded-xl border-[1.5px] mb-2"
+              style={{
+                borderColor: active ? colors.brand.primary : colors.border.subtle,
+                backgroundColor: active ? colors.brand.primarySurface : 'transparent',
+              }}
               onPress={() => {
                 haptics.selection();
                 onSelect(item);
               }}>
-              <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
+              <View
+                className="w-9 h-9 rounded-full items-center justify-center"
+                style={{ backgroundColor: active ? colors.brand.primary : colors.brand.primarySurface }}
+              >
                 <MapPin
                   size={18}
                   color={active ? colors.text.onPrimary : colors.brand.primary}
                   strokeWidth={2.4}
                 />
               </View>
-              <View style={{ flex: 1 }}>
-                <View style={styles.labelRow}>
-                  <Text style={styles.label}>{item.label}</Text>
+              <View className="flex-1">
+                <View className="flex-row items-center gap-1">
+                  <Text style={[typography.bodyStrong, { color: colors.text.primary }]}>{item.label}</Text>
                   {item.isDefault && (
                     <Star size={11} color={colors.brand.primary} fill={colors.brand.primary} />
                   )}
                 </View>
-                <Text style={styles.address} numberOfLines={1}>
+                <Text className="mt-0.5" style={[typography.caption, { color: colors.text.secondary }]} numberOfLines={1}>
                   {item.address}
                 </Text>
               </View>
@@ -87,59 +89,19 @@ export function CheckoutAddressSheet({ visible, addresses, selectedId, onSelect,
         }}
         ListFooterComponent={
           <Pressable
-            style={styles.addRow}
+            className="flex-row items-center justify-center gap-2 py-3 rounded-xl border-[1.5px] border-dashed mt-1"
+            style={{
+              borderColor: colors.brand.primaryBorder,
+            }}
             onPress={() => {
               onClose();
               router.push('/addresses');
             }}>
             <Plus size={18} color={colors.brand.primary} strokeWidth={2.4} />
-            <Text style={styles.addText}>{tr('addr.add')}</Text>
+            <Text style={[typography.bodyStrong, { color: colors.brand.primary }]}>{tr('addr.add')}</Text>
           </Pressable>
         }
       />
     </BottomSheet>
   );
 }
-
-const styles = StyleSheet.create({
-  background: { backgroundColor: colors.bg.surface },
-  handleIndicator: { backgroundColor: colors.border.strong, width: 40 },
-  list: { padding: layout.screenPadding, paddingBottom: spacing['3xl'], gap: spacing.sm },
-  title: { ...typography.h4, color: colors.text.primary, marginBottom: spacing.sm },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.border.subtle,
-    marginBottom: spacing.sm,
-  },
-  rowActive: { borderColor: colors.brand.primary, backgroundColor: colors.brand.primarySurface },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconWrapActive: { backgroundColor: colors.brand.primary },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  label: { ...typography.bodyStrong },
-  address: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
-  addRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.brand.primaryBorder,
-    borderStyle: 'dashed',
-    marginTop: spacing.xs,
-  },
-  addText: { ...typography.bodyStrong, color: colors.brand.primary },
-});

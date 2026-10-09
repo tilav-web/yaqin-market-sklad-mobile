@@ -1,10 +1,10 @@
 import { Check, Moon, Smartphone, Sun } from 'lucide-react-native';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTranslation } from '@/i18n';
 import { useTheme, type ThemeMode } from '@/stores/theme';
-import { layout, radius, shadow, spacing, typography } from '@/theme';
+import { shadow, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 export const THEME_OPTIONS: {
@@ -31,18 +31,27 @@ export function ThemePickerSheet({ visible, value, onSelect, onClose }: Props) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={[styles.backdrop, { backgroundColor: activeColors.overlay.scrim }]} onPress={onClose} />
-      <SafeAreaView edges={['bottom']} style={styles.sheetWrap} pointerEvents="box-none">
-        <View style={[styles.card, { backgroundColor: activeColors.bg.surface }]}>
-          <View style={[styles.handle, { backgroundColor: activeColors.border.strong }]} />
-          <Text style={[styles.title, { color: activeColors.text.primary }]}>{tr('profile.theme')}</Text>
+      <Pressable className="flex-1" style={{ backgroundColor: activeColors.overlay.scrim }} onPress={onClose} />
+      <SafeAreaView edges={['bottom']} className="absolute inset-x-0 bottom-0" pointerEvents="box-none">
+        <View
+          className="rounded-t-3xl p-4 pb-6"
+          style={[{ backgroundColor: activeColors.bg.surface }, shadow.lg]}
+        >
+          <View
+            className="w-10 h-1 rounded-full self-center mb-3"
+            style={{ backgroundColor: activeColors.border.strong }}
+          />
+          <Text className="mb-2" style={[typography.h4, { color: activeColors.text.primary }]}>
+            {tr('profile.theme')}
+          </Text>
           {THEME_OPTIONS.map((opt) => {
             const active = value === opt.mode;
             const Icon = opt.icon;
             return (
               <Pressable
                 key={opt.mode}
-                style={[styles.row, active && { backgroundColor: activeColors.brand.primarySurface }]}
+                className="flex-row items-center gap-3 py-3 px-2 rounded-xl"
+                style={[active && { backgroundColor: activeColors.brand.primarySurface }]}
                 onPress={() => {
                   haptics.selection();
                   onSelect(opt.mode);
@@ -54,10 +63,13 @@ export function ThemePickerSheet({ visible, value, onSelect, onClose }: Props) {
                   strokeWidth={2.2}
                 />
                 <Text
+                  className="flex-1"
                   style={[
-                    styles.rowText,
-                    { color: active ? activeColors.brand.primary : activeColors.text.primary },
-                    active && styles.rowTextActive,
+                    typography.body,
+                    {
+                      color: active ? activeColors.brand.primary : activeColors.text.primary,
+                      fontWeight: active ? '700' : '600',
+                    },
                   ]}>
                   {tr(opt.labelKey)}
                 </Text>
@@ -70,33 +82,3 @@ export function ThemePickerSheet({ visible, value, onSelect, onClose }: Props) {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: { flex: 1 },
-  sheetWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
-  card: {
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    padding: layout.screenPadding,
-    paddingBottom: spacing.xl,
-    ...shadow.lg,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: spacing.md,
-  },
-  title: { ...typography.h4, marginBottom: spacing.sm },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.md,
-  },
-  rowText: { ...typography.body, flex: 1, fontWeight: '600' },
-  rowTextActive: { fontWeight: '700' },
-});

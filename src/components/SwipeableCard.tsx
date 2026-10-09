@@ -10,7 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { colors, radius, spacing } from '@/theme';
+import { colors } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 const THRESHOLD = 88;
@@ -18,19 +18,15 @@ const HOLD_DURATION = 180;
 
 interface Props {
   readonly children: ReactNode;
-  /** Swipe left past the threshold — omit to disable (no red reveal, gesture ignored). */
+  /** Swipe left past the threshold — omit to disable */
   readonly onDelete?: () => void;
-  /** Swipe right past the threshold — omit to disable, e.g. a card that's already default. */
+  /** Swipe right past the threshold — omit to disable */
   readonly onMakeDefault?: () => void;
 }
 
 /**
- * Hold-then-drag row: a short hold (with a shrink + haptic tick, so the
- * gesture reads as deliberate rather than an accidental list-scroll flick)
- * arms the swipe — only then does dragging move the card. Left commits a
- * delete (the row animates off-screen; undo lives in the caller's countdown
- * toast), right makes the card the default. Either direction is a no-op if
- * its handler is omitted.
+ * Hold-then-drag row: a short hold arms the swipe. Left commits a delete,
+ * right makes the card the default.
  */
 export function SwipeableCard({ children, onDelete, onMakeDefault }: Props) {
   const translateX = useSharedValue(0);
@@ -82,15 +78,21 @@ export function SwipeableCard({ children, onDelete, onMakeDefault }: Props) {
   }));
 
   return (
-    <View style={styles.wrap}>
+    <View className="rounded-2xl overflow-hidden relative">
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         {!!onDelete && (
-          <Animated.View style={[styles.bg, styles.bgDelete, deleteBgStyle]}>
+          <Animated.View
+            className="absolute inset-0 flex-row items-center px-4 justify-end"
+            style={[{ backgroundColor: colors.feedback.danger }, deleteBgStyle]}
+          >
             <Trash2 size={20} color="#fff" strokeWidth={2.4} />
           </Animated.View>
         )}
         {!!onMakeDefault && (
-          <Animated.View style={[styles.bg, styles.bgDefault, defaultBgStyle]}>
+          <Animated.View
+            className="absolute inset-0 flex-row items-center px-4 justify-start"
+            style={[{ backgroundColor: colors.brand.primary }, defaultBgStyle]}
+          >
             <Star size={20} color="#fff" fill="#fff" />
           </Animated.View>
         )}
@@ -101,19 +103,3 @@ export function SwipeableCard({ children, onDelete, onMakeDefault }: Props) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { borderRadius: radius.xl, overflow: 'hidden' },
-  bg: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-  },
-  bgDelete: { backgroundColor: colors.feedback.danger, justifyContent: 'flex-end' },
-  bgDefault: { backgroundColor: colors.brand.primary, justifyContent: 'flex-start' },
-});

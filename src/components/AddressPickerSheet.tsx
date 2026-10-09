@@ -1,14 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Check, ChevronRight, Crosshair, MapPin, Plus, X } from 'lucide-react-native';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { UserAddress } from '@/lib/types';
 import { useLocationStore } from '@/stores/location';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { colors, shadow, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 interface Props {
@@ -58,30 +58,48 @@ export function AddressPickerSheet({ visible, onClose }: Props) {
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <SafeAreaView edges={['bottom']} style={styles.sheetWrap} pointerEvents="box-none">
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
-          <View style={styles.header}>
-            <Text style={styles.title}>{tr('picker.deliveryAddress')}</Text>
-            <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
+      <Pressable className="absolute inset-0" style={{ backgroundColor: colors.overlay.scrim }} onPress={onClose} />
+      <SafeAreaView edges={['bottom']} className="flex-1 justify-end" pointerEvents="box-none">
+        <View
+          className="rounded-t-3xl px-4 pt-2 pb-4"
+          style={[{ backgroundColor: colors.bg.surface }, shadow.xl]}
+        >
+          <View
+            className="w-10 h-1 rounded-full self-center mb-3"
+            style={{ backgroundColor: colors.border.default }}
+          />
+          <View className="flex-row items-center justify-between mb-2">
+            <Text style={[typography.h4, { color: colors.text.primary }]}>{tr('picker.deliveryAddress')}</Text>
+            <Pressable
+              onPress={onClose}
+              hitSlop={8}
+              className="w-8 h-8 rounded-full items-center justify-center"
+              style={{ backgroundColor: colors.bg.surfaceMuted }}
+            >
               <X size={20} color={colors.text.secondary} strokeWidth={2.4} />
             </Pressable>
           </View>
 
           <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
             {/* Live GPS option */}
-            <Pressable style={styles.row} onPress={pickGps}>
-              <View style={[styles.iconWrap, usingGps && styles.iconWrapActive]}>
+            <Pressable className="flex-row items-center gap-3 py-3 border-b" style={{ borderBottomColor: colors.border.subtle }} onPress={pickGps}>
+              <View
+                className="w-9.5 h-9.5 rounded-full items-center justify-center"
+                style={{ backgroundColor: usingGps ? colors.brand.primary : colors.brand.primarySurface }}
+              >
                 <Crosshair
                   size={18}
                   color={usingGps ? colors.text.onPrimary : colors.brand.primary}
                   strokeWidth={2.4}
                 />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>{tr('picker.currentLocation')}</Text>
-                <Text style={styles.rowSub}>{tr('picker.gpsAuto')}</Text>
+              <View className="flex-1">
+                <Text className="font-semibold" style={[typography.body, { color: colors.text.primary }]}>
+                  {tr('picker.currentLocation')}
+                </Text>
+                <Text className="mt-0.5" style={[typography.caption, { color: colors.text.tertiary }]}>
+                  {tr('picker.gpsAuto')}
+                </Text>
               </View>
               {usingGps && <Check size={20} color={colors.brand.primary} strokeWidth={2.6} />}
             </Pressable>
@@ -89,20 +107,28 @@ export function AddressPickerSheet({ visible, onClose }: Props) {
             {(addressesQuery.data ?? []).map((addr) => {
               const active = selectedAddress?.id === addr.id;
               return (
-                <Pressable key={addr.id} style={styles.row} onPress={() => pickAddress(addr)}>
-                  <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
+                <Pressable
+                  key={addr.id}
+                  className="flex-row items-center gap-3 py-3 border-b"
+                  style={{ borderBottomColor: colors.border.subtle }}
+                  onPress={() => pickAddress(addr)}
+                >
+                  <View
+                    className="w-9.5 h-9.5 rounded-full items-center justify-center"
+                    style={{ backgroundColor: active ? colors.brand.primary : colors.brand.primarySurface }}
+                  >
                     <MapPin
                       size={18}
                       color={active ? colors.text.onPrimary : colors.brand.primary}
                       strokeWidth={2.4}
                     />
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.rowTitle}>
+                  <View className="flex-1">
+                    <Text className="font-semibold" style={[typography.body, { color: colors.text.primary }]}>
                       {addr.label}
                       {addr.isDefault ? `  ·  ${tr('picker.main')}` : ''}
                     </Text>
-                    <Text style={styles.rowSub} numberOfLines={1}>
+                    <Text className="mt-0.5" style={[typography.caption, { color: colors.text.tertiary }]} numberOfLines={1}>
                       {addr.address}
                     </Text>
                   </View>
@@ -112,11 +138,19 @@ export function AddressPickerSheet({ visible, onClose }: Props) {
             })}
 
             {/* Add new */}
-            <Pressable style={styles.addRow} onPress={addNew}>
-              <View style={styles.addIcon}>
+            <Pressable className="flex-row items-center gap-3 py-4" onPress={addNew}>
+              <View
+                className="w-9.5 h-9.5 rounded-full items-center justify-center border-[1.5px] border-dashed"
+                style={{
+                  borderColor: colors.brand.primaryBorder,
+                  backgroundColor: colors.bg.surface,
+                }}
+              >
                 <Plus size={18} color={colors.brand.primary} strokeWidth={2.6} />
               </View>
-              <Text style={styles.addText}>{tr('picker.addNew')}</Text>
+              <Text className="flex-1 font-semibold" style={[typography.body, { color: colors.brand.primary }]}>
+                {tr('picker.addNew')}
+              </Text>
               <ChevronRight size={18} color={colors.text.tertiary} strokeWidth={2.4} />
             </Pressable>
           </ScrollView>
@@ -125,84 +159,3 @@ export function AddressPickerSheet({ visible, onClose }: Props) {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: colors.overlay.scrim,
-  },
-  sheetWrap: { flex: 1, justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.bg.surface,
-    borderTopLeftRadius: radius['2xl'],
-    borderTopRightRadius: radius['2xl'],
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-    ...shadow.xl,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: radius.full,
-    backgroundColor: colors.border.default,
-    alignSelf: 'center',
-    marginBottom: spacing.md,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
-  title: { ...typography.h4, color: colors.text.primary },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  iconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconWrapActive: { backgroundColor: colors.brand.primary },
-  rowTitle: { ...typography.body, fontWeight: '600', color: colors.text.primary },
-  rowSub: { ...typography.caption, color: colors.text.tertiary, marginTop: 2 },
-  addRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.lg,
-  },
-  addIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: colors.brand.primaryBorder,
-    borderStyle: 'dashed',
-    backgroundColor: colors.bg.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addText: { flex: 1, ...typography.body, fontWeight: '600', color: colors.brand.primary },
-});
