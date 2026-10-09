@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useGlobalSearchParams, useRouter } from 'expo-router';
-import { Bell, ChevronRight, Clock, MapPin, Map, Store, Truck } from 'lucide-react-native';
+import { useGlobalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -8,85 +7,32 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { tr } from '@/i18n';
 import { LocationPickerModal, PickedLocation } from '@/components/LocationPickerModal';
-import { ImageUploader } from '@/components/seller/ImageUploader';
 import { OwnerOnlyNotice } from '@/components/seller/OwnerOnlyNotice';
 import { WorkingHoursModal } from '@/components/seller/WorkingHoursModal';
+import {
+  Pricing,
+  ShopAlarmSection,
+  ShopDeliverySection,
+  ShopInfoSection,
+  ShopStatusSection,
+} from '@/components/seller-settings';
+import { tr } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
-import { useIsShopOwner } from '@/lib/useIsShopOwner';
 import { PublicShop } from '@/lib/types';
-import { AlarmMode, useAlarmSettingsStore, useShopAlarm } from '@/stores/alarmSettings';
+import { useIsShopOwner } from '@/lib/useIsShopOwner';
+import { useAlarmSettingsStore, useShopAlarm } from '@/stores/alarmSettings';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 import { startOrderAlarm, stopOrderAlarm } from '@/utils/alarm';
 
-type Pricing = 'flat' | 'per_km' | 'per_500m' | 'per_100m';
-
-/** Mirror of the server's calcDeliveryFee (geo.util.ts) for the live preview. */
-function calcFee(distanceKm: number, freeKm: number, type: Pricing, pricePerStep: number): number {
-  if (distanceKm <= freeKm) return 0;
-  const overKm = distanceKm - freeKm;
-  switch (type) {
-    case 'flat':
-      return pricePerStep;
-    case 'per_km':
-      return Math.ceil(overKm) * pricePerStep;
-    case 'per_500m':
-      return Math.ceil(overKm * 2) * pricePerStep;
-    case 'per_100m':
-      return Math.ceil(overKm * 10) * pricePerStep;
-    default:
-      return pricePerStep;
-  }
-}
-
-function pricingMeta(type: Pricing): { label: string; priceLabel: string; hint: string } {
-  switch (type) {
-    case 'per_km':
-      return {
-        label: tr('shopSet.perKm'),
-        priceLabel: tr('shopSet.perKmPrice'),
-        hint: tr('shopSet.perKmHint'),
-      };
-    case 'per_500m':
-      return {
-        label: tr('shopSet.per500m'),
-        priceLabel: tr('shopSet.per500mPrice'),
-        hint: tr('shopSet.per500mHint'),
-      };
-    case 'per_100m':
-      return {
-        label: tr('shopSet.per100m'),
-        priceLabel: tr('shopSet.per100mPrice'),
-        hint: tr('shopSet.per100mHint'),
-      };
-    case 'flat':
-    default:
-      return {
-        label: tr('shopSet.flat'),
-        priceLabel: tr('shopSet.flatPrice'),
-        hint: tr('shopSet.flatHint'),
-      };
-  }
-}
-
-function fmtSom(n: number): string {
-  return n.toLocaleString('ru-RU').replace(/,/g, ' ');
-}
-
 export default function ShopSettingsScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
-  const router = useRouter();
   const qc = useQueryClient();
-  // Shop settings (name, address, delivery zone/pricing) are owner-only
-  // server-side — skip the fetch once confirmed and explain why instead.
   const isOwner = useIsShopOwner(shopId);
 
   const alarm = useShopAlarm(shopId);
@@ -106,13 +52,10 @@ export default function ShopSettingsScreen() {
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
-  // Only set when the picker confirms a NEW pin — absent when `coords` is
-  // just the value loaded from the server (no fresh device fix for that).
   const [coordsEvidence, setCoordsEvidence] = useState<PickedLocation['evidence']>(undefined);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [hoursOpen, setHoursOpen] = useState(false);
   const [isDeliveryEnabled, setIsDeliveryEnabled] = useState(true);
-  const [isPickupEnabled, setIsPickupEnabled] = useState(true);
   const [minOrder, setMinOrder] = useState('');
   const [maxKm, setMaxKm] = useState('');
   const [freeKm, setFreeKm] = useState('');
@@ -132,7 +75,6 @@ export default function ShopSettingsScreen() {
       setPhotos(s.photos ?? []);
       setCoords({ latitude: s.latitude, longitude: s.longitude });
       setIsDeliveryEnabled(s.isDeliveryEnabled ?? true);
-      setIsPickupEnabled(s.isPickupEnabled ?? true);
       setMinOrder(String(s.minOrderPrice));
       setMaxKm(String(s.deliveryZone.maxKm));
       setFreeKm(String(s.deliveryZone.freeKm));
@@ -158,7 +100,6 @@ export default function ShopSettingsScreen() {
         description: description.trim() || undefined,
         photos,
         isDeliveryEnabled,
-        isPickupEnabled,
         ...(coords ? { latitude: coords.latitude, longitude: coords.longitude, evidence: coordsEvidence } : {}),
         minOrderPrice: Number(minOrder) || 0,
         deliveryZone: {
@@ -195,203 +136,60 @@ export default function ShopSettingsScreen() {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Shop status */}
-        <Section title={tr('shopSet.statusSection')} icon={Store}>
-          <View style={styles.toggleRow}>
-            <View>
-              <Text style={styles.toggleLabel}>{isOpen ? tr('shopSet.open') : tr('shopSet.closed')}</Text>
-              <Text style={styles.toggleSub}>
-                {isOpen ? tr('shopSet.openSub') : tr('shopSet.closedSub')}
-              </Text>
-            </View>
-            <Switch
-              value={isOpen}
-              onValueChange={(v) => toggleOpen.mutate(v)}
-              trackColor={{ true: colors.feedback.success }}
-              thumbColor={colors.bg.surface}
-            />
-          </View>
-        </Section>
+        <ShopStatusSection
+          isOpen={isOpen}
+          onToggleOpen={(open) => toggleOpen.mutate(open)}
+        />
 
         {/* Shop info */}
-        <Section title={tr('shopSet.infoSection')} icon={Store}>
-          <ImageUploader
-            label={tr('shopSet.photosLabel')}
-            hint={tr('shopSet.photosHint')}
-            value={photos}
-            onChange={setPhotos}
-            max={5}
-          />
-          <Field label={tr('shopSet.nameLabel')}>
-            <TextInput style={styles.input} value={name} onChangeText={setName} placeholderTextColor={colors.text.hint} />
-          </Field>
-          <Field label={tr('shopSet.phoneLabel')}>
-            <TextInput
-              style={styles.input}
-              value={phone}
-              onChangeText={setPhone}
-              placeholder={tr('shopSet.phonePlaceholder')}
-              placeholderTextColor={colors.text.hint}
-              keyboardType="phone-pad"
-            />
-            <Text style={styles.hint}>{tr('shopSet.phoneHint')}</Text>
-          </Field>
-          <Field label={tr('shopSet.addressLabel')}>
-            <TextInput
-              style={[styles.input, styles.multiline]}
-              value={address}
-              onChangeText={setAddress}
-              multiline
-              placeholderTextColor={colors.text.hint}
-            />
-          </Field>
-          <Field label={tr('shopSet.descLabel')}>
-            <TextInput
-              style={[styles.input, styles.multiline]}
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              placeholder={tr('shopSet.descPlaceholder')}
-              placeholderTextColor={colors.text.hint}
-            />
-            <Text style={styles.hint}>{tr('shopSet.descHint')}</Text>
-          </Field>
-          <Field label={tr('shopSet.locationLabel')}>
-            <Pressable style={styles.mapBtn} onPress={() => setPickerVisible(true)}>
-              <MapPin size={18} color={colors.brand.primary} strokeWidth={2.4} />
-              <Text style={styles.mapBtnText}>{tr('shopSet.changeOnMap')}</Text>
-            </Pressable>
-            {coords ? (
-              <Text style={styles.coordHint}>
-                📍 {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}
-              </Text>
-            ) : null}
-          </Field>
-          <Field label={tr('shopSet.workingHours')}>
-            <Pressable style={styles.mapBtn} onPress={() => setHoursOpen(true)}>
-              <Clock size={18} color={colors.brand.primary} strokeWidth={2.4} />
-              <Text style={styles.mapBtnText}>{tr('shopSet.workingHoursBtn')}</Text>
-            </Pressable>
-            <Text style={styles.hint}>{tr('shopSet.workingHoursHint')}</Text>
-          </Field>
-        </Section>
+        <ShopInfoSection
+          photos={photos}
+          onChangePhotos={setPhotos}
+          name={name}
+          onChangeName={setName}
+          phone={phone}
+          onChangePhone={setPhone}
+          address={address}
+          onChangeAddress={setAddress}
+          description={description}
+          onChangeDescription={setDescription}
+          coords={coords}
+          onOpenLocationPicker={() => setPickerVisible(true)}
+          onOpenWorkingHours={() => setHoursOpen(true)}
+        />
 
         {/* Order alarm */}
-        <Section title={tr('shopSet.alarmSection')} icon={Bell}>
-          <View style={styles.toggleRow}>
-            <Text style={styles.toggleLabel}>{alarm.enabled ? tr('shopSet.alarmOn') : tr('shopSet.alarmOff')}</Text>
-            <Switch
-              value={alarm.enabled}
-              onValueChange={(v) => setAlarmEnabled(shopId, v)}
-              trackColor={{ true: colors.feedback.success }}
-              thumbColor={colors.bg.surface}
-            />
-          </View>
-          {alarm.enabled ? (
-            <>
-              <View style={styles.chipRow}>
-                {(['short', 'long'] as AlarmMode[]).map((m) => (
-                  <Pressable
-                    key={m}
-                    onPress={() => setAlarmMode(shopId, m)}
-                    style={[styles.chip, alarm.mode === m && styles.chipActive]}>
-                    <Text style={[styles.chipText, alarm.mode === m && styles.chipTextActive]}>
-                      {m === 'short' ? tr('shopSet.alarmShort') : tr('shopSet.alarmLong')}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-              <Text style={styles.hint}>
-                {alarm.mode === 'long'
-                  ? tr('shopSet.alarmLongHint')
-                  : tr('shopSet.alarmShortHint')}
-              </Text>
-              <Pressable style={styles.testBtn} onPress={testAlarm}>
-                <Text style={styles.testText}>{tr('shopSet.alarmTest')}</Text>
-              </Pressable>
-            </>
-          ) : null}
-        </Section>
+        <ShopAlarmSection
+          enabled={alarm.enabled}
+          mode={alarm.mode}
+          onToggleEnabled={(enabled) => setAlarmEnabled(shopId, enabled)}
+          onSelectMode={(m) => setAlarmMode(shopId, m)}
+          onTestAlarm={testAlarm}
+        />
 
-        {/* Delivery */}
-        <Section title={tr('shopSet.deliverySection')} icon={Truck}>
-          <View style={styles.toggleRow}>
-            <View style={{ flex: 1, paddingRight: spacing.md }}>
-              <Text style={styles.toggleLabel}>{tr('shopSet.deliveryToggle')}</Text>
-              <Text style={styles.toggleSub}>{tr('shopSet.deliveryToggleSub')}</Text>
-            </View>
-            <Switch
-              value={isDeliveryEnabled}
-              onValueChange={setIsDeliveryEnabled}
-              trackColor={{ true: colors.feedback.success }}
-              thumbColor={colors.bg.surface}
-            />
-          </View>
+        {/* Delivery zone & pricing */}
+        <ShopDeliverySection
+          shopId={shopId}
+          isDeliveryEnabled={isDeliveryEnabled}
+          onToggleDeliveryEnabled={setIsDeliveryEnabled}
+          minOrder={minOrder}
+          onChangeMinOrder={setMinOrder}
+          maxKm={maxKm}
+          onChangeMaxKm={setMaxKm}
+          freeKm={freeKm}
+          onChangeFreeKm={setFreeKm}
+          pricingType={pricingType}
+          onChangePricingType={setPricingType}
+          price={price}
+          onChangePrice={setPrice}
+        />
 
-          {!isDeliveryEnabled ? (
-            <View style={styles.showcaseNoticeBox}>
-              <Text style={styles.showcaseNoticeText}>
-                ℹ️ {tr('shopSet.showcaseNotice')}
-              </Text>
-            </View>
-          ) : (
-            <>
-              <Pressable
-                style={styles.mapZoneBtn}
-                onPress={() => router.push({ pathname: '/seller/[shopId]/delivery-zones', params: { shopId } } as never)}>
-                <Map size={18} color={colors.brand.primary} strokeWidth={2} />
-                <Text style={styles.mapZoneBtnText}>{tr('shopSet.drawZone')}</Text>
-                <ChevronRight size={16} color={colors.text.tertiary} />
-              </Pressable>
-
-              <Field label={tr('shopSet.minOrder')}>
-                <TextInput style={styles.input} value={minOrder} onChangeText={setMinOrder} keyboardType="number-pad" />
-                <Text style={styles.hint}>{tr('shopSet.minOrderHint')}</Text>
-              </Field>
-
-              <Field label={tr('shopSet.maxKm')}>
-                <TextInput style={styles.input} value={maxKm} onChangeText={setMaxKm} keyboardType="numeric" />
-                <Text style={styles.hint}>{tr('shopSet.maxKmHint')}</Text>
-              </Field>
-
-              <Field label={tr('shopSet.freeKm')}>
-                <TextInput style={styles.input} value={freeKm} onChangeText={setFreeKm} keyboardType="numeric" />
-                <Text style={styles.hint}>{tr('shopSet.freeKmHint')}</Text>
-              </Field>
-
-              <Field label={tr('shopSet.pricingLabel')}>
-                <View style={styles.chipRow}>
-                  {(['per_km', 'per_500m', 'per_100m', 'flat'] as Pricing[]).map((t) => (
-                    <Pressable
-                      key={t}
-                      onPress={() => setPricingType(t)}
-                      style={[styles.chip, pricingType === t && styles.chipActive]}>
-                      <Text style={[styles.chipText, pricingType === t && styles.chipTextActive]}>
-                        {pricingMeta(t).label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <Text style={styles.hint}>{pricingMeta(pricingType).hint}</Text>
-              </Field>
-
-              <Field label={pricingMeta(pricingType).priceLabel}>
-                <TextInput style={styles.input} value={price} onChangeText={setPrice} keyboardType="number-pad" />
-              </Field>
-
-              <DeliveryExample
-                maxKm={Number(maxKm) || 0}
-                freeKm={Number(freeKm) || 0}
-                pricingType={pricingType}
-                price={Number(price) || 0}
-              />
-            </>
-          )}
-        </Section>
-
+        {/* Save button */}
         <Pressable
           style={[styles.saveBtn, !name.trim() && styles.saveBtnDisabled]}
           disabled={!name.trim() || save.isPending}
-          onPress={() => save.mutate()}>
+          onPress={() => save.mutate()}
+        >
           <Text style={styles.saveText}>{save.isPending ? tr('shopSet.saving') : tr('common.save')}</Text>
         </Pressable>
       </ScrollView>
@@ -419,196 +217,18 @@ export default function ShopSettingsScreen() {
   );
 }
 
-function Section({
-  title,
-  icon: Icon,
-  children,
-}: {
-  title: string;
-  icon: typeof Store;
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={styles.section}>
-      <View style={styles.sectionHead}>
-        <Icon size={16} color={colors.brand.primary} strokeWidth={2.4} />
-        <Text style={styles.sectionTitle}>{title}</Text>
-      </View>
-      {children}
-    </View>
-  );
-}
-
-/** Live, plain-language preview of what a customer would pay for delivery. */
-function DeliveryExample({
-  maxKm,
-  freeKm,
-  pricingType,
-  price,
-}: {
-  maxKm: number;
-  freeKm: number;
-  pricingType: Pricing;
-  price: number;
-}) {
-  if (maxKm <= 0) return null;
-
-  // A customer sitting at the very edge of the delivery zone (worst case).
-  const edgeFee = calcFee(maxKm, freeKm, pricingType, price);
-  // A mid-zone customer, halfway between the free radius and the edge.
-  const midDist = freeKm >= maxKm ? maxKm : (freeKm + maxKm) / 2;
-  const midFee = calcFee(midDist, freeKm, pricingType, price);
-
-  return (
-    <View style={styles.exampleBox}>
-      <Text style={styles.exampleTitle}>{tr('shopSet.exampleTitle')}</Text>
-
-      {freeKm > 0 ? (
-        <View style={styles.exampleRow}>
-          <Text style={styles.exampleDist}>0 – {freeKm} km</Text>
-          <Text style={styles.exampleFree}>{tr('shopSet.free')}</Text>
-        </View>
-      ) : null}
-
-      {freeKm < maxKm ? (
-        <>
-          <View style={styles.exampleRow}>
-            <Text style={styles.exampleDist}>{midDist.toFixed(1)} km</Text>
-            <Text style={styles.exampleFee}>{fmtSom(midFee)} {tr('common.som')}</Text>
-          </View>
-          <View style={styles.exampleRow}>
-            <Text style={styles.exampleDist}>{tr('shopSet.edgeDist', { km: maxKm })}</Text>
-            <Text style={styles.exampleFee}>{fmtSom(edgeFee)} {tr('common.som')}</Text>
-          </View>
-        </>
-      ) : (
-        <Text style={styles.hint}>{tr('shopSet.allFree')}</Text>
-      )}
-    </View>
-  );
-}
-
-function Field({ label, children, flex }: { label: string; children: React.ReactNode; flex?: boolean }) {
-  return (
-    <View style={[styles.field, flex && { flex: 1 }]}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      {children}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  mapZoneBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.brand.primarySurface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-  },
-  mapZoneBtnText: { ...typography.bodyStrong, color: colors.brand.primary, flex: 1 },
   container: { flex: 1, backgroundColor: colors.bg.canvas },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  scroll: { padding: layout.screenPadding, gap: spacing.md, paddingBottom: spacing['3xl'] },
-  section: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  sectionTitle: { ...typography.overline, color: colors.brand.primary },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  toggleLabel: { ...typography.bodyStrong, color: colors.text.primary },
-  toggleSub: { ...typography.caption, color: colors.text.secondary, marginTop: 1 },
-  field: { gap: spacing.xs },
-  fieldLabel: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
-  row: { flexDirection: 'row', gap: spacing.md },
-  input: {
-    backgroundColor: colors.bg.surfaceMuted,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    ...typography.body,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  multiline: { minHeight: 60, textAlignVertical: 'top' },
-  mapBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: 12,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.brand.primaryBorder,
-    backgroundColor: colors.brand.primarySurface,
-  },
-  mapBtnText: { ...typography.bodySmall, fontWeight: '700', color: colors.brand.primary },
-  coordHint: { ...typography.caption, color: colors.text.tertiary, marginTop: 4 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    backgroundColor: colors.bg.surface,
-  },
-  chipActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
-  chipText: { ...typography.caption, fontWeight: '700', color: colors.text.secondary },
-  chipTextActive: { color: colors.text.onPrimary },
-  hint: { ...typography.caption, color: colors.text.tertiary, marginTop: 2 },
-  exampleBox: {
-    backgroundColor: colors.brand.primarySurface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    gap: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-  },
-  exampleTitle: { ...typography.bodySmall, fontWeight: '800', color: colors.brand.primary, marginBottom: 2 },
-  exampleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  exampleDist: { ...typography.bodySmall, color: colors.text.secondary },
-  exampleFee: { ...typography.bodySmall, fontWeight: '800', color: colors.text.primary },
-  exampleFree: { ...typography.bodySmall, fontWeight: '800', color: colors.feedback.success },
-  testBtn: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.brand.primaryBorder,
-  },
-  testText: { ...typography.bodySmall, fontWeight: '700', color: colors.brand.primary },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg.canvas },
+  scroll: { padding: layout.screenPadding, gap: spacing.lg, paddingBottom: spacing['4xl'] },
   saveBtn: {
-    height: layout.buttonHeight.md,
+    height: layout.buttonHeight.lg,
     borderRadius: radius.lg,
     backgroundColor: colors.brand.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.xs,
+    marginTop: spacing.md,
   },
-  saveBtnDisabled: { backgroundColor: colors.border.strong },
-  saveText: { ...typography.body, fontWeight: '700', color: colors.text.onPrimary },
-  showcaseNoticeBox: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: radius.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    marginTop: spacing.xs,
-  },
-  showcaseNoticeText: {
-    ...typography.bodySmall,
-    color: '#1E40AF',
-    lineHeight: 20,
-  },
+  saveBtnDisabled: { opacity: 0.5 },
+  saveText: { ...typography.button, color: colors.text.onPrimary },
 });
