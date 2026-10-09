@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useGlobalSearchParams } from 'expo-router';
-import { AlertTriangle, Package, Plus, TrendingDown } from 'lucide-react-native';
+import { Package, Plus } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -8,24 +8,18 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BarcodeScannerModal } from '@/components/seller/BarcodeScannerModal';
-import { BrakStockModal } from '@/components/seller/BrakStockModal';
-import { InventoryCountModal } from '@/components/seller/InventoryCountModal';
-import { KirimModal } from '@/components/seller/KirimModal';
-import { ProductFormModal, ProductPrefill } from '@/components/seller/ProductFormModal';
-import { QuickAddModal } from '@/components/seller/QuickAddModal';
-import { StockHistoryModal } from '@/components/seller/StockHistoryModal';
+import { ProductPrefill } from '@/components/seller/ProductFormModal';
 import {
-  InventoryBulkPriceModal,
   InventoryCard,
   InventoryExpiringList,
   InventoryLowStockList,
+  InventoryModals,
+  InventoryTabSelector,
   InventoryToolbar,
   Tab,
 } from '@/components/seller-inventory';
@@ -34,12 +28,13 @@ import { api, extractErrorMessage } from '@/lib/api';
 import {
   Category,
   ExpiringVariant,
+  GlobalProduct,
   LowStockVariant,
   PublicProductVariant,
   SellerVariant,
 } from '@/lib/types';
 import { useShopAccess } from '@/lib/useIsShopOwner';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 export default function SellerInventoryScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
@@ -57,13 +52,12 @@ export default function SellerInventoryScreen() {
   const [scanOpen, setScanOpen] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState('');
   const [prefill, setPrefill] = useState<ProductPrefill | null>(null);
-  const [quickAddGp, setQuickAddGp] = useState<import('@/lib/types').GlobalProduct | null>(null);
+  const [quickAddGp, setQuickAddGp] = useState<GlobalProduct | null>(null);
   const [countOpen, setCountOpen] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
 
-  // Debounce the search so we don't hit the server on every keystroke.
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput.trim()), 350);
     return () => clearTimeout(t);
@@ -197,7 +191,7 @@ export default function SellerInventoryScreen() {
       return;
     }
     try {
-      const res = await api.get<import('@/lib/types').GlobalProduct>(
+      const res = await api.get<GlobalProduct>(
         `/catalog-global/by-barcode/${encodeURIComponent(code)}`,
       );
       setQuickAddGp(res.data);
@@ -215,59 +209,15 @@ export default function SellerInventoryScreen() {
   const lowStockCount = lowStockQuery.data?.length ?? 0;
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
       {/* Tab switcher */}
-      <View style={styles.tabRow}>
-        <Pressable
-          style={[styles.tabBtn, tab === 'all' && styles.tabBtnActive]}
-          onPress={() => setTab('all')}
-        >
-          <Package
-            size={15}
-            color={tab === 'all' ? colors.text.onPrimary : colors.text.secondary}
-            strokeWidth={2.2}
-          />
-          <Text style={[styles.tabBtnText, tab === 'all' && styles.tabBtnTextActive]}>
-            {tr('inv.tabAll')}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.tabBtn, tab === 'expiring' && styles.tabBtnActive]}
-          onPress={() => setTab('expiring')}
-        >
-          <AlertTriangle
-            size={15}
-            color={tab === 'expiring' ? colors.text.onPrimary : colors.feedback.warning}
-            strokeWidth={2.2}
-          />
-          <Text style={[styles.tabBtnText, tab === 'expiring' && styles.tabBtnTextActive]}>
-            {tr('inv.tabExpiring')}
-          </Text>
-          {expiringCount > 0 && (
-            <View style={[styles.tabBadge, expiringUrgent && styles.tabBadgeUrgent]}>
-              <Text style={styles.tabBadgeText}>{expiringCount}</Text>
-            </View>
-          )}
-        </Pressable>
-        <Pressable
-          style={[styles.tabBtn, tab === 'lowStock' && styles.tabBtnActive]}
-          onPress={() => setTab('lowStock')}
-        >
-          <TrendingDown
-            size={15}
-            color={tab === 'lowStock' ? colors.text.onPrimary : colors.feedback.warning}
-            strokeWidth={2.2}
-          />
-          <Text style={[styles.tabBtnText, tab === 'lowStock' && styles.tabBtnTextActive]}>
-            {tr('inv.tabLowStock')}
-          </Text>
-          {lowStockCount > 0 && (
-            <View style={styles.tabBadge}>
-              <Text style={styles.tabBadgeText}>{lowStockCount}</Text>
-            </View>
-          )}
-        </Pressable>
-      </View>
+      <InventoryTabSelector
+        tab={tab}
+        onSelectTab={setTab}
+        expiringCount={expiringCount}
+        expiringUrgent={expiringUrgent}
+        lowStockCount={lowStockCount}
+      />
 
       {tab === 'expiring' ? (
         <InventoryExpiringList
@@ -302,7 +252,7 @@ export default function SellerInventoryScreen() {
           <FlatList
             data={variants}
             keyExtractor={(v) => v.id}
-            contentContainerStyle={styles.list}
+            contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 14 }}
             keyboardShouldPersistTaps="handled"
             refreshControl={
               <RefreshControl
@@ -328,22 +278,22 @@ export default function SellerInventoryScreen() {
               variantsQuery.isFetchingNextPage ? (
                 <ActivityIndicator
                   color={colors.brand.primary}
-                  style={{ marginVertical: spacing.md }}
+                  className="my-4"
                 />
               ) : null
             }
             ListEmptyComponent={
               variantsQuery.isLoading ? (
-                <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />
+                <ActivityIndicator color={colors.brand.primary} className="mt-10" />
               ) : (
-                <View style={styles.empty}>
-                  <View style={styles.emptyIcon}>
+                <View className="py-16 items-center gap-2">
+                  <View className="w-16 h-16 rounded-full bg-brand-primary-surface items-center justify-center">
                     <Package size={28} color={colors.brand.primary} strokeWidth={1.8} />
                   </View>
-                  <Text style={styles.emptyTitle}>
+                  <Text className="text-lg font-bold text-text-primary">
                     {search ? tr('inv.notFound') : tr('inv.emptyTitle')}
                   </Text>
-                  <Text style={styles.dim}>
+                  <Text className="text-sm text-text-secondary text-center">
                     {search ? tr('inv.notFoundHint') : tr('inv.emptyHint')}
                   </Text>
                 </View>
@@ -376,71 +326,42 @@ export default function SellerInventoryScreen() {
             )}
           />
 
-          <Pressable style={styles.fab} onPress={() => setScanOpen(true)}>
-            <Plus size={22} color={colors.text.onPrimary} strokeWidth={2.8} />
-            <Text style={styles.fabText}>{tr('inv.fabProduct')}</Text>
+          <Pressable
+            className="absolute bottom-6 right-6 flex-row items-center gap-1.5 px-6 h-13 rounded-full bg-brand-primary shadow-xl active:opacity-90"
+            onPress={() => setScanOpen(true)}
+          >
+            <Plus size={22} color="#ffffff" strokeWidth={2.8} />
+            <Text className="text-base font-extrabold text-white">{tr('inv.fabProduct')}</Text>
           </Pressable>
         </>
       )}
 
-      <ProductFormModal
-        visible={formOpen}
-        shopId={shopId}
+      {/* Modals */}
+      <InventoryModals
+        shopId={shopId ?? ''}
+        leafCategories={leafCategories}
+        formOpen={formOpen}
+        onCloseForm={() => setFormOpen(false)}
         editing={editing}
-        categories={leafCategories}
-        initialBarcode={scannedBarcode}
+        scannedBarcode={scannedBarcode}
         prefill={prefill}
-        onClose={() => setFormOpen(false)}
-      />
-
-      <QuickAddModal
-        visible={!!quickAddGp}
-        shopId={shopId}
-        globalProduct={quickAddGp}
-        onClose={() => setQuickAddGp(null)}
-      />
-
-      <BarcodeScannerModal
-        visible={scanOpen}
-        onClose={() => setScanOpen(false)}
+        quickAddGp={quickAddGp}
+        onCloseQuickAdd={() => setQuickAddGp(null)}
+        scanOpen={scanOpen}
+        onCloseScan={() => setScanOpen(false)}
         onScanned={onScanned}
-        onSkip={openCreateBlank}
-        title={tr('inv.scanTitle')}
-      />
-
-      <InventoryCountModal
-        visible={countOpen}
-        shopId={shopId}
-        onClose={() => setCountOpen(false)}
-      />
-
-      <KirimModal
-        visible={!!kirimFor}
-        shopId={shopId}
-        variant={kirimFor}
-        onClose={() => setKirimFor(null)}
-      />
-
-      <BrakStockModal
-        visible={!!brakFor}
-        shopId={shopId}
-        variant={brakFor}
-        onClose={() => setBrakFor(null)}
-      />
-
-      <StockHistoryModal
-        visible={!!historyFor}
-        shopId={shopId}
-        variant={historyFor}
-        onClose={() => setHistoryFor(null)}
-      />
-
-      <InventoryBulkPriceModal
-        visible={bulkPriceOpen}
-        shopId={shopId}
-        categories={leafCategories}
-        onClose={() => setBulkPriceOpen(false)}
-        onDone={() => {
+        onSkipScan={openCreateBlank}
+        countOpen={countOpen}
+        onCloseCount={() => setCountOpen(false)}
+        kirimFor={kirimFor}
+        onCloseKirim={() => setKirimFor(null)}
+        brakFor={brakFor}
+        onCloseBrak={() => setBrakFor(null)}
+        historyFor={historyFor}
+        onCloseHistory={() => setHistoryFor(null)}
+        bulkPriceOpen={bulkPriceOpen}
+        onCloseBulkPrice={() => setBulkPriceOpen(false)}
+        onBulkPriceDone={() => {
           setBulkPriceOpen(false);
           qc.invalidateQueries({ queryKey: ['variants', shopId] });
         }}
@@ -448,106 +369,3 @@ export default function SellerInventoryScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg.canvas,
-  },
-  tabRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  tabBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    backgroundColor: colors.bg.surface,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  tabBtnActive: {
-    backgroundColor: colors.brand.primary,
-    borderColor: colors.brand.primary,
-  },
-  tabBtnText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.text.secondary,
-  },
-  tabBtnTextActive: {
-    color: colors.text.onPrimary,
-  },
-  tabBadge: {
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 4,
-    borderRadius: 9,
-    backgroundColor: colors.feedback.warning,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabBadgeUrgent: {
-    backgroundColor: colors.feedback.danger,
-  },
-  tabBadgeText: {
-    ...typography.caption,
-    fontSize: 10,
-    fontWeight: '800',
-    color: colors.text.onPrimary,
-  },
-  list: {
-    padding: layout.screenPadding,
-    paddingBottom: 100,
-    gap: spacing.md,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: spacing.lg,
-    right: spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.lg,
-    height: 52,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primary,
-    ...shadow.lg,
-  },
-  fabText: {
-    ...typography.body,
-    fontWeight: '800',
-    color: colors.text.onPrimary,
-  },
-  empty: {
-    padding: spacing['4xl'],
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  emptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyTitle: {
-    ...typography.h4,
-    color: colors.text.primary,
-  },
-  dim: {
-    ...typography.bodySmall,
-    color: colors.text.secondary,
-    textAlign: 'center',
-  },
-});

@@ -1,27 +1,26 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useGlobalSearchParams } from 'expo-router';
-import { BookOpen, Package, Search, ScanLine } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { BookOpen, Package, ScanLine, Search } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Image,
-  Modal,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { tr, type TranslationKey } from '@/i18n';
 import { BarcodeScannerModal } from '@/components/seller/BarcodeScannerModal';
+import { CatalogCloneModal } from '@/components/seller/CatalogCloneModal';
+import { tr, type TranslationKey } from '@/i18n';
 import { api, extractErrorMessage, resolveMedia } from '@/lib/api';
 import { parseAmount } from '@/lib/parseAmount';
 import { GlobalCatalogProduct } from '@/lib/types';
-import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
+import { colors } from '@/theme';
 
 const UNIT_LABEL_KEY: Record<string, TranslationKey> = {
   piece: 'catalog.unitPiece',
@@ -91,12 +90,12 @@ export default function SellerCatalogScreen() {
   const items = catalogQuery.data ?? [];
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.toolbar}>
-        <View style={styles.searchBox}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
+      <View className="flex-row items-center gap-2.5 px-4 py-2.5 border-b border-border-subtle">
+        <View className="flex-1 flex-row items-center gap-2 bg-surface rounded-xl px-3 border border-border-default h-11">
           <Search size={17} color={colors.text.tertiary} strokeWidth={2.2} />
           <TextInput
-            style={styles.searchInput}
+            className="flex-1 text-sm text-text-primary"
             value={searchInput}
             onChangeText={setSearchInput}
             placeholder={tr('catalog.searchPlaceholder')}
@@ -105,58 +104,67 @@ export default function SellerCatalogScreen() {
           />
           {searchInput.length > 0 && (
             <Pressable onPress={() => { setSearchInput(''); setSearch(''); }} hitSlop={8}>
-              <Text style={styles.clearBtn}>✕</Text>
+              <Text className="text-sm text-text-tertiary px-1">✕</Text>
             </Pressable>
           )}
         </View>
-        <Pressable onPress={() => setScanOpen(true)} style={styles.scanBtn}>
+        <Pressable
+          onPress={() => setScanOpen(true)}
+          className="w-11 h-11 rounded-full border border-brand-primary/30 bg-brand-primary-surface items-center justify-center active:opacity-80"
+        >
           <ScanLine size={18} color={colors.brand.primary} strokeWidth={2.2} />
         </Pressable>
       </View>
 
       {search.length === 0 ? (
-        <View style={styles.hint}>
-          <View style={styles.hintIcon}>
+        <View className="flex-1 items-center justify-center p-8 gap-3">
+          <View className="w-16 h-16 rounded-full bg-brand-primary-surface items-center justify-center">
             <BookOpen size={28} color={colors.brand.primary} strokeWidth={1.8} />
           </View>
-          <Text style={styles.hintTitle}>{tr('catalog.globalTitle')}</Text>
-          <Text style={styles.hintSub}>{tr('catalog.globalHint')}</Text>
+          <Text className="text-lg font-bold text-text-primary">{tr('catalog.globalTitle')}</Text>
+          <Text className="text-sm text-text-secondary text-center leading-5">{tr('catalog.globalHint')}</Text>
         </View>
       ) : catalogQuery.isLoading ? (
-        <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />
+        <ActivityIndicator color={colors.brand.primary} className="mt-10" />
       ) : items.length === 0 ? (
-        <View style={styles.hint}>
-          <Text style={styles.hintTitle}>{tr('catalog.notFound')}</Text>
-          <Text style={styles.hintSub}>{tr('catalog.notFoundDesc')}</Text>
+        <View className="flex-1 items-center justify-center p-8 gap-2">
+          <Text className="text-lg font-bold text-text-primary">{tr('catalog.notFound')}</Text>
+          <Text className="text-sm text-text-secondary text-center">{tr('catalog.notFoundDesc')}</Text>
         </View>
       ) : (
         <FlatList
           data={items}
           keyExtractor={(p) => p.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 10 }}
+          keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.imageWrap}>
+            <View className="flex-row items-center gap-3.5 bg-surface rounded-2xl p-3.5 border border-border-subtle shadow-sm">
+              <View className="w-14 h-14 rounded-xl overflow-hidden bg-brand-primary-surface">
                 {item.photos[0] ? (
-                  <Image source={{ uri: resolveMedia(item.photos[0]) }} style={styles.image} />
+                  <Image source={{ uri: resolveMedia(item.photos[0]) }} className="w-full h-full" resizeMode="cover" />
                 ) : (
-                  <View style={[styles.image, styles.placeholder]}>
+                  <View className="w-full h-full items-center justify-center">
                     <Package size={20} color={colors.brand.primary} strokeWidth={1.6} />
                   </View>
                 )}
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-                {item.brand ? <Text style={styles.brand}>{item.brand}</Text> : null}
-                <Text style={styles.unit}>
+              <View className="flex-1">
+                <Text className="text-sm font-bold text-text-primary" numberOfLines={1}>{item.name}</Text>
+                {item.brand ? <Text className="text-xs text-text-secondary mt-0.5">{item.brand}</Text> : null}
+                <Text className="text-xs text-text-tertiary mt-0.5">
                   {item.unitSize}{' '}
                   {UNIT_LABEL_KEY[item.unitType] ? tr(UNIT_LABEL_KEY[item.unitType]) : item.unitType}
                   {item.barcode ? ` · ${item.barcode}` : ''}
                 </Text>
-                <Text style={styles.usage}>{tr('catalog.usedInShops', { n: item.usageCount })}</Text>
+                <Text className="text-xs text-brand-primary font-semibold mt-1">
+                  {tr('catalog.usedInShops', { n: item.usageCount })}
+                </Text>
               </View>
-              <Pressable style={styles.cloneBtn} onPress={() => { setCloneTarget(item); setPrice(''); }}>
-                <Text style={styles.cloneBtnText}>{tr('catalog.add')}</Text>
+              <Pressable
+                className="px-3.5 py-2 rounded-xl bg-brand-primary active:opacity-90"
+                onPress={() => { setCloneTarget(item); setPrice(''); }}
+              >
+                <Text className="text-xs font-extrabold text-white">{tr('catalog.add')}</Text>
               </Pressable>
             </View>
           )}
@@ -171,150 +179,17 @@ export default function SellerCatalogScreen() {
         title={tr('catalog.scanBarcode')}
       />
 
-      <Modal visible={!!cloneTarget} transparent animationType="slide" onRequestClose={() => { setCloneTarget(null); }}>
-        <View style={styles.overlay}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>{cloneTarget?.name}</Text>
-            {cloneTarget?.brand ? <Text style={styles.sheetSub}>{cloneTarget.brand}</Text> : null}
-            <Text style={styles.fieldLabel}>{tr('catalog.priceLabel')}</Text>
-            <TextInput
-              style={styles.priceInput}
-              value={price}
-              onChangeText={setPrice}
-              keyboardType="numeric"
-              placeholder={tr('catalog.pricePlaceholder')}
-              placeholderTextColor={colors.text.hint}
-              autoFocus
-            />
-            <Text style={styles.fieldLabel}>{tr('catalog.initialStock')}</Text>
-            <TextInput
-              style={styles.priceInput}
-              value={stock}
-              onChangeText={setStock}
-              keyboardType="number-pad"
-              placeholder="0"
-              placeholderTextColor={colors.text.hint}
-            />
-            <Pressable
-              style={[styles.confirmBtn, cloneMutation.isPending && { opacity: 0.6 }]}
-              onPress={handleClone}
-              disabled={cloneMutation.isPending}>
-              {cloneMutation.isPending ? (
-                <ActivityIndicator color={colors.text.onPrimary} />
-              ) : (
-                <Text style={styles.confirmBtnText}>{tr('catalog.addToShop')}</Text>
-              )}
-            </Pressable>
-            <Pressable style={styles.cancelBtn} onPress={() => { setCloneTarget(null); setPrice(''); setStock(''); }}>
-              <Text style={styles.cancelBtnText}>{tr('common.cancel')}</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+      <CatalogCloneModal
+        visible={!!cloneTarget}
+        target={cloneTarget}
+        price={price}
+        onChangePrice={setPrice}
+        stock={stock}
+        onChangeStock={setStock}
+        onConfirm={handleClone}
+        onClose={() => { setCloneTarget(null); setPrice(''); setStock(''); }}
+        isPending={cloneMutation.isPending}
+      />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
-  toolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  searchBox: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  searchInput: { flex: 1, paddingVertical: 10, ...typography.body, color: colors.text.primary },
-  clearBtn: { ...typography.body, color: colors.text.tertiary, paddingHorizontal: spacing.xs },
-  scanBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hint: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing['4xl'], gap: spacing.md },
-  hintIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hintTitle: { ...typography.h4, color: colors.text.primary },
-  hintSub: { ...typography.bodySmall, color: colors.text.secondary, textAlign: 'center', lineHeight: 20 },
-  list: { padding: layout.screenPadding, paddingBottom: 32, gap: spacing.sm },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.bg.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    ...shadow.xs,
-  },
-  imageWrap: { width: 52, height: 52, borderRadius: radius.md, overflow: 'hidden' },
-  image: { width: 52, height: 52, backgroundColor: colors.brand.primarySurface },
-  placeholder: { alignItems: 'center', justifyContent: 'center' },
-  name: { ...typography.bodyStrong, color: colors.text.primary },
-  brand: { ...typography.caption, color: colors.text.secondary, marginTop: 1 },
-  unit: { ...typography.caption, color: colors.text.tertiary, marginTop: 1 },
-  usage: { ...typography.caption, color: colors.brand.primary, marginTop: 2, fontWeight: '600' },
-  cloneBtn: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.brand.primary,
-  },
-  cloneBtnText: { ...typography.caption, color: colors.text.onPrimary, fontWeight: '800' },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.bg.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    padding: spacing.xl,
-    gap: spacing.md,
-  },
-  sheetTitle: { ...typography.h3, color: colors.text.primary },
-  sheetSub: { ...typography.bodySmall, color: colors.text.secondary },
-  fieldLabel: { ...typography.caption, fontWeight: '700', color: colors.text.secondary, marginTop: spacing.xs },
-  priceInput: {
-    ...typography.body,
-    color: colors.text.primary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.bg.surfaceMuted,
-  },
-  confirmBtn: {
-    height: 52,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmBtnText: { ...typography.button, color: colors.text.onPrimary },
-  cancelBtn: { alignItems: 'center', paddingVertical: spacing.sm },
-  cancelBtnText: { ...typography.body, color: colors.text.secondary },
-});

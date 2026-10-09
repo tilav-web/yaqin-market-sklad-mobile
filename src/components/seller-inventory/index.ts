@@ -4,3 +4,5 @@ export * from './InventoryToolbar';
 export * from './InventoryExpiringList';
 export * from './InventoryLowStockList';
 export * from './InventoryBulkPriceModal';
+export * from './InventoryTabSelector';
+export * from './InventoryModals';
