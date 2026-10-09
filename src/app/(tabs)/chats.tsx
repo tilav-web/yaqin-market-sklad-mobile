@@ -1,29 +1,18 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { MessageCircle } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  View,
-} from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   FolderTabItem,
   formatTelegramTime,
-  TelegramChatRow,
-  TelegramChatsEmpty,
   TelegramChatsHeader,
+  TelegramChatsTabPage,
   TelegramFolderTabs,
-  TelegramSavedMessagesRow,
-  TelegramShopRow,
-  TelegramShopsEmpty,
+  TelegramShopsTabPage,
   UnifiedChat,
 } from '@/components/telegram';
-import { EmptyState } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
@@ -260,93 +249,32 @@ export default function ChatsTabScreen() {
         onPageSelected={(e) => setActiveTabIndex(e.nativeEvent.position)}
       >
         {/* Page 0: Chatlar */}
-        <View key="chats" className="flex-1" style={{ backgroundColor: activeColors.bg.canvas }}>
-          {isLoading ? (
-            <View className="flex-1 items-center justify-center px-8">
-              <ActivityIndicator size="large" color={activeColors.brand.primary} />
-            </View>
-          ) : !isAuthenticated ? (
-            <View className="flex-1 items-center justify-center px-8">
-              <EmptyState
-                icon={MessageCircle}
-                title={tr('chat.loginTitle')}
-                description={tr('chat.loginDesc')}
-                actionLabel={tr('chat.loginButton')}
-                onAction={() => router.push('/(auth)/phone')}
-              />
-            </View>
-          ) : (
-            <FlatList
-              data={filteredChats}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <TelegramChatRow
-                  item={item}
-                  onPress={() => handleOpenChat(item)}
-                  activeColors={activeColors}
-                />
-              )}
-              ItemSeparatorComponent={() => (
-                <View
-                  className="h-[1px] ml-[82px]"
-                  style={{ backgroundColor: activeColors.border.subtle }}
-                />
-              )}
-              contentContainerStyle={{ paddingTop: 2, paddingBottom: insets.bottom + 90 }}
-              refreshControl={
-                <RefreshControl
-                  refreshing={isRefreshing}
-                  onRefresh={handleRefresh}
-                  tintColor={activeColors.brand.primary}
-                />
-              }
-              ListHeaderComponent={
-                <TelegramSavedMessagesRow
-                  onPress={handleOpenSaved}
-                  activeColors={activeColors}
-                />
-              }
-              ListEmptyComponent={
-                <TelegramChatsEmpty
-                  onExplore={() => router.push('/(tabs)')}
-                  activeColors={activeColors}
-                />
-              }
-            />
-          )}
-        </View>
+        <TelegramChatsTabPage
+          key="chats"
+          isLoading={isLoading}
+          isAuthenticated={isAuthenticated}
+          filteredChats={filteredChats}
+          activeColors={activeColors}
+          isRefreshing={isRefreshing}
+          bottomInset={insets.bottom}
+          onRefresh={handleRefresh}
+          onOpenChat={handleOpenChat}
+          onOpenSaved={handleOpenSaved}
+          onExplore={() => router.push('/(tabs)')}
+          onLogin={() => router.push('/(auth)/phone')}
+        />
 
         {/* Page 1: Do'konlar */}
-        <View key="shops" className="flex-1" style={{ backgroundColor: activeColors.bg.canvas }}>
-          <FlatList
-            data={filteredShops}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <TelegramShopRow shop={item} />}
-            ItemSeparatorComponent={() => (
-              <View
-                className="h-[1px] ml-[82px]"
-                style={{ backgroundColor: activeColors.border.subtle }}
-              />
-            )}
-            contentContainerStyle={{ paddingTop: 2, paddingBottom: insets.bottom + 90 }}
-            ListEmptyComponent={
-              isLoadingShops ? (
-                <View className="flex-1 items-center justify-center px-8">
-                  <ActivityIndicator size="large" color={activeColors.brand.primary} />
-                </View>
-              ) : (
-                <TelegramShopsEmpty searchQuery={searchQuery} activeColors={activeColors} />
-              )
-            }
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefetchingShops}
-                onRefresh={() => void refetchShops()}
-                tintColor={activeColors.brand.primary}
-              />
-            }
-          />
-        </View>
+        <TelegramShopsTabPage
+          key="shops"
+          isLoadingShops={isLoadingShops}
+          filteredShops={filteredShops}
+          isRefetchingShops={isRefetchingShops}
+          searchQuery={searchQuery}
+          activeColors={activeColors}
+          bottomInset={insets.bottom}
+          onRefresh={() => void refetchShops()}
+        />
       </PagerView>
     </SafeAreaView>
   );

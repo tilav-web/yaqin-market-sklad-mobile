@@ -18,4 +18,5 @@ export * from './ProductFormModal';
 export * from './QuickAddModal';
 export * from './SellerWithdrawForm';
 export * from './StockHistoryModal';
+export { useProductForm, PRODUCT_UNITS } from './useProductForm';
 export * from './WorkingHoursModal';

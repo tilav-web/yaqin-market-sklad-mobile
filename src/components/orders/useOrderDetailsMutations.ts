@@ -1,10 +1,15 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { router } from 'expo-router';
+
 import { useToast } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { captureEvidence } from '@/lib/location-evidence';
-import { Order, OrderStatus } from '@/lib/types';
+import { Order, OrderStatus, PublicProductVariant } from '@/lib/types';
+import { useCartStore } from '@/stores/cart';
+import { haptics } from '@/utils/haptics';
+import { getLocalizedText } from '@/utils/text';
 
 export function useOrderDetailsMutations(id: string, order?: Order) {
   const qc = useQueryClient();
@@ -119,6 +124,38 @@ export function useOrderDetailsMutations(id: string, order?: Order) {
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
+  const addItem = useCartStore((s) => s.addItem);
+
+  const handleReorder = async () => {
+    if (!order) return;
+    haptics.medium();
+    const shopId = order.shopId;
+    const shopName = order.shop?.name ?? '';
+
+    let current: PublicProductVariant[] = [];
+    try {
+      const res = await api.get<PublicProductVariant[]>(`/catalog/shops/${shopId}/products`);
+      current = res.data;
+    } catch {
+      // Fallback
+    }
+    const currentById = new Map(current.map((v) => [v.id, v]));
+
+    for (const it of order.items) {
+      const live = currentById.get(it.productVariantId);
+      addItem({
+        variantId: it.productVariantId,
+        shopId,
+        shopName,
+        productName: getLocalizedText(it.productName),
+        unitPrice: live ? live.discountPrice ?? live.price : it.unitPrice,
+        quantity: it.quantity,
+        photoUrl: live?.photos[0] ?? it.productVariant?.globalProduct?.photos?.[0],
+      });
+    }
+    router.push(`/shop/${shopId}`);
+  };
+
   return {
     payWithCard,
     changePaymentMethod,
@@ -129,5 +166,6 @@ export function useOrderDetailsMutations(id: string, order?: Order) {
     submitCourierRating,
     submitShopRating,
     fileComplaint,
+    handleReorder,
   };
 }

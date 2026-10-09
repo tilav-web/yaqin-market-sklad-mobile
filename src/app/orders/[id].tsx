@@ -29,13 +29,11 @@ import { api } from '@/lib/api';
 import { useCountdown } from '@/lib/useCountdown';
 import { endOrderActivity, updateOrderActivity } from '@/lib/useOrderLiveActivity';
 import { useOrderSocket } from '@/lib/useOrderSocket';
-import { FiscalReceipt, Order, OrderStatus, ProductOffer, PublicProductVariant, SavedCard } from '@/lib/types';
+import { FiscalReceipt, Order, OrderStatus, ProductOffer, SavedCard } from '@/lib/types';
 import { OrderActivityProps } from '@/widgets/order-activity';
-import { useCartStore } from '@/stores/cart';
 import { useEffectiveCoords } from '@/stores/location';
 import { colors } from '@/theme';
 import { haptics } from '@/utils/haptics';
-import { getLocalizedText } from '@/utils/text';
 
 function isTerminalStatus(status: OrderStatus | undefined): boolean {
   return (
@@ -152,8 +150,6 @@ export default function OrderDetailScreen() {
     [order?.reviewedVariantIds],
   );
 
-  const addItem = useCartStore((s) => s.addItem);
-
   if (orderQuery.isLoading || !order) {
     return (
       <View className="flex-1 items-center justify-center bg-canvas">
@@ -163,35 +159,6 @@ export default function OrderDetailScreen() {
   }
 
   const canReorder = isTerminalStatus(order.status);
-
-  const handleReorder = async () => {
-    haptics.medium();
-    const shopId = order.shopId;
-    const shopName = order.shop?.name ?? '';
-
-    let current: PublicProductVariant[] = [];
-    try {
-      const res = await api.get<PublicProductVariant[]>(`/catalog/shops/${shopId}/products`);
-      current = res.data;
-    } catch {
-      // Fallback
-    }
-    const currentById = new Map(current.map((v) => [v.id, v]));
-
-    for (const it of order.items) {
-      const live = currentById.get(it.productVariantId);
-      addItem({
-        variantId: it.productVariantId,
-        shopId,
-        shopName,
-        productName: getLocalizedText(it.productName),
-        unitPrice: live ? live.discountPrice ?? live.price : it.unitPrice,
-        quantity: it.quantity,
-        photoUrl: live?.photos[0] ?? it.productVariant?.globalProduct?.photos?.[0],
-      });
-    }
-    router.push(`/shop/${shopId}`);
-  };
 
   const canReview = order.status === 'delivered';
   const canComplain = order.status === 'delivered' && !order.complaint;
@@ -326,7 +293,7 @@ export default function OrderDetailScreen() {
           cancelPending={mutations.setStatus.isPending}
           canReorder={canReorder}
           isSellerDeclined={isSellerDeclined}
-          onReorder={handleReorder}
+          onReorder={mutations.handleReorder}
         />
       </ScrollView>
 

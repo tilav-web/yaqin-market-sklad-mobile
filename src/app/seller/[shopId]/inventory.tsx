@@ -1,26 +1,18 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useGlobalSearchParams } from 'expo-router';
-import { Package, Plus } from 'lucide-react-native';
+import { Plus } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, Pressable, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProductPrefill } from '@/components/seller/ProductFormModal';
 import {
-  InventoryCard,
   InventoryExpiringList,
   InventoryLowStockList,
   InventoryModals,
   InventoryTabSelector,
   InventoryToolbar,
+  InventoryVariantsList,
   Tab,
 } from '@/components/seller-inventory';
 import { tr } from '@/i18n';
@@ -34,7 +26,6 @@ import {
   SellerVariant,
 } from '@/lib/types';
 import { useShopAccess } from '@/lib/useIsShopOwner';
-import { colors } from '@/theme';
 
 export default function SellerInventoryScreen() {
   const { shopId } = useGlobalSearchParams<{ shopId: string }>();
@@ -249,81 +240,39 @@ export default function SellerInventoryScreen() {
             onOpenCount={() => setCountOpen(true)}
           />
 
-          <FlatList
-            data={variants}
-            keyExtractor={(v) => v.id}
-            contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 14 }}
-            keyboardShouldPersistTaps="handled"
-            refreshControl={
-              <RefreshControl
-                refreshing={
-                  variantsQuery.isFetching &&
-                  !variantsQuery.isLoading &&
-                  !variantsQuery.isFetchingNextPage
-                }
-                onRefresh={() => {
-                  void variantsQuery.refetch();
-                }}
-                tintColor={colors.brand.primary}
-                colors={[colors.brand.primary]}
-              />
-            }
-            onEndReachedThreshold={0.4}
-            onEndReached={() => {
-              if (variantsQuery.hasNextPage && !variantsQuery.isFetchingNextPage) {
-                variantsQuery.fetchNextPage();
-              }
+          <InventoryVariantsList
+            variants={variants}
+            search={search}
+            isOwner={!!isOwner}
+            isFetching={variantsQuery.isFetching}
+            isLoading={variantsQuery.isLoading}
+            isFetchingNextPage={variantsQuery.isFetchingNextPage}
+            hasNextPage={variantsQuery.hasNextPage}
+            onRefresh={() => {
+              void variantsQuery.refetch();
             }}
-            ListFooterComponent={
-              variantsQuery.isFetchingNextPage ? (
-                <ActivityIndicator
-                  color={colors.brand.primary}
-                  className="my-4"
-                />
-              ) : null
-            }
-            ListEmptyComponent={
-              variantsQuery.isLoading ? (
-                <ActivityIndicator color={colors.brand.primary} className="mt-10" />
-              ) : (
-                <View className="py-16 items-center gap-2">
-                  <View className="w-16 h-16 rounded-full bg-brand-primary-surface items-center justify-center">
-                    <Package size={28} color={colors.brand.primary} strokeWidth={1.8} />
-                  </View>
-                  <Text className="text-lg font-bold text-text-primary">
-                    {search ? tr('inv.notFound') : tr('inv.emptyTitle')}
-                  </Text>
-                  <Text className="text-sm text-text-secondary text-center">
-                    {search ? tr('inv.notFoundHint') : tr('inv.emptyHint')}
-                  </Text>
-                </View>
+            onFetchNextPage={() => {
+              variantsQuery.fetchNextPage();
+            }}
+            onEdit={openEdit}
+            onMenu={openVariantMenu}
+            onAdjust={(variantId, delta) => adjust.mutate({ variantId, delta })}
+            onHistory={(v) => setHistoryFor(v)}
+            onDelete={(v) =>
+              Alert.alert(
+                tr('common.delete'),
+                tr('inv.deleteConfirm', { name: v.name }),
+                [
+                  { text: tr('common.cancel'), style: 'cancel' },
+                  {
+                    text: tr('common.delete'),
+                    style: 'destructive',
+                    onPress: () => remove.mutate(v.id),
+                  },
+                ],
               )
             }
-            renderItem={({ item }) => (
-              <InventoryCard
-                item={item}
-                isOwner={isOwner}
-                onEdit={openEdit}
-                onMenu={openVariantMenu}
-                onAdjust={(variantId, delta) => adjust.mutate({ variantId, delta })}
-                onHistory={(v) => setHistoryFor(v)}
-                onDelete={(v) =>
-                  Alert.alert(
-                    tr('common.delete'),
-                    tr('inv.deleteConfirm', { name: v.name }),
-                    [
-                      { text: tr('common.cancel'), style: 'cancel' },
-                      {
-                        text: tr('common.delete'),
-                        style: 'destructive',
-                        onPress: () => remove.mutate(v.id),
-                      },
-                    ],
-                  )
-                }
-                onKirim={(v) => setKirimFor(v)}
-              />
-            )}
+            onKirim={(v) => setKirimFor(v)}
           />
 
           <Pressable

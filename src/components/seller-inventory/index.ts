@@ -6,3 +6,4 @@ export * from './InventoryLowStockList';
 export * from './InventoryBulkPriceModal';
 export * from './InventoryTabSelector';
 export * from './InventoryModals';
+export * from './InventoryVariantsList';
