@@ -1,9 +1,17 @@
 import { router } from 'expo-router';
 import { ShoppingBag } from 'lucide-react-native';
 import React from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native';
+import {
+  ActivityIndicator,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  RefreshControl,
+  ScrollView,
+  View,
+} from 'react-native';
 
 import { ProductCard } from '@/components/ProductCard';
+import { ProductGridSkeleton } from '@/components/product/ProductGridSkeleton';
 import { EmptyState } from '@/components/ui';
 import { FeedProduct } from '@/lib/types';
 import { useTheme } from '@/stores/theme';
@@ -37,28 +45,34 @@ export function HomeProductGrid({
 }: HomeProductGridProps) {
   const { colors: activeColors } = useTheme();
 
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!onEndReached) return;
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    const paddingToBottom = 250;
+    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom) {
+      onEndReached();
+    }
+  };
+
   return (
-    <FlatList
-      key="home-grid-2col"
-      data={products}
-      keyExtractor={(item) => item.id}
-      numColumns={2}
-      columnWrapperStyle={{ paddingHorizontal: 14, gap: 10 }}
-      renderItem={({ item }) => (
-        <ProductCard
-          product={item}
-          cardWidth={cardWidth}
-          onPress={() => router.push(`/product/${item.id}` as never)}
-        />
-      )}
-      ItemSeparatorComponent={() => <View className="h-2.5" />}
+    <ScrollView
       contentContainerStyle={{ paddingTop: 4, paddingBottom: bottomInset + 85 }}
-      ListHeaderComponent={headerComponent}
-      ListEmptyComponent={
+      showsVerticalScrollIndicator={false}
+      onScroll={handleScroll}
+      scrollEventThrottle={16}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefetching}
+          onRefresh={onRefresh}
+          tintColor={activeColors.brand.primary}
+        />
+      }
+    >
+      {headerComponent}
+
+      {products.length === 0 ? (
         isLoading ? (
-          <View className="pt-16 items-center justify-center">
-            <ActivityIndicator size="large" color={activeColors.brand.primary} />
-          </View>
+          <ProductGridSkeleton cardWidth={cardWidth} count={6} />
         ) : (
           <View className="pt-16 items-center justify-center">
             <EmptyState
@@ -68,23 +82,31 @@ export function HomeProductGrid({
             />
           </View>
         )
-      }
-      ListFooterComponent={
-        isFetchingNextPage ? (
-          <View className="py-4 items-center justify-center">
-            <ActivityIndicator size="small" color={activeColors.brand.primary} />
-          </View>
-        ) : null
-      }
-      onEndReached={onEndReached}
-      onEndReachedThreshold={0.5}
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefetching}
-          onRefresh={onRefresh}
-          tintColor={activeColors.brand.primary}
-        />
-      }
-    />
+      ) : (
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            paddingHorizontal: 14,
+            gap: 10,
+          }}
+        >
+          {products.map((item) => (
+            <ProductCard
+              key={item.id}
+              product={item}
+              cardWidth={cardWidth}
+              onPress={() => router.push(`/product/${item.id}` as never)}
+            />
+          ))}
+        </View>
+      )}
+
+      {isFetchingNextPage ? (
+        <View className="py-4 items-center justify-center">
+          <ActivityIndicator size="small" color={activeColors.brand.primary} />
+        </View>
+      ) : null}
+    </ScrollView>
   );
 }

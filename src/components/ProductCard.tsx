@@ -1,6 +1,11 @@
 import { Minus, Plus, ShoppingBag, Store } from 'lucide-react-native';
 import React from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+} from 'react-native-reanimated';
 
 import { useTranslation } from '@/i18n';
 import { trackAddToCart } from '@/lib/analyticsQueue';
@@ -27,7 +32,12 @@ interface Props {
  * Designed with strictly uniform card & image heights, zero-lag cart updates,
  * high-contrast light/dark mode buttons, and no intrusive alert popups.
  */
-export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props) {
+export function ProductCard({
+  product,
+  onPress,
+  cardWidth,
+  hideShopChip,
+}: Props) {
   const { tr } = useTranslation();
   const { colors: activeColors } = useTheme();
   const addItem = useCartStore((s) => s.addItem);
@@ -79,7 +89,11 @@ export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props
   const imageSize = cardWidth ?? 170;
 
   return (
-    <View style={cardWidth ? { width: cardWidth } : { flex: 1, maxWidth: '48.8%' }}>
+    <Animated.View
+      entering={FadeIn.duration(240)}
+      exiting={FadeOut.duration(200)}
+      layout={LinearTransition.duration(280)}
+      style={cardWidth ? { width: cardWidth } : { flex: 1, maxWidth: '48.8%' }}>
       <Pressable
         onPress={() => {
           haptics.selection();
@@ -239,6 +253,6 @@ export function ProductCard({ product, onPress, cardWidth, hideShopChip }: Props
           </View>
         </View>
       </Pressable>
-    </View>
+    </Animated.View>
   );
 }

@@ -1,17 +1,12 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  LayoutAnimation,
-  Platform,
-  UIManager,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AddressPickerSheet } from '@/components/AddressPickerSheet';
 import {
+  CategoryTabFeed,
   HomeProductGrid,
   HomeShopFilterBanner,
   HomeTopBar,
@@ -21,15 +16,11 @@ import {
   TelegramFolderTabs,
 } from '@/components/telegram/TelegramFolderTabs';
 import { api } from '@/lib/api';
-import { Category, FeedProduct, FeedResponse, PublicProductVariant, PublicShop } from '@/lib/types';
+import { Category, FeedProduct, FeedResponse, PublicShop } from '@/lib/types';
 import { useCartStore } from '@/stores/cart';
 import { useEffectiveCoords, useLocationStore } from '@/stores/location';
 import { useTheme } from '@/stores/theme';
 import { interleaveProductsByShop } from '@/utils/productMixer';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 export default function TelegramHomeScreen() {
   const { width: screenWidth } = useWindowDimensions();
@@ -47,19 +38,30 @@ export default function TelegramHomeScreen() {
   const permissionStatus = useLocationStore((s) => s.permissionStatus);
 
   // Optimized primitive selectors: will NOT trigger screen re-renders on quantity changes
-  const activeShopId = useCartStore((s) => {
+  const targetShopId = useCartStore((s) => {
     for (const id in s.carts) {
       if ((s.carts[id]?.length ?? 0) > 0) return id;
     }
     return null;
   });
 
+  // Brief delay so user immediately sees + increment before cards smoothly settle into place
+  const [activeShopId, setActiveShopId] = useState<string | null>(targetShopId);
+
+  useEffect(() => {
+    if (targetShopId !== activeShopId) {
+      const delayMs = targetShopId ? 220 : 180;
+      const timer = setTimeout(() => {
+        setActiveShopId(targetShopId);
+      }, delayMs);
+      return () => clearTimeout(timer);
+    }
+  }, [targetShopId, activeShopId]);
+
   const activeShopNameInCart = useCartStore((s) => {
     for (const id in s.carts) {
       const lines = s.carts[id];
-      if (lines && lines.length > 0 && lines[0].shopName) {
-        return lines[0].shopName;
-      }
+      if (lines?.[0]?.shopName) return lines[0].shopName;
     }
     return null;
   });
@@ -67,9 +69,7 @@ export default function TelegramHomeScreen() {
   const totalCartCount = useCartStore((s) => {
     let count = 0;
     for (const id in s.carts) {
-      for (const line of s.carts[id] ?? []) {
-        count += line.quantity;
-      }
+      for (const line of s.carts[id] ?? []) count += line.quantity;
     }
     return count;
   });
@@ -116,18 +116,6 @@ export default function TelegramHomeScreen() {
     getNextPageParam: (last) => last.nextPage,
   });
 
-  // Active Shop Full Catalog Query (loads all products of active shop into the feed)
-  const activeShopCatalogQuery = useQuery({
-    queryKey: ['active-shop-catalog', activeShopId],
-    queryFn: async () => {
-      if (!activeShopId) return [];
-      const res = await api.get<PublicProductVariant[]>(`/catalog/shops/${activeShopId}/products`);
-      return res.data;
-    },
-    enabled: !!activeShopId,
-    staleTime: 60_000,
-  });
-
   // Categories Query
   const categoriesQuery = useQuery({
     queryKey: ['categories'],
@@ -164,54 +152,16 @@ export default function TelegramHomeScreen() {
     return found?.name ?? "Tanlangan do'kon";
   }, [activeShopId, activeShopNameInCart, shops]);
 
-  // Animate product list filtering ONLY when activeShopId transitions
-  const prevShopIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (prevShopIdRef.current !== activeShopId) {
-      prevShopIdRef.current = activeShopId;
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    }
-  }, [activeShopId]);
-
   // Mixed marketplace products feed (Uzum Market style interleaved across shops)
   const mixedAllProducts = useMemo(() => {
     return interleaveProductsByShop(allFeedProducts);
   }, [allFeedProducts]);
 
-  // When a shop is active in cart, load its full catalog to replace vacated spots
+  // When a shop is active in cart, simply keep that shop's products in the feed
   const displayedProducts = useMemo<FeedProduct[]>(() => {
     if (!activeShopId) return mixedAllProducts;
-
-    const fromFeed = allFeedProducts.filter((p) => p.shop.id === activeShopId);
-    const shopSummary = shops.find((s) => s.id === activeShopId);
-
-    const map = new Map<string, FeedProduct>();
-    for (const p of fromFeed) map.set(p.id, p);
-
-    if (shopSummary && activeShopCatalogQuery.data) {
-      for (const v of activeShopCatalogQuery.data) {
-        if (!map.has(v.id)) {
-          map.set(v.id, {
-            ...v,
-            shop: {
-              id: shopSummary.id,
-              name: shopSummary.name,
-              distanceKm: shopSummary.distanceKm ?? 0,
-              deliveryFeeAtUser: shopSummary.deliveryFeeAtUser ?? 0,
-              isOpen: shopSummary.isOpenManual,
-              isDeliveryOpen: shopSummary.isDeliveryOpenNow,
-              isDeliveryEnabled: shopSummary.isDeliveryEnabled,
-              isPickupEnabled: shopSummary.isPickupEnabled,
-              phone: shopSummary.phone,
-              photos: shopSummary.photos,
-            },
-          });
-        }
-      }
-    }
-
-    return Array.from(map.values());
-  }, [activeShopId, mixedAllProducts, allFeedProducts, shops, activeShopCatalogQuery.data]);
+    return allFeedProducts.filter((p) => p.shop.id === activeShopId);
+  }, [activeShopId, mixedAllProducts, allFeedProducts]);
 
   // Telegram Top Folder Tabs List
   const folderTabs = useMemo<FolderTabItem[]>(() => {
@@ -264,6 +214,7 @@ export default function TelegramHomeScreen() {
         tabs={folderTabs}
         activeIndex={activeTabIndex}
         onSelectTab={handleSelectTab}
+        isLoading={categoriesQuery.isLoading}
       />
 
       {/* Horizontal Pager with lazy mounted tabs */}
@@ -298,7 +249,6 @@ export default function TelegramHomeScreen() {
             onRefresh={() => {
               void feedQuery.refetch();
               void shopsQuery.refetch();
-              if (activeShopId) void activeShopCatalogQuery.refetch();
             }}
             onEndReached={() => {
               if (feedQuery.hasNextPage && !feedQuery.isFetchingNextPage) {
@@ -316,23 +266,17 @@ export default function TelegramHomeScreen() {
           const tabIndex = idx + 1;
           const isMounted = visitedTabs.has(tabIndex);
 
-          let categoryProducts = displayedProducts.filter((p) => p.categoryId === category.id);
-          if (!activeShopId) {
-            categoryProducts = interleaveProductsByShop(categoryProducts);
-          }
-
           return (
             <View key={category.id} style={{ flex: 1, backgroundColor: activeColors.bg.canvas }}>
               {isMounted ? (
-                <HomeProductGrid
-                  products={categoryProducts}
+                <CategoryTabFeed
+                  categoryId={category.id}
+                  categoryName={category.nameUzLatn}
+                  coords={coords}
                   cardWidth={cardWidth}
-                  emptyTitle={`${category.nameUzLatn} bo'yicha tovar yo'q`}
-                  emptyDescription="Tez orada yangi mahsulotlar qo'shiladi"
-                  isRefetching={feedQuery.isRefetching}
-                  onRefresh={() => void feedQuery.refetch()}
+                  activeShopId={activeShopId}
+                  shopFilterHeader={shopFilterHeader}
                   bottomInset={insets.bottom}
-                  headerComponent={shopFilterHeader}
                 />
               ) : null}
             </View>

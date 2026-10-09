@@ -6,6 +6,7 @@ import {
   View,
 } from 'react-native';
 
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useTheme } from '@/stores/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -15,16 +16,20 @@ export interface FolderTabItem {
   badge?: number;
 }
 
+const SKELETON_PILL_WIDTHS = [78, 96, 72, 88, 80];
+
 interface TelegramFolderTabsProps {
   readonly tabs: FolderTabItem[];
   readonly activeIndex: number;
   readonly onSelectTab: (index: number) => void;
+  readonly isLoading?: boolean;
 }
 
 export function TelegramFolderTabs({
   tabs,
   activeIndex,
   onSelectTab,
+  isLoading,
 }: TelegramFolderTabsProps) {
   const { colors } = useTheme();
   const scrollRef = useRef<ScrollView>(null);
@@ -91,6 +96,17 @@ export function TelegramFolderTabs({
             </Pressable>
           );
         })}
+
+        {isLoading &&
+          SKELETON_PILL_WIDTHS.map((width, idx) => (
+            <Skeleton
+              key={`tab-skel-${idx}`}
+              width={width}
+              height={30}
+              radius={9999}
+              style={{ marginHorizontal: 2 }}
+            />
+          ))}
       </ScrollView>
     </View>
   );

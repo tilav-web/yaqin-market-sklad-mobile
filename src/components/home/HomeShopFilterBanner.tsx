@@ -1,6 +1,7 @@
 import { Store } from 'lucide-react-native';
 import React from 'react';
 import { Text, View } from 'react-native';
+import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 
 import { useTheme } from '@/stores/theme';
 
@@ -18,7 +19,9 @@ export function HomeShopFilterBanner({
   if (!activeShopId) return null;
 
   return (
-    <View
+    <Animated.View
+      entering={FadeInUp.duration(260)}
+      exiting={FadeOutUp.duration(200)}
       className="flex-row items-center mx-4 my-1.5 px-3 py-2 rounded-xl border"
       style={{
         backgroundColor: activeColors.brand.primarySurface,
@@ -39,6 +42,6 @@ export function HomeShopFilterBanner({
           tovarlari ko&apos;rsatilmoqda
         </Text>
       </View>
-    </View>
+    </Animated.View>
   );
 }
