@@ -1,10 +1,7 @@
-import { Search } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
-import { useSearchModalStore } from '@/stores/searchModal';
-import { haptics } from '@/utils/haptics';
 
 interface TelegramChatsHeaderProps {
   readonly unreadTotal: number;
@@ -21,12 +18,6 @@ export function TelegramChatsHeader({
   activeColors,
 }: TelegramChatsHeaderProps) {
   const { tr } = useTranslation();
-  const openSearch = useSearchModalStore((s) => s.open);
-
-  const handleOpenSearch = () => {
-    haptics.selection();
-    openSearch();
-  };
 
   return (
     <View
@@ -49,17 +40,6 @@ export function TelegramChatsHeader({
           </View>
         )}
       </View>
-
-      <Pressable
-        onPress={handleOpenSearch}
-        accessibilityRole="button"
-        accessibilityLabel={tr('common.search') || 'Qidirish'}
-        hitSlop={8}
-        className="w-9 h-9 rounded-full items-center justify-center active:opacity-70"
-        style={{ backgroundColor: activeColors.bg.surfaceMuted }}
-      >
-        <Search size={18} color={activeColors.text.primary} strokeWidth={2.2} />
-      </Pressable>
     </View>
   );
 }
