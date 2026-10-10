@@ -15,6 +15,7 @@ export const chat = {
   'chat.orderBadge': 'Buyurtma',
   'chat.shopBadge': "Do'kon",
   'chat.filterAll': 'Barchasi',
+  'chat.filterCustomers': 'Mijozlar',
   'chat.filterShops': "Do'konlar",
   'chat.filterUnread': "O'qilmaganlar",
   'chat.emptyTitle': 'Chatlar mavjud emas',

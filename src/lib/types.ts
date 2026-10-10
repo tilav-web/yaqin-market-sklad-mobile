@@ -153,6 +153,7 @@ export interface ChatMessage {
   text: string;
   createdAt: string;
   isPending?: boolean;
+  isRead?: boolean;
 }
 
 export interface Conversation {

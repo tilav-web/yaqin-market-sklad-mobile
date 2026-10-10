@@ -163,14 +163,34 @@ export default function ChatsTabScreen() {
     });
   }, [conversations, orders, tr]);
 
+  const isSeller = useMemo(() => conversations.some((c) => c.isSellerSide), [conversations]);
+
+  const customerChats = useMemo(
+    () => unifiedChats.filter((c) => c.isSellerSide),
+    [unifiedChats],
+  );
+
   const unreadTotal = useMemo(() => {
     return unifiedChats.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
   }, [unifiedChats]);
 
-  const folderTabs = useMemo<FolderTabItem[]>(() => [
-    { id: 'chats', title: tr('chat.title') || 'Chatlar', badge: unreadTotal > 0 ? unreadTotal : undefined },
-    { id: 'shops', title: tr('chat.filterShops') || "Do'konlar", badge: shops.length > 0 ? shops.length : undefined },
-  ], [unreadTotal, shops.length, tr]);
+  const unreadCustomerTotal = useMemo(() => {
+    return customerChats.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
+  }, [customerChats]);
+
+  const folderTabs = useMemo<FolderTabItem[]>(() => {
+    if (isSeller) {
+      return [
+        { id: 'all', title: tr('chat.filterAll') || 'Barchasi', badge: unreadTotal > 0 ? unreadTotal : undefined },
+        { id: 'customers', title: tr('chat.filterCustomers') || 'Mijozlar', badge: unreadCustomerTotal > 0 ? unreadCustomerTotal : undefined },
+        { id: 'shops', title: tr('chat.filterShops') || "Do'konlar", badge: shops.length > 0 ? shops.length : undefined },
+      ];
+    }
+    return [
+      { id: 'chats', title: tr('chat.title') || 'Chatlar', badge: unreadTotal > 0 ? unreadTotal : undefined },
+      { id: 'shops', title: tr('chat.filterShops') || "Do'konlar", badge: shops.length > 0 ? shops.length : undefined },
+    ];
+  }, [isSeller, unreadTotal, unreadCustomerTotal, shops.length, tr]);
 
   const handleSelectTab = useCallback((index: number) => {
     setActiveTabIndex(index);
@@ -221,7 +241,7 @@ export default function ChatsTabScreen() {
         initialPage={0}
         onPageSelected={(e) => setActiveTabIndex(e.nativeEvent.position)}
       >
-        {/* Page 0: Chatlar */}
+        {/* Page 0: Barchasi / Chatlar */}
         <TelegramChatsTabPage
           key="chats"
           isLoading={isLoading}
@@ -236,7 +256,24 @@ export default function ChatsTabScreen() {
           onLogin={() => router.push('/(auth)/phone')}
         />
 
-        {/* Page 1: Do'konlar */}
+        {/* Page 1 (for sellers/staff): Mijozlar */}
+        {isSeller && (
+          <TelegramChatsTabPage
+            key="customers"
+            isLoading={isLoading}
+            isAuthenticated={isAuthenticated}
+            filteredChats={customerChats}
+            activeColors={activeColors}
+            isRefreshing={isRefreshing}
+            bottomInset={insets.bottom}
+            onRefresh={handleRefresh}
+            onOpenChat={handleOpenChat}
+            onExplore={() => router.push('/(tabs)')}
+            onLogin={() => router.push('/(auth)/phone')}
+          />
+        )}
+
+        {/* Last Page: Do'konlar */}
         <TelegramShopsTabPage
           key="shops"
           isLoadingShops={isLoadingShops}

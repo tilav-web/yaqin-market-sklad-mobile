@@ -94,6 +94,19 @@ export function useChatSession({
           return [...prev, m];
         });
         void qc.invalidateQueries({ queryKey: ['conversations'] });
+        if (m.senderUserId !== myId) {
+          void api.post(`/conversations/${effectiveId}/read`).catch(() => {});
+        }
+      };
+
+      const onConvRead = (data: { conversationId: string }) => {
+        if (data.conversationId !== effectiveId) return;
+        qc.setQueryData<ConversationMessage[]>(['conversation-messages', effectiveId], (prev) => {
+          if (!prev) return prev;
+          return prev.map((msg) =>
+            msg.senderUserId === myId ? { ...msg, isRead: true } : msg,
+          );
+        });
       };
 
       const onTyping = (data: { orderId: string; userId: string; isTyping: boolean }) => {
@@ -109,12 +122,14 @@ export function useChatSession({
 
       socket.on('chat:message', onOrderMessage);
       socket.on('conversation:message', onConvMessage);
+      socket.on('conversation:read', onConvRead);
       socket.on('chat:typing', onTyping);
 
       cleanup = () => {
         if (!isDirectConv) socket.emit('leave:order', effectiveId);
         socket.off('chat:message', onOrderMessage);
         socket.off('conversation:message', onConvMessage);
+        socket.off('conversation:read', onConvRead);
         socket.off('chat:typing', onTyping);
       };
     });

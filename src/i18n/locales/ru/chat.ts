@@ -15,6 +15,7 @@ export const chat = {
   'chat.orderBadge': 'Заказ',
   'chat.shopBadge': 'Магазин',
   'chat.filterAll': 'Все',
+  'chat.filterCustomers': 'Клиенты',
   'chat.filterShops': 'Магазины',
   'chat.filterUnread': 'Непрочитанные',
   'chat.emptyTitle': 'Чаты отсутствуют',

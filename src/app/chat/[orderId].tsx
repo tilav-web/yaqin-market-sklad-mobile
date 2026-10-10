@@ -180,6 +180,7 @@ export default function ChatScreen() {
                       createdAt={item.createdAt}
                       isMine={item.senderUserId === myId || Boolean(item.isPending)}
                       isPending={item.isPending}
+                      isRead={item.isRead}
                     />
                   </View>
                 );
