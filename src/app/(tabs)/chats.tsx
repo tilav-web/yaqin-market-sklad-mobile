@@ -236,53 +236,43 @@ export default function ChatsTabScreen() {
 
       {/* Swipeable PagerView */}
       <PagerView
+        key={`pager-${folderTabs.length}`}
         ref={pagerRef}
         style={{ flex: 1 }}
         initialPage={0}
         onPageSelected={(e) => setActiveTabIndex(e.nativeEvent.position)}
       >
-        {/* Page 0: Barchasi / Chatlar */}
-        <TelegramChatsTabPage
-          key="chats"
-          isLoading={isLoading}
-          isAuthenticated={isAuthenticated}
-          filteredChats={unifiedChats}
-          activeColors={activeColors}
-          isRefreshing={isRefreshing}
-          bottomInset={insets.bottom}
-          onRefresh={handleRefresh}
-          onOpenChat={handleOpenChat}
-          onExplore={() => router.push('/(tabs)')}
-          onLogin={() => router.push('/(auth)/phone')}
-        />
-
-        {/* Page 1 (for sellers/staff): Mijozlar */}
-        {isSeller && (
-          <TelegramChatsTabPage
-            key="customers"
-            isLoading={isLoading}
-            isAuthenticated={isAuthenticated}
-            filteredChats={customerChats}
-            activeColors={activeColors}
-            isRefreshing={isRefreshing}
-            bottomInset={insets.bottom}
-            onRefresh={handleRefresh}
-            onOpenChat={handleOpenChat}
-            onExplore={() => router.push('/(tabs)')}
-            onLogin={() => router.push('/(auth)/phone')}
-          />
-        )}
-
-        {/* Last Page: Do'konlar */}
-        <TelegramShopsTabPage
-          key="shops"
-          isLoadingShops={isLoadingShops}
-          filteredShops={shops}
-          isRefetchingShops={isRefetchingShops}
-          activeColors={activeColors}
-          bottomInset={insets.bottom}
-          onRefresh={() => void refetchShops()}
-        />
+        {folderTabs.map((tab) => {
+          if (tab.id === 'shops') {
+            return (
+              <TelegramShopsTabPage
+                key="shops"
+                isLoadingShops={isLoadingShops}
+                filteredShops={shops}
+                isRefetchingShops={isRefetchingShops}
+                activeColors={activeColors}
+                bottomInset={insets.bottom}
+                onRefresh={() => void refetchShops()}
+              />
+            );
+          }
+          const chatsList = tab.id === 'customers' ? customerChats : unifiedChats;
+          return (
+            <TelegramChatsTabPage
+              key={tab.id}
+              isLoading={isLoading}
+              isAuthenticated={isAuthenticated}
+              filteredChats={chatsList}
+              activeColors={activeColors}
+              isRefreshing={isRefreshing}
+              bottomInset={insets.bottom}
+              onRefresh={handleRefresh}
+              onOpenChat={handleOpenChat}
+              onExplore={() => router.push('/(tabs)')}
+              onLogin={() => router.push('/(auth)/phone')}
+            />
+          );
+        })}
       </PagerView>
     </SafeAreaView>
   );
