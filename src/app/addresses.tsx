@@ -14,7 +14,8 @@ import { LocationPickerModal, PickedLocation } from '@/components/LocationPicker
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { UserAddress } from '@/lib/types';
-import { useEffectiveCoords, useLocationStore } from '@/stores/location';
+import { useLocationStore, useEffectiveCoords } from '@/stores/location';
+import { useTheme } from '@/stores/theme';
 import { haptics } from '@/utils/haptics';
 
 function capitalizeLabel(s: string): string {
@@ -159,15 +160,16 @@ export default function AddressesScreen() {
 
   const canSave = !!label.trim() && !!address.trim() && (!!editingId || !!(picked ?? coords));
   const isPending = createMutation.isPending || updateMutation.isPending;
+  const { colors: activeColors } = useTheme();
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: activeColors.bg.canvas }} edges={['bottom']}>
       <FlatList
         data={addressesQuery.data ?? []}
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ padding: 16, gap: 12 }}
-        ListHeaderComponent={<Text className="text-xs text-text-secondary mb-1">{tr('addr.hint')}</Text>}
+        ListHeaderComponent={<Text style={{ fontSize: 12, color: activeColors.text.secondary, marginBottom: 4 }}>{tr('addr.hint')}</Text>}
         renderItem={({ item }) => (
           <AddressCard
             item={item}

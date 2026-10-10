@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { ChevronRight, LogIn, Settings } from 'lucide-react-native';
+import { Camera, ChevronRight, LogIn, Pencil, Settings } from 'lucide-react-native';
 import React from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 
@@ -8,22 +8,22 @@ import { avatarSource } from '@/constants/avatars';
 import { useTranslation } from '@/i18n';
 import { MeUser } from '@/lib/types';
 import { useTheme } from '@/stores/theme';
-import { colors, hitSlop, typography } from '@/theme';
+import { hitSlop, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 interface ProfileHeaderProps {
-  isGuest: boolean;
-  user: MeUser | undefined;
+  readonly isGuest: boolean;
+  readonly user: MeUser | undefined;
 }
 
 export function ProfileHeader({ isGuest, user }: ProfileHeaderProps) {
   const { tr } = useTranslation();
-  const { colors: activeColors } = useTheme();
+  const { colors: activeColors, isDark } = useTheme();
 
   if (isGuest) {
     return (
       <Pressable
-        className="flex-row items-center gap-4 p-4 rounded-xl border-[1.5px]"
+        className="flex-row items-center gap-4 p-4 rounded-2xl border-[1.5px]"
         style={{
           backgroundColor: activeColors.bg.surface,
           borderColor: activeColors.brand.primaryBorder,
@@ -34,8 +34,14 @@ export function ProfileHeader({ isGuest, user }: ProfileHeaderProps) {
         }}
       >
         <View
-          className="w-14 h-14 rounded-full items-center justify-center"
-          style={{ backgroundColor: activeColors.brand.primarySurface }}
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: activeColors.brand.primarySurface,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           <LogIn size={24} color={activeColors.brand.primary} strokeWidth={2.4} />
         </View>
@@ -52,26 +58,48 @@ export function ProfileHeader({ isGuest, user }: ProfileHeaderProps) {
     );
   }
 
+  const avatar = avatarSource(user?.avatarUrl);
+  const initial = (user?.name?.[0] ?? user?.phone?.slice(-2) ?? 'Y').toUpperCase();
+
   return (
     <View
-      className="p-4 rounded-3xl gap-4"
-      style={{ backgroundColor: colors.brand.primary }}
+      className="p-5 rounded-3xl"
+      style={{
+        backgroundColor: activeColors.brand.primary,
+        borderWidth: isDark ? 1 : 0,
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+        shadowColor: '#E8392E',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: isDark ? 0.35 : 0.22,
+        shadowRadius: 14,
+        elevation: 6,
+      }}
     >
-      <View className="flex-row items-center justify-between">
-        <View className="w-9" />
-        <Text style={[typography.h3, { color: colors.text.onPrimary }]}>{tr('tab.profile')}</Text>
+      {/* Top Bar: Title & Settings */}
+      <View className="flex-row items-center justify-between mb-4">
+        <Text style={[typography.h3, { color: '#FFFFFF', fontSize: 18 }]}>
+          {tr('tab.profile')}
+        </Text>
         <Pressable
-          className="w-9 h-9 rounded-full bg-white/20 items-center justify-center"
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: 'rgba(255, 255, 255, 0.22)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
           hitSlop={hitSlop}
           onPress={() => {
             haptics.selection();
             router.push('/profile/edit');
           }}
         >
-          <Settings size={20} color={colors.text.onPrimary} strokeWidth={2.2} />
+          <Settings size={19} color="#FFFFFF" strokeWidth={2.2} />
         </Pressable>
       </View>
 
+      {/* Main Profile Info Row */}
       <Pressable
         className="flex-row items-center gap-4"
         onPress={() => {
@@ -79,39 +107,107 @@ export function ProfileHeader({ isGuest, user }: ProfileHeaderProps) {
           router.push('/profile/edit');
         }}
       >
-        <View className="w-16 h-16 rounded-full overflow-hidden relative">
-          {avatarSource(user?.avatarUrl) ? (
-            <Image
-              source={avatarSource(user?.avatarUrl)!}
-              className="w-16 h-16"
-              resizeMode="cover"
-            />
-          ) : (
-            <View className="w-16 h-16 bg-white/95 items-center justify-center">
-              <Text className="text-2xl font-extrabold" style={{ color: colors.brand.primary }}>
-                {(user?.name?.[0] ?? user?.phone?.slice(-2) ?? 'Y').toUpperCase()}
-              </Text>
-            </View>
-          )}
-          {!user?.name && (
-            <View className="absolute inset-x-0 bottom-0 bg-black/45 py-1 items-center">
-              <Text className="text-[9px] font-bold" style={{ color: colors.text.onPrimary }} numberOfLines={1}>
-                {tr('profile.fixProfile')}
-              </Text>
-            </View>
-          )}
+        {/* Avatar with clear white border and camera badge */}
+        <View style={{ position: 'relative' }}>
+          <View
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 36,
+              borderWidth: 3,
+              borderColor: '#FFFFFF',
+              backgroundColor: '#FFFFFF',
+              overflow: 'hidden',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {avatar ? (
+              <Image
+                source={avatar}
+                style={{ width: 66, height: 66, borderRadius: 33 }}
+                resizeMode="cover"
+              />
+            ) : (
+              <View
+                style={{
+                  width: 66,
+                  height: 66,
+                  borderRadius: 33,
+                  backgroundColor: '#FFFFFF',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 26, fontWeight: '800', color: activeColors.brand.primary }}>
+                  {initial}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Camera / Edit Badge */}
+          <View
+            style={{
+              position: 'absolute',
+              right: -2,
+              bottom: -2,
+              width: 26,
+              height: 26,
+              borderRadius: 13,
+              backgroundColor: '#FFFFFF',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 2,
+              borderColor: activeColors.brand.primary,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.2,
+              shadowRadius: 2,
+              elevation: 3,
+            }}
+          >
+            <Camera size={13} color={activeColors.brand.primary} strokeWidth={2.4} />
+          </View>
         </View>
+
+        {/* User Name, Phone & Status */}
         <View className="flex-1">
-          <View className="flex-row items-center gap-2">
-            <Text className="flex-shrink" style={[typography.h3, { color: colors.text.onPrimary }]} numberOfLines={1}>
+          <View className="flex-row items-center gap-2 flex-wrap">
+            <Text
+              style={[
+                typography.h3,
+                { color: '#FFFFFF', fontSize: 19, fontWeight: '700' },
+              ]}
+              numberOfLines={1}
+            >
               {user?.name || tr('profile.namePrompt')}
             </Text>
             {user?.isAdmin && <Badge label="ADMIN" tone="info" />}
           </View>
-          <Text className="mt-0.5 text-white/85" style={typography.bodySmall}>
+
+          <Text
+            className="mt-0.5"
+            style={{ fontSize: 13, color: 'rgba(255, 255, 255, 0.88)', fontWeight: '500' }}
+          >
             {user?.phone}
           </Text>
+
+          {!user?.name && (
+            <View
+              className="flex-row items-center gap-1.5 mt-2 self-start px-2.5 py-1 rounded-full"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
+            >
+              <Pencil size={11} color="#FFFFFF" strokeWidth={2.2} />
+              <Text style={{ fontSize: 11, color: '#FFFFFF', fontWeight: '600' }}>
+                {tr('profile.fixProfile') || "Profilni to'ldirish"}
+              </Text>
+            </View>
+          )}
         </View>
+
+        {/* Chevron right to indicate clickability */}
+        <ChevronRight size={20} color="rgba(255, 255, 255, 0.75)" strokeWidth={2.2} />
       </Pressable>
     </View>
   );

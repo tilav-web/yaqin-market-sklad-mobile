@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
+import { useTheme } from '@/stores/theme';
 import { haptics } from '@/utils/haptics';
 
 export const REASON_KEYS = [
@@ -25,10 +26,11 @@ export function DeleteAccountReasons({
   onSelectReason,
 }: DeleteAccountReasonsProps) {
   const { tr } = useTranslation();
+  const { colors: activeColors } = useTheme();
 
   return (
     <View className="gap-2">
-      <Text className="text-xs font-bold text-text-primary uppercase tracking-wider">
+      <Text style={{ fontSize: 12, fontWeight: '700', color: activeColors.text.primary, textTransform: 'uppercase', letterSpacing: 0.8 }}>
         {tr('deleteAccount.reasonLabel')}
       </Text>
       <View className="gap-2">
@@ -41,21 +43,43 @@ export function DeleteAccountReasons({
                 haptics.selection();
                 onSelectReason(key);
               }}
-              className={`flex-row items-center gap-3 p-3.5 rounded-xl border ${
-                isSelected
-                  ? 'border-brand-primary bg-brand-primary/5'
-                  : 'border-border-subtle bg-surface'
-              }`}>
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                padding: 14,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: isSelected ? activeColors.brand.primary : activeColors.border.subtle,
+                backgroundColor: isSelected ? activeColors.brand.primarySurface : activeColors.bg.surface,
+              }}>
               <View
-                className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
-                  isSelected ? 'border-brand-primary' : 'border-border'
-                }`}>
-                {isSelected && <View className="w-2.5 h-2.5 rounded-full bg-brand-primary" />}
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  borderWidth: 2,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderColor: isSelected ? activeColors.brand.primary : activeColors.border.default,
+                }}>
+                {isSelected && (
+                  <View
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
+                      backgroundColor: activeColors.brand.primary,
+                    }}
+                  />
+                )}
               </View>
               <Text
-                className={`text-sm ${
-                  isSelected ? 'font-bold text-text-primary' : 'text-text-secondary'
-                }`}>
+                style={{
+                  fontSize: 14,
+                  fontWeight: isSelected ? '700' : '500',
+                  color: isSelected ? activeColors.text.primary : activeColors.text.secondary,
+                }}>
                 {tr(`deleteAccount.reason.${key}`)}
               </Text>
             </Pressable>

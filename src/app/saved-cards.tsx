@@ -9,6 +9,7 @@ import { SwipeableCard } from '@/components/SwipeableCard';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { SavedCard } from '@/lib/types';
+import { useTheme } from '@/stores/theme';
 import { colors, layout, radius, shadow, spacing, typography } from '@/theme';
 import { detectCardBrand } from '@/utils/cardBrand';
 import { haptics } from '@/utils/haptics';
@@ -77,16 +78,18 @@ export default function SavedCardsScreen() {
     setPendingDelete(null);
   };
 
+  const { colors: activeColors } = useTheme();
+
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: activeColors.bg.canvas }} edges={['bottom']}>
       <FlatList
         data={activeCards.filter((c) => c.id !== pendingDelete?.card.id)}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
-          activeCards.length > 0 ? <Text style={styles.swipeHint}>{tr('cards.swipeHint')}</Text> : null
+          activeCards.length > 0 ? <Text style={[styles.swipeHint, { color: activeColors.text.tertiary }]}>{tr('cards.swipeHint')}</Text> : null
         }
-        ListEmptyComponent={!adding ? <Text style={styles.hint}>{tr('cards.empty')}</Text> : null}
+        ListEmptyComponent={!adding ? <Text style={[styles.hint, { color: activeColors.text.secondary }]}>{tr('cards.empty')}</Text> : null}
         renderItem={({ item }) => {
           const brand = detectCardBrand(item.cardNumberMasked ?? '');
           return (
@@ -105,17 +108,23 @@ export default function SavedCardsScreen() {
         }}
         ListFooterComponent={
           adding ? (
-            <View style={styles.form}>
+            <View style={[styles.form, { backgroundColor: activeColors.bg.surface }]}>
               <AddCardForm onDone={() => setAdding(false)} onCancel={() => setAdding(false)} />
             </View>
           ) : (
             <Pressable
-              style={styles.addBtn}
+              style={[
+                styles.addBtn,
+                {
+                  backgroundColor: activeColors.bg.surface,
+                  borderColor: activeColors.brand.primaryBorder,
+                },
+              ]}
               onPress={() => {
                 haptics.selection();
                 setAdding(true);
               }}>
-              <Text style={styles.addBtnText}>{tr('cards.add')}</Text>
+              <Text style={[styles.addBtnText, { color: activeColors.brand.primary }]}>{tr('cards.add')}</Text>
             </Pressable>
           )
         }

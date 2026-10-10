@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api, resolveMedia } from '@/lib/api';
 import { AppNotification } from '@/lib/types';
+import { useTheme } from '@/stores/theme';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 const ICON: Record<string, typeof Bell> = {
@@ -85,12 +86,17 @@ export default function NotificationsScreen() {
   const items = listQuery.data ?? [];
   const hasUnread = items.some((n) => !n.isRead);
 
+  const { colors: activeColors } = useTheme();
+
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: activeColors.bg.canvas }} edges={['bottom']}>
       {hasUnread ? (
-        <Pressable style={styles.markAllBtn} onPress={() => markAll.mutate()}>
-          <CheckCheck size={16} color={colors.brand.primary} strokeWidth={2.3} />
-          <Text style={styles.markAllText}>{tr('notifications.markAllRead')}</Text>
+        <Pressable
+          style={[styles.markAllBtn, { backgroundColor: activeColors.brand.primarySurface }]}
+          onPress={() => markAll.mutate()}
+        >
+          <CheckCheck size={16} color={activeColors.brand.primary} strokeWidth={2.3} />
+          <Text style={[styles.markAllText, { color: activeColors.brand.primary }]}>{tr('notifications.markAllRead')}</Text>
         </Pressable>
       ) : null}
 
@@ -104,13 +110,13 @@ export default function NotificationsScreen() {
             onRefresh={() => {
               void listQuery.refetch();
             }}
-            tintColor={colors.brand.primary}
-            colors={[colors.brand.primary]}
+            tintColor={activeColors.brand.primary}
+            colors={[activeColors.brand.primary]}
           />
         }
         ListEmptyComponent={
           listQuery.isLoading ? (
-            <ActivityIndicator color={colors.brand.primary} style={{ marginTop: 40 }} />
+            <ActivityIndicator color={activeColors.brand.primary} style={{ marginTop: 40 }} />
           ) : (
             <EmptyState icon={Bell} title={tr('notifications.empty.title')} description={tr('notifications.empty.desc')} />
           )
@@ -119,24 +125,40 @@ export default function NotificationsScreen() {
           const Icon = ICON[item.kind] ?? Bell;
           const imageUrl = typeof item.data?.imageUrl === 'string' ? item.data.imageUrl : undefined;
           return (
-            <Pressable style={[styles.row, !item.isRead && styles.rowUnread]} onPress={() => open(item)}>
+            <Pressable
+              style={[
+                styles.row,
+                {
+                  backgroundColor: item.isRead ? activeColors.bg.surface : activeColors.brand.primarySurface,
+                  borderColor: item.isRead ? activeColors.border.subtle : activeColors.brand.primaryBorder,
+                },
+              ]}
+              onPress={() => open(item)}
+            >
               {imageUrl ? (
                 <Image source={{ uri: resolveMedia(imageUrl) }} style={styles.thumb} />
               ) : (
-                <View style={[styles.iconWrap, !item.isRead && styles.iconWrapUnread]}>
-                  <Icon size={18} color={item.isRead ? colors.text.secondary : colors.brand.primary} strokeWidth={2.2} />
+                <View
+                  style={[
+                    styles.iconWrap,
+                    {
+                      backgroundColor: item.isRead ? activeColors.bg.surfaceMuted : activeColors.bg.surface,
+                    },
+                  ]}
+                >
+                  <Icon size={18} color={item.isRead ? activeColors.text.secondary : activeColors.brand.primary} strokeWidth={2.2} />
                 </View>
               )}
               <View style={{ flex: 1 }}>
-                <Text style={[styles.title, !item.isRead && styles.titleUnread]} numberOfLines={1}>
+                <Text style={[styles.title, { color: activeColors.text.primary }, !item.isRead && styles.titleUnread]} numberOfLines={1}>
                   {item.title}
                 </Text>
-                <Text style={styles.body} numberOfLines={2}>
+                <Text style={[styles.body, { color: activeColors.text.secondary }]} numberOfLines={2}>
                   {item.body}
                 </Text>
-                <Text style={styles.time}>{timeAgo(item.createdAt)}</Text>
+                <Text style={[styles.time, { color: activeColors.text.tertiary }]}>{timeAgo(item.createdAt)}</Text>
               </View>
-              {!item.isRead ? <View style={styles.dot} /> : null}
+              {!item.isRead ? <View style={[styles.dot, { backgroundColor: activeColors.brand.primary }]} /> : null}
             </Pressable>
           );
         }}

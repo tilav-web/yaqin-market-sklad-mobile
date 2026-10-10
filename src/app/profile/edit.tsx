@@ -19,7 +19,7 @@ import { DatePickerModal } from '@/components/ui';
 import { useTranslation } from '@/i18n';
 import { api, extractErrorMessage } from '@/lib/api';
 import { MeUser } from '@/lib/types';
-import { colors } from '@/theme';
+import { useTheme } from '@/stores/theme';
 import { haptics } from '@/utils/haptics';
 
 function splitLegacyName(name: string | null): { first: string; last: string } {
@@ -92,14 +92,29 @@ export default function EditProfileScreen() {
     setAvatarId(next ? (AVATAR_OPTIONS.find((a) => a.gender === next)?.id ?? null) : null);
   };
 
+  const { colors: activeColors } = useTheme();
+
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: activeColors.bg.canvas }} edges={['bottom']}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
         {/* Live preview */}
         <View className="items-center py-4">
-          <View className="w-24 h-24 rounded-full bg-brand-primary items-center justify-center overflow-hidden border-2 border-brand-primary shadow-sm">
+          <View
+            style={{
+              width: 96,
+              height: 96,
+              borderRadius: 48,
+              backgroundColor: activeColors.brand.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              borderWidth: 3,
+              borderColor: '#FFFFFF',
+              elevation: 4,
+            }}
+          >
             {previewSource ? (
-              <Image source={previewSource} className="w-full h-full" resizeMode="cover" />
+              <Image source={previewSource} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             ) : (
               <Text className="text-3xl font-extrabold text-white">{initial}</Text>
             )}
@@ -108,13 +123,24 @@ export default function EditProfileScreen() {
 
         {/* Last name */}
         <View className="gap-1.5">
-          <Text className="text-xs font-bold text-text-primary uppercase tracking-wider">{tr('editProfile.lastName')}</Text>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: activeColors.text.primary, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            {tr('editProfile.lastName')}
+          </Text>
           <TextInput
-            className="bg-surface rounded-xl px-4 py-3 text-base text-text-primary border border-border"
+            style={{
+              backgroundColor: activeColors.bg.surface,
+              borderColor: activeColors.border.default,
+              borderWidth: 1,
+              borderRadius: 12,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              fontSize: 16,
+              color: activeColors.text.primary,
+            }}
             value={lastName}
             onChangeText={setLastName}
             placeholder={tr('editProfile.lastNamePlaceholder')}
-            placeholderTextColor={colors.text.hint}
+            placeholderTextColor={activeColors.text.hint}
             maxLength={64}
             returnKeyType="next"
           />
@@ -122,13 +148,24 @@ export default function EditProfileScreen() {
 
         {/* First name */}
         <View className="gap-1.5">
-          <Text className="text-xs font-bold text-text-primary uppercase tracking-wider">{tr('editProfile.name')}</Text>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: activeColors.text.primary, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            {tr('editProfile.name')}
+          </Text>
           <TextInput
-            className="bg-surface rounded-xl px-4 py-3 text-base text-text-primary border border-border"
+            style={{
+              backgroundColor: activeColors.bg.surface,
+              borderColor: activeColors.border.default,
+              borderWidth: 1,
+              borderRadius: 12,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              fontSize: 16,
+              color: activeColors.text.primary,
+            }}
             value={firstName}
             onChangeText={setFirstName}
             placeholder={tr('editProfile.namePlaceholder')}
-            placeholderTextColor={colors.text.hint}
+            placeholderTextColor={activeColors.text.hint}
             maxLength={64}
             returnKeyType="done"
           />
@@ -136,36 +173,62 @@ export default function EditProfileScreen() {
 
         {/* Birth date */}
         <View className="gap-1.5">
-          <Text className="text-xs font-bold text-text-primary uppercase tracking-wider">{tr('editProfile.birthDate')}</Text>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: activeColors.text.primary, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            {tr('editProfile.birthDate')}
+          </Text>
           <Pressable
-            className="flex-row items-center justify-between bg-surface rounded-xl px-4 py-3 border border-border"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              backgroundColor: activeColors.bg.surface,
+              borderColor: activeColors.border.default,
+              borderWidth: 1,
+              borderRadius: 12,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+            }}
             onPress={() => setDatePickerVisible(true)}>
-            <Text className={`text-base ${birthDate ? 'text-text-primary' : 'text-text-hint'}`}>
+            <Text style={{ fontSize: 16, color: birthDate ? activeColors.text.primary : activeColors.text.hint }}>
               {birthDate ? new Date(`${birthDate}T00:00:00`).toLocaleDateString() : tr('editProfile.selectDate')}
             </Text>
-            <Calendar size={18} color={colors.text.tertiary} strokeWidth={2.2} />
+            <Calendar size={18} color={activeColors.text.tertiary} strokeWidth={2.2} />
           </Pressable>
         </View>
 
         {/* Gender */}
         <View className="gap-1.5">
-          <Text className="text-xs font-bold text-text-primary uppercase tracking-wider">{tr('editProfile.gender')}</Text>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: activeColors.text.primary, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            {tr('editProfile.gender')}
+          </Text>
           <View className="flex-row gap-2.5">
             <Pressable
-              className={`flex-1 py-3 rounded-xl items-center border ${
-                gender === 'male' ? 'bg-brand-primary border-brand-primary' : 'bg-surface border-border'
-              }`}
+              style={{
+                flex: 1,
+                paddingVertical: 12,
+                borderRadius: 12,
+                alignItems: 'center',
+                borderWidth: 1,
+                backgroundColor: gender === 'male' ? activeColors.brand.primary : activeColors.bg.surface,
+                borderColor: gender === 'male' ? activeColors.brand.primary : activeColors.border.default,
+              }}
               onPress={() => pickGender('male')}>
-              <Text className={`text-sm font-bold ${gender === 'male' ? 'text-white' : 'text-text-secondary'}`}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: gender === 'male' ? '#FFFFFF' : activeColors.text.secondary }}>
                 {tr('editProfile.male')}
               </Text>
             </Pressable>
             <Pressable
-              className={`flex-1 py-3 rounded-xl items-center border ${
-                gender === 'female' ? 'bg-brand-primary border-brand-primary' : 'bg-surface border-border'
-              }`}
+              style={{
+                flex: 1,
+                paddingVertical: 12,
+                borderRadius: 12,
+                alignItems: 'center',
+                borderWidth: 1,
+                backgroundColor: gender === 'female' ? activeColors.brand.primary : activeColors.bg.surface,
+                borderColor: gender === 'female' ? activeColors.brand.primary : activeColors.border.default,
+              }}
               onPress={() => pickGender('female')}>
-              <Text className={`text-sm font-bold ${gender === 'female' ? 'text-white' : 'text-text-secondary'}`}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: gender === 'female' ? '#FFFFFF' : activeColors.text.secondary }}>
                 {tr('editProfile.female')}
               </Text>
             </Pressable>
@@ -174,23 +237,48 @@ export default function EditProfileScreen() {
 
         {/* Phone (read-only) */}
         <View className="gap-1.5">
-          <Text className="text-xs font-bold text-text-primary uppercase tracking-wider">{tr('editProfile.phone')}</Text>
-          <View className="flex-row items-center justify-between bg-surface-muted rounded-xl px-4 py-3 border border-border-subtle">
-            <Text className="text-base text-text-tertiary">{user?.phone}</Text>
-            <Lock size={15} color={colors.text.tertiary} strokeWidth={2.2} />
+          <Text style={{ fontSize: 12, fontWeight: '700', color: activeColors.text.primary, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            {tr('editProfile.phone')}
+          </Text>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              backgroundColor: activeColors.bg.surfaceMuted,
+              borderColor: activeColors.border.subtle,
+              borderWidth: 1,
+              borderRadius: 12,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+            }}
+          >
+            <Text style={{ fontSize: 16, color: activeColors.text.tertiary }}>{user?.phone}</Text>
+            <Lock size={15} color={activeColors.text.tertiary} strokeWidth={2.2} />
           </View>
-          <Text className="text-xs text-text-hint">{tr('editProfile.phoneLocked')}</Text>
+          <Text style={{ fontSize: 12, color: activeColors.text.hint }}>{tr('editProfile.phoneLocked')}</Text>
         </View>
 
         {/* Email */}
         <View className="gap-1.5">
-          <Text className="text-xs font-bold text-text-primary uppercase tracking-wider">{tr('editProfile.email')}</Text>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: activeColors.text.primary, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            {tr('editProfile.email')}
+          </Text>
           <TextInput
-            className="bg-surface rounded-xl px-4 py-3 text-base text-text-primary border border-border"
+            style={{
+              backgroundColor: activeColors.bg.surface,
+              borderColor: activeColors.border.default,
+              borderWidth: 1,
+              borderRadius: 12,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              fontSize: 16,
+              color: activeColors.text.primary,
+            }}
             value={email}
             onChangeText={setEmail}
             placeholder={tr('editProfile.emailPlaceholder')}
-            placeholderTextColor={colors.text.hint}
+            placeholderTextColor={activeColors.text.hint}
             keyboardType="email-address"
             autoCapitalize="none"
             maxLength={255}
@@ -200,7 +288,9 @@ export default function EditProfileScreen() {
 
         {/* Avatar picker */}
         <View className="gap-2 pt-2">
-          <Text className="text-xs font-bold text-text-primary uppercase tracking-wider">{tr('editProfile.chooseAvatar')}</Text>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: activeColors.text.primary, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            {tr('editProfile.chooseAvatar')}
+          </Text>
           <ProfileAvatarPicker
             gender={gender}
             selectedId={avatarId}
@@ -213,12 +303,17 @@ export default function EditProfileScreen() {
 
         {/* Save button */}
         <Pressable
-          className={`h-12 rounded-xl items-center justify-center mt-4 ${
-            canSave && !saveMutation.isPending ? 'bg-brand-primary' : 'bg-surface-disabled'
-          }`}
+          style={{
+            height: 48,
+            borderRadius: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: 16,
+            backgroundColor: canSave && !saveMutation.isPending ? activeColors.brand.primary : (activeColors.border.subtle),
+          }}
           disabled={!canSave || saveMutation.isPending}
           onPress={() => saveMutation.mutate()}>
-          <Text className="text-base font-bold text-white">
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>
             {saveMutation.isPending ? tr('editProfile.saving') : tr('common.save')}
           </Text>
         </Pressable>

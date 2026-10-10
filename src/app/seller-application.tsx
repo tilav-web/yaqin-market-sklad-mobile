@@ -17,13 +17,15 @@ import {
   SellerAppSuccessModal,
   useSellerApplicationForm,
 } from '@/components/seller-application';
+import { useTheme } from '@/stores/theme';
 
 export default function SellerApplicationScreen() {
   const insets = useSafeAreaInsets();
   const form = useSellerApplicationForm();
+  const { colors: activeColors } = useTheme();
 
   return (
-    <SafeAreaView className="flex-1 bg-[#FAF8F5]" edges={['top', 'left', 'right']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: activeColors.bg.canvas }} edges={['top', 'left', 'right']}>
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Top Header & Progress */}

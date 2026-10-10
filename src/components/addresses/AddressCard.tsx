@@ -4,7 +4,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { UserAddress } from '@/lib/types';
-import { colors } from '@/theme';
+import { useTheme } from '@/stores/theme';
 
 interface AddressCardProps {
   readonly item: UserAddress;
@@ -24,46 +24,80 @@ export function AddressCard({
   onDelete,
 }: AddressCardProps) {
   const { tr } = useTranslation();
+  const { colors: activeColors } = useTheme();
 
   return (
     <Pressable
       onPress={onSelect}
-      className={`bg-surface rounded-2xl p-4 flex-row gap-3.5 border-[1.5px] shadow-xs ${
-        active ? 'border-brand-primary bg-brand-primary/5' : 'border-border-subtle'
-      }`}>
+      style={{
+        backgroundColor: active ? activeColors.brand.primarySurface : activeColors.bg.surface,
+        borderRadius: 16,
+        padding: 16,
+        flexDirection: 'row',
+        gap: 14,
+        borderWidth: 1.5,
+        borderColor: active ? activeColors.brand.primary : activeColors.border.subtle,
+      }}>
       <View
-        className={`w-10 h-10 rounded-full items-center justify-center ${
-          active ? 'bg-brand-primary' : 'bg-brand-primary/10'
-        }`}>
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: active ? activeColors.brand.primary : activeColors.brand.primarySurface,
+        }}>
         <MapPin
           size={20}
-          color={active ? colors.text.onPrimary : colors.brand.primary}
+          color={active ? '#FFFFFF' : activeColors.brand.primary}
           strokeWidth={2.4}
         />
       </View>
       <View className="flex-1">
         <View className="flex-row items-center gap-2 flex-wrap">
-          <Text className="text-base font-bold text-text-primary">{item.label}</Text>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: activeColors.text.primary }}>
+            {item.label}
+          </Text>
           {item.isDefault && (
-            <View className="flex-row items-center gap-1 bg-brand-primary/10 px-2 py-0.5 rounded">
-              <Star size={10} color={colors.brand.primary} fill={colors.brand.primary} />
-              <Text className="text-xs font-bold text-brand-primary">{tr('picker.main')}</Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                backgroundColor: activeColors.brand.primarySurface,
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+                borderRadius: 4,
+              }}>
+              <Star size={10} color={activeColors.brand.primary} fill={activeColors.brand.primary} />
+              <Text style={{ fontSize: 11, fontWeight: '700', color: activeColors.brand.primary }}>
+                {tr('picker.main')}
+              </Text>
             </View>
           )}
           {active && (
-            <View className="flex-row items-center gap-1 bg-brand-primary px-2 py-0.5 rounded">
-              <Check size={11} color={colors.text.onPrimary} strokeWidth={3} />
-              <Text className="text-xs font-bold text-white">{tr('addr.active')}</Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                backgroundColor: activeColors.brand.primary,
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+                borderRadius: 4,
+              }}>
+              <Check size={11} color="#FFFFFF" strokeWidth={3} />
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#FFFFFF' }}>{tr('addr.active')}</Text>
             </View>
           )}
         </View>
 
-        <Text className="text-xs text-text-secondary mt-1" numberOfLines={2}>
+        <Text style={{ fontSize: 12, color: activeColors.text.secondary, marginTop: 4 }} numberOfLines={2}>
           {item.address}
         </Text>
 
         {(item.entrance || item.floor || item.apartment || item.intercom) && (
-          <Text className="text-xs text-text-tertiary mt-1" numberOfLines={1}>
+          <Text style={{ fontSize: 12, color: activeColors.text.tertiary, marginTop: 4 }} numberOfLines={1}>
             {[
               item.entrance && `${tr('addr.entrance')} ${item.entrance}`,
               item.floor && `${tr('addr.floor')} ${item.floor}`,
@@ -78,17 +112,23 @@ export function AddressCard({
         <View className="flex-row gap-4 mt-3">
           {!item.isDefault && (
             <Pressable hitSlop={6} onPress={onSetDefault} className="flex-row items-center gap-1">
-              <Star size={14} color={colors.text.tertiary} strokeWidth={2.2} />
-              <Text className="text-xs font-semibold text-text-tertiary">{tr('addr.makeDefault')}</Text>
+              <Star size={14} color={activeColors.text.tertiary} strokeWidth={2.2} />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: activeColors.text.tertiary }}>
+                {tr('addr.makeDefault')}
+              </Text>
             </Pressable>
           )}
           <Pressable hitSlop={6} onPress={onEdit} className="flex-row items-center gap-1">
-            <Pencil size={14} color={colors.text.tertiary} strokeWidth={2.2} />
-            <Text className="text-xs font-semibold text-text-tertiary">{tr('addr.edit')}</Text>
+            <Pencil size={14} color={activeColors.text.tertiary} strokeWidth={2.2} />
+            <Text style={{ fontSize: 12, fontWeight: '600', color: activeColors.text.tertiary }}>
+              {tr('addr.edit')}
+            </Text>
           </Pressable>
           <Pressable hitSlop={6} onPress={onDelete} className="flex-row items-center gap-1">
-            <Trash2 size={14} color={colors.text.danger} strokeWidth={2.2} />
-            <Text className="text-xs font-semibold text-text-danger">{tr('addr.delete')}</Text>
+            <Trash2 size={14} color={activeColors.text.danger} strokeWidth={2.2} />
+            <Text style={{ fontSize: 12, fontWeight: '600', color: activeColors.text.danger }}>
+              {tr('addr.delete')}
+            </Text>
           </Pressable>
         </View>
       </View>

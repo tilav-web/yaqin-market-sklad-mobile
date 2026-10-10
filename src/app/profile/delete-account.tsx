@@ -22,7 +22,7 @@ import { DeleteAccountWarning } from '@/components/profile/DeleteAccountWarning'
 import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
-import { colors } from '@/theme';
+import { useTheme } from '@/stores/theme';
 import { haptics } from '@/utils/haptics';
 
 export default function DeleteAccountScreen() {
@@ -94,9 +94,10 @@ export default function DeleteAccountScreen() {
   };
 
   const isFormValid = selectedReason !== null && agreed;
+  const { colors: activeColors } = useTheme();
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: activeColors.bg.canvas }} edges={['bottom']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -105,11 +106,25 @@ export default function DeleteAccountScreen() {
           keyboardShouldPersistTaps="handled">
           {/* Header Description */}
           <View className="items-center py-4 px-2">
-            <View className="w-16 h-16 rounded-full bg-red-500/10 items-center justify-center mb-3">
-              <ShieldAlert size={28} color={colors.feedback.danger} strokeWidth={2} />
+            <View
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: 'rgba(232, 57, 46, 0.12)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 12,
+              }}
+            >
+              <ShieldAlert size={28} color={activeColors.feedback.danger} strokeWidth={2} />
             </View>
-            <Text className="text-xl font-bold text-text-primary mb-1 text-center">{tr('deleteAccount.title')}</Text>
-            <Text className="text-sm text-text-secondary text-center leading-5">{tr('deleteAccount.subtitle')}</Text>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: activeColors.text.primary, marginBottom: 4, textAlign: 'center' }}>
+              {tr('deleteAccount.title')}
+            </Text>
+            <Text style={{ fontSize: 14, color: activeColors.text.secondary, textAlign: 'center', lineHeight: 20 }}>
+              {tr('deleteAccount.subtitle')}
+            </Text>
           </View>
 
           {/* Reasons List */}
@@ -120,11 +135,19 @@ export default function DeleteAccountScreen() {
 
           {/* Optional Text Details */}
           {selectedReason && (
-            <View className="bg-surface rounded-xl p-3 border border-border-subtle">
+            <View
+              style={{
+                backgroundColor: activeColors.bg.surface,
+                borderRadius: 12,
+                padding: 12,
+                borderWidth: 1,
+                borderColor: activeColors.border.subtle,
+              }}
+            >
               <TextInput
-                className="text-sm text-text-primary min-h-[70px]"
+                style={{ fontSize: 14, color: activeColors.text.primary, minHeight: 70 }}
                 placeholder={tr('deleteAccount.feedbackPlaceholder')}
-                placeholderTextColor={colors.text.tertiary}
+                placeholderTextColor={activeColors.text.tertiary}
                 value={feedbackDetails}
                 onChangeText={setFeedbackDetails}
                 multiline
@@ -146,25 +169,39 @@ export default function DeleteAccountScreen() {
               setAgreed(!agreed);
             }}>
             <View
-              className={`w-6 h-6 rounded-lg border-2 items-center justify-center ${
-                agreed ? 'bg-brand-primary border-brand-primary' : 'border-border bg-surface'
-              }`}>
-              {agreed && <Check size={14} color={colors.text.onPrimary} strokeWidth={3} />}
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 8,
+                borderWidth: 2,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: agreed ? activeColors.brand.primary : activeColors.bg.surface,
+                borderColor: agreed ? activeColors.brand.primary : activeColors.border.default,
+              }}>
+              {agreed && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
             </View>
-            <Text className="flex-1 text-xs text-text-primary font-medium leading-4">
+            <Text style={{ flex: 1, fontSize: 12, fontWeight: '500', color: activeColors.text.primary, lineHeight: 16 }}>
               {tr('deleteAccount.agreeCheckbox')}
             </Text>
           </Pressable>
 
           {/* Action Button */}
           <Pressable
-            className={`flex-row items-center justify-center gap-2 h-12 rounded-xl mt-2 ${
-              isFormValid && !deleteMutation.isPending ? 'bg-red-600' : 'bg-surface-disabled'
-            }`}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              height: 48,
+              borderRadius: 12,
+              marginTop: 8,
+              backgroundColor: isFormValid && !deleteMutation.isPending ? activeColors.feedback.danger : activeColors.border.subtle,
+            }}
             disabled={!isFormValid || deleteMutation.isPending}
             onPress={handleConfirmDelete}>
             <Trash2 size={18} color="#FFFFFF" strokeWidth={2.2} />
-            <Text className="text-base font-bold text-white">
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>
               {deleteMutation.isPending ? tr('common.loading') : tr('auth.deleteAccountAction')}
             </Text>
           </Pressable>

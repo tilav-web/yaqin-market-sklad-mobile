@@ -17,7 +17,7 @@ import { FavoriteShopRow } from '@/components/favorites/FavoriteShopRow';
 import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { PublicProductVariant, PublicShop } from '@/lib/types';
-import { colors } from '@/theme';
+import { useTheme } from '@/stores/theme';
 import { haptics } from '@/utils/haptics';
 
 interface Favorites {
@@ -92,8 +92,10 @@ export default function FavoritesScreen() {
     qc.invalidateQueries({ queryKey: ['favorite-products'] });
   };
 
+  const { colors: activeColors } = useTheme();
+
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: activeColors.bg.canvas }} edges={['bottom']}>
       <ScrollView
         contentContainerStyle={{ padding: 16, flexGrow: 1, justifyContent: isEmpty ? 'center' : 'flex-start', gap: 16 }}
         showsVerticalScrollIndicator={false}
@@ -101,29 +103,51 @@ export default function FavoritesScreen() {
           <RefreshControl
             refreshing={favsQ.isFetching && !favsQ.isLoading}
             onRefresh={handleRefresh}
-            colors={[colors.brand.primary]}
-            tintColor={colors.brand.primary}
+            colors={[activeColors.brand.primary]}
+            tintColor={activeColors.brand.primary}
           />
         }>
         {loading ? (
           <View className="py-12 items-center justify-center">
-            <ActivityIndicator size="large" color={colors.brand.primary} />
+            <ActivityIndicator size="large" color={activeColors.brand.primary} />
           </View>
         ) : isEmpty ? (
           <View className="items-center justify-center py-10 px-6">
-            <View className="w-20 h-20 rounded-full bg-brand-primary/10 items-center justify-center mb-4">
-              <Heart size={44} color={colors.brand.primary} strokeWidth={1.8} />
+            <View
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 40,
+                backgroundColor: activeColors.brand.primarySurface,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 16,
+              }}>
+              <Heart size={44} color={activeColors.brand.primary} strokeWidth={1.8} />
             </View>
-            <Text className="text-xl font-bold text-text-primary mb-1 text-center">{tr('fav.emptyTitle')}</Text>
-            <Text className="text-sm text-text-secondary text-center leading-5 mb-6">{tr('fav.emptySub')}</Text>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: activeColors.text.primary, marginBottom: 4, textAlign: 'center' }}>
+              {tr('fav.emptyTitle')}
+            </Text>
+            <Text style={{ fontSize: 14, color: activeColors.text.secondary, textAlign: 'center', lineHeight: 20, marginBottom: 24 }}>
+              {tr('fav.emptySub')}
+            </Text>
             <Pressable
-              className="flex-row items-center justify-center gap-2 h-12 rounded-xl bg-brand-primary px-6"
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                height: 48,
+                borderRadius: 12,
+                backgroundColor: activeColors.brand.primary,
+                paddingHorizontal: 24,
+              }}
               onPress={() => {
                 haptics.medium();
                 router.replace('/(tabs)');
               }}>
-              <ShoppingBag size={18} color={colors.text.onPrimary} strokeWidth={2.2} />
-              <Text className="text-base font-bold text-white">{tr('fav.exploreAction')}</Text>
+              <ShoppingBag size={18} color="#FFFFFF" strokeWidth={2.2} />
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>{tr('fav.exploreAction')}</Text>
             </Pressable>
           </View>
         ) : (
@@ -132,8 +156,8 @@ export default function FavoritesScreen() {
             {hasShops && (
               <View className="gap-2.5">
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-base font-bold text-text-primary">{tr('fav.shops')}</Text>
-                  <Text className="text-xs font-bold text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-full">
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: activeColors.text.primary }}>{tr('fav.shops')}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: activeColors.brand.primary, backgroundColor: activeColors.brand.primarySurface, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 }}>
                     {shops.length}
                   </Text>
                 </View>

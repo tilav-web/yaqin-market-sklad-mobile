@@ -215,7 +215,15 @@ export default function ProfileTab() {
         {!isGuest && (
           <View className="mt-1 mb-6">
             <Pressable
-              className="h-12 rounded-2xl bg-surface border border-feedback-danger items-center justify-center active:opacity-70"
+              style={{
+                height: 48,
+                borderRadius: 16,
+                backgroundColor: activeColors.bg.surface,
+                borderWidth: 1,
+                borderColor: activeColors.feedback.danger,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
               onPress={() => {
                 haptics.warning();
                 Alert.alert(tr('auth.signOut'), tr('auth.signOutConfirm'), [
@@ -231,7 +239,7 @@ export default function ProfileTab() {
                 ]);
               }}
             >
-              <Text className="text-base font-bold text-feedback-danger">{tr('auth.signOut')}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: activeColors.feedback.danger }}>{tr('auth.signOut')}</Text>
             </Pressable>
           </View>
         )}

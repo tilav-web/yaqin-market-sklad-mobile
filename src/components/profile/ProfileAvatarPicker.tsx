@@ -3,7 +3,7 @@ import React from 'react';
 import { Image, Pressable, View } from 'react-native';
 
 import { AVATAR_OPTIONS } from '@/constants/avatars';
-import { colors } from '@/theme';
+import { useTheme } from '@/stores/theme';
 
 interface ProfileAvatarPickerProps {
   readonly gender: 'male' | 'female' | null;
@@ -16,6 +16,7 @@ export function ProfileAvatarPicker({
   selectedId,
   onSelect,
 }: ProfileAvatarPickerProps) {
+  const { colors: activeColors } = useTheme();
   const visibleAvatars = gender ? AVATAR_OPTIONS.filter((a) => a.gender === gender) : AVATAR_OPTIONS;
 
   return (
@@ -26,13 +27,35 @@ export function ProfileAvatarPicker({
           <Pressable
             key={opt.id}
             onPress={() => onSelect(opt.id)}
-            className={`w-[60px] h-[60px] rounded-full border-2 items-center justify-center relative overflow-hidden ${
-              isSelected ? 'border-brand-primary' : 'border-border-subtle bg-surface-muted'
-            }`}>
-            <Image source={opt.source} className="w-[56px] h-[56px] rounded-full" resizeMode="cover" />
+            style={{
+              width: 62,
+              height: 62,
+              borderRadius: 31,
+              borderWidth: isSelected ? 2.5 : 1.5,
+              borderColor: isSelected ? activeColors.brand.primary : activeColors.border.subtle,
+              backgroundColor: activeColors.bg.surfaceMuted,
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              overflow: 'hidden',
+            }}>
+            <Image source={opt.source} style={{ width: 56, height: 56, borderRadius: 28 }} resizeMode="cover" />
             {isSelected && (
-              <View className="absolute right-0 bottom-0 w-5 h-5 rounded-full bg-brand-primary items-center justify-center border-2 border-white">
-                <Check size={11} color={colors.text.onPrimary} strokeWidth={3} />
+              <View
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  bottom: 0,
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  backgroundColor: activeColors.brand.primary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 2,
+                  borderColor: '#FFFFFF',
+                }}>
+                <Check size={11} color="#FFFFFF" strokeWidth={3} />
               </View>
             )}
           </Pressable>
