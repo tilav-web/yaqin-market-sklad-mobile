@@ -127,7 +127,6 @@ function RootNavigator() {
         <Stack.Screen name="seller/order/[orderId]" options={{ title: tr('nav.orderDetail') }} />
         <Stack.Screen name="seller/pos/[shopId]" options={{ headerShown: false }} />
         <Stack.Screen name="favorites" options={{ title: tr('nav.favorites') }} />
-        <Stack.Screen name="saved-messages" options={{ headerShown: false }} />
       </Stack>
     </>
   );

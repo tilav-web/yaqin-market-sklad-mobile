@@ -161,12 +161,6 @@ export function TelegramSearchModal() {
     [close],
   );
 
-  const handleSelectSaved = useCallback(() => {
-    haptics.selection();
-    close();
-    router.push('/saved-messages');
-  }, [close]);
-
   return (
     <Modal visible={isOpen} animationType="slide" onRequestClose={close}>
       <View
@@ -302,7 +296,6 @@ export function TelegramSearchModal() {
               categories={categories}
               isDark={isDark}
               themeColors={themeColors}
-              onSelectSaved={handleSelectSaved}
               onSelectCategory={(name) => setQuery(name)}
             />
           )}
