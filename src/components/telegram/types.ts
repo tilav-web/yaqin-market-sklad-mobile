@@ -34,4 +34,6 @@ export interface UnifiedChat {
   unreadCount: number;
   isOrder: boolean;
   isSellerSide?: boolean;
+  orderStatus?: string;
+  orderNumber?: string;
 }

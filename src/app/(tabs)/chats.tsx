@@ -10,6 +10,7 @@ import {
   TelegramChatsHeader,
   TelegramChatsTabPage,
   TelegramFolderTabs,
+  TelegramSearchModal,
   TelegramShopsTabPage,
   UnifiedChat,
 } from '@/components/telegram';
@@ -143,12 +144,14 @@ export default function ChatsTabScreen() {
           shopId: order.shopId,
           title: order.shop?.name || `${tr('nav.shop')} #${order.shopId.slice(0, 6)}`,
           avatarUrl: order.shop?.photos && order.shop.photos.length > 0 ? order.shop.photos[0] : null,
-          subtitle: `📦 ${tr('nav.orderDetail')} #${orderNum} · ${order.status}`,
+          subtitle: `📦 #${orderNum}`,
           time: formatTelegramTime(order.createdAt),
           rawDate: order.createdAt,
           unreadCount: 0,
           isOrder: true,
           isSellerSide: false,
+          orderStatus: order.status,
+          orderNumber: orderNum,
         });
       }
     }
@@ -251,6 +254,8 @@ export default function ChatsTabScreen() {
           onRefresh={() => void refetchShops()}
         />
       </PagerView>
+
+      <TelegramSearchModal />
     </SafeAreaView>
   );
 }

@@ -11,3 +11,5 @@ export * from './TelegramChatsTabPage';
 export * from './TelegramShopsTabPage';
 export * from './TelegramSearchResultsList';
 export * from './TelegramSearchIdleList';
+export * from './chatStatusUtils';
+

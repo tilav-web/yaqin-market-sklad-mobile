@@ -164,15 +164,8 @@ export function TelegramSearchModal() {
   const handleSelectSaved = useCallback(() => {
     haptics.selection();
     close();
-    router.push({
-      pathname: '/chat/[orderId]',
-      params: {
-        orderId: 'saved',
-        conversationId: 'saved',
-        title: tr('chat.savedMessages'),
-      },
-    } as any);
-  }, [close, tr]);
+    router.push('/saved-messages');
+  }, [close]);
 
   return (
     <Modal visible={isOpen} animationType="slide" onRequestClose={close}>

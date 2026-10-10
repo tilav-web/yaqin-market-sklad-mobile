@@ -1,4 +1,4 @@
-import { Bookmark, ChevronRight } from 'lucide-react-native';
+import { ChevronRight, ListChecks } from 'lucide-react-native';
 import React from 'react';
 import { FlatList, Image, Pressable, Text, View } from 'react-native';
 
@@ -37,7 +37,7 @@ export function TelegramSearchIdleList({
           >
             <View className="w-12 h-12 rounded-full mr-3.5 overflow-hidden">
               <View className="w-full h-full items-center justify-center bg-[#E8392E]">
-                <Bookmark size={22} color="#FFF" />
+                <ListChecks size={22} color="#FFF" strokeWidth={2.4} />
               </View>
             </View>
             <View className="flex-1 gap-0.5">
