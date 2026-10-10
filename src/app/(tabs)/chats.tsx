@@ -10,7 +10,6 @@ import {
   TelegramChatsHeader,
   TelegramChatsTabPage,
   TelegramFolderTabs,
-  TelegramSearchModal,
   TelegramShopsTabPage,
   UnifiedChat,
 } from '@/components/telegram';
@@ -192,11 +191,6 @@ export default function ChatsTabScreen() {
     });
   }, []);
 
-  const handleOpenSaved = useCallback(() => {
-    haptics.selection();
-    router.push('/saved-messages');
-  }, []);
-
   const handleRefresh = useCallback(() => {
     void refetchConvs();
     void refetchOrders();
@@ -238,7 +232,6 @@ export default function ChatsTabScreen() {
           bottomInset={insets.bottom}
           onRefresh={handleRefresh}
           onOpenChat={handleOpenChat}
-          onOpenSaved={handleOpenSaved}
           onExplore={() => router.push('/(tabs)')}
           onLogin={() => router.push('/(auth)/phone')}
         />
@@ -254,8 +247,6 @@ export default function ChatsTabScreen() {
           onRefresh={() => void refetchShops()}
         />
       </PagerView>
-
-      <TelegramSearchModal />
     </SafeAreaView>
   );
 }

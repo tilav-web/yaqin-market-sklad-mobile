@@ -8,7 +8,6 @@ import { useTheme } from '@/stores/theme';
 
 import { TelegramChatRow } from './TelegramChatRow';
 import { TelegramChatsEmpty } from './TelegramChatsEmpty';
-import { TelegramSavedMessagesRow } from './TelegramSavedMessagesRow';
 import { UnifiedChat } from './types';
 
 interface TelegramChatsTabPageProps {
@@ -20,7 +19,7 @@ interface TelegramChatsTabPageProps {
   bottomInset: number;
   onRefresh: () => void;
   onOpenChat: (chat: UnifiedChat) => void;
-  onOpenSaved: () => void;
+  onOpenSaved?: () => void;
   onExplore: () => void;
   onLogin: () => void;
 }
@@ -86,12 +85,6 @@ export function TelegramChatsTabPage({
             refreshing={isRefreshing}
             onRefresh={onRefresh}
             tintColor={activeColors.brand.primary}
-          />
-        }
-        ListHeaderComponent={
-          <TelegramSavedMessagesRow
-            onPress={onOpenSaved}
-            activeColors={activeColors}
           />
         }
         ListEmptyComponent={

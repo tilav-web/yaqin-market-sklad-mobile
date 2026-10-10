@@ -3,6 +3,7 @@ import React from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
+import { resolveMedia } from '@/lib/api';
 import { getOrderStatusConfig } from './chatStatusUtils';
 import { UnifiedChat } from './types';
 
@@ -33,6 +34,8 @@ export function TelegramChatRow({ item, onPress, activeColors }: TelegramChatRow
     ? getOrderStatusConfig(item.orderStatus, tr)
     : null;
 
+  const avatarUri = resolveMedia(item.avatarUrl);
+
   return (
     <Pressable
       onPress={onPress}
@@ -46,9 +49,9 @@ export function TelegramChatRow({ item, onPress, activeColors }: TelegramChatRow
     >
       {/* Avatar Container */}
       <View className="relative mr-3.5">
-        {item.avatarUrl ? (
+        {avatarUri ? (
           <Image
-            source={{ uri: item.avatarUrl }}
+            source={{ uri: avatarUri }}
             className="w-[52px] h-[52px] rounded-2xl border"
             style={{
               backgroundColor: activeColors.bg.surfaceMuted,

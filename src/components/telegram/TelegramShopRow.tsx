@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 
-import { api } from '@/lib/api';
+import { api, resolveMedia } from '@/lib/api';
 import { PublicShop } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/stores/theme';
@@ -31,7 +31,7 @@ export function TelegramShopRow({ shop }: TelegramShopRowProps) {
   const isAuthenticated = useAuthStore((s) => !!s.user);
   const [chatLoading, setChatLoading] = useState(false);
 
-  const photo = shop.photos && shop.photos.length > 0 ? shop.photos[0] : null;
+  const photo = resolveMedia(shop.photos && shop.photos.length > 0 ? shop.photos[0] : null);
 
   const handleOpenShop = useCallback(() => {
     haptics.selection();
