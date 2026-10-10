@@ -4,7 +4,8 @@ import { Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { ORDER_STATUS_KEY, OrderStatus } from '@/lib/types';
-import { colors, typography } from '@/theme';
+import { useTheme } from '@/stores/theme';
+import { typography } from '@/theme';
 
 const FLOW: OrderStatus[] = ['new', 'accepted', 'preparing', 'delivering', 'delivered'];
 
@@ -14,6 +15,7 @@ interface OrderStatusTimelineProps {
 
 export function OrderStatusTimeline({ timeline }: OrderStatusTimelineProps) {
   const { tr } = useTranslation();
+  const { colors } = useTheme();
 
   return (
     <View

@@ -4,7 +4,8 @@ import { Image, Text, View } from 'react-native';
 import { useTranslation } from '@/i18n';
 import { resolveMedia } from '@/lib/api';
 import { OrderItem } from '@/lib/types';
-import { colors, typography } from '@/theme';
+import { useTheme } from '@/stores/theme';
+import { typography } from '@/theme';
 import { getLocalizedText } from '@/utils/text';
 
 interface OrderItemsCardProps {
@@ -14,6 +15,7 @@ interface OrderItemsCardProps {
 
 export function OrderItemsCard({ items, hasReturns }: OrderItemsCardProps) {
   const { tr } = useTranslation();
+  const { colors } = useTheme();
 
   return (
     <View

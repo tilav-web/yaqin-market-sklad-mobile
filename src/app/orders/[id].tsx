@@ -32,7 +32,7 @@ import { useOrderSocket } from '@/lib/useOrderSocket';
 import { FiscalReceipt, Order, OrderStatus, ProductOffer, SavedCard } from '@/lib/types';
 import { OrderActivityProps } from '@/widgets/order-activity';
 import { useEffectiveCoords } from '@/stores/location';
-import { colors } from '@/theme';
+import { useTheme } from '@/stores/theme';
 import { haptics } from '@/utils/haptics';
 
 function isTerminalStatus(status: OrderStatus | undefined): boolean {
@@ -46,6 +46,7 @@ function isTerminalStatus(status: OrderStatus | undefined): boolean {
 
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { colors: activeColors } = useTheme();
   const qc = useQueryClient();
   const toast = useToast();
 
@@ -152,8 +153,10 @@ export default function OrderDetailScreen() {
 
   if (orderQuery.isLoading || !order) {
     return (
-      <View className="flex-1 items-center justify-center bg-canvas">
-        <ActivityIndicator color={colors.brand.primary} />
+      <View
+        className="flex-1 items-center justify-center"
+        style={{ backgroundColor: activeColors.bg.canvas }}>
+        <ActivityIndicator color={activeColors.brand.primary} />
       </View>
     );
   }
@@ -169,7 +172,7 @@ export default function OrderDetailScreen() {
   const unreviewed = canReview ? order.items.filter((i) => !reviewed.has(i.productVariantId)) : [];
 
   return (
-    <View className="flex-1 bg-canvas">
+    <View className="flex-1" style={{ backgroundColor: activeColors.bg.canvas }}>
       <ScrollView
         contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
@@ -177,8 +180,8 @@ export default function OrderDetailScreen() {
           <RefreshControl
             refreshing={orderQuery.isFetching && !orderQuery.isLoading}
             onRefresh={() => void orderQuery.refetch()}
-            tintColor={colors.brand.primary}
-            colors={[colors.brand.primary]}
+            tintColor={activeColors.brand.primary}
+            colors={[activeColors.brand.primary]}
           />
         }>
         {/* Header & Status Section */}

@@ -4,7 +4,8 @@ import { Pressable, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
 import { Order } from '@/lib/types';
-import { colors, typography } from '@/theme';
+import { useTheme } from '@/stores/theme';
+import { typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
 interface OrderSummaryCardProps {
@@ -19,11 +20,13 @@ function SummaryRow({
   value,
   bold,
   tone,
+  colors,
 }: {
   readonly label: string;
   readonly value: string;
   readonly bold?: boolean;
   readonly tone?: 'warning';
+  readonly colors: ReturnType<typeof useTheme>['colors'];
 }) {
   return (
     <View className="flex-row justify-between items-center">
@@ -58,6 +61,7 @@ export function OrderSummaryCard({
   onOpenReceipt,
 }: OrderSummaryCardProps) {
   const { tr } = useTranslation();
+  const { colors } = useTheme();
 
   return (
     <View
@@ -73,18 +77,20 @@ export function OrderSummaryCard({
             label={tr('orderDet.returnedLabel')}
             value={`− ${returnedTotal.toLocaleString()} ${tr('common.som')}`}
             tone="warning"
+            colors={colors}
           />
           <View className="h-px" style={{ backgroundColor: colors.border.subtle }} />
         </>
       )}
-      <SummaryRow label={tr('cart.subtotal')} value={`${order.subTotal.toLocaleString()} ${tr('common.som')}`} />
-      <SummaryRow label={tr('cart.deliveryFee')} value={`${order.deliveryFee.toLocaleString()} ${tr('common.som')}`} />
-      <SummaryRow label={tr('cart.distance')} value={`${order.distanceKm.toFixed(2)} km`} />
+      <SummaryRow label={tr('cart.subtotal')} value={`${order.subTotal.toLocaleString()} ${tr('common.som')}`} colors={colors} />
+      <SummaryRow label={tr('cart.deliveryFee')} value={`${order.deliveryFee.toLocaleString()} ${tr('common.som')}`} colors={colors} />
+      <SummaryRow label={tr('cart.distance')} value={`${order.distanceKm.toFixed(2)} km`} colors={colors} />
       <View className="h-px" style={{ backgroundColor: colors.border.subtle }} />
       <SummaryRow
         label={hasReturns ? tr('orderDet.newTotalAfterReturn') : tr('cart.total')}
         value={`${order.total.toLocaleString()} ${tr('common.som')}`}
         bold
+        colors={colors}
       />
       {(order.paymentStatus === 'paid' || order.status === 'delivered') && (
         <>

@@ -203,6 +203,6 @@ export const darkColors = {
 } as const;
 
 // Default exported colors token
-export const colors = darkColors;
+export const colors = lightColors;
 
 export type ColorTokens = typeof colors;

@@ -9,16 +9,15 @@ import { useTranslation } from '@/i18n';
 import { api } from '@/lib/api';
 import { useIsGuest } from '@/lib/useRequireAuth';
 import { ORDER_STATUS_KEY, Order, OrderStatus } from '@/lib/types';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { useTheme } from '@/stores/theme';
+import { layout, radius, spacing, typography } from '@/theme';
 
 const ACTIVE_STATUSES: OrderStatus[] = ['new', 'accepted', 'preparing', 'delivering'];
 
-// Cash never needs a payment-status call-out (it's collected at the door).
-// For card orders, the outcome is exactly the thing a customer can't tell
-// from anywhere else in the list — so it's always shown, not just on failure.
 function paymentInfo(
   order: Order,
   tr: ReturnType<typeof useTranslation>['tr'],
+  colors: ReturnType<typeof useTheme>['colors'],
 ): { label: string; color: string; Icon: typeof CreditCard } {
   if (order.paymentMethod === 'cash') {
     return { label: tr('orders.paymentCash'), color: colors.text.tertiary, Icon: Banknote };
@@ -34,6 +33,7 @@ function paymentInfo(
 
 export default function OrdersScreen() {
   const { tr } = useTranslation();
+  const { colors: activeColors } = useTheme();
   const isGuest = useIsGuest();
   const ordersQuery = useQuery({
     queryKey: ['orders', 'mine'],
@@ -48,17 +48,25 @@ export default function OrdersScreen() {
   const activeCount = (ordersQuery.data ?? []).filter((o) => ACTIVE_STATUSES.includes(o.status)).length;
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: activeColors.bg.canvas }} edges={['bottom']}>
       {activeCount > 0 ? (
-        <Pressable style={styles.trackingBanner} onPress={() => router.push('/orders/tracking')}>
-          <View style={styles.trackingIconWrap}>
-            <Navigation size={16} color={colors.text.onPrimary} strokeWidth={2.4} />
+        <Pressable
+          style={[
+            styles.trackingBanner,
+            {
+              backgroundColor: activeColors.brand.primarySurface,
+              borderColor: activeColors.brand.primaryBorder,
+            },
+          ]}
+          onPress={() => router.push('/orders/tracking')}>
+          <View style={[styles.trackingIconWrap, { backgroundColor: activeColors.brand.primary }]}>
+            <Navigation size={16} color={activeColors.text.onPrimary} strokeWidth={2.4} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.trackingTitle}>{tr('tracking.title')}</Text>
-            <Text style={styles.trackingSubtitle}>{tr('tracking.bannerDesc', { n: activeCount })}</Text>
+            <Text style={[styles.trackingTitle, { color: activeColors.text.primary }]}>{tr('tracking.title')}</Text>
+            <Text style={[styles.trackingSubtitle, { color: activeColors.text.secondary }]}>{tr('tracking.bannerDesc', { n: activeCount })}</Text>
           </View>
-          <ChevronRight size={18} color={colors.brand.primary} />
+          <ChevronRight size={18} color={activeColors.brand.primary} />
         </Pressable>
       ) : null}
       <FlatList
@@ -76,7 +84,7 @@ export default function OrdersScreen() {
               onAction={() => router.push('/(auth)/phone')}
             />
           ) : ordersQuery.isLoading ? (
-            <ActivityIndicator color={colors.brand.primary} style={{ marginTop: spacing['4xl'] }} />
+            <ActivityIndicator color={activeColors.brand.primary} style={{ marginTop: spacing['4xl'] }} />
           ) : ordersQuery.isError ? (
             <EmptyState
               icon={WifiOff}
@@ -90,40 +98,47 @@ export default function OrdersScreen() {
           )
         }
         renderItem={({ item }) => {
-          const payment = paymentInfo(item, tr);
+          const payment = paymentInfo(item, tr, activeColors);
           return (
-          <Pressable
-            style={({ pressed }) => [styles.card, pressed && { opacity: 0.9 }]}
-            onPress={() => router.push(`/orders/${item.id}`)}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.orderNumber}>#{item.orderNumber}</Text>
-              <View style={[styles.statusBadge, { backgroundColor: colors.status[item.status] }]}>
-                <Text style={styles.statusText}>{tr(ORDER_STATUS_KEY[item.status])}</Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.card,
+                {
+                  backgroundColor: activeColors.bg.surface,
+                  borderColor: activeColors.border.subtle,
+                },
+                pressed && { opacity: 0.9 },
+              ]}
+              onPress={() => router.push(`/orders/${item.id}`)}>
+              <View style={styles.cardHeader}>
+                <Text style={[styles.orderNumber, { color: activeColors.text.secondary }]}>#{item.orderNumber}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: activeColors.status[item.status] }]}>
+                  <Text style={[styles.statusText, { color: activeColors.text.onPrimary }]}>{tr(ORDER_STATUS_KEY[item.status])}</Text>
+                </View>
               </View>
-            </View>
-            <View style={styles.shopRow}>
-              <Store size={14} color={colors.text.tertiary} strokeWidth={2.4} />
-              <Text style={styles.shopName} numberOfLines={1}>
-                {item.shop?.name ?? '…'}
-              </Text>
-            </View>
-            <View style={styles.paymentRow}>
-              <payment.Icon size={13} color={payment.color} strokeWidth={2.4} />
-              <Text style={[styles.paymentText, { color: payment.color }]}>{payment.label}</Text>
-            </View>
-            <View style={styles.cardFooter}>
-              <View>
-                <Text style={styles.itemCount}>{(item.items ?? []).length} ta mahsulot</Text>
-                <Text style={styles.total}>{item.total.toLocaleString()} so‘m</Text>
-              </View>
-              <View style={styles.dateCol}>
-                <Text style={styles.date}>
-                  {new Date(item.createdAt).toLocaleDateString('uz-UZ')}
+              <View style={styles.shopRow}>
+                <Store size={14} color={activeColors.text.tertiary} strokeWidth={2.4} />
+                <Text style={[styles.shopName, { color: activeColors.text.primary }]} numberOfLines={1}>
+                  {item.shop?.name ?? '…'}
                 </Text>
-                <ChevronRight size={18} color={colors.text.hint} />
               </View>
-            </View>
-          </Pressable>
+              <View style={styles.paymentRow}>
+                <payment.Icon size={13} color={payment.color} strokeWidth={2.4} />
+                <Text style={[styles.paymentText, { color: payment.color }]}>{payment.label}</Text>
+              </View>
+              <View style={[styles.cardFooter, { borderTopColor: activeColors.border.subtle }]}>
+                <View>
+                  <Text style={[styles.itemCount, { color: activeColors.text.secondary }]}>{(item.items ?? []).length} ta mahsulot</Text>
+                  <Text style={[styles.total, { color: activeColors.brand.primary }]}>{item.total.toLocaleString()} so‘m</Text>
+                </View>
+                <View style={styles.dateCol}>
+                  <Text style={[styles.date, { color: activeColors.text.secondary }]}>
+                    {new Date(item.createdAt).toLocaleDateString('uz-UZ')}
+                  </Text>
+                  <ChevronRight size={18} color={activeColors.text.hint} />
+                </View>
+              </View>
+            </Pressable>
           );
         }}
       />
@@ -132,7 +147,6 @@ export default function OrdersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
   trackingBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -141,33 +155,28 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     padding: spacing.md,
     borderRadius: radius.lg,
-    backgroundColor: colors.brand.primarySurface,
     borderWidth: 1,
-    borderColor: colors.brand.primaryBorder,
   },
   trackingIconWrap: {
     width: 32,
     height: 32,
     borderRadius: radius.full,
-    backgroundColor: colors.brand.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  trackingTitle: { ...typography.bodyStrong, color: colors.text.primary },
-  trackingSubtitle: { ...typography.caption, color: colors.text.secondary, marginTop: 1 },
+  trackingTitle: { ...typography.bodyStrong },
+  trackingSubtitle: { ...typography.caption, marginTop: 1 },
   list: { padding: layout.screenPadding, gap: spacing.md },
   card: {
-    backgroundColor: colors.bg.surface,
     borderRadius: radius.lg,
     padding: spacing.lg,
     gap: spacing.xs,
     borderWidth: 1,
-    borderColor: colors.border.subtle,
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  orderNumber: { ...typography.bodyStrong, color: colors.text.secondary },
+  orderNumber: { ...typography.bodyStrong },
   statusBadge: { paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: radius.full },
-  statusText: { ...typography.caption, fontSize: 11, color: colors.text.onPrimary, fontWeight: '800' },
+  statusText: { ...typography.caption, fontSize: 11, fontWeight: '800' },
   shopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs },
   shopName: { ...typography.h4, flex: 1 },
   paymentRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs },
@@ -179,10 +188,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
   },
-  itemCount: { ...typography.caption, color: colors.text.secondary },
-  total: { ...typography.h3, color: colors.brand.primary, marginTop: 2 },
+  itemCount: { ...typography.caption },
+  total: { ...typography.h3, marginTop: 2 },
   dateCol: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  date: { ...typography.caption, color: colors.text.secondary },
+  date: { ...typography.caption },
 });

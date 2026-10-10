@@ -2,7 +2,8 @@ import { Inbox, LucideIcon } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { Button } from './Button';
-import { colors, typography } from '@/theme';
+import { useTheme } from '@/stores/theme';
+import { typography } from '@/theme';
 
 interface Props {
   icon?: LucideIcon;
@@ -21,18 +22,20 @@ export function EmptyState({
   onAction,
   className,
 }: Props) {
+  const { colors: activeColors } = useTheme();
+
   return (
     <View className={`items-center px-8 py-12 gap-3 ${className ?? ''}`}>
       {Icon ? (
         <View
           className="w-24 h-24 rounded-full items-center justify-center mb-3"
-          style={{ backgroundColor: colors.brand.primarySurface }}>
-          <Icon size={48} color={colors.brand.primary} strokeWidth={1.4} />
+          style={{ backgroundColor: activeColors.brand.primarySurface }}>
+          <Icon size={48} color={activeColors.brand.primary} strokeWidth={1.4} />
         </View>
       ) : null}
-      <Text style={[typography.h3, { textAlign: 'center' }]}>{title}</Text>
+      <Text style={[typography.h3, { color: activeColors.text.primary, textAlign: 'center' }]}>{title}</Text>
       {description && (
-        <Text style={[typography.body, { color: colors.text.secondary, textAlign: 'center' }]}>
+        <Text style={[typography.body, { color: activeColors.text.secondary, textAlign: 'center' }]}>
           {description}
         </Text>
       )}
